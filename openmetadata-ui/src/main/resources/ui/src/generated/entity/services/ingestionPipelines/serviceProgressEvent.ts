@@ -11,14 +11,1648 @@
  *  limitations under the License.
  */
 /**
- * TestSuite Pipeline Configuration.
+ * One pipeline's progress update multiplexed onto a service-scoped SSE stream.
  */
-export interface TestSuitePipeline {
+export interface ServiceProgressEvent {
+    /**
+     * The per-run progress update
+     */
+    event: ProgressUpdate;
+    /**
+     * The ingestion pipeline (agent) this run belongs to. Populated on the DISCOVERY event that
+     * opens a run, so the UI can discover a newly created agent without a separate lookup.
+     */
+    ingestionPipeline?: IngestionPipeline;
+    /**
+     * Fully qualified name of the ingestion pipeline this event belongs to
+     */
+    pipelineFqn: string;
+    /**
+     * Pipeline run ID
+     */
+    runId: string;
+}
+
+/**
+ * The per-run progress update
+ *
+ * Real-time progress update for SSE streaming during ingestion pipeline execution
+ */
+export interface ProgressUpdate {
+    /**
+     * FQN of the entity currently being processed
+     */
+    currentEntity?: string;
+    /**
+     * Estimated seconds until the run completes; null when not yet computable
+     */
+    estimatedSecondsRemaining?: number | null;
+    /**
+     * Run-level counters that survive scope pruning (e.g. Database, DatabaseSchema, Workspace).
+     * Each carries done and an optional upfront total.
+     */
+    globalCounters?: GlobalCounter[];
+    /**
+     * Human-readable status message
+     */
+    message?: string;
+    /**
+     * Root of the hierarchical progress tree for this run
+     */
+    progress?: ProgressNode;
+    /**
+     * Pipeline run ID
+     */
+    runId: string;
+    /**
+     * Name of the current step
+     */
+    stepName?: string;
+    /**
+     * When this update was created
+     */
+    timestamp: number;
+    /**
+     * Monotonic count of leaf assets ingested so far (tables + stored procedures + other leaf
+     * entities). Survives scope pruning and is present on the terminal PIPELINE_COMPLETE event,
+     * so it carries the run's final asset total.
+     */
+    totalAssetsIngested?: number | null;
+    /**
+     * Type of progress update
+     */
+    updateType: ProgressUpdateType;
+}
+
+export interface GlobalCounter {
+    done?:       number;
+    entityType?: string;
+    total?:      number | null;
+}
+
+/**
+ * Root of the hierarchical progress tree for this run
+ *
+ * One node of the hierarchical progress tree. A node counts its direct children (root
+ * counts databases, a database counts schemas, a schema counts tables).
+ */
+export interface ProgressNode {
+    /**
+     * Opened and not yet complete
+     */
+    active?: boolean;
+    /**
+     * Active or relevant child nodes only
+     */
+    children?: ProgressNode[];
+    /**
+     * Type of children this node counts (Database, DatabaseSchema, Table, ...)
+     */
+    entityType?: string;
+    /**
+     * Number of children, or null when the producer was iterated lazily
+     */
+    expected?: number | null;
+    /**
+     * Display name of this node (database or schema name; empty for the run root)
+     */
+    label?: string;
+    /**
+     * Active children beyond the per-parent display cap
+     */
+    overflow?: number;
+    /**
+     * Children completed
+     */
+    processed?: number;
+}
+
+/**
+ * Type of progress update
+ */
+export enum ProgressUpdateType {
+    Discovery = "DISCOVERY",
+    Error = "ERROR",
+    PipelineComplete = "PIPELINE_COMPLETE",
+    Processing = "PROCESSING",
+    StepComplete = "STEP_COMPLETE",
+}
+
+/**
+ * The ingestion pipeline (agent) this run belongs to. Populated on the DISCOVERY event that
+ * opens a run, so the UI can discover a newly created agent without a separate lookup.
+ *
+ * Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to
+ * setup metadata/quality pipelines on Apache Airflow.
+ */
+export interface IngestionPipeline {
+    airflowConfig: AirflowConfig;
+    /**
+     * Type of the application when pipelineType is 'application'.
+     */
+    applicationType?: string;
+    /**
+     * Change that led to this version of the entity.
+     */
+    changeDescription?: ChangeDescription;
+    /**
+     * When `true` indicates the entity has been soft deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Indicates if the workflow has been successfully deployed to Airflow.
+     */
+    deployed?: boolean;
+    /**
+     * Description of the Pipeline.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Pipeline.
+     */
+    displayName?: string;
+    /**
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+     * it belongs to.
+     */
+    domains?: EntityReference[];
+    /**
+     * True if the pipeline is ready to be run in the next schedule. False if it is paused.
+     */
+    enabled?: boolean;
+    /**
+     * Enable real-time log streaming to the OpenMetadata server. When enabled, ingestion logs
+     * will be automatically shipped to the server's configured log storage backend (S3 or
+     * compatible).
+     */
+    enableStreamableLogs?: boolean;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
+    /**
+     * Name that uniquely identifies a Pipeline.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to this ingestion pipeline resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies this pipeline.
+     */
+    id?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
+    /**
+     * Set the logging level for the workflow.
+     */
+    loggerLevel?: LogLevels;
+    /**
+     * Name that identifies this pipeline instance uniquely.
+     */
+    name:                          string;
+    openMetadataServerConnection?: OpenMetadataConnection;
+    /**
+     * Owners of this Pipeline.
+     */
+    owners?: EntityReference[];
+    /**
+     * List of the most recent executions and status for the Pipeline.
+     */
+    pipelineStatuses?: PipelineStatus[];
+    pipelineType:      PipelineType;
+    /**
+     * The processing engine responsible for executing the ingestion pipeline logic.
+     */
+    processingEngine?: EntityReference;
+    provider?:         ProviderType;
+    /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
+    /**
+     * Link to the service (such as database, messaging, storage services, etc. for which this
+     * ingestion pipeline ingests the metadata from.
+     */
+    service?:     EntityReference;
+    sourceConfig: SourceConfig;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+    /**
+     * Metadata version of the entity.
+     */
+    version?: number;
+}
+
+/**
+ * Properties to configure the Airflow pipeline that will run the workflow.
+ */
+export interface AirflowConfig {
+    /**
+     * Concurrency of the Pipeline.
+     */
+    concurrency?: number;
+    /**
+     * Email to notify workflow status.
+     */
+    email?: string;
+    /**
+     * End Date of the pipeline.
+     */
+    endDate?: Date;
+    /**
+     * Maximum Number of active runs.
+     */
+    maxActiveRuns?: number;
+    /**
+     * pause the pipeline from running once the deploy is finished successfully.
+     */
+    pausePipeline?: boolean;
+    /**
+     * Run past executions if the start date is in the past.
+     */
+    pipelineCatchup?: boolean;
+    /**
+     * Timezone in which pipeline going to be scheduled.
+     */
+    pipelineTimezone?: string;
+    /**
+     * Retry pipeline in case of failure.
+     */
+    retries?: number;
+    /**
+     * Delay between retries in seconds.
+     */
+    retryDelay?: number;
+    /**
+     * Scheduler Interval for the pipeline in cron format.
+     */
+    scheduleInterval?: string;
+    /**
+     * Start date of the pipeline.
+     */
+    startDate?: Date;
+    /**
+     * Default view in Airflow.
+     */
+    workflowDefaultView?: string;
+    /**
+     * Default view Orientation in Airflow.
+     */
+    workflowDefaultViewOrientation?: string;
+    /**
+     * Timeout for the workflow in seconds.
+     */
+    workflowTimeout?: number;
+}
+
+/**
+ * Change that led to this version of the entity.
+ *
+ * Description of the change.
+ *
+ * Change that lead to this version of the entity.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+ * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
+ *
+ * The processing engine responsible for executing the ingestion pipeline logic.
+ *
+ * Link to the service (such as database, messaging, storage services, etc. for which this
+ * ingestion pipeline ingests the metadata from.
+ *
+ * Service to be modified
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
+ * Set the logging level for the workflow.
+ *
+ * Supported logging levels
+ */
+export enum LogLevels {
+    Debug = "DEBUG",
+    Error = "ERROR",
+    Info = "INFO",
+    Warn = "WARN",
+}
+
+/**
+ * OpenMetadata Connection Config
+ */
+export interface OpenMetadataConnection {
+    /**
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
+     * OpenMetadata Server Authentication Provider.
+     */
+    authProvider?: AuthProvider;
+    /**
+     * Cluster name to differentiate OpenMetadata Server instance
+     */
+    clusterName?: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
+     */
+    elasticsSearch?: OpenMetadataServerConnectionElasticsSearch;
+    /**
+     * Validate Openmetadata Server & Client Version.
+     */
+    enableVersionValidation?: boolean;
+    extraHeaders?:            { [key: string]: string };
+    /**
+     * Force the overwriting of any entity during the ingestion.
+     */
+    forceEntityOverwriting?: boolean;
+    /**
+     * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
+     */
+    hostPort: string;
+    /**
+     * Include Dashboards for Indexing
+     */
+    includeDashboards?: boolean;
+    /**
+     * Include Database Services for Indexing
+     */
+    includeDatabaseServices?: boolean;
+    /**
+     * Include Glossary Terms for Indexing
+     */
+    includeGlossaryTerms?: boolean;
+    /**
+     * Include Messaging Services for Indexing
+     */
+    includeMessagingServices?: boolean;
+    /**
+     * Include MlModels for Indexing
+     */
+    includeMlModels?: boolean;
+    /**
+     * Include Pipelines for Indexing
+     */
+    includePipelines?: boolean;
+    /**
+     * Include Pipeline Services for Indexing
+     */
+    includePipelineServices?: boolean;
+    /**
+     * Include Tags for Policy
+     */
+    includePolicy?: boolean;
+    /**
+     * Include Tables for Indexing
+     */
+    includeTables?: boolean;
+    /**
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Include Teams for Indexing
+     */
+    includeTeams?: boolean;
+    /**
+     * Include Topics for Indexing
+     */
+    includeTopics?: boolean;
+    /**
+     * Include Users for Indexing
+     */
+    includeUsers?: boolean;
+    /**
+     * Limit the number of records for Indexing.
+     */
+    limitRecords?: number;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * Secrets Manager Loader for the Pipeline Service Client.
+     */
+    secretsManagerLoader?: SecretsManagerClientLoader;
+    /**
+     * Secrets Manager Provider for OpenMetadata Server.
+     */
+    secretsManagerProvider?: SecretsManagerProvider;
+    /**
+     * OpenMetadata Client security configuration.
+     */
+    securityConfig?: OpenMetadataJWTClientConfig;
+    /**
+     * SSL Configuration for OpenMetadata Server
+     */
+    sslConfig?: DbtSSLConfigClass;
+    /**
+     * If set to true, when creating a service during the ingestion we will store its Service
+     * Connection. Otherwise, the ingestion will create a bare service without connection
+     * details.
+     */
+    storeServiceConnection?: boolean;
+    /**
+     * Flag to enable Data Insight Extraction
+     */
+    supportsDataInsightExtraction?: boolean;
+    /**
+     * Flag to enable ElasticSearch Reindexing Extraction
+     */
+    supportsElasticSearchReindexingExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: OpenmetadataType;
+    /**
+     * Flag to verify SSL Certificate for OpenMetadata Server.
+     */
+    verifySSL?: VerifySSL;
+}
+
+/**
+ * OpenMetadata Server Authentication Provider.
+ *
+ * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
+ * the one configured on OpenMetadata server.
+ */
+export enum AuthProvider {
+    Auth0 = "auth0",
+    AwsCognito = "aws-cognito",
+    Azure = "azure",
+    Basic = "basic",
+    CustomOidc = "custom-oidc",
+    Google = "google",
+    LDAP = "ldap",
+    Okta = "okta",
+    Openmetadata = "openmetadata",
+    Saml = "saml",
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only compute metrics for entities that match the pattern
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch buckets (top-level containers) that match the pattern.
+ *
+ * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+ * pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
+ * Regex to exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
+ *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
+ *
+ * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+ *
+ * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
+ * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
+ * Regex to only include/exclude InfoAreas that match the pattern.
+ *
+ * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+ * pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
+ *
+ * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex to only include/exclude directories that match the pattern.
+ *
+ * Regex to only include/exclude files that match the pattern.
+ *
+ * Regex to only fetch servers with names matching the pattern
+ *
+ * Regex to only fetch tags that matches the pattern.
+ *
+ * Regex to only fetch MCP servers with names matching the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
+ * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
+ */
+export interface OpenMetadataServerConnectionElasticsSearch {
+    config?: { [key: string]: any };
+    /**
+     * Type of sink component ex: metadata
+     */
+    type: string;
+}
+
+/**
+ * Secrets Manager Loader for the Pipeline Service Client.
+ *
+ * OpenMetadata Secrets Manager Client Loader. Lets the client know how the Secrets Manager
+ * Credentials should be loaded from the environment.
+ */
+export enum SecretsManagerClientLoader {
+    Airflow = "airflow",
+    Env = "env",
+    Noop = "noop",
+}
+
+/**
+ * Secrets Manager Provider for OpenMetadata Server.
+ *
+ * OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager
+ * providers as the ones configured on the OpenMetadata server.
+ */
+export enum SecretsManagerProvider {
+    Aws = "aws",
+    AwsSsm = "aws-ssm",
+    AzureKv = "azure-kv",
+    DB = "db",
+    Gcp = "gcp",
+    InMemory = "in-memory",
+    Kubernetes = "kubernetes",
+    ManagedAws = "managed-aws",
+    ManagedAwsSsm = "managed-aws-ssm",
+    ManagedAzureKv = "managed-azure-kv",
+}
+
+/**
+ * OpenMetadata Client security configuration.
+ *
+ * openMetadataJWTClientConfig security configs.
+ */
+export interface OpenMetadataJWTClientConfig {
+    /**
+     * OpenMetadata generated JWT token.
+     */
+    jwtToken: string;
+}
+
+/**
+ * SSL Configuration for OpenMetadata Server
+ *
+ * Client SSL configuration
+ *
+ * SSL Configuration details.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * SSL Configuration for Prefect API connection.
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface DbtSSLConfigClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * Service Type
+ *
+ * OpenMetadata service type
+ */
+export enum OpenmetadataType {
+    OpenMetadata = "OpenMetadata",
+}
+
+/**
+ * Flag to verify SSL Certificate for OpenMetadata Server.
+ *
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
+ *
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
+}
+
+/**
+ * This defines runtime status of Pipeline.
+ */
+export interface PipelineStatus {
+    /**
+     * Pipeline configuration for this particular execution.
+     */
+    config?: { [key: string]: any };
+    /**
+     * endDate of the pipeline run for this particular execution.
+     */
+    endDate?: number;
+    /**
+     * Metadata for the pipeline status.
+     */
+    metadata?: { [key: string]: any };
+    /**
+     * Pipeline status denotes if its failed or succeeded.
+     */
+    pipelineState?: PipelineState;
+    /**
+     * Pipeline unique run ID.
+     */
+    runId?: string;
+    /**
+     * startDate of the pipeline run for this particular execution.
+     */
+    startDate?: number;
+    /**
+     * Ingestion Pipeline summary status. Informed at the end of the execution.
+     */
+    status?: StepSummary[];
+    /**
+     * executionDate of the pipeline run for this particular execution.
+     */
+    timestamp?: number;
+}
+
+/**
+ * Pipeline status denotes if its failed or succeeded.
+ */
+export enum PipelineState {
+    Failed = "failed",
+    PartialSuccess = "partialSuccess",
+    Queued = "queued",
+    Running = "running",
+    Stopped = "stopped",
+    Success = "success",
+}
+
+/**
+ * Ingestion Pipeline summary status. Informed at the end of the execution.
+ *
+ * Summary for each step of the ingestion pipeline
+ *
+ * Defines the summary status of each step executed in an Ingestion Pipeline.
+ */
+export interface StepSummary {
+    /**
+     * Number of records with errors.
+     */
+    errors?: number;
+    /**
+     * Sample of errors encountered in the step
+     */
+    failures?: StackTraceError[];
+    /**
+     * Number of filtered records.
+     */
+    filtered?: number;
+    /**
+     * Step name
+     */
+    name: string;
+    /**
+     * Operation metrics by category (db_queries, api_calls) -> operation -> entityType ->
+     * summary
+     */
+    operationMetrics?: { [key: string]: { [key: string]: { [key: string]: OperationMetric } } };
+    /**
+     * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
+     */
+    progress?: { [key: string]: Progress };
+    /**
+     * Number of successfully processed records.
+     */
+    records?: number;
+    /**
+     * Total time spent processing and sinking data to OpenMetadata (milliseconds)
+     */
+    sinkTimeMs?: number;
+    /**
+     * Total time spent fetching data from source systems (milliseconds)
+     */
+    sourceTimeMs?: number;
+    /**
+     * Number of successfully updated records.
+     */
+    updated_records?: number;
+    /**
+     * Number of records raising warnings.
+     */
+    warnings?: number;
+}
+
+/**
+ * Represents a failure status
+ */
+export interface StackTraceError {
+    /**
+     * Error being handled
+     */
+    error: string;
+    /**
+     * Name of the asset with the error
+     */
+    name: string;
+    /**
+     * Exception stack trace
+     */
+    stackTrace?: string;
+}
+
+export interface OperationMetric {
+    /**
+     * Average time per operation in milliseconds
+     */
+    avgTimeMs?: number;
+    /**
+     * Total number of operations
+     */
+    count?: number;
+    /**
+     * Maximum operation time in milliseconds
+     */
+    maxTimeMs?: number;
+    /**
+     * Minimum operation time in milliseconds
+     */
+    minTimeMs?: number;
+    /**
+     * Total time spent in milliseconds
+     */
+    totalTimeMs?: number;
+    [property: string]: any;
+}
+
+export interface Progress {
+    /**
+     * Estimated remaining time in seconds for this entity type
+     */
+    estimatedRemainingSeconds?: number;
+    /**
+     * Number of entities processed
+     */
+    processed?: number;
+    /**
+     * Total number of entities discovered
+     */
+    total?: number;
+    [property: string]: any;
+}
+
+/**
+ * Type of Pipeline - metadata, usage
+ */
+export enum PipelineType {
+    Application = "application",
+    AutoClassification = "autoClassification",
+    DataInsight = "dataInsight",
+    Dbt = "dbt",
+    ElasticSearchReindex = "elasticSearchReindex",
+    Lineage = "lineage",
+    Metadata = "metadata",
+    PolicyAgent = "policyAgent",
+    Profiler = "profiler",
+    TestSuite = "TestSuite",
+    Usage = "usage",
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+/**
+ * Additional connection configuration.
+ */
+export interface SourceConfig {
+    config?: Pipeline;
+}
+
+/**
+ * DatabaseService Metadata Pipeline Configuration.
+ *
+ * DatabaseService Query Usage Pipeline Configuration.
+ *
+ * DatabaseService Query Lineage Pipeline Configuration.
+ *
+ * DashboardService Metadata Pipeline Configuration.
+ *
+ * MessagingService Metadata Pipeline Configuration.
+ *
+ * MessagingService AutoClassification Pipeline Configuration.
+ *
+ * DatabaseService Profiler Pipeline Configuration.
+ *
+ * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
+ *
+ * PipelineService Metadata Pipeline Configuration.
+ *
+ * MlModelService Metadata Pipeline Configuration.
+ *
+ * StorageService Metadata Pipeline Configuration.
+ *
+ * StorageService AutoClassification Pipeline Configuration.
+ *
+ * DriveService Metadata Pipeline Configuration.
+ *
+ * SearchService Metadata Pipeline Configuration.
+ *
+ * TestSuite Pipeline Configuration.
+ *
+ * Data Insight Pipeline Configuration.
+ *
+ * DBT Pipeline Configuration.
+ *
+ * Application Pipeline Configuration.
+ *
+ * ApiService Metadata Pipeline Configuration.
+ *
+ * Apply a set of operations on a service
+ *
+ * McpService Metadata Pipeline Configuration.
+ *
+ * Policy Agent Pipeline Configuration. Applies access grants against the source system.
+ */
+export interface Pipeline {
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only fetch databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Extract JSON schema from JSON columns by sampling data. This requires SELECT permission
+     * on the tables. If disabled or if SELECT fails, JSON columns will be ingested without
+     * schema information.
+     */
+    extractJsonSchema?: boolean;
+    /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * Iceberg table properties) onto the entity extension. When disabled, no custom property
+     * definitions are registered and no extension values are set.
+     */
+    includeCustomProperties?: boolean;
+    /**
+     * Optional configuration to toggle the DDL Statements ingestion.
+     */
+    includeDDL?: boolean;
+    /**
+     * Set the 'Include Owners' toggle to control whether to include owners to the ingested
+     * entity if the owner email matches with a user stored in the OM server as part of metadata
+     * ingestion. If the ingested entity already exists and has an owner, the owner will not be
+     * overwritten.
+     *
+     * Enabling a flag will replace the current owner with a new owner from the source during
+     * metadata ingestion, if the current owner is null. It is recommended to keep the flag
+     * enabled to obtain the owner information during the first metadata ingestion.
+     */
+    includeOwners?: boolean;
+    /**
+     * Optional configuration to toggle the Stored Procedures ingestion.
+     */
+    includeStoredProcedures?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for tables.
+     */
+    includeTables?: boolean;
+    /**
+     * Optional configuration to toggle the tags ingestion.
+     */
+    includeTags?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for views.
+     */
+    includeViews?: boolean;
+    /**
+     * Use incremental Metadata extraction after the first execution. This is commonly done by
+     * getting the changes from Audit tables on the supporting databases.
+     */
+    incremental?: IncrementalMetadataExtractionConfiguration;
+    /**
+     * Number of rows to sample for inferring JSON schema. A larger sample size provides more
+     * accurate schema inference but increases query time.
+     */
+    jsonSchemaSampleSize?: number;
+    /**
+     * Optional configuration to soft delete databases in OpenMetadata if the source databases
+     * are deleted. Also, if the database is deleted, all the associated entities like schemas,
+     * tables, views, stored procedures, lineage, etc., with that database will be deleted
+     */
+    markDeletedDatabases?: boolean;
+    /**
+     * Optional configuration to soft delete schemas in OpenMetadata if the source schemas are
+     * deleted. Also, if the schema is deleted, all the associated entities like tables, views,
+     * stored procedures, lineage, etc., with that schema will be deleted
+     */
+    markDeletedSchemas?: boolean;
+    /**
+     * Optional configuration to soft delete stored procedures in OpenMetadata if the source
+     * stored procedures are deleted. Also, if the stored procedures is deleted, all the
+     * associated entities like lineage, etc., with that stored procedures will be deleted
+     */
+    markDeletedStoredProcedures?: boolean;
+    /**
+     * This is an optional configuration for enabling soft deletion of tables. When this option
+     * is enabled, only tables that have been deleted from the source will be soft deleted, and
+     * this will apply solely to the schema that is currently being ingested via the pipeline.
+     * Any related entities such as test suites or lineage information that were associated with
+     * those tables will also be deleted.
+     */
+    markDeletedTables?: boolean;
+    /**
+     * Set the 'Override Metadata' toggle to control whether to override the existing metadata
+     * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
+     * set to true, the metadata fetched from the source will override the existing metadata in
+     * the OpenMetadata server. If the toggle is set to false, the metadata fetched from the
+     * source will not override the existing metadata in the OpenMetadata server. This is
+     * applicable for fields like description, tags, owner and displayName
+     *
+     * Set the 'Override Metadata' toggle to control whether to override the existing metadata
+     * in the OpenMetadata server with the metadata fetched from the source.
+     */
+    overrideMetadata?: boolean;
+    /**
+     * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+     * Database, Schema, Table) with custom mappings and inheritance rules.
+     */
+    ownerConfig?: OwnerConfiguration;
+    /**
+     * Configuration to tune how far we want to look back in query logs to process Stored
+     * Procedures results.
+     *
+     * Configuration to tune how far we want to look back in query logs to process usage data.
+     *
+     * Configuration to tune how far we want to look back in query logs to process lineage data.
+     */
+    queryLogDuration?: number;
+    /**
+     * Configuration to set the timeout for parsing the query in seconds.
+     */
+    queryParsingTimeoutLimit?: number;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only fetch tables or databases that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     *
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex exclude tables or databases that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Number of Threads to use in order to parallelize Table ingestion.
+     *
+     * Number of Threads to use in order to parallelize lineage ingestion.
+     *
+     * Number of Threads to use in order to parallelize Drive ingestion.
+     */
+    threads?: number;
+    /**
+     * Pipeline type
+     */
+    type?: ConfigType;
+    /**
+     * Regex will be applied on fully qualified name (e.g
+     * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g
+     * service_name.db_name.schema_name.table_name) instead of on the short name (e.g.
+     * table_name). Short name is used as default.
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.container_name) instead
+     * of raw name (e.g. container_name)
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
+     * instead of raw name (e.g. file_name)
+     */
+    useFqnForFiltering?: boolean;
+    /**
+     * Configuration the condition to filter the query history.
+     */
+    filterCondition?: string;
+    /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
+    /**
+     * Configuration to set the file path for query logs
+     */
+    queryLogFilePath?: string;
+    /**
+     * Configuration to set the limit for query logs
+     */
+    resultLimit?: number;
+    /**
+     * Temporary file name to store the query logs before processing. Absolute file path
+     * required.
+     */
+    stageFileLocation?: string;
+    /**
+     * Set 'Cross Database Service Names' to process lineage with the database.
+     */
+    crossDatabaseServiceNames?: string[];
+    /**
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
+     */
+    enableTempTableLineage?: boolean;
+    /**
+     * Set the 'Incremental Lineage Processing' toggle to control whether to process lineage
+     * incrementally.
+     */
+    incrementalLineageProcessing?: boolean;
+    /**
+     * Set the 'Override View Lineage' toggle to control whether to override the existing view
+     * lineage.
+     */
+    overrideViewLineage?: boolean;
+    /**
+     * Configuration to set the timeout for parsing the query in seconds.
+     */
+    parsingTimeoutLimit?: number;
+    /**
+     * Set the 'Process Cross Database Lineage' toggle to control whether to process table
+     * lineage across different databases.
+     */
+    processCrossDatabaseLineage?: boolean;
+    /**
+     * Set the 'Process Query Lineage' toggle to control whether to process query lineage.
+     */
+    processQueryLineage?: boolean;
+    /**
+     * Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored
+     * procedure lineage.
+     */
+    processStoredProcedureLineage?: boolean;
+    /**
+     * Set the 'Process View Lineage' toggle to control whether to process view lineage.
+     */
+    processViewLineage?: boolean;
+    /**
+     * Configuration for SQL query parser selection for lineage extraction.
+     */
+    queryParserConfig?: QueryParserConfig;
+    /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to toggle the ingestion of data models.
+     */
+    includeDataModels?: boolean;
+    /**
+     * Optional Configuration to include/exclude draft dashboards. By default it will include
+     * draft dashboards
+     */
+    includeDraftDashboard?: boolean;
+    /**
+     * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
+     * enabled, usage statistics will be collected and ingested.
+     */
+    includeUsage?: boolean;
+    /**
+     * Details required to generate Lineage
+     */
+    lineageInformation?: LineageInformation;
+    /**
+     * Optional configuration to soft delete charts in OpenMetadata if the source charts are
+     * deleted.
+     */
+    markDeletedCharts?: boolean;
+    /**
+     * Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards
+     * are deleted. Also, if the dashboard is deleted, all the associated entities like lineage,
+     * etc., with that dashboard will be deleted
+     */
+    markDeletedDashboards?: boolean;
+    /**
+     * Optional configuration to soft delete data models in OpenMetadata if the source data
+     * models are deleted. Also, if the data models is deleted, all the associated entities like
+     * lineage, etc., with that data models will be deleted
+     */
+    markDeletedDataModels?: boolean;
+    /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Option to turn on/off generating sample data during metadata extraction.
+     */
+    generateSampleData?: boolean;
+    /**
+     * Optional configuration to soft delete topics in OpenMetadata if the source topics are
+     * deleted. Also, if the topic is deleted, all the associated entities like sample data,
+     * lineage, etc., with that topic will be deleted
+     */
+    markDeletedTopics?: boolean;
+    /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: FilterPattern;
+    /**
+     * Regex to only compute metrics for entities that match the pattern
+     *
+     * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+     * pattern.
+     *
+     * Regex to only compute metrics for containers that matches the given tag, tiers, glossary
+     * pattern.
+     */
+    classificationFilterPattern?: FilterPattern;
+    /**
+     * Language used for classification. Supported languages include: en (English).
+     *
+     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+     * regardless of their configured language. For specific languages, only recognizers that
+     * support that language will be used.
+     */
+    classificationLanguage?: ClassificationLanguage;
+    /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will tag less columns as PII, whereas a lower
+     * number will tag more columns as PII.
+     *
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information.
+     *
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    enableAutoClassification?: boolean;
+    /**
+     * No. of messages to fetch during sample data ingestion.
+     *
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     */
+    sampleDataCount?: number;
+    /**
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each topic.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each table.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each structured container.
+     */
+    storeSampleData?: boolean;
+    /**
+     * Option to turn on/off column metric computation. If enabled, profiler will compute column
+     * level metrics.
+     */
+    computeColumnMetrics?: boolean;
+    /**
+     * Option to turn on/off table metric computation. If enabled, profiler will compute table
+     * level metrics.
+     */
+    computeTableMetrics?: boolean;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:             MetricType[];
+    processingEngine?:    ProcessingEngine;
+    profileSampleConfig?: ProfileSampleConfig;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
+     * Number of threads to use during metric computations
+     */
+    threadCount?: number | null;
+    /**
+     * Profiler Timeout in Seconds
+     */
+    timeoutSeconds?: number;
+    /**
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
+     */
+    useStatistics?: boolean;
+    /**
+     * Optional configuration to turn off fetching lineage from pipelines.
+     */
+    includeLineage?: boolean;
+    /**
+     * Optional configuration to toggle whether the un-deployed pipelines should be ingested or
+     * not. If set to false, only deployed pipelines will be ingested.
+     */
+    includeUnDeployedPipelines?: boolean;
+    /**
+     * Optional configuration to soft delete Pipelines in OpenMetadata if the source Pipelines
+     * are deleted. Also, if the Pipeline is deleted, all the associated entities like lineage,
+     * etc., with that Pipeline will be deleted
+     */
+    markDeletedPipelines?: boolean;
+    /**
+     * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+     * owners from the current source replace existing owners. In append mode, resolved owners
+     * are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Number of days of pipeline run status history to ingest. Only runs within the last N days
+     * will be fetched.
+     */
+    statusLookbackDays?: number;
+    /**
+     * Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are
+     * deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc.,
+     * with that MlModels will be deleted
+     */
+    markDeletedMlModels?: boolean;
+    /**
+     * Regex to only fetch MlModels with names matching the pattern.
+     */
+    mlModelFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?: FilterPattern;
+    /**
+     * Fallback manifest applied to any bucket that does not have its own openmetadata.json
+     * file. If a bucket has a manifest file, that file takes precedence and this value is
+     * ignored for that bucket. Paste the same JSON you would place in a bucket's
+     * openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.
+     */
+    defaultManifest?: string;
+    /**
+     * Optional configuration to soft delete containers in OpenMetadata if the source containers
+     * are deleted. Also, if the topic is deleted, all the associated entities with that
+     * containers will be deleted
+     */
+    markDeletedContainers?: boolean;
+    /**
+     * Global manifest source. When configured, entries here take precedence over any
+     * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+     * matches.
+     */
+    storageMetadataConfigSource?: StorageMetadataConfigurationSource;
+    /**
+     * Regex to only fetch buckets (top-level containers) that match the pattern.
+     */
+    bucketFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to turn off fetching metadata for directories.
+     */
+    includeDirectories?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for files.
+     */
+    includeFiles?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for spreadsheets.
+     */
+    includeSpreadsheets?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for worksheets.
+     */
+    includeWorksheets?: boolean;
+    /**
+     * Optional configuration to soft delete directories in OpenMetadata if the source
+     * directories are deleted. Also, if the directory is deleted, all the associated entities
+     * like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted
+     */
+    markDeletedDirectories?: boolean;
+    /**
+     * Optional configuration to soft delete files in OpenMetadata if the source files are
+     * deleted. Also, if the file is deleted, all the associated entities like lineage, etc.,
+     * with that file will be deleted
+     */
+    markDeletedFiles?: boolean;
+    /**
+     * Optional configuration to soft delete spreadsheets in OpenMetadata if the source
+     * spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated
+     * entities like worksheets, lineage, etc., with that spreadsheet will be deleted
+     */
+    markDeletedSpreadsheets?: boolean;
+    /**
+     * Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets
+     * are deleted. Also, if the worksheet is deleted, all the associated entities like lineage,
+     * etc., with that worksheet will be deleted
+     */
+    markDeletedWorksheets?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
+     * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
+     */
+    includeIndexTemplate?: boolean;
+    /**
+     * Optional configuration to turn off fetching sample data for search index.
+     */
+    includeSampleData?: boolean;
+    /**
+     * Optional configuration to soft delete search indexes in OpenMetadata if the source search
+     * indexes are deleted. Also, if the search index is deleted, all the associated entities
+     * like lineage, etc., with that search index will be deleted
+     */
+    markDeletedSearchIndexes?: boolean;
+    /**
+     * No. of records of sample data we want to ingest.
+     */
+    sampleSize?: number;
+    /**
+     * Regex to only fetch search indexes that matches the pattern.
+     */
+    searchIndexFilterPattern?: FilterPattern;
     /**
      * Fully qualified name of the entity to be tested, if we're working with a basic suite.
      */
     entityFullyQualifiedName?: string;
-    profileSampleConfig?:      ProfileSampleConfig;
     /**
      * Service connections to be used for the logical test suite.
      */
@@ -28,9 +1662,2048 @@ export interface TestSuitePipeline {
      */
     testCases?: string[];
     /**
-     * Pipeline type
+     * Maximum number of events entities in a batch (Default 1000).
      */
-    type: TestSuiteConfigType;
+    batchSize?: number;
+    /**
+     * Certificate path to be added in configuration. The path should be local in the Ingestion
+     * Container.
+     */
+    caCerts?:       string;
+    recreateIndex?: boolean;
+    /**
+     * Region name. Required when using AWS Credentials.
+     */
+    regionName?: string;
+    /**
+     * Recreate Indexes with updated Language
+     */
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Connection Timeout
+     */
+    timeout?: number;
+    /**
+     * Indicates whether to use aws credentials when connecting to OpenSearch in AWS.
+     */
+    useAwsCredentials?: boolean;
+    /**
+     * Indicates whether to use SSL when connecting to ElasticSearch. By default, we will ignore
+     * SSL settings.
+     */
+    useSSL?: boolean;
+    /**
+     * Indicates whether to verify certificates when using SSL connection to ElasticSearch.
+     * Ignored by default. Is set to true, make sure to send the certificates in the property
+     * `CA Certificates`.
+     */
+    verifyCerts?: boolean;
+    /**
+     * Custom OpenMetadata Classification name for dbt tags.
+     */
+    dbtClassificationName?: string;
+    /**
+     * Available sources to fetch DBT catalog and manifest files.
+     */
+    dbtConfigSource?: DBTConfigurationSource;
+    /**
+     * Optional configuration to update the description from DBT or not
+     */
+    dbtUpdateDescriptions?: boolean;
+    /**
+     * Optional configuration to update the owners from DBT or not
+     */
+    dbtUpdateOwners?: boolean;
+    /**
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
+     * Optional configuration to search across databases for tables or not
+     */
+    searchAcrossDatabases?: boolean;
+    /**
+     * Regex to only fetch tags that matches the pattern.
+     */
+    tagFilterPattern?: FilterPattern;
+    /**
+     * Application configuration
+     */
+    appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
+     * Application private configuration
+     */
+    appPrivateConfig?: PrivateConfig;
+    /**
+     * Source Python Class Name to run the application
+     */
+    sourcePythonClass?: string;
+    /**
+     * Regex to only fetch api collections with names matching the pattern.
+     */
+    apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to soft delete api collections in OpenMetadata if the source
+     * collections are deleted. Also, if the collection is deleted, all the associated entities
+     * like endpoints, etc., with that collection will be deleted
+     */
+    markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
+    /**
+     * List of operations to be performed on the service
+     */
+    operations?: Operation[];
+    /**
+     * Service to be modified
+     */
+    service?: EntityReference;
+    /**
+     * Regex to only fetch MCP servers with names matching the pattern.
+     */
+    serverFilterPattern?: FilterPattern;
+    /**
+     * List of access grants to apply on the source.
+     */
+    policies?: Policy[];
+}
+
+/**
+ * Configuration for the CollateAI External Application.
+ *
+ * Configuration for the Automator External Application.
+ *
+ * This schema defines the Slack App Information
+ *
+ * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
+ * in the backend.
+ *
+ * Search Indexing App.
+ *
+ * Cache Warmup Application Configuration.
+ *
+ * Configuration for the AutoPilot Application.
+ */
+export interface CollateAIAppConfig {
+    /**
+     * Query filter to be passed to ES. E.g.,
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
+     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+     */
+    filter?: string;
+    /**
+     * Patch the description if it is empty, instead of raising a suggestion
+     */
+    patchIfEmpty?: boolean;
+    /**
+     * Application Type
+     */
+    type?: CollateAIAppConfigType;
+    /**
+     * Action to take on those entities. E.g., propagate description through lineage, auto
+     * tagging, etc.
+     */
+    actions?: Action[];
+    /**
+     * Entities selected to run the automation.
+     */
+    resources?: Resource;
+    /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?:             string;
+    backfillConfiguration?: BackfillConfiguration;
+    /**
+     * Maximum number of events processed at a time (Default 100).
+     *
+     * Maximum number of events sent in a batch (Default 100).
+     *
+     * Number of entities to process in each batch.
+     */
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
+    /**
+     * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
+     * Type and are facing errors. Bear in mind that recreating the index will delete your
+     * DataAssets and a backfill will be needed.
+     */
+    recreateDataAssetsIndex?: boolean;
+    sendToAdmins?:            boolean;
+    sendToTeams?:             boolean;
+    /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
+     * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+     * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+     * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+     * forceMergeOnPromote=false.
+     */
+    bulkIndexSettings?: BulkIndexOverrides;
+    /**
+     * Number of threads to use for reindexing
+     */
+    consumerThreads?: number;
+    /**
+     * List of Entities to Reindex
+     *
+     * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     */
+    entities?: string[];
+    /**
+     * Initial backoff time in milliseconds
+     */
+    initialBackoff?: number;
+    /**
+     * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+     * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+     * read-after-write), replicas=1, shards=1, durability=request.
+     */
+    liveIndexSettings?: IndexSettings;
+    /**
+     * Override liveIndexSettings for specific entity types. Useful for large or specialized
+     * entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for
+     * high-cardinality time series). Keys are entity type names; values override the global
+     * liveIndexSettings.
+     */
+    liveIndexSettingsByEntity?: { [key: string]: IndexSettings };
+    /**
+     * Maximum backoff time in milliseconds
+     */
+    maxBackoff?: number;
+    /**
+     * Maximum number of concurrent requests to the search index
+     */
+    maxConcurrentRequests?: number;
+    /**
+     * Maximum number of retries for a failed request
+     */
+    maxRetries?: number;
+    /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
+     * Maximum number of events sent in a batch (Default 100).
+     */
+    payLoadSize?: number;
+    /**
+     * Number of threads to use for reindexing
+     */
+    producerThreads?: number;
+    /**
+     * Queue Size to user internally for reindexing.
+     */
+    queueSize?: number;
+    /**
+     * Search index mapping language.
+     */
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
+    /**
+     * In multi-instance deployments, claim each entity type via Redis SETNX so only one
+     * instance warms it. Disable to let every instance warm independently (idempotent but
+     * redundant).
+     */
+    enableDistributedClaim?: boolean;
+    /**
+     * Force cache warmup even if another instance is detected (use with caution).
+     */
+    force?: boolean;
+    /**
+     * Pre-warm the per-entity bundle cache (tags + certification) so the first read after
+     * deploy doesn't fan out to the DB. Disable for very large installs.
+     */
+    warmBundles?: boolean;
+    /**
+     * Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm
+     * Read Bundles. This adds extra relationship-table and entity-reference reads during
+     * warmup, so enable it only when first-read relationship latency matters.
+     */
+    warmRelationships?: boolean;
+    /**
+     * Enter the retention period for Activity Threads of type = 'Conversation' records in days
+     * (e.g., 30 for one month, 60 for two months).
+     */
+    activityThreadsRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+     */
+    auditLogRetentionPeriod?: number;
+    /**
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
+     */
+    changeEventRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
+    /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
+    [property: string]: any;
+}
+
+/**
+ * Action to take on those entities. E.g., propagate description through lineage, auto
+ * tagging, etc.
+ *
+ * Apply Classification Tags to the selected assets.
+ *
+ * Remove Classification Tags Action Type
+ *
+ * Apply Glossary Terms to the selected assets.
+ *
+ * Remove Glossary Terms Action Type
+ *
+ * Add domains to the selected assets.
+ *
+ * Remove domains from the selected assets.
+ *
+ * Apply Tags to the selected assets.
+ *
+ * Add a Custom Property to the selected assets.
+ *
+ * Remove Owner Action Type
+ *
+ * Add an owner to the selected assets.
+ *
+ * Add Test Cases to the selected assets.
+ *
+ * Remove Test Cases Action Type
+ *
+ * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
+ *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
+ *
+ * Propagate description, tags and glossary terms via lineage
+ *
+ * ML Tagging action configuration for external automator.
+ */
+export interface Action {
+    /**
+     * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
+     * tasks, topic fields,...
+     *
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
+     *
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
+     * Apply the description to the children of the selected assets that match the criteria.
+     * E.g., columns, tasks, topic fields,...
+     *
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
+     * Add tests to the selected table columns
+     *
+     * Remove tests to the selected table columns
+     */
+    applyToChildren?: string[];
+    /**
+     * Update tags even if they are already defined in the asset. By default, incoming tags are
+     * merged with the existing ones.
+     *
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
+     *
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
+     *
+     * Update the description even if they are already defined in the asset. By default, we'll
+     * only add the descriptions to assets without the description set.
+     *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
+     *
+     * Update the tier even if it is defined in the asset. By default, we will only apply the
+     * tier to assets without tier.
+     *
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     *
+     * Update the owners even if it is defined in the asset. By default, we will only apply the
+     * owners to assets without owner.
+     *
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
+     *
+     * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
+     * in the asset. By default, descriptions are only updated if they are not already defined
+     * in the asset, and incoming tags are merged with the existing ones.
+     */
+    overwriteMetadata?: boolean;
+    /**
+     * Classification Tags to apply (source must be 'Classification')
+     *
+     * Classification Tags to remove (source must be 'Classification')
+     */
+    tags?: TierElement[];
+    /**
+     * Application Type
+     */
+    type: ActionType;
+    /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove terms from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     *
+     * Remove terms by its label type
+     */
+    labels?: LabelElement[];
+    /**
+     * Glossary Terms to apply
+     *
+     * Glossary Terms to remove
+     */
+    terms?: TierElement[];
+    /**
+     * Domains to apply
+     */
+    domains?: EntityReference[];
+    /**
+     * Description to apply
+     */
+    description?: string;
+    /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
+    /**
+     * tier to apply
+     */
+    tier?: TierElement;
+    /**
+     * Test Cases to apply
+     */
+    testCases?: TestCaseDefinitions[];
+    /**
+     * Remove all test cases
+     */
+    removeAll?: boolean;
+    /**
+     * Test Cases to remove
+     */
+    testCaseDefinitions?: string[];
+    /**
+     * Owners to apply
+     */
+    owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
+    /**
+     * Propagate the metadata to columns via column-level lineage.
+     */
+    propagateColumnLevel?: boolean;
+    /**
+     * Propagate description through lineage
+     */
+    propagateDescription?: boolean;
+    /**
+     * Propagate domains from the parent through lineage
+     */
+    propagateDomains?: boolean;
+    /**
+     * Propagate glossary terms through lineage
+     */
+    propagateGlossaryTerms?: boolean;
+    /**
+     * Propagate owner from the parent
+     */
+    propagateOwner?: boolean;
+    /**
+     * Propagate the metadata to the parents (e.g., tables) via lineage.
+     */
+    propagateParent?: boolean;
+    /**
+     * Propagate tags through lineage
+     */
+    propagateTags?: boolean;
+    /**
+     * Propagate tier from the parent
+     */
+    propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
+     * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+     * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+     * processed, ensuring each asset only receives metadata from nodes within the specified
+     * number of hops upstream.
+     */
+    propagationDepthMode?: PropagationDepthMode;
+    /**
+     * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+     * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+     * entities receive metadata from upstream lineage.
+     */
+    propagationFilterMode?: PropagationFilterMode;
+    /**
+     * List of configurations to stop propagation based on conditions
+     */
+    propagationStopConfigs?: PropagationStopConfig[];
+    /**
+     * Use the optimized propagation algorithm that reduces memory usage and API calls.
+     * Recommended for large lineage graphs. If set to false, uses the original propagation
+     * algorithm. Default is true.
+     */
+    useOptimizedPropagation?: boolean;
+}
+
+/**
+ * Remove tags by its label type
+ *
+ * Remove terms by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+ * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+ * processed, ensuring each asset only receives metadata from nodes within the specified
+ * number of hops upstream.
+ */
+export enum PropagationDepthMode {
+    DataAsset = "DATA_ASSET",
+    Root = "ROOT",
+}
+
+/**
+ * Determines how the filter selects entities. 'SOURCE' (default): filtered entities push
+ * their metadata downstream to all discovered entities via lineage. 'TARGET': filtered
+ * entities receive metadata from upstream lineage.
+ */
+export enum PropagationFilterMode {
+    Source = "SOURCE",
+    Target = "TARGET",
+}
+
+/**
+ * Configuration to stop lineage propagation based on conditions
+ */
+export interface PropagationStopConfig {
+    /**
+     * The metadata attribute to check for stopping propagation
+     */
+    metadataAttribute: MetadataAttribute;
+    /**
+     * List of attribute values that will stop propagation when any of them is matched
+     */
+    value: Array<TagLabel | string>;
+}
+
+/**
+ * The metadata attribute to check for stopping propagation
+ */
+export enum MetadataAttribute {
+    Description = "description",
+    Domains = "domains",
+    GlossaryTerms = "glossaryTerms",
+    Owner = "owner",
+    Tags = "tags",
+    Tier = "tier",
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ *
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+ * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
+ *
+ * The processing engine responsible for executing the ingestion pipeline logic.
+ *
+ * Link to the service (such as database, messaging, storage services, etc. for which this
+ * ingestion pipeline ingests the metadata from.
+ *
+ * Service to be modified
+ */
+export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
+     * Description for the tag label.
+     *
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     *
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     *
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType?: LabelTypeEnum;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
+     * Name of the tag or glossary term.
+     *
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source?: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state?:  State;
+    style?:  Style;
+    tagFQN?: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id?: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type?: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelTypeEnum {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ */
+export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelTypeEnum;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Minimum set of requirements to get a Test Case request ready
+ */
+export interface TestCaseDefinitions {
+    /**
+     * Compute the passed and failed row count for the test case.
+     */
+    computePassedFailedRowCount?: boolean;
+    parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TierElement[];
+    /**
+     * Fully qualified name of the test definition.
+     */
+    testDefinition?: string;
+    /**
+     * If the test definition supports it, use dynamic assertion to evaluate the test case.
+     */
+    useDynamicAssertion?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the parameter values that can be passed for a Test Case.
+ */
+export interface TestCaseParameterValue {
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
+}
+
+/**
+ * Application Type
+ *
+ * Add Tags action type.
+ *
+ * Remove Classification Tags Action Type.
+ *
+ * Add Terms action type.
+ *
+ * Remove Terms Action Type.
+ *
+ * Add Domain Action Type.
+ *
+ * Remove Domain Action Type
+ *
+ * Add Description Action Type.
+ *
+ * Add Custom Properties Action Type.
+ *
+ * Remove Description Action Type
+ *
+ * Add Tier Action Type.
+ *
+ * Remove Tier Action Type
+ *
+ * Add Test Case Action Type.
+ *
+ * Remove Test Case Action Type
+ *
+ * Add Owner Action Type.
+ *
+ * Remove Owner Action Type
+ *
+ * Remove Custom Properties Action Type.
+ *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
+ *
+ * Lineage propagation action type.
+ *
+ * ML PII Tagging action type.
+ */
+export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
+    AddDescriptionAction = "AddDescriptionAction",
+    AddDomainAction = "AddDomainAction",
+    AddOwnerAction = "AddOwnerAction",
+    AddTagsAction = "AddTagsAction",
+    AddTermsAction = "AddTermsAction",
+    AddTestCaseAction = "AddTestCaseAction",
+    AddTierAction = "AddTierAction",
+    LineagePropagationAction = "LineagePropagationAction",
+    MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
+    RemoveDescriptionAction = "RemoveDescriptionAction",
+    RemoveDomainAction = "RemoveDomainAction",
+    RemoveOwnerAction = "RemoveOwnerAction",
+    RemoveTagsAction = "RemoveTagsAction",
+    RemoveTermsAction = "RemoveTermsAction",
+    RemoveTestCaseAction = "RemoveTestCaseAction",
+    RemoveTierAction = "RemoveTierAction",
+}
+
+/**
+ * Backfill Configuration
+ */
+export interface BackfillConfiguration {
+    /**
+     * Enable Backfill for the configured dates
+     */
+    enabled?: boolean;
+    /**
+     * Date for which the backfill will end
+     */
+    endDate?: Date;
+    /**
+     * Date from which to start the backfill
+     */
+    startDate?: Date;
+    [property: string]: any;
+}
+
+/**
+ * Overrides applied to staged indexes during bulk reindex. Reverted to liveIndexSettings
+ * before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are
+ * safe. Defaults: refresh=-1, replicas=0, durability=async, syncInterval=30s,
+ * forceMergeOnPromote=false.
+ *
+ * Overrides applied to a staged index DURING bulk reindex for write throughput. Reverted to
+ * indexSettings before alias swap. Nothing reads from the staged index, so refresh=-1 and
+ * replicas=0 are safe here.
+ */
+export interface BulkIndexOverrides {
+    /**
+     * Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query
+     * performance at the cost of build time.
+     */
+    forceMergeOnPromote?:  boolean;
+    numberOfReplicas?:     number;
+    refreshInterval?:      string;
+    translogDurability?:   TranslogDurability;
+    translogSyncInterval?: string;
+}
+
+/**
+ * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+ * <syncInterval seconds on crash).
+ */
+export enum TranslogDurability {
+    Async = "async",
+    Request = "request",
+}
+
+/**
+ * Settings applied to staged indexes before alias swap (live serving values). Tune for read
+ * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
+ * read-after-write), replicas=1, shards=1, durability=request.
+ *
+ * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
+ * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
+ * controls that. number_of_shards is intentionally omitted — it can only be set at index
+ * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ */
+export interface IndexSettings {
+    /**
+     * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+     */
+    numberOfReplicas?: number;
+    /**
+     * How often new writes become searchable. '1s' = near-real-time (default; required if
+     * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
+     * visibility.
+     */
+    refreshInterval?: string;
+    /**
+     * 'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose
+     * <syncInterval seconds on crash).
+     */
+    translogDurability?: TranslogDurability;
+    /**
+     * Translog fsync cadence when durability=async. Ignored when durability=request.
+     */
+    translogSyncInterval?: string;
+}
+
+/**
+ * Different Module Configurations
+ */
+export interface ModuleConfiguration {
+    /**
+     * App Analytics Module configuration
+     */
+    appAnalytics: AppAnalyticsConfig;
+    /**
+     * Cost Analysis Insights Module configuration
+     */
+    costAnalysis: CostAnalysisConfig;
+    /**
+     * Data Assets Insights Module configuration
+     */
+    dataAssets: DataAssetsConfig;
+}
+
+/**
+ * App Analytics Module configuration
+ */
+export interface AppAnalyticsConfig {
+    /**
+     * If Enabled, App Analytics insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Cost Analysis Insights Module configuration
+ */
+export interface CostAnalysisConfig {
+    /**
+     * If Enabled, Cost Analysis insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Data Assets Insights Module configuration
+ */
+export interface DataAssetsConfig {
+    /**
+     * If Enabled, Data Asset insights will be populated when the App runs.
+     */
+    enabled: boolean;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
+    serviceFilter?: ServiceFilter;
+}
+
+export interface ServiceFilter {
+    serviceName?: string;
+    serviceType?: string;
+}
+
+/**
+ * Entities selected to run the automation.
+ */
+export interface Resource {
+    /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
+    /**
+     * Query filter to be passed to ES. E.g.,
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
+     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+     */
+    queryFilter?: string;
+    /**
+     * Type of the entity. E.g., 'table', 'chart',...
+     */
+    type?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Recreate Indexes with updated Language
+ *
+ * This schema defines the language options available for search index mappings.
+ *
+ * Search index mapping language.
+ */
+export enum SearchIndexMappingLanguage {
+    En = "EN",
+    Jp = "JP",
+    Ru = "RU",
+    Zh = "ZH",
+}
+
+/**
+ * Application Type
+ *
+ * Application type.
+ */
+export enum CollateAIAppConfigType {
+    AutoPilotApplication = "AutoPilotApplication",
+    Automator = "Automator",
+    CacheWarmup = "CacheWarmup",
+    CollateAI = "CollateAI",
+    DataInsights = "DataInsights",
+    DataInsightsReport = "DataInsightsReport",
+    SearchIndexing = "SearchIndexing",
+}
+
+/**
+ * Application private configuration
+ *
+ * Private Configuration for the CollateAI External Application.
+ */
+export interface PrivateConfig {
+    /**
+     * Collate Server public URL. WAII will use this information to interact with the server.
+     * E.g., https://sandbox.getcollate.io
+     */
+    collateURL?: string;
+    /**
+     * Limits for the CollateAI Application.
+     */
+    limits?: AppLimitsConfig;
+    /**
+     * WAII API Token
+     */
+    token?: string;
+    /**
+     * WAII API host URL
+     */
+    waiiInstance?: string;
+    [property: string]: any;
+}
+
+/**
+ * Limits for the CollateAI Application.
+ *
+ * Private Configuration for the App Limits.
+ */
+export interface AppLimitsConfig {
+    /**
+     * The records of the limits.
+     */
+    actions: { [key: string]: number };
+    /**
+     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
+     * LimitsConfiguration in openmetadata.yaml
+     */
+    billingCycleStart?: Date;
+}
+
+/**
+ * Language used for classification. Supported languages include: en (English).
+ *
+ * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
+ * apply all recognizers regardless of their configured language.
+ *
+ * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+ * regardless of their configured language. For specific languages, only recognizers that
+ * support that language will be used.
+ */
+export enum ClassificationLanguage {
+    AF = "af",
+    Am = "am",
+    Any = "any",
+    Ar = "ar",
+    Az = "az",
+    Be = "be",
+    Bg = "bg",
+    Bn = "bn",
+    Bs = "bs",
+    CA = "ca",
+    CS = "cs",
+    Cy = "cy",
+    Da = "da",
+    De = "de",
+    El = "el",
+    En = "en",
+    Es = "es",
+    Et = "et",
+    Eu = "eu",
+    Fa = "fa",
+    Fi = "fi",
+    Fr = "fr",
+    Ga = "ga",
+    Gl = "gl",
+    Gu = "gu",
+    HT = "ht",
+    He = "he",
+    Hi = "hi",
+    Hr = "hr",
+    Hu = "hu",
+    Hy = "hy",
+    ID = "id",
+    Is = "is",
+    It = "it",
+    Ja = "ja",
+    KM = "km",
+    Ka = "ka",
+    Kk = "kk",
+    Kn = "kn",
+    Ko = "ko",
+    Ku = "ku",
+    Ky = "ky",
+    LV = "lv",
+    Lo = "lo",
+    Lt = "lt",
+    MS = "ms",
+    MT = "mt",
+    Mi = "mi",
+    Mk = "mk",
+    Ml = "ml",
+    Mn = "mn",
+    Mr = "mr",
+    My = "my",
+    Ne = "ne",
+    Nl = "nl",
+    No = "no",
+    PS = "ps",
+    Pa = "pa",
+    Pl = "pl",
+    Pt = "pt",
+    Ro = "ro",
+    Ru = "ru",
+    Si = "si",
+    Sk = "sk",
+    Sl = "sl",
+    So = "so",
+    Sq = "sq",
+    Sr = "sr",
+    Sv = "sv",
+    Sw = "sw",
+    Ta = "ta",
+    Te = "te",
+    Th = "th",
+    Tl = "tl",
+    Tr = "tr",
+    Uk = "uk",
+    Ur = "ur",
+    Uz = "uz",
+    Vi = "vi",
+    Yi = "yi",
+    Zh = "zh",
+    Zu = "zu",
+}
+
+/**
+ * Available sources to fetch DBT catalog and manifest files.
+ *
+ * dbt Cloud configuration.
+ *
+ * DBT Catalog, Manifest and Run Results file path config.
+ *
+ * DBT Catalog, Manifest and Run Results HTTP path configuration.
+ *
+ * DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for
+ * catalog.json, manifest.json and run_results.json.
+ *
+ * DBT Catalog, Manifest and Run Results files in GCS storage. We will search for
+ * catalog.json, manifest.json and run_results.json.
+ *
+ * DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for
+ * catalog.json, manifest.json and run_results.json.
+ */
+export interface DBTConfigurationSource {
+    /**
+     * dbt cloud account Id
+     */
+    dbtCloudAccountId?: string;
+    /**
+     * dbt cloud account authentication token
+     */
+    dbtCloudAuthToken?: string;
+    /**
+     * dbt cloud job id.
+     */
+    dbtCloudJobId?: string;
+    /**
+     * In case of multiple projects in a dbt cloud account, specify the project's id from which
+     * you want to extract the dbt run artifacts
+     */
+    dbtCloudProjectId?: string;
+    /**
+     * URL to connect to your dbt cloud instance. E.g., https://cloud.getdbt.com or
+     * https://emea.dbt.com/
+     */
+    dbtCloudUrl?: string;
+    /**
+     * dbt Configuration type
+     */
+    dbtConfigType: DbtConfigType;
+    /**
+     * DBT catalog file path to extract dbt models with their column schemas.
+     */
+    dbtCatalogFilePath?: string;
+    /**
+     * DBT manifest file path to extract dbt models and associate with tables.
+     */
+    dbtManifestFilePath?: string;
+    /**
+     * DBT run results file path to extract the test results information.
+     */
+    dbtRunResultsFilePath?: string;
+    /**
+     * DBT sources file path to extract the freshness test result.
+     */
+    dbtSourcesFilePath?: string;
+    /**
+     * DBT catalog http file path to extract dbt models with their column schemas.
+     */
+    dbtCatalogHttpPath?: string;
+    /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
+     * DBT manifest http file path to extract dbt models and associate with tables.
+     */
+    dbtManifestHttpPath?: string;
+    /**
+     * DBT run results http file path to extract the test results information.
+     */
+    dbtRunResultsHttpPath?: string;
+    /**
+     * DBT sources http file path to extract freshness test results information.
+     */
+    dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: DbtSSLConfigClass;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
+    /**
+     * Details of the bucket where the dbt files are stored
+     */
+    dbtPrefixConfig?:   DBTPrefixConfig;
+    dbtSecurityConfig?: DbtSecurityConfigClass;
+}
+
+/**
+ * dbt Configuration type
+ */
+export enum DbtConfigType {
+    Azure = "azure",
+    Cloud = "cloud",
+    Gcs = "gcs",
+    HTTP = "http",
+    Local = "local",
+    S3 = "s3",
+}
+
+/**
+ * Details of the bucket where the dbt files are stored
+ */
+export interface DBTPrefixConfig {
+    /**
+     * Name of the bucket where the dbt files are stored
+     */
+    dbtBucketName?: string;
+    /**
+     * Path of the folder where the dbt files are stored
+     */
+    dbtObjectPrefix?: string;
+}
+
+/**
+ * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
+ *
+ * AWS credentials for generating MWAA CLI token.
+ *
+ * AWS credentials configuration.
+ *
+ * Azure Cloud Credentials
+ *
+ * Available sources to fetch metadata.
+ *
+ * Azure Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials to use. If not provided, Application Default Credentials will be used.
+ *
+ * GCP Credentials
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP credentials configuration.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface DbtSecurityConfigClass {
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
+    /**
+     * Account Name of your storage account
+     */
+    accountName?: string;
+    /**
+     * Your Service Principal App ID (Client ID)
+     */
+    clientId?: string;
+    /**
+     * Your Service Principal Password (Client Secret)
+     */
+    clientSecret?: string;
+    /**
+     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
+     */
+    scopes?: string;
+    /**
+     * Tenant ID of your Azure Subscription
+     */
+    tenantId?: string;
+    /**
+     * Key Vault Name
+     */
+    vaultName?: string;
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig?: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+}
+
+/**
+ * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+ * Credentials Path
+ *
+ * Pass the raw credential values provided by GCP
+ *
+ * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
+ */
+export interface GCPCredentialsConfiguration {
+    /**
+     * Google Cloud auth provider certificate.
+     */
+    authProviderX509CertUrl?: string;
+    /**
+     * Google Cloud auth uri.
+     */
+    authUri?: string;
+    /**
+     * Google Cloud email.
+     */
+    clientEmail?: string;
+    /**
+     * Google Cloud Client ID.
+     */
+    clientId?: string;
+    /**
+     * Google Cloud client certificate uri.
+     */
+    clientX509CertUrl?: string;
+    /**
+     * Google Cloud private key.
+     */
+    privateKey?: string;
+    /**
+     * Google Cloud private key id.
+     */
+    privateKeyId?: string;
+    /**
+     * Project ID
+     *
+     * GCP Project ID to parse metadata from
+     */
+    projectId?: string[] | string;
+    /**
+     * Google Cloud token uri.
+     */
+    tokenUri?: string;
+    /**
+     * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
+     */
+    type?: string;
+    /**
+     * Path of the file containing the GCP credentials info
+     */
+    path?: string;
+    /**
+     * Google Security Token Service audience which contains the resource name for the workload
+     * identity pool and the provider identifier in that pool.
+     */
+    audience?: string;
+    /**
+     * This object defines the mechanism used to retrieve the external credential from the local
+     * environment so that it can be exchanged for a GCP access token via the STS endpoint
+     */
+    credentialSource?: { [key: string]: string };
+    /**
+     * Google Cloud Platform account type.
+     */
+    externalType?: string;
+    /**
+     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
+     * spec.
+     */
+    subjectTokenType?: string;
+    /**
+     * Google Security Token Service token exchange endpoint.
+     */
+    tokenURL?: string;
+    [property: string]: any;
+}
+
+/**
+ * we enable the authenticated service account to impersonate another service account
+ *
+ * Pass the values to impersonate a service account of Google Cloud
+ */
+export interface GCPImpersonateServiceAccountValues {
+    /**
+     * The impersonated service account email
+     */
+    impersonateServiceAccount?: string;
+    /**
+     * Number of seconds the delegated credential should be valid
+     */
+    lifetime?: number;
+    [property: string]: any;
+}
+
+/**
+ * Use incremental Metadata extraction after the first execution. This is commonly done by
+ * getting the changes from Audit tables on the supporting databases.
+ */
+export interface IncrementalMetadataExtractionConfiguration {
+    /**
+     * If True, enables Metadata Extraction to be incremental
+     */
+    enabled: boolean;
+    /**
+     * Number os days to search back for a successful pipeline run. The timestamp of the last
+     * found successful pipeline run will be used as a base to search for updated entities.
+     */
+    lookbackDays?: number;
+    /**
+     * Number of days to add to the last successful pipeline run timestamp to search for updated
+     * entities.
+     */
+    safetyMarginDays?: number;
+}
+
+/**
+ * Details required to generate Lineage
+ */
+export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
+    /**
+     * List of Database Service Names for creation of lineage
+     */
+    dbServiceNames?: string[];
+    /**
+     * List of Messaging Service Names for creation of lineage
+     */
+    messagingServiceNames?: string[];
+    /**
+     * List of Storage Service Names for creation of lineage
+     */
+    storageServiceNames?: string[];
+    [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
+}
+
+/**
+ * Operation to be performed on the entity
+ */
+export interface Operation {
+    /**
+     * Entity to be modified
+     */
+    entityLink: string;
+    /**
+     * The id of the operation
+     */
+    id: string;
+    /**
+     * The configuration for the operation to be applied
+     */
+    parameters: ReverseIngestionConfig;
+    /**
+     * Templated SQL command to be used for the operation. Context parameters will be populated
+     * based on the event type.
+     */
+    SQLTemplate?: string;
+    /**
+     * Type of operation to perform
+     */
+    type: OperationType;
+}
+
+/**
+ * The configuration for the operation to be applied
+ *
+ * Configuration for updating descriptions
+ *
+ * Configuration for updating owners
+ *
+ * Configuration for updating tags
+ */
+export interface ReverseIngestionConfig {
+    /**
+     * New description of the service
+     */
+    newDescription?: string;
+    /**
+     * Previous description of the service
+     */
+    previousDescription?: string;
+    /**
+     * Added owners to be applied
+     */
+    addedOwners?: EntityReference[];
+    /**
+     * Removed owners from the entity
+     */
+    removedOwners?: EntityReference[];
+    /**
+     * Added tags to be applied
+     */
+    addedTags?: TierElement[];
+    /**
+     * Removed tags of the entity
+     */
+    removedTags?: TierElement[];
+}
+
+/**
+ * Type of operation to perform
+ */
+export enum OperationType {
+    UpdateDescription = "UPDATE_DESCRIPTION",
+    UpdateOwner = "UPDATE_OWNER",
+    UpdateTags = "UPDATE_TAGS",
+}
+
+/**
+ * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+ * Database, Schema, Table) with custom mappings and inheritance rules.
+ *
+ * Configuration for assigning owners to ingested entities following topology hierarchy with
+ * inheritance support
+ */
+export interface OwnerConfiguration {
+    /**
+     * Owner for database entities. Can be a single owner for all databases, or a map of
+     * database names to owner(s).
+     */
+    database?: { [key: string]: string[] | string } | string;
+    /**
+     * Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs
+     * to owner(s).
+     */
+    databaseSchema?: { [key: string]: string[] | string } | string;
+    /**
+     * Default owner applied to all entities when no specific owner is configured (user or team
+     * name/email)
+     */
+    default?: string;
+    /**
+     * Enable child entities to inherit owner from parent entities when they don't have a
+     * specific owner configured
+     */
+    enableInheritance?: boolean;
+    /**
+     * Owner for the service level
+     */
+    service?: string;
+    /**
+     * Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to
+     * owner(s).
+     */
+    table?: { [key: string]: string[] | string } | string;
+}
+
+/**
+ * Set how owners from source metadata update Pipeline owners. In replace mode, resolved
+ * owners from the current source replace existing owners. In append mode, resolved owners
+ * are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
+}
+
+/**
+ * A single access grant entry. The per-service shape lives under `config`.
+ */
+export interface Policy {
+    /**
+     * Per-service-type policy configuration.
+     */
+    config: DatabasePolicyConfig;
+    /**
+     * Unique id of the policy entry.
+     */
+    id: string;
+}
+
+/**
+ * Per-service-type policy configuration.
+ *
+ * Policy config for database service connectors (snowflake, postgres, etc.).
+ */
+export interface DatabasePolicyConfig {
+    accessType: AccessType;
+    /**
+     * Column on which the grant is applied. Requires tableName. Supported only by connectors
+     * that allow column-level grants; ignored otherwise.
+     */
+    columnName?: string;
+    /**
+     * List of column names requested when accessType is ColumnLevel.
+     */
+    columns?: string[];
+    /**
+     * Database on which the grant is applied.
+     */
+    databaseName: string;
+    /**
+     * ISO 8601 duration for which access is granted (e.g. P14D). Connectors that support
+     * time-limited grants may use this; others ignore it.
+     */
+    duration?: string;
+    /**
+     * Grantee identifier. For USER this is typically the email/username; for ROLE the role name.
+     */
+    principal:       string;
+    principalType?:  PrincipalType;
+    requestedAccess: RequestedAccess;
+    /**
+     * Schema on which the grant is applied. If omitted, the grant is scoped to the database.
+     */
+    schemaName?: string;
+    /**
+     * Table on which the grant is applied. Requires schemaName.
+     */
+    tableName?: string;
+}
+
+/**
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+    Revoke = "Revoke",
+}
+
+/**
+ * Type of principal the grant is issued to.
+ */
+export enum PrincipalType {
+    Role = "ROLE",
+    User = "USER",
+}
+
+/**
+ * Permission level being requested.
+ */
+export enum RequestedAccess {
+    Admin = "Admin",
+    Read = "Read",
+    Write = "Write",
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type:    ProcessingEngineType;
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum ProcessingEngineType {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**
@@ -109,6 +3782,42 @@ export enum SampleConfigType {
 }
 
 /**
+ * Configuration for SQL query parser selection for lineage extraction.
+ *
+ * Configuration for SQL query parser selection for lineage and usage extraction.
+ */
+export interface QueryParserConfig {
+    /**
+     * Choose the SQL parser for lineage extraction:
+     * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+     * SqlParse. Recommended for best results.
+     * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+     * on failure.
+     * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+     * failure.
+     */
+    type?: QueryParserType;
+}
+
+/**
+ * Choose the SQL parser for lineage extraction:
+ * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+ * SqlParse. Recommended for best results.
+ * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+ * on failure.
+ * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+ * failure.
+ *
+ * Type of SQL query parser to use for lineage and usage extraction. Auto mode is
+ * recommended for best results.
+ */
+export enum QueryParserType {
+    Auto = "Auto",
+    SQLFluff = "SqlFluff",
+    SQLGlot = "SqlGlot",
+}
+
+/**
  * Service connections available for the logical test suite.
  */
 export interface ServiceConnections {
@@ -147,7 +3856,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -196,6 +3905,8 @@ export interface ServiceConnection {
  * create, deploy, and manage paginated reports
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  *
  * Google BigQuery Connection Config
  *
@@ -311,6 +4022,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * SAP BW/4HANA Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -383,6 +4096,8 @@ export interface ServiceConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -423,7 +4138,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -456,6 +4171,8 @@ export interface ConfigObject {
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Prefect API connection.
      */
     sslConfig?: SSLConfigObject;
     /**
@@ -469,9 +4186,9 @@ export interface ConfigObject {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
-     * To Connect to Dagster Cloud
+     * API token to authenticate with Omni.
      *
-     * Generated Token to connect to Databricks.
+     * To Connect to Dagster Cloud
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -501,7 +4218,7 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
@@ -562,6 +4279,8 @@ export interface ConfigObject {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
     /**
@@ -605,6 +4324,9 @@ export interface ConfigObject {
      * Host and Port of the Ssrs instance.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      *
      * BigQuery APIs URL.
      *
@@ -678,6 +4400,8 @@ export interface ConfigObject {
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -696,6 +4420,9 @@ export interface ConfigObject {
      * Pipeline Service Management/UI URL.
      *
      * Spline REST Server Host & Port.
+     *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
      *
      * KafkaConnect Service Management/UI URI.
      *
@@ -803,6 +4530,8 @@ export interface ConfigObject {
      * Password to connect to Informix.
      *
      * Password to connect to IOMETE.
+     *
+     * Password for the HANA database user.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -936,6 +4665,8 @@ export interface ConfigObject {
      *
      * Username to connect to QuestDB.
      *
+     * HANA database username with access to BW metadata tables.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -1007,7 +4738,7 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -1039,6 +4770,8 @@ export interface ConfigObject {
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Authentication type to connect to Apache Ranger.
      *
@@ -1239,6 +4972,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+     *
+     * Regex to only include/exclude InfoAreas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1248,7 +4983,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -1272,6 +5007,9 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+     * pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1326,17 +5064,18 @@ export interface ConfigObject {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -1441,6 +5180,10 @@ export interface ConfigObject {
      * Databricks compute resources URL.
      */
     httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
      *
@@ -1579,6 +5322,21 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
+    /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
@@ -1657,8 +5415,7 @@ export interface ConfigObject {
      */
     accountUsageSchema?: string;
     /**
-     * Optional configuration for ingestion to keep the client session active in case the
-     * ingestion process runs for longer durations.
+     * Keep the session alive for long-running scans.
      */
     clientSessionKeepAlive?: boolean;
     /**
@@ -1666,17 +5423,19 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
-     * Optional configuration for ingestion of Snowflake stages (internal and external). By
-     * default, stages are not ingested.
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
+    /**
+     * Ingest external and internal stages.
      */
     includeStages?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     * Ingest Snowflake streams as data assets.
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
-     * TRANSIENT tables.
+     * Ingest transient tables alongside permanent ones.
      */
     includeTransientTables?: boolean;
     /**
@@ -1837,6 +5596,11 @@ export interface ConfigObject {
      */
     dataPlane?: string;
     /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1858,7 +5622,7 @@ export interface ConfigObject {
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
      */
-    consumerConfigSSL?: ConsumerConfigSSLClass;
+    consumerConfigSSL?: DbtSSLConfigClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -1882,7 +5646,7 @@ export interface ConfigObject {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: ConsumerConfigSSLClass;
+    schemaRegistrySSL?: DbtSSLConfigClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1964,7 +5728,7 @@ export interface ConfigObject {
     /**
      * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
      */
-    elasticsSearch?: ElasticsSearch;
+    elasticsSearch?: AirflowConnectionElasticsSearch;
     /**
      * Validate Openmetadata Server & Client Version.
      */
@@ -2119,6 +5883,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2127,10 +5893,15 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -2423,94 +6194,6 @@ export interface UsernamePasswordAuthentication {
 }
 
 /**
- * Regex to only fetch api collections with names matching the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only fetch api endpoints with names matching the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex to only include/exclude stored procedures that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to exclude or include charts that matches the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern. System schemas
- * (information_schema, _statistics_, sys) are excluded by default.
- *
- * Regex to include/exclude FHIR resource categories
- *
- * Regex to include/exclude FHIR resource types
- *
- * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
- * Dremio Cloud, namespaces are mapped as databases.
- *
- * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
- * are mapped as schemas.
- *
- * Regex to only include/exclude tables that match the pattern.
- *
- * Regex to only include/exclude dictionaries (tables) that matches the pattern.
- *
- * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
- * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex to only include/exclude domains that match the pattern.
- *
- * Regex to only include/exclude glossaries that match the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to filter MuleSoft applications by name.
- *
- * Regex to only include/exclude pipelines that matches the pattern.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
- *
- * Regex to only include/exclude directories that matches the pattern.
- *
- * Regex to only include/exclude files that matches the pattern.
- *
- * Regex to only include/exclude spreadsheets that matches the pattern.
- *
- * Regex to only include/exclude worksheets that matches the pattern.
- *
- * Regex to only include/exclude directories that match the pattern.
- *
- * Regex to only include/exclude files that match the pattern.
- *
- * Regex to only fetch servers with names matching the pattern
- */
-export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-}
-
-/**
  * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
  * (for Airbyte Cloud)
  *
@@ -2561,25 +6244,6 @@ export enum AuthMechanismEnum {
     LDAP = "LDAP",
     Nosasl = "NOSASL",
     Plain = "PLAIN",
-}
-
-/**
- * OpenMetadata Server Authentication Provider.
- *
- * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
- * the one configured on OpenMetadata server.
- */
-export enum AuthProvider {
-    Auth0 = "auth0",
-    AwsCognito = "aws-cognito",
-    Azure = "azure",
-    Basic = "basic",
-    CustomOidc = "custom-oidc",
-    Google = "google",
-    LDAP = "ldap",
-    Okta = "okta",
-    Openmetadata = "openmetadata",
-    Saml = "saml",
 }
 
 /**
@@ -2634,13 +6298,20 @@ export enum AuthProvider {
  *
  * API Access Token Auth Credentials
  *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ *
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
  *
- * AWS credentials required to access the S3 file.
- *
  * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials for generating MWAA CLI token.
  *
@@ -2780,9 +6451,24 @@ export interface AuthenticationType {
      */
     accessToken?: string;
     /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -2852,9 +6538,9 @@ export enum AuthType {
 }
 
 /**
- * AWS credentials required to access the S3 file.
- *
  * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials for generating MWAA CLI token.
  *
@@ -2990,108 +6676,6 @@ export interface GcpConfigClass {
      * we enable the authenticated service account to impersonate another service account
      */
     gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
-}
-
-/**
- * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
- * Credentials Path
- *
- * Pass the raw credential values provided by GCP
- *
- * Pass the path of file containing the GCP credentials info
- *
- * Use the application default credentials
- */
-export interface GCPCredentialsConfiguration {
-    /**
-     * Google Cloud auth provider certificate.
-     */
-    authProviderX509CertUrl?: string;
-    /**
-     * Google Cloud auth uri.
-     */
-    authUri?: string;
-    /**
-     * Google Cloud email.
-     */
-    clientEmail?: string;
-    /**
-     * Google Cloud Client ID.
-     */
-    clientId?: string;
-    /**
-     * Google Cloud client certificate uri.
-     */
-    clientX509CertUrl?: string;
-    /**
-     * Google Cloud private key.
-     */
-    privateKey?: string;
-    /**
-     * Google Cloud private key id.
-     */
-    privateKeyId?: string;
-    /**
-     * Project ID
-     *
-     * GCP Project ID to parse metadata from
-     */
-    projectId?: string[] | string;
-    /**
-     * Google Cloud token uri.
-     */
-    tokenUri?: string;
-    /**
-     * Google Cloud Platform account type.
-     *
-     * Google Cloud Platform ADC ( Application Default Credentials )
-     */
-    type?: string;
-    /**
-     * Path of the file containing the GCP credentials info
-     */
-    path?: string;
-    /**
-     * Google Security Token Service audience which contains the resource name for the workload
-     * identity pool and the provider identifier in that pool.
-     */
-    audience?: string;
-    /**
-     * This object defines the mechanism used to retrieve the external credential from the local
-     * environment so that it can be exchanged for a GCP access token via the STS endpoint
-     */
-    credentialSource?: { [key: string]: string };
-    /**
-     * Google Cloud Platform account type.
-     */
-    externalType?: string;
-    /**
-     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
-     * spec.
-     */
-    subjectTokenType?: string;
-    /**
-     * Google Security Token Service token exchange endpoint.
-     */
-    tokenURL?: string;
-    [property: string]: any;
-}
-
-/**
- * we enable the authenticated service account to impersonate another service account
- *
- * Pass the values to impersonate a service account of Google Cloud
- */
-export interface GCPImpersonateServiceAccountValues {
-    /**
-     * The impersonated service account email
-     */
-    impersonateServiceAccount?: string;
-    /**
-     * Number of seconds the delegated credential should be valid
-     */
-    lifetime?: number;
-    [property: string]: any;
 }
 
 /**
@@ -3236,7 +6820,7 @@ export interface BrokerConfiguration {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Topic from where OpenLineage events will be pulled.
      */
@@ -3311,54 +6895,12 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Client Certificate
      */
@@ -3416,7 +6958,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3425,7 +6967,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: SecurityConfigClass;
+    securityConfig?: DbtSecurityConfigClass;
     /**
      * Account Name of your storage account
      */
@@ -3459,7 +7001,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3494,115 +7036,6 @@ export interface Connection {
      */
     metastoreFilePath?: string;
     securityConfig?:    AWSCredentials;
-}
-
-/**
- * Azure Cloud Credentials
- *
- * Available sources to fetch metadata.
- *
- * Azure Credentials
- *
- * GCP credentials configs.
- *
- * GCP credentials to use. If not provided, Application Default Credentials will be used.
- *
- * GCP Credentials
- *
- * GCP credentials configuration for authenticating with Pub/Sub.
- *
- * GCP credentials configuration.
- *
- * GCP Credentials for Google Drive API
- *
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials configs.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface SecurityConfigClass {
-    /**
-     * Account Name of your storage account
-     */
-    accountName?: string;
-    /**
-     * Your Service Principal App ID (Client ID)
-     */
-    clientId?: string;
-    /**
-     * Your Service Principal Password (Client Secret)
-     */
-    clientSecret?: string;
-    /**
-     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
-     */
-    scopes?: string;
-    /**
-     * Tenant ID of your Azure Subscription
-     */
-    tenantId?: string;
-    /**
-     * Key Vault Name
-     */
-    vaultName?: string;
-    /**
-     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
-     * Credentials Path
-     */
-    gcpConfig?: GCPCredentialsConfiguration;
-    /**
-     * we enable the authenticated service account to impersonate another service account
-     */
-    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -3645,7 +7078,7 @@ export interface SecurityConfigClass {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Password for Superset.
      *
@@ -3698,11 +7131,15 @@ export interface ConfigConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
-     *
-     * Database of the data source.
      */
     database?: string;
     /**
@@ -3993,9 +7430,9 @@ export interface DataStorageConfig {
 }
 
 /**
- * AWS credentials required to access the S3 file.
- *
  * AWS credentials configs.
+ *
+ * AWS credentials required to access the S3 file.
  *
  * AWS credentials for generating MWAA CLI token.
  *
@@ -4065,6 +7502,8 @@ export enum ConnectionScheme {
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
+ * SSL Configuration for OpenMetadata Server
+ *
  * SSL Configuration details.
  *
  * CA certificate, client certificate, and private key for SSL validation. Required when
@@ -4085,7 +7524,10 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
- * SSL Configuration for OpenMetadata Server
+ * SSL Configuration for Prefect API connection.
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4134,22 +7576,6 @@ export enum ConnectionType {
     RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
-}
-
-/**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- *
- * Client SSL verification.
- *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }
 
 /**
@@ -4211,14 +7637,17 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -4259,7 +7688,7 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -4334,7 +7763,7 @@ export enum DiscoveryMethod {
 /**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
-export interface ElasticsSearch {
+export interface AirflowConnectionElasticsSearch {
     config?: { [key: string]: any };
     /**
      * Type of sink component ex: metadata
@@ -4439,9 +7868,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -4479,7 +7908,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?: ConsumerConfigSSLClass;
+    sslConfig?: DbtSSLConfigClass;
     sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
@@ -4699,7 +8128,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      SecurityConfigClass;
+    securityConfig?:      DbtSecurityConfigClass;
 }
 
 /**
@@ -4727,6 +8156,28 @@ export interface BucketDetails {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * This schema publisher run modes.
  */
 export enum RunMode {
@@ -4741,7 +8192,7 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -4780,61 +8231,6 @@ export enum ConfigScheme {
     Teradatasql = "teradatasql",
     Trino = "trino",
     VerticaVerticaPython = "vertica+vertica_python",
-}
-
-/**
- * Recreate Indexes with updated Language
- *
- * This schema defines the language options available for search index mappings.
- */
-export enum SearchIndexMappingLanguage {
-    En = "EN",
-    Jp = "JP",
-    Ru = "RU",
-    Zh = "ZH",
-}
-
-/**
- * Secrets Manager Loader for the Pipeline Service Client.
- *
- * OpenMetadata Secrets Manager Client Loader. Lets the client know how the Secrets Manager
- * Credentials should be loaded from the environment.
- */
-export enum SecretsManagerClientLoader {
-    Airflow = "airflow",
-    Env = "env",
-    Noop = "noop",
-}
-
-/**
- * Secrets Manager Provider for OpenMetadata Server.
- *
- * OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager
- * providers as the ones configured on the OpenMetadata server.
- */
-export enum SecretsManagerProvider {
-    Aws = "aws",
-    AwsSsm = "aws-ssm",
-    AzureKv = "azure-kv",
-    DB = "db",
-    Gcp = "gcp",
-    InMemory = "in-memory",
-    Kubernetes = "kubernetes",
-    ManagedAws = "managed-aws",
-    ManagedAwsSsm = "managed-aws-ssm",
-    ManagedAzureKv = "managed-azure-kv",
-}
-
-/**
- * OpenMetadata Client security configuration.
- *
- * openMetadataJWTClientConfig security configs.
- */
-export interface OpenMetadataJWTClientConfig {
-    /**
-     * OpenMetadata generated JWT token.
-     */
-    jwtToken: string;
 }
 
 /**
@@ -4886,6 +8282,8 @@ export enum SpaceType {
 }
 
 /**
+ * SSL Configuration for OpenMetadata Server
+ *
  * Client SSL configuration
  *
  * SSL Configuration details.
@@ -4908,7 +8306,10 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
- * SSL Configuration for OpenMetadata Server
+ * SSL Configuration for Prefect API connection.
+ *
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
@@ -5063,6 +8464,8 @@ export enum TokenType {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Custom Ml model service type
  *
  * S3 service type
@@ -5095,7 +8498,7 @@ export enum TokenType {
  *
  * Service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5174,6 +8577,7 @@ export enum ConfigType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
+    Omni = "Omni",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",
@@ -5182,6 +8586,7 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
@@ -5199,6 +8604,8 @@ export enum ConfigType {
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",
@@ -5231,10 +8638,109 @@ export enum ConfigType {
 }
 
 /**
+ * Global manifest source. When configured, entries here take precedence over any
+ * bucket-level openmetadata.json and over defaultManifest for buckets whose containerName
+ * matches.
+ *
+ * No manifest file available. Ingestion would look for bucket-level metadata file instead
+ *
+ * Storage Metadata Manifest file path config.
+ *
+ * Storage Metadata Manifest file HTTP path config.
+ *
+ * Storage Metadata Manifest file S3 path config.
+ *
+ * Storage Metadata Manifest file ADLS path config.
+ *
+ * Storage Metadata Manifest file GCS path config.
+ */
+export interface StorageMetadataConfigurationSource {
+    /**
+     * Storage Metadata manifest file path to extract locations to ingest from.
+     */
+    manifestFilePath?: string;
+    /**
+     * Storage Metadata manifest http file path to extract locations to ingest from.
+     */
+    manifestHttpPath?: string;
+    prefixConfig?:     StorageMetadataBucketDetails;
+    securityConfig?:   DbtSecurityConfigClass;
+}
+
+/**
+ * Details of the bucket where the storage metadata manifest file is stored
+ */
+export interface StorageMetadataBucketDetails {
+    /**
+     * Name of the top level container where the storage metadata file is stored
+     */
+    containerName: string;
+    /**
+     * Path of the folder where the storage metadata file is stored. If the file is at the root,
+     * you can keep it empty.
+     */
+    objectPrefix?: string;
+}
+
+/**
  * Pipeline type
  *
+ * Database Source Config Metadata Pipeline type
+ *
+ * Database Source Config Usage Pipeline type
+ *
+ * Dashboard Source Config Metadata Pipeline type
+ *
+ * Messaging Source Config Metadata Pipeline type
+ *
+ * Messaging Service Auto Classification Pipeline type
+ *
+ * Profiler Source Config Pipeline type
+ *
  * Pipeline Source Config Metadata Pipeline type
+ *
+ * MlModel Source Config Metadata Pipeline type
+ *
+ * Object Store Source Config Metadata Pipeline type
+ *
+ * Storage Service Auto Classification Pipeline type
+ *
+ * Drive Source Config Metadata Pipeline type
+ *
+ * Search Source Config Metadata Pipeline type
+ *
+ * DBT Config Pipeline type
+ *
+ * Pipeline Source Config For Application Pipeline type. Nothing is required.
+ *
+ * Api Source Config Metadata Pipeline type
+ *
+ * Reverse Ingestion Config Pipeline type
+ *
+ * MCP Source Config Metadata Pipeline type
+ *
+ * Policy Agent Pipeline type
  */
-export enum TestSuiteConfigType {
+export enum ConfigType {
+    APIMetadata = "ApiMetadata",
+    Application = "Application",
+    AutoClassification = "AutoClassification",
+    DashboardMetadata = "DashboardMetadata",
+    DataInsight = "dataInsight",
+    DatabaseLineage = "DatabaseLineage",
+    DatabaseMetadata = "DatabaseMetadata",
+    DatabaseUsage = "DatabaseUsage",
+    Dbt = "DBT",
+    DriveMetadata = "DriveMetadata",
+    MCPMetadata = "McpMetadata",
+    MessagingMetadata = "MessagingMetadata",
+    MetadataToElasticSearch = "MetadataToElasticSearch",
+    MlModelMetadata = "MlModelMetadata",
+    PipelineMetadata = "PipelineMetadata",
+    PolicyAgent = "PolicyAgent",
+    Profiler = "Profiler",
+    ReverseIngestion = "ReverseIngestion",
+    SearchMetadata = "SearchMetadata",
+    StorageMetadata = "StorageMetadata",
     TestSuite = "TestSuite",
 }
