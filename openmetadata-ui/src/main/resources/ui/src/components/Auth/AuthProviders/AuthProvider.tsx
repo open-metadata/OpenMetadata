@@ -119,6 +119,11 @@ import {
   LazyMsalProviderWrapper,
   LazyOktaAuthProviderWrapper,
 } from './LazyAuthProviderWrappers';
+import {
+  ensureFreshTokenBeforeUserFetch,
+  isRefreshableAuthError,
+  waitForRenewerReady,
+} from './silentRefreshHelpers';
 
 interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -427,70 +432,20 @@ export const AuthProvider = ({
     }
   };
 
-  // Wait for the renewer callback to be registered on TokenService — the
-  // lazy authenticator wrapper (MSAL / Okta / Auth0 / etc.) registers it in
-  // an effect that races the cold-load getLoggedInUserDetails() call. Returns
-  // true once ready, false on timeout.
-  const waitForRenewerReady = async (
-    maxWaitMs = 2000,
-    pollMs = 100
-  ): Promise<boolean> => {
-    const start = Date.now();
-    while (
-      typeof tokenService.current?.renewToken !== 'function' &&
-      Date.now() - start < maxWaitMs
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, pollMs));
-    }
-
-    return typeof tokenService.current?.renewToken === 'function';
+  const applyLoggedInUser = async (user: User): Promise<void> => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    await hydrateAndResolveAppMode(user);
   };
 
-  // Cold-load recovery: on tab reopen after id-token expiry, the axios
-  // interceptor's refresh path can race the renewer registration and fail
-  // silently before hitting the network — TokenService.fetchNewToken
-  // returns null when its renewer isn't set yet, and the interceptor then
-  // force-logs the user out. Called BEFORE the /loggedInUser request:
-  // if the stored token is already expired, wait briefly for the renewer,
-  // refresh proactively, and only then let the request go out. Returns
-  // true on success or if no refresh was needed; false if refresh failed.
-  const ensureFreshTokenBeforeUserFetch = async (): Promise<boolean> => {
-    const currentToken = await getOidcToken();
-    if (!currentToken) {
-      return true;
-    }
-    const { isExpired } = extractDetailsFromToken(currentToken);
-    if (!isExpired) {
-      return true;
-    }
-    const renewerReady = await waitForRenewerReady();
-    if (!renewerReady) {
-      return false;
-    }
-    try {
-      const refreshed = await tokenService.current.refreshToken();
-
-      return Boolean(refreshed);
-    } catch {
-      return false;
-    }
-  };
-
-  const isRefreshableAuthError = (err: AxiosError): boolean => {
-    const message = (err.response?.data as { message?: string })?.message ?? '';
-
-    return (
-      err.response?.status === 401 &&
-      REFRESHABLE_AUTH_ERRORS.some((authError) => message.includes(authError))
-    );
-  };
-
-  // Defensive: if the interceptor's refresh completed after our proactive
-  // check but still failed (e.g. the refresh call itself 401'd), give the
-  // renewer one more chance to settle and retry the /loggedInUser call.
-  // Returns true if the retry succeeded and state was updated.
+  // Defensive: if the interceptor's refresh completed but still failed
+  // (e.g. the refresh call itself 401'd), give the renewer one more
+  // chance to settle and retry the /loggedInUser call. Returns true if
+  // the retry succeeded and state was updated.
   const retryLoggedInUserAfterRenewer = async (): Promise<boolean> => {
-    const renewerReady = await waitForRenewerReady();
+    const renewerReady = await waitForRenewerReady(
+      () => tokenService.current?.renewToken
+    );
     if (!renewerReady) {
       return false;
     }
@@ -501,9 +456,7 @@ export const AuthProvider = ({
       }
       const retried = await getLoggedInUser({ fields: userAPIQueryFields });
       if (retried) {
-        setCurrentUser(retried);
-        setIsAuthenticated(true);
-        await hydrateAndResolveAppMode(retried);
+        await applyLoggedInUser(retried);
 
         return true;
       }
@@ -514,24 +467,22 @@ export const AuthProvider = ({
     return false;
   };
 
-  const applyLoggedInUser = async (user: User): Promise<void> => {
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-    await hydrateAndResolveAppMode(user);
-  };
-
   const getLoggedInUserDetails = async () => {
     setApplicationLoading(true);
     try {
-      // Bug 1: on cold-load with an expired token, proactively refresh
-      // before the /loggedInUser call so the interceptor doesn't race the
-      // renewer registration and force-logout the user.
-      const proactiveRefreshOk = await ensureFreshTokenBeforeUserFetch();
-      if (!proactiveRefreshOk) {
-        resetUserDetails();
-
-        return;
-      }
+      // Bug 1: on cold-load with an expired token, best-effort proactive
+      // refresh before the /loggedInUser call so the interceptor doesn't
+      // race the renewer registration and force-logout the user. On
+      // failure (renewer never registers, refresh throws) this resolves
+      // silently — we let the request go out and let the interceptor +
+      // catch-block retry handle a real 401. A hard failure here would
+      // destroy valid refresh credentials on merely-slow lazy-load.
+      await ensureFreshTokenBeforeUserFetch({
+        getOidcToken,
+        extractExpiry: extractDetailsFromToken,
+        getRenewToken: () => tokenService.current?.renewToken,
+        refreshToken: () => tokenService.current.refreshToken(),
+      });
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         await applyLoggedInUser(res);
