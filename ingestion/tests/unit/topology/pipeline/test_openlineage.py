@@ -443,11 +443,15 @@ class OpenLineageUnitTest(unittest.TestCase):
             result["arn:aws:glue:us-east-1:1/table/db/users_raw"],
         )
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_valid_inputs_outputs(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
         """Test with valid input and output lists."""
         # Setup
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "s3a://project-db/src_test1": "database.schema.input_table_1",
@@ -507,14 +511,42 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    @staticmethod
+    def _mock_table_with_columns(*column_names):
+        """Build a lightweight stand-in for a Table entity with the given real column names."""
+        table = Mock()
+        columns = []
+        for column_name in column_names:
+            column = Mock()
+            column.name.root = column_name
+            columns.append(column)
+        table.columns = columns
+        return table
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(self, mock_build_map, mock_get_table_fqn):
-        """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
+    def test_get_column_lineage_matches_stored_column_case(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """OL field names are matched case-insensitively against the resolved Table
+        entity's real stored column names, instead of being force-lowercased.
+
+        Regression test: a destination whose real stored columns are uppercase
+        (e.g. Snowflake) previously got column FQNs built with a lowercased OL
+        field name that matched no real column, so the server silently dropped
+        the columnsLineage entry."""
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
+        source_table = self._mock_table_with_columns("first_name", "last_name")
+        target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
+        mock_get_by_name_cached.side_effect = (
+            lambda entity_class, fqn_str: target_table
+            if fqn_str == "database.schema.case_test_target"
+            else source_table
+        )
 
         inputs = [
             {
@@ -558,12 +590,67 @@ class OpenLineageUnitTest(unittest.TestCase):
             "database.schema.case_test_target": {
                 "database.schema.case_test_source": [
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.first_name",
+                        toColumn="database.schema.case_test_target.FIRST_NAME",
                         fromColumns=["database.schema.case_test_source.first_name"],
                     ),
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.last_name",
+                        toColumn="database.schema.case_test_target.LAST_NAME",
                         fromColumns=["database.schema.case_test_source.last_name"],
+                    ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_falls_back_to_lowercase_when_table_entity_unavailable(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """When the Table entity can't be fetched (e.g. cache miss), column FQNs
+        fall back to the lowercased OL field name, preserving prior behavior."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+        }
+
+        inputs = [
+            {
+                "name": "hk_schema.CASE_TEST_SOURCE",
+                "facets": {},
+                "namespace": "sqlserver://host:1433",
+            },
+        ]
+        outputs = [
+            {
+                "name": "hk_schema.CASE_TEST_TARGET",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "FIRST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "FIRST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        expected = {
+            "database.schema.case_test_target": {
+                "database.schema.case_test_source": [
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.first_name",
+                        fromColumns=["database.schema.case_test_source.first_name"],
                     ),
                 ],
             }
@@ -581,12 +668,16 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_skips_when_input_unresolved(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_skips_when_input_unresolved(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
         """When the input table is not in OpenMetadata, the column entry must
         be skipped instead of being emitted with a literal 'None.column' FQN
         on the input side."""
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"svc.schema.{table_details.name}"
         # Only the output resolves; the input is intentionally absent from the map.
         mock_build_map.return_value = {"hive:///schema.output_table": "svc.schema.output_table"}
@@ -643,7 +734,9 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with patch.object(
+            self.open_lineage_source, "_resolve_table", return_value=resolved
+        ), patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None):
             for outputs in (
                 outputs_null_facets,
                 outputs_null_column_lineage,
@@ -679,7 +772,9 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with patch.object(
+            self.open_lineage_source, "_resolve_table", return_value=resolved
+        ), patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None):
             for outputs in (
                 outputs_facets_list,
                 outputs_column_lineage_list,

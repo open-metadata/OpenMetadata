@@ -499,7 +499,7 @@ class OpenlineageSource(PipelineServiceSource):
         parts = name.split("/")
         if len(parts) < 2:
             return None
-        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+        return TableDetails(name=parts[-1].strip("`").lower(), schema=parts[-2].strip("`").lower())
 
     @staticmethod
     def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
@@ -529,6 +529,15 @@ class OpenlineageSource(PipelineServiceSource):
                 self._entity_cache[key] = result
             return result
         return self._entity_cache[key]
+
+    @staticmethod
+    def _match_column_name(table, field_name: str) -> str:
+        """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
+        lower = field_name.lower()
+        for column in getattr(table, "columns", None) or []:
+            if column.name.root.lower() == lower:
+                return column.name.root
+        return lower
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -820,6 +829,7 @@ class OpenlineageSource(PipelineServiceSource):
             if not resolved:
                 continue
             output_table_fqn = resolved.fqn
+            output_table_entity = self._get_by_name_cached(Table, output_table_fqn)
             # Tolerate a missing, null, or wrongly typed facets/columnLineage/
             # fields field at any level, mirroring the symlinks-facet
             # defensiveness so a single malformed event never aborts the run.
@@ -841,12 +851,13 @@ class OpenlineageSource(PipelineServiceSource):
                     # bogus 'None.column' identifier downstream.
                     if not input_table_fqn:
                         continue
+                    input_table_entity = self._get_by_name_cached(Table, input_table_fqn)
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{field_name.lower()}",
-                            f"{input_table_fqn}.{input_field.get('field', '').lower()}",
+                            f"{output_table_fqn}.{self._match_column_name(output_table_entity, field_name)}",
+                            f"{input_table_fqn}.{self._match_column_name(input_table_entity, input_field.get('field', ''))}",
                         )
                     )
 
