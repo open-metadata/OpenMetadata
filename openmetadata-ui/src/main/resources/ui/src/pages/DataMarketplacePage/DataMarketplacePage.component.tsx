@@ -23,6 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import AnnouncementsWidgetV2 from '../../components/DataMarketplace/AnnouncementsWidgetV2/AnnouncementsWidgetV2.component';
 import MarketplaceGreetingBanner from '../../components/DataMarketplace/MarketplaceGreetingBanner/MarketplaceGreetingBanner.component';
@@ -78,7 +79,7 @@ const DataMarketplacePage = ({
   renderPageHeader,
 }: DataMarketplacePageProps) => {
   const { selectedPersona } = useApplicationStore();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const defaultLayout = useMemo(
     () => dataMarketplaceClassBase.getDefaultLayout(EntityTabs.OVERVIEW),
@@ -156,6 +157,7 @@ const DataMarketplacePage = ({
 
   return (
     <div className="tw:h-full tw:overflow-y-auto">
+      <DocumentTitle title={t('label.data-marketplace')} />
       <div className="tw:mb-8">
         {renderPageHeader ? (
           <div className={gridWrapperClassName} dir="ltr">
