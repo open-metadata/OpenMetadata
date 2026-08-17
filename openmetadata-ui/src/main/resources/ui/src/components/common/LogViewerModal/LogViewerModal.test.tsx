@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { forwardRef, ReactNode, useImperativeHandle } from 'react';
 import LogViewerModal from './LogViewerModal.component';
 
@@ -137,6 +137,7 @@ jest.mock('react-aria-components', () => ({
 
 jest.mock('@untitledui/icons', () => ({
   AlignLeft: () => <span data-testid="icon-wrap" />,
+  ArrowDown: () => <span data-testid="icon-follow" />,
   ChevronDownDouble: () => <span data-testid="icon-jump-to-end" />,
   Copy01: () => <span data-testid="icon-copy" />,
   Download01: () => <span data-testid="icon-download" />,
@@ -557,5 +558,250 @@ describe('LogViewerModal — live (stream) mode', () => {
     expect(
       screen.queryByTestId('log-viewer-stream-error')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('LogViewerModal — auto-follow', () => {
+  // Geometry as the viewer reports it: tall content parked at the top vs. at the tail.
+  const scrolledUp = { scrollTop: 0, scrollHeight: 1000, clientHeight: 400 };
+  const atTail = { scrollTop: 600, scrollHeight: 1000, clientHeight: 400 };
+
+  beforeEach(() => {
+    mockLazyLog.scrollToIndex.mockClear();
+    mockLazyLog.onScroll = undefined;
+  });
+
+  it('renders the toggle pressed for a live run and not at all for a static one', () => {
+    const { rerender } = render(
+      <LogViewerModal {...defaultProps} mode="stream" />
+    );
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.queryByTestId('log-viewer-follow')).not.toBeInTheDocument();
+  });
+
+  it('pauses following on a wheel-up over the log body, before any scroll is reported', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('keeps following on a wheel-down, which is the tail direction', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('pauses following on the keys that move back through the log', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    const body = screen.getByTestId('log-viewer-body');
+
+    fireEvent.keyDown(body, { key: 'End' });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    fireEvent.keyDown(body, { key: 'PageUp' });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('keeps following when wrap or full-screen reparks the list at the top', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+
+    // The relayout parks the virtualised list at the top and reports it as a
+    // scroll; treating that as the user taking over is the bug this covers.
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('log-viewer-fullscreen'));
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('scrolls back to the tail when a relayout parks the list at the top', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    mockLazyLog.scrollToIndex.mockClear();
+
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
+  });
+
+  it('does not treat a relayout as intent when the user had already paused', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+    mockLazyLog.scrollToIndex.mockClear();
+
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('still pauses on a user scroll once the relayout grace has elapsed', () => {
+    jest.useFakeTimers();
+
+    try {
+      render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+      fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+      // Past the window in which knock-on scrolls belong to the relayout.
+      act(() => jest.advanceTimersByTime(5000));
+      act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+      expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('pauses following when the user scrolls away from the tail and resumes at the tail', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'false'
+    );
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
+    );
+  });
+
+  it('keeps following while the content does not fill the viewport', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() =>
+      mockLazyLog.onScroll?.({
+        scrollTop: 0,
+        scrollHeight: 100,
+        clientHeight: 400,
+      })
+    );
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('leaves the static follow prop untouched when the user scrolls', () => {
+    render(<LogViewerModal {...defaultProps} follow />);
+
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
+    );
+  });
+
+  it('stops following when toggled off and jumps back to the tail when toggled on', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    const followButton = screen.getByTestId('log-viewer-follow');
+
+    fireEvent.click(followButton);
+
+    expect(followButton).toHaveAttribute('aria-pressed', 'false');
+    expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
+
+    fireEvent.click(followButton);
+
+    expect(followButton).toHaveAttribute('aria-pressed', 'true');
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
+  });
+
+  it('resumes following when jump-to-end is used after a manual scroll', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('log-viewer-jump-to-end'));
+
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('re-pins to the tail when a static run goes live', () => {
+    const { rerender } = render(
+      <LogViewerModal {...defaultProps} mode="stream" />
+    );
+
+    fireEvent.click(screen.getByTestId('log-viewer-follow'));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} mode="static" />);
+    rerender(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 });

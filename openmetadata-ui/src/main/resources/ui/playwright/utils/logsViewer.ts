@@ -30,12 +30,103 @@ export const LOG_VIEWER_MARKER = 'PLAYWRIGHT_LOG_MARKER';
 
 /**
  * Deterministic multi-line log text that embeds the marker on every line.
+ *
+ * `lineLength` pads each line out to that many characters. Lines wider than the
+ * viewer are what make the wrap toggle re-measure rows, so a test that exercises
+ * wrapping has to ask for them — the default short lines wrap to nothing.
  */
-export const buildMarkerLogText = (marker = LOG_VIEWER_MARKER): string =>
-  Array.from(
-    { length: 20 },
-    (_, index) => `${marker} log line ${index + 1}`
-  ).join('\n');
+export const buildMarkerLogText = (
+  marker = LOG_VIEWER_MARKER,
+  lineCount = 20,
+  lineLength = 0
+): string =>
+  Array.from({ length: lineCount }, (_, index) => {
+    const line = `${marker} log line ${index + 1}`;
+
+    return line.length >= lineLength ? line : line.padEnd(lineLength, ' .');
+  }).join('\n');
+
+/**
+ * Mirrors `SCROLL_BOTTOM_THRESHOLD_PX` in LogViewerModal.component.tsx — the
+ * slack the viewer allows before it considers the view parked off the tail.
+ */
+const LOG_VIEWER_TAIL_THRESHOLD_PX = 40;
+
+interface LogViewerScrollState {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/**
+ * Reads the scroll geometry of the virtualised log list.
+ *
+ * The scroller is created by the log viewer library, so it carries no testid —
+ * it is found by being the one overflowing scrollable box inside the body.
+ * Returns null while the body has nothing to scroll.
+ */
+export const getLogViewerScrollState = async (
+  page: Page
+): Promise<LogViewerScrollState | null> =>
+  page.getByTestId('log-viewer-body').evaluate((body) => {
+    const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
+      (element) => {
+        const { overflowY } = window.getComputedStyle(element);
+
+        return (
+          element.scrollHeight > element.clientHeight + 1 &&
+          (overflowY === 'auto' || overflowY === 'scroll')
+        );
+      }
+    );
+
+    return scroller
+      ? {
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+        }
+      : null;
+  });
+
+/**
+ * Whether the log viewer is parked at the tail of the log.
+ */
+export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
+  const state = await getLogViewerScrollState(page);
+
+  if (!state) {
+    return true;
+  }
+
+  const { scrollTop, scrollHeight, clientHeight } = state;
+
+  return (
+    Math.abs(clientHeight + scrollTop - scrollHeight) <
+    LOG_VIEWER_TAIL_THRESHOLD_PX
+  );
+};
+
+/**
+ * Scrolls the log viewer away from the tail the way a user would — a real wheel
+ * event over the log body — and waits for the view to leave the tail.
+ */
+export const scrollLogViewerAwayFromTail = async (
+  page: Page,
+  deltaY = -2000
+): Promise<void> => {
+  await expect
+    .poll(() => getLogViewerScrollState(page), {
+      message:
+        'the log body needs scrollable content before it can be scrolled',
+    })
+    .not.toBeNull();
+
+  await page.getByTestId('log-viewer-body').hover();
+  await page.mouse.wheel(0, deltaY);
+
+  await expect.poll(() => isLogViewerAtTail(page)).toBe(false);
+};
 
 /**
  * Assert the LogViewerModal is open and its body shows the injected marker.

@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
+  ArrowDown,
   ChevronDownDouble,
   Copy01,
   Download01,
@@ -45,8 +46,20 @@ import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import { LogViewerModalProps } from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
+import LogViewerToolbarToggle from './LogViewerToolbarToggle.component';
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 40;
+
+/** Keys that move the view back through the log rather than along with it. */
+const SCROLL_BACK_KEYS = ['ArrowUp', 'PageUp', 'Home'];
+
+/**
+ * How long after a relayout its knock-on scrolls stop counting as the user's.
+ * Re-wrapping re-measures rows over several frames, so this covers the settle,
+ * not just the commit. A wheel or key press still pauses immediately — those
+ * never go through the scroll handler.
+ */
+const RELAYOUT_SCROLL_GRACE_MS = 1500;
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -86,7 +99,10 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const [searchText, setSearchText] = useState('');
   const [wrap, setWrap] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [followTail, setFollowTail] = useState(isLive || follow);
   const lazyLogRef = useRef<LazyLog>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const relayoutAtRef = useRef(0);
 
   useEffect(() => {
     if (!open) {
@@ -94,10 +110,16 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     }
   }, [open]);
 
+  // A run going live, or the modal being reopened, re-pins the view to the tail.
+  useEffect(() => {
+    setFollowTail(isLive || follow);
+  }, [open, isLive, follow]);
+
   const resolvedLogs = logs;
   const resolvedLoading = loading;
-  // While a run is live (polled), auto-follow the tail; otherwise respect the prop.
-  const resolvedFollow = isLive ? true : follow;
+  // Following the tail only means anything while the content grows, so it is a
+  // live-run concept — a static run keeps honouring the prop as before.
+  const resolvedFollow = isLive ? followTail : follow;
   const resolvedTotalLines = totalLines;
 
   const hasFooter = Boolean(
@@ -133,6 +155,13 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     setSearchText(event.target.value);
   };
 
+  const scrollToEnd = useCallback(() => {
+    const totalCount = lazyLogRef.current?.state?.count;
+    if (lazyLogRef.current?.listRef?.current && totalCount) {
+      lazyLogRef.current.listRef.current.scrollToIndex(totalCount - 1);
+    }
+  }, []);
+
   const handleScroll = useCallback(
     (scrollValues: {
       scrollTop: number;
@@ -144,19 +173,104 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
         Math.abs(clientHeight + scrollTop - scrollHeight) <
         SCROLL_BOTTOM_THRESHOLD_PX;
 
+      const isRelayoutScroll =
+        Date.now() - relayoutAtRef.current < RELAYOUT_SCROLL_GRACE_MS;
+
+      if (isRelayoutScroll) {
+        // Put the view back where the relayout took it from rather than reading
+        // the jump as intent.
+        if (!isBottom) {
+          scrollToEnd();
+        }
+      } else if (isLive && scrollHeight > clientHeight) {
+        // Scrolling away from the tail hands control back to the user; scrolling
+        // back to it resumes following. The viewer's own follow scroll always
+        // lands at the bottom, so it cannot switch itself off here. Content that
+        // does not fill the viewport is trivially "at the bottom" and must not
+        // drive the state, or follow flips before the first screen is filled.
+        setFollowTail(isBottom);
+      }
+
       if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
         onLoadMore();
       }
     },
-    [hasMore, loadingMore, query, onLoadMore]
+    [isLive, hasMore, loadingMore, query, onLoadMore, scrollToEnd]
   );
 
   const handleJumpToEnd = useCallback(() => {
-    const totalCount = lazyLogRef.current?.state?.count;
-    if (lazyLogRef.current?.listRef?.current && totalCount) {
-      lazyLogRef.current.listRef.current.scrollToIndex(totalCount - 1);
+    scrollToEnd();
+    if (isLive) {
+      setFollowTail(true);
     }
-  }, []);
+  }, [isLive, scrollToEnd]);
+
+  // Scroll position alone cannot tell the user apart from the viewer: while a
+  // stream appends, the viewer's own follow scroll can undo a wheel before the
+  // browser reports the new position, so the resulting `onScroll` still reads as
+  // "at the tail" and following would never pause. The gesture itself is the
+  // only reliable signal, and pausing on it lands before the next append.
+  useEffect(() => {
+    const body = bodyRef.current;
+
+    if (!open || !isLive || !body) {
+      return;
+    }
+
+    const pauseFollow = () => setFollowTail(false);
+
+    const handleWheel = (event: globalThis.WheelEvent) => {
+      if (event.deltaY < 0) {
+        pauseFollow();
+      }
+    };
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (SCROLL_BACK_KEYS.includes(event.key)) {
+        pauseFollow();
+      }
+    };
+
+    body.addEventListener('wheel', handleWheel, { passive: true });
+    body.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      body.removeEventListener('wheel', handleWheel);
+      body.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, isLive]);
+
+  // Wrapping and full-screen re-measure every row, which parks the virtualised
+  // list back at the top and reports that as an ordinary scroll. Left alone the
+  // layout change reads as the user taking over and silently pauses a followed
+  // log, so a followed viewer marks the window in which those knock-on scrolls
+  // are the relayout's rather than the user's (see `handleScroll`).
+  const markRelayout = useCallback(() => {
+    if (followTail) {
+      relayoutAtRef.current = Date.now();
+    }
+  }, [followTail]);
+
+  const handleToggleWrap = useCallback(() => {
+    markRelayout();
+    setWrap((value) => !value);
+  }, [markRelayout]);
+
+  const handleToggleFullScreen = useCallback(() => {
+    markRelayout();
+    setIsFullScreen((value) => !value);
+  }, [markRelayout]);
+
+  const handleToggleFollow = useCallback(() => {
+    if (followTail) {
+      setFollowTail(false);
+
+      return;
+    }
+
+    setFollowTail(true);
+    scrollToEnd();
+  }, [followTail, scrollToEnd]);
 
   const isFullScreenClass = isFullScreen ? 'lvm-fullscreen' : '';
 
@@ -259,6 +373,15 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                     </TooltipTrigger>
                   </Tooltip>
                 )}
+                {isLive && (
+                  <LogViewerToolbarToggle
+                    icon={<ArrowDown aria-hidden className="lvm-icon" />}
+                    isActive={followTail}
+                    label={t('label.live-auto-scroll')}
+                    testId="log-viewer-follow"
+                    onToggle={handleToggleFollow}
+                  />
+                )}
                 <Tooltip
                   delay={500}
                   placement="top"
@@ -271,45 +394,30 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                     <ChevronDownDouble aria-hidden className="lvm-icon" />
                   </TooltipTrigger>
                 </Tooltip>
-                <Tooltip delay={500} placement="top" title={t('label.wrap')}>
-                  <TooltipTrigger
-                    aria-label={t('label.wrap')}
-                    aria-pressed={wrap}
-                    className={classNames('lvm-icon-button', {
-                      'lvm-icon-button--active': wrap,
-                    })}
-                    data-testid="log-viewer-wrap"
-                    onPress={() => setWrap((value) => !value)}>
-                    <AlignLeft aria-hidden className="lvm-icon" />
-                  </TooltipTrigger>
-                </Tooltip>
-                <Tooltip
-                  delay={500}
-                  placement="top"
-                  title={
-                    isFullScreen
-                      ? t('label.exit-full-screen')
-                      : t('label.full-screen-view')
-                  }>
-                  <TooltipTrigger
-                    aria-label={
-                      isFullScreen
-                        ? t('label.exit-full-screen')
-                        : t('label.full-screen-view')
-                    }
-                    aria-pressed={isFullScreen}
-                    className={classNames('lvm-icon-button', {
-                      'lvm-icon-button--active': isFullScreen,
-                    })}
-                    data-testid="log-viewer-fullscreen"
-                    onPress={() => setIsFullScreen((value) => !value)}>
-                    {isFullScreen ? (
+                <LogViewerToolbarToggle
+                  icon={<AlignLeft aria-hidden className="lvm-icon" />}
+                  isActive={wrap}
+                  label={t('label.wrap')}
+                  testId="log-viewer-wrap"
+                  onToggle={handleToggleWrap}
+                />
+                <LogViewerToolbarToggle
+                  icon={
+                    isFullScreen ? (
                       <Minimize01 aria-hidden className="lvm-icon" />
                     ) : (
                       <Maximize01 aria-hidden className="lvm-icon" />
-                    )}
-                  </TooltipTrigger>
-                </Tooltip>
+                    )
+                  }
+                  isActive={isFullScreen}
+                  label={
+                    isFullScreen
+                      ? t('label.exit-full-screen')
+                      : t('label.full-screen-view')
+                  }
+                  testId="log-viewer-fullscreen"
+                  onToggle={handleToggleFullScreen}
+                />
                 {onDownload &&
                   (downloading ? (
                     <span
@@ -360,7 +468,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
             )}
             <div
               className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
-              data-testid="log-viewer-body">
+              data-testid="log-viewer-body"
+              ref={bodyRef}>
               {resolvedLoading ? (
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />
