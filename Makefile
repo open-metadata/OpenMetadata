@@ -10,6 +10,14 @@ help:
 prerequisites:
 	./scripts/check_prerequisites.sh
 
+.PHONY: dev_setup
+dev_setup:  ## One-call dev environment setup for macOS/Linux (pass flags via ARGS=...)
+	./scripts/dev_setup.sh $(ARGS)
+
+.PHONY: dev_check
+dev_check:  ## Diagnose the dev environment without changing anything
+	./scripts/dev_setup.sh --check
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
