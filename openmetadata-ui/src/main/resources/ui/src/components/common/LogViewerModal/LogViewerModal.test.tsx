@@ -821,6 +821,26 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
+  it('does not treat an earlier resume as consent after the user pauses again', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    const body = screen.getByTestId('log-viewer-body');
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    // Resume by hand, then take control straight back. The pause has to withdraw
+    // the request to be at the tail, or the viewer's own snap-back moments later
+    // reads as still wanting to follow.
+    fireEvent.click(screen.getByTestId('log-viewer-follow'));
+    fireEvent.click(screen.getByTestId('log-viewer-follow'));
+    fireEvent.wheel(body, { deltaY: -120 });
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
   it('does not resume when the viewer snaps back to the tail on an append', () => {
     const { rerender } = render(
       <LogViewerModal {...defaultProps} mode="stream" />

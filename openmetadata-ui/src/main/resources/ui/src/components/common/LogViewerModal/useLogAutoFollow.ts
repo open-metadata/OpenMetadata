@@ -115,6 +115,7 @@ export const useLogAutoFollow = ({
   const toggleFollow = useCallback(() => {
     if (followTailRef.current) {
       viewerScrollAtRef.current = 0;
+      forwardGestureAtRef.current = 0;
       setFollow(false);
 
       return;
@@ -164,6 +165,8 @@ export const useLogAutoFollow = ({
   const applyUserScrollIntent = useCallback(
     (isBottom: boolean) => {
       if (!isBottom) {
+        // Leaving the tail withdraws any earlier request to be at it.
+        forwardGestureAtRef.current = 0;
         setFollow(false);
 
         return;
@@ -273,8 +276,11 @@ export const useLogAutoFollow = ({
 
     const pauseFollow = () => {
       // A real gesture ends the jump grace, so the catch-up in `trackScroll`
-      // cannot re-assert the tail on top of the user.
+      // cannot re-assert the tail on top of the user. It also withdraws any
+      // earlier request to be at the tail: without that, a snap-back landing
+      // shortly after a resume would be read as still wanting to follow.
       viewerScrollAtRef.current = 0;
+      forwardGestureAtRef.current = 0;
       setFollow(false);
     };
 

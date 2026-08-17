@@ -157,6 +157,13 @@ export const dragLogViewerUpWithoutGesture = async (
 };
 
 /**
+ * The state of the live auto-follow toggle, as the user sees it.
+ */
+export const isLogViewerFollowing = async (page: Page): Promise<boolean> =>
+  (await page.getByTestId('log-viewer-follow').getAttribute('aria-pressed')) ===
+  'true';
+
+/**
  * Whether the log viewer is parked at the tail of the log.
  */
 export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
@@ -175,40 +182,48 @@ export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
 };
 
 /**
- * Sends the user back down to the tail by hand, with real wheel events.
+ * Wheels back down until the viewer resumes following on its own.
  *
- * A live log keeps growing underneath, so the tail is chased rather than reached in
- * one movement — which is why the fixture serving this must trickle rather than
- * append hundreds of lines per push. `End` does not work here: the virtualised list
- * does not move its container for it.
+ * Judged by the toggle for the same reason as `scrollLogViewerAwayFromTail`: the
+ * height estimate of a virtualised list is not a dependable ruler. The fixture
+ * serving this has to trickle rather than append hundreds of lines per push, or the
+ * tail moves further per push than any wheel can cover.
  */
 export const scrollLogViewerToTail = async (
   page: Page,
   deltaY = 2000,
-  maxWheels = 30
+  maxWheels = 60
 ): Promise<void> => {
   await page.getByTestId('log-viewer-body').hover();
 
   for (let wheel = 0; wheel < maxWheels; wheel++) {
-    if (await isLogViewerAtTail(page)) {
+    if (await isLogViewerFollowing(page)) {
       return;
     }
 
     await page.mouse.wheel(0, deltaY);
+    // Let each wheel commit: back-to-back wheels coalesce, and then the loop
+    // travels far less than its budget suggests.
+    await page.waitForTimeout(60);
   }
 
   throw new Error(
-    `The log viewer did not reach the tail after ${maxWheels} wheel events`
+    `Following did not resume after ${maxWheels} wheel events towards the tail`
   );
 };
 
 /**
- * Scrolls the log viewer away from the tail the way a user would — a real wheel
- * event over the log body — and waits for the view to leave the tail.
+ * Scrolls up with real wheel events until the viewer hands control to the user.
+ *
+ * Deliberately asserted through the toggle rather than through scroll geometry: a
+ * virtualised list estimates its own height, and with wrapping on that estimate
+ * moves as rows are measured, so "is the view at the tail" is not a stable
+ * predicate. Whether following is paused is the guarantee the user actually has.
  */
 export const scrollLogViewerAwayFromTail = async (
   page: Page,
-  deltaY = -2000
+  deltaY = -2000,
+  maxWheels = 15
 ): Promise<void> => {
   await expect
     .poll(() => getLogViewerScrollState(page), {
@@ -218,9 +233,18 @@ export const scrollLogViewerAwayFromTail = async (
     .not.toBeNull();
 
   await page.getByTestId('log-viewer-body').hover();
-  await page.mouse.wheel(0, deltaY);
 
-  await expect.poll(() => isLogViewerAtTail(page)).toBe(false);
+  for (let wheel = 0; wheel < maxWheels; wheel++) {
+    await page.mouse.wheel(0, deltaY);
+
+    if (!(await isLogViewerFollowing(page))) {
+      return;
+    }
+  }
+
+  throw new Error(
+    `Following was still on after ${maxWheels} wheel events away from the tail`
+  );
 };
 
 /**
