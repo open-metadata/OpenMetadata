@@ -77,10 +77,16 @@ jobs:
     # reusable without re-listing each one; the reusable only reads what it
     # needs.
     secrets: inherit
+    # The caller's job permissions are the UPPER BOUND on what any reusable
+    # job can request. `refresh-timing-baseline` needs contents+pull-requests
+    # write; every other reusable job declares its own read-only permissions
+    # block, so the write grant is only actually used by the one job — and
+    # that job is gated on `github.event_name == 'merge_group'`, so PRs and
+    # dispatches never invoke a writer.
     permissions:
       actions: read
-      contents: read
-      pull-requests: read
+      contents: write
+      pull-requests: write
       checks: read
     with:
       database: postgresql
