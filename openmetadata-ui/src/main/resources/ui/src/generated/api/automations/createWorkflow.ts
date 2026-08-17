@@ -2324,6 +2324,10 @@ export interface ConfigObject {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
