@@ -10303,6 +10303,14 @@ public interface CollectionDAO {
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
     void deleteAll(@BindFQN("testCaseFQNHash") String entityFQNHash);
 
+    @SqlUpdate(
+        "DELETE FROM data_quality_data_time_series WHERE entityFQNHash IN (<testCaseFQNHashes>) AND extension = 'testCase.testCaseResult'")
+    void deleteAllBatchInternal(@BindListFQN("testCaseFQNHashes") List<String> entityFQNHashes);
+
+    default void deleteAllBatch(List<String> entityFQNs) {
+      EntityDAO.updateInChunks(entityFQNs, this::deleteAllBatchInternal);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
@@ -11046,6 +11054,14 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash = :testCaseFQNHash")
     void deleteAll(@BindFQN("testCaseFQNHash") String testCaseFQN);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash IN (<testCaseFQNHashes>)")
+    void deleteAllBatchInternal(@BindListFQN("testCaseFQNHashes") List<String> testCaseFQNs);
+
+    default void deleteAllBatch(List<String> testCaseFQNs) {
+      EntityDAO.updateInChunks(testCaseFQNs, this::deleteAllBatchInternal);
+    }
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
@@ -13569,8 +13585,9 @@ public interface CollectionDAO {
       // Insert failed due to conflict - check if existing lock is expired
       SearchReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        // Lock is expired, delete it and retry once
-        delete(lockKey);
+        // Keep the cleanup conditional on expiration. Another server may replace the stale row
+        // between this read and the delete, and an unconditional key delete would remove its lock.
+        deleteExpiredLocks(System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }

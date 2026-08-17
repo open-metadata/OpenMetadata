@@ -8,6 +8,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.util.RestUtil;
 
@@ -29,7 +30,7 @@ public class JdbiUtils {
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
+    configureStatements(jdbiInstance, dbFactory);
 
     return jdbiInstance;
   }
@@ -49,9 +50,17 @@ public class JdbiUtils {
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
+    configureStatements(jdbiInstance, dbFactory);
 
     return jdbiInstance;
+  }
+
+  static void configureStatements(Jdbi jdbi, DataSourceFactory dbFactory) {
+    SqlStatements statements = jdbi.getConfig(SqlStatements.class);
+    statements.setUnusedBindingAllowed(true);
+    if (dbFactory instanceof HikariCPDataSourceFactory hikariFactory) {
+      statements.setQueryTimeout(hikariFactory.getQueryTimeoutSeconds());
+    }
   }
 
   public static int getOffset(String offset) {

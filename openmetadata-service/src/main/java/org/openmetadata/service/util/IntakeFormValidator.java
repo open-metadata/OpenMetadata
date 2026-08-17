@@ -75,13 +75,25 @@ public final class IntakeFormValidator {
       if (!Boolean.TRUE.equals(field.getRequired())) continue;
       if (field.getFieldPath() == null || field.getFieldPath().isBlank()) continue;
       if (!isFieldSet(entity, field)) {
-        missing.add(
-            field.getErrorMessage() != null && !field.getErrorMessage().isBlank()
-                ? field.getErrorMessage()
-                : (field.getFieldLabel() != null ? field.getFieldLabel() : field.getFieldPath()));
+        missing.add(describe(field));
       }
     }
     return missing;
+  }
+
+  /**
+   * How a missing field is named in the error. Falls through to the field path when the label is
+   * blank as well as when it is absent: a form field configured with an empty label would otherwise
+   * contribute an empty entry, leaving the caller an error that names nothing.
+   */
+  private static String describe(IntakeFormField field) {
+    String described = field.getFieldPath();
+    if (field.getErrorMessage() != null && !field.getErrorMessage().isBlank()) {
+      described = field.getErrorMessage();
+    } else if (field.getFieldLabel() != null && !field.getFieldLabel().isBlank()) {
+      described = field.getFieldLabel();
+    }
+    return described;
   }
 
   private static boolean isFieldSet(EntityInterface entity, IntakeFormField field) {
