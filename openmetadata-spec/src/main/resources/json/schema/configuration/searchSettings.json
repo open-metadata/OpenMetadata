@@ -338,7 +338,7 @@
         },
         "matchType": {
           "type": "string",
-          "enum": ["exact", "phrase", "tokenCoverage", "standard", "fuzzy"],
+          "enum": ["exact", "phrase", "prefix", "tokenCoverage", "standard", "fuzzy"],
           "description": "Query strategy for this ranking stage.",
           "default": "standard"
         },
