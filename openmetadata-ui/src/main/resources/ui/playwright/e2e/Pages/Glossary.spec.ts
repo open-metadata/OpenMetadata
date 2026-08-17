@@ -1329,9 +1329,14 @@ test.describe('Glossary tests', () => {
   test('Delete Glossary and Glossary Term using Delete Modal', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    // Use adminUser (not global admin) so that deletion WebSocket events are scoped
+    // to this user's session only and do not appear as stray toasts in other
+    // parallel workers' admin browser pages.
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -1350,9 +1355,13 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - single delete success', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    // Use adminUser (not global admin) to prevent deletion toasts from
+    // leaking into other parallel workers' admin browser pages via WebSocket.
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
 
     try {
@@ -1416,9 +1425,13 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - multiple deletes all succeed', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    // Use adminUser (not global admin) to prevent deletion toasts from
+    // leaking into other parallel workers' admin browser pages via WebSocket.
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossaryA = new Glossary();
     const glossaryB = new Glossary();
     const glossaryC = new Glossary();
