@@ -148,77 +148,97 @@ class MigrationUtilTaskWorkflowTest {
   void runTaskWorkflowCutoverMigrationBackfillsEmptyTransitionMetadata() throws Exception {
     stubTables(Set.of());
     // Simulate a 1.13 or pre-fix builder-saved userApprovalTask whose config carries no
-    // transitionMetadata field. After the migration the node's config must contain the default
-    // approve/reject pair so freshly-created tasks project availableTransitions correctly.
-    WorkflowNodeDefinitionInterface approvalNode = mock(WorkflowNodeDefinitionInterface.class);
-    when(approvalNode.getSubType()).thenReturn("userApprovalTask");
-    when(approvalNode.getName()).thenReturn("TaskReview");
-    Map<String, Object> nodeConfig = new java.util.LinkedHashMap<>();
-    nodeConfig.put("approvalThreshold", 1);
-    nodeConfig.put("rejectionThreshold", 1);
-    when(approvalNode.getConfig()).thenReturn(nodeConfig);
+    // transitionMetadata field. After the migration a fresh WorkflowDefinition — with the node's
+    // config carrying the default approve/reject pair — must be handed to createOrUpdate so
+    // freshly-created tasks project availableTransitions correctly.
     WorkflowDefinition workflowDefinition =
-        new WorkflowDefinition().withName("LegacyDomainWorkflow").withNodes(List.of(approvalNode));
+        userApprovalWorkflowFromJson(
+            "LegacyDomainWorkflow",
+            """
+                {"approvalThreshold":1,"rejectionThreshold":1,
+                 "assignees":{"addReviewers":false,"addOwners":false,"candidates":[]}}
+                """);
     when(workflowDefinitionRepository.listAll(any(), any()))
         .thenReturn(List.of(workflowDefinition));
 
     newMigrationUtil().runTaskWorkflowCutoverMigration();
 
-    verify(approvalNode)
-        .setConfig(
-            org.mockito.ArgumentMatchers.argThat(
-                config -> {
-                  if (!(config instanceof Map<?, ?> map)) {
-                    return false;
-                  }
-                  Object metadata = map.get("transitionMetadata");
-                  if (!(metadata instanceof List<?> list) || list.size() != 2) {
-                    return false;
-                  }
-                  Map<?, ?> approve = (Map<?, ?>) list.get(0);
-                  Map<?, ?> reject = (Map<?, ?>) list.get(1);
-                  return "approve".equals(approve.get("id"))
-                      && "reject".equals(reject.get("id"))
-                      && "Approved".equals(approve.get("targetTaskStatus"))
-                      && "Rejected".equals(reject.get("targetTaskStatus"))
-                      // preserve pre-existing keys — the backfill must not drop threshold config
-                      && Integer.valueOf(1).equals(map.get("approvalThreshold"))
-                      && Integer.valueOf(1).equals(map.get("rejectionThreshold"));
-                }));
-    verify(workflowDefinitionRepository).createOrUpdate(null, workflowDefinition, "admin");
+    org.mockito.ArgumentCaptor<WorkflowDefinition> captor =
+        org.mockito.ArgumentCaptor.forClass(WorkflowDefinition.class);
+    verify(workflowDefinitionRepository).createOrUpdate(eq(null), captor.capture(), eq("admin"));
+    WorkflowDefinition persisted = captor.getValue();
+    Map<String, Object> persistedJson =
+        org.openmetadata.schema.utils.JsonUtils.convertValue(persisted, Map.class);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> nodes = (List<Map<String, Object>>) persistedJson.get("nodes");
+    Map<String, Object> approvalNode =
+        nodes.stream()
+            .filter(n -> "userApprovalTask".equals(n.get("subType")))
+            .findFirst()
+            .orElseThrow();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> configMap = (Map<String, Object>) approvalNode.get("config");
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> transitionMetadata =
+        (List<Map<String, Object>>) configMap.get("transitionMetadata");
+    assertNotNull(transitionMetadata);
+    assertEquals(2, transitionMetadata.size());
+    assertEquals("approve", transitionMetadata.get(0).get("id"));
+    assertEquals("Approved", transitionMetadata.get(0).get("targetTaskStatus"));
+    assertEquals("reject", transitionMetadata.get(1).get("id"));
+    assertEquals("Rejected", transitionMetadata.get(1).get("targetTaskStatus"));
+    // Backfill must preserve pre-existing config keys (thresholds + assignees).
+    assertEquals(1, configMap.get("approvalThreshold"));
+    assertEquals(1, configMap.get("rejectionThreshold"));
+    assertNotNull(configMap.get("assignees"));
   }
 
   @Test
   void runTaskWorkflowCutoverMigrationDoesNotOverwritePopulatedTransitionMetadata()
       throws Exception {
     stubTables(Set.of());
-    WorkflowNodeDefinitionInterface approvalNode = mock(WorkflowNodeDefinitionInterface.class);
-    when(approvalNode.getSubType()).thenReturn("userApprovalTask");
-    when(approvalNode.getName()).thenReturn("TaskReview");
-    Map<String, Object> customTransition =
-        Map.of(
-            "id",
-            "customApprove",
-            "label",
-            "Custom Approve",
-            "targetStageId",
-            "customApproved",
-            "targetTaskStatus",
-            "Approved");
-    Map<String, Object> nodeConfig = new java.util.LinkedHashMap<>();
-    nodeConfig.put("transitionMetadata", List.of(customTransition));
-    when(approvalNode.getConfig()).thenReturn(nodeConfig);
     WorkflowDefinition workflowDefinition =
-        new WorkflowDefinition()
-            .withName("CustomTransitionWorkflow")
-            .withNodes(List.of(approvalNode));
+        userApprovalWorkflowFromJson(
+            "CustomTransitionWorkflow",
+            """
+                {"assignees":{"addReviewers":false,"addOwners":false,"candidates":[]},
+                 "transitionMetadata":[
+                   {"id":"customApprove","label":"Custom Approve",
+                    "targetStageId":"customApproved","targetTaskStatus":"Approved"}
+                 ]}
+                """);
     when(workflowDefinitionRepository.listAll(any(), any()))
         .thenReturn(List.of(workflowDefinition));
 
     newMigrationUtil().runTaskWorkflowCutoverMigration();
 
-    verify(approvalNode, never()).setConfig(any());
+    // Populated transitionMetadata is untouched — the same instance flows through createOrUpdate.
     verify(workflowDefinitionRepository).createOrUpdate(null, workflowDefinition, "admin");
+  }
+
+  /**
+   * Build a WorkflowDefinition with a single {@code userApprovalTask} node whose config comes from
+   * a JSON literal. Uses {@link org.openmetadata.schema.utils.JsonUtils} rather than the fragile
+   * jsonschema2pojo-generated {@code Config__1} class name so a future userApprovalTask schema
+   * edit that renumbers that class name does not silently break this test.
+   */
+  private WorkflowDefinition userApprovalWorkflowFromJson(String name, String configJson) {
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "trigger": {"type":"noOp"},
+              "nodes": [
+                {"name":"start","type":"startEvent","subType":"startEvent"},
+                {"name":"TaskReview","type":"userTask","subType":"userApprovalTask",
+                 "config": %s}
+              ],
+              "edges": []
+            }
+            """
+            .formatted(name, configJson);
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        workflowJson, WorkflowDefinition.class);
   }
 
   @Test
