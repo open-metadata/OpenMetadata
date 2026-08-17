@@ -19,17 +19,10 @@ import {
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01, SearchLg } from '@untitledui/icons';
+import { Globe01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
-import {
-  FC,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { isEmpty } from 'lodash';
+import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -50,11 +43,13 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
+  LIST_EMPTY_STATE_CLASS,
   NAME_CELL_CLIP_CLASS,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
+import { useListSearchInput } from '../common/atoms/navigation/useListSearchInput';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
@@ -123,35 +118,10 @@ const DataProductListPage = ({
 
   const showHeaderSearch = isAiMode;
 
-  const [searchInputValue, setSearchInputValue] = useState(
-    dataProductListing.urlState.searchQuery ?? ''
-  );
-
-  const debouncedSearch = useMemo(
-    () => debounce(dataProductListing.handleSearchChange, 300),
-    [dataProductListing.handleSearchChange]
-  );
-
-  useEffect(() => {
-    debouncedSearch.cancel();
-    setSearchInputValue(dataProductListing.urlState.searchQuery ?? '');
-  }, [dataProductListing.urlState.searchQuery, debouncedSearch]);
-
-  useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [debouncedSearch]);
-
-  const searchInputProps = {
-    icon: SearchLg,
-    placeholder: t('label.search'),
-    value: searchInputValue,
-    onChange: (value: string) => {
-      setSearchInputValue(value);
-      debouncedSearch(value);
-    },
-  };
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: dataProductListing.urlState.searchQuery,
+    onSearchChange: dataProductListing.handleSearchChange,
+  });
 
   const headerSearch = showHeaderSearch ? (
     <Input className="tw:w-72" {...searchInputProps} />
@@ -313,7 +283,7 @@ const DataProductListPage = ({
       if (isSearchOrFilterActive()) {
         return (
           <ErrorPlaceHolder
-            className="border-none"
+            className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
@@ -325,7 +295,7 @@ const DataProductListPage = ({
           buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
           })}
-          className="border-none"
+          className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
           heading={t('message.no-data-message', {
             entity: t('label.data-product-lowercase-plural'),
           })}
@@ -413,7 +383,7 @@ const DataProductListPage = ({
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
           'tw:mb-5': !isAiMode,
         })}
-        variant="elevated">
+        variant={isAiMode ? 'default' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -443,6 +413,7 @@ const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
 
   return (
     <PageLayoutV1
+      className={isAiMode ? 'tw:h-auto!' : undefined}
       fullHeight={isAiMode}
       pageTitle={props.pageTitle}
       variant={isAiMode ? 'compact' : 'default'}>

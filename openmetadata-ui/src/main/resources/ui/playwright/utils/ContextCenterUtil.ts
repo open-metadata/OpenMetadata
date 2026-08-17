@@ -1051,6 +1051,39 @@ export const readDraftStore = async (
 };
 
 /**
+ * The draft-content debounce (300ms in KnowledgePageDetailComponent) means the
+ * "Unsaved" badge appearing gives no guarantee the debounced write to
+ * localStorage has actually landed yet. Polling the real draft store removes
+ * that race instead of guessing a fixed timeout that can lose the race under
+ * CI load.
+ *
+ * The timeout is deliberately kept well under the real-save debounce
+ * (SHORT_DELAY, 3000ms): once that autosave completes it clears the draft
+ * from localStorage (see endTrackedSave -> removeDraft), so a long poll here
+ * risks racing the autosave itself and observing the draft after it has
+ * already been removed rather than confirming it landed in time.
+ */
+export const waitForDraftPersisted = async (
+  page: Page,
+  articleId: string,
+  expectedDescription: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const drafts = await readDraftStore(page);
+        const draft = drafts[articleId] as { description?: string } | undefined;
+
+        // The draft stores the editor's HTML output (e.g. wrapped in <p>...</p>),
+        // not the plain text that was typed, so match on substring containment.
+        return draft?.description?.includes(expectedDescription) ?? false;
+      },
+      { timeout: 2000, intervals: [50, 100, 200] }
+    )
+    .toBe(true);
+};
+
+/**
  * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
  * since this repo has no binary image fixtures under playwright/test-data/.
  */

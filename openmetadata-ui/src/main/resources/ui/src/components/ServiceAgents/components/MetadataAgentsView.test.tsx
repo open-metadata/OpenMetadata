@@ -46,52 +46,63 @@ const baseAgent: Agent = {
   enabled: true,
 };
 
+const mockAgentGroup = jest.fn();
+
 jest.mock('./AgentGroup.component', () => ({
   __esModule: true,
-  default: ({
-    agents,
-    isRefreshing,
-    onAction,
-    onRefresh,
-    onRunDetails,
-  }: {
+  default: (props: {
     agents: Agent[];
+    emptyPlaceholder?: React.ReactNode;
     isRefreshing?: boolean;
     onAction: (action: string, agent: Agent) => void;
     onRefresh?: () => void;
     onRunDetails: (agent: Agent) => void;
-  }) => (
-    <div>
-      {onRefresh && (
-        <button
-          data-testid="group-refresh"
-          disabled={isRefreshing}
-          onClick={onRefresh}>
-          refresh
-        </button>
-      )}
-      {['run', 'redeploy', 'kill', 'pause', 'resume', 'edit', 'delete'].map(
-        (action) => (
+  }) => {
+    const {
+      agents,
+      emptyPlaceholder,
+      isRefreshing,
+      onAction,
+      onRefresh,
+      onRunDetails,
+    } = props;
+
+    mockAgentGroup(props);
+
+    return (
+      <div>
+        {agents.length === 0 && emptyPlaceholder}
+        {onRefresh && (
           <button
-            data-testid={`dispatch-${action}`}
-            key={action}
-            onClick={() => onAction(action, baseAgent)}>
-            {action}
+            data-testid="group-refresh"
+            disabled={isRefreshing}
+            onClick={onRefresh}>
+            refresh
           </button>
-        )
-      )}
-      <button
-        data-testid="dispatch-unknown"
-        onClick={() => onAction('unknown', baseAgent)}>
-        unknown
-      </button>
-      <button
-        data-testid="dispatch-run-details"
-        onClick={() => onRunDetails(agents[0])}>
-        run details
-      </button>
-    </div>
-  ),
+        )}
+        {['run', 'redeploy', 'kill', 'pause', 'resume', 'edit', 'delete'].map(
+          (action) => (
+            <button
+              data-testid={`dispatch-${action}`}
+              key={action}
+              onClick={() => onAction(action, baseAgent)}>
+              {action}
+            </button>
+          )
+        )}
+        <button
+          data-testid="dispatch-unknown"
+          onClick={() => onAction('unknown', baseAgent)}>
+          unknown
+        </button>
+        <button
+          data-testid="dispatch-run-details"
+          onClick={() => onRunDetails(agents[0])}>
+          run details
+        </button>
+      </div>
+    );
+  },
 }));
 
 const mockRunHistoryDrawer = jest.fn();
@@ -140,11 +151,17 @@ jest.mock('../hooks/useAgentPermissions', () => ({
   useAgentPermissions: () => ({ agentPermissions: {} }),
 }));
 
+const mockAirflowStatus = jest.fn();
+
 jest.mock(
   '../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({
-    useAirflowStatus: () => ({ platform: 'Airflow' }),
+    useAirflowStatus: () => mockAirflowStatus(),
   })
+);
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion', () =>
+  jest.fn().mockImplementation(() => <p>ErrorPlaceHolderIngestion</p>)
 );
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -175,11 +192,12 @@ jest.mock('../../../utils/IngestionUtils', () => ({
   getLogViewerStatusFromAgentStatus: jest.fn(),
 }));
 
-const viewWithAgents = (agents: Agent[]) => (
+const viewWithAgents = (agents: Agent[], isLoading?: boolean) => (
   <MetadataAgentsView
     showAddAgent
     agents={agents}
     ingestionPipelineList={[]}
+    isLoading={isLoading}
     serviceCategory={ServiceCategory.DATABASE_SERVICES}
     serviceDetails={{ name: 'service' } as ServicesType}
     serviceName="service"
@@ -207,6 +225,11 @@ describe('MetadataAgentsView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDeleteIngestionPipelineById.mockResolvedValue({});
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
   });
 
   it('should request the empty placeholder with the agents card styling', () => {
@@ -217,6 +240,32 @@ describe('MetadataAgentsView', () => {
     expect(lastCall?.[4]).toBe(
       'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl'
     );
+  });
+
+  it('should explain the unreachable pipeline service instead of claiming there are no agents', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+
+    renderView([]);
+
+    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
+    expect(getErrorPlaceHolder).not.toHaveBeenCalled();
+  });
+
+  it('should not claim the pipeline service is unreachable while its status is still being fetched', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: true,
+      platform: 'Airflow',
+    });
+
+    renderView([]);
+
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(getErrorPlaceHolder).toHaveBeenCalled();
   });
 
   it('should toggle the agent when the pause action is dispatched', () => {
@@ -303,6 +352,22 @@ describe('MetadataAgentsView', () => {
       expect.objectContaining({
         agent: expect.objectContaining({ status: 'queued' }),
       })
+    );
+  });
+
+  it('should forward the loading flag to the agent group', () => {
+    render(viewWithAgents([], true));
+
+    expect(mockAgentGroup).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoading: true })
+    );
+  });
+
+  it('should not report loading once the agents have arrived', () => {
+    renderView();
+
+    expect(mockAgentGroup).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoading: undefined })
     );
   });
 
