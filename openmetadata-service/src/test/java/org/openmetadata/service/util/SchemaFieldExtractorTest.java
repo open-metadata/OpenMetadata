@@ -196,6 +196,41 @@ class SchemaFieldExtractorTest {
   }
 
   @Test
+  void extractAllCustomPropertiesReturnsOnlyCustomProperties() {
+    SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+    TypeRepository repository = mock(TypeRepository.class);
+    UriInfo uriInfo = mock(UriInfo.class);
+    Type tableType =
+        new Type()
+            .withCustomProperties(
+                List.of(customProperty("extraField", "Extra Field", "string", null)));
+
+    when(repository.getByName(eq(uriInfo), anyString(), any(), eq(Include.ALL), eq(false)))
+        .thenAnswer(
+            invocation -> "table".equals(invocation.getArgument(1)) ? tableType : new Type());
+
+    Map<String, List<SchemaFieldExtractor.FieldDefinition>> customProperties =
+        extractor.extractAllCustomProperties(uriInfo, repository);
+
+    assertEquals(
+        List.of("extraField"),
+        customProperties.get("table").stream()
+            .map(SchemaFieldExtractor.FieldDefinition::getName)
+            .collect(Collectors.toList()),
+        "Entity schema fields must not leak into the custom-properties response");
+
+    List<String> entityTypesWithFields =
+        customProperties.entrySet().stream()
+            .filter(entry -> !"table".equals(entry.getKey()) && !entry.getValue().isEmpty())
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+    assertTrue(
+        entityTypesWithFields.isEmpty(),
+        "Entity types without custom properties must return an empty list, got: "
+            + entityTypesWithFields);
+  }
+
+  @Test
   void determineReferenceTypeRecognizesNewDefinitions() throws Throwable {
     Map<String, String> expectedMappings =
         Map.ofEntries(

@@ -145,8 +145,9 @@ final class PersonaContextMarkdown {
     }
     EntityInterface entity = selected.knowledgeEntity();
     if (entity == null) {
-      if (!nullOrEmpty(item.getContent())) {
-        markdown.append('\n').append(item.getContent().strip()).append('\n');
+      String content = PromptText.forPrompt(item.getContent());
+      if (!nullOrEmpty(content)) {
+        markdown.append('\n').append(content.strip()).append('\n');
       }
       return markdown.toString();
     }
@@ -170,7 +171,7 @@ final class PersonaContextMarkdown {
 
   private static void appendArticleSections(
       StringBuilder markdown, Page page, Set<ContextSection> sections, boolean all) {
-    String content = page.getDescription();
+    String content = PromptText.forPrompt(page.getDescription());
     if ((all || sections.contains(ContextSection.TITLE_SUMMARY)) && !nullOrEmpty(content)) {
       appendSection(markdown, "Summary", firstLine(content));
     }
@@ -192,7 +193,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, Metric metric, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(metric.getDescription())) {
-      appendSection(markdown, "Definition", metric.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(metric.getDescription()));
     }
     if ((all || sections.contains(ContextSection.FORMULA_EXPRESSION))
         && metric.getMetricExpression() != null
@@ -235,7 +236,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, GlossaryTerm term, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(term.getDescription())) {
-      appendSection(markdown, "Definition", term.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(term.getDescription()));
     }
     if ((all || sections.contains(ContextSection.SYNONYMS))
         && !listOrEmpty(term.getSynonyms()).isEmpty()) {
@@ -504,8 +505,9 @@ final class PersonaContextMarkdown {
     } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    if (!nullOrEmpty(item.getContent())) {
-      markdown.append('\n').append(item.getContent().strip()).append('\n');
+    String content = PromptText.forPrompt(item.getContent());
+    if (!nullOrEmpty(content)) {
+      markdown.append('\n').append(content.strip()).append('\n');
     }
     return markdown.toString();
   }

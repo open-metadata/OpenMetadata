@@ -212,6 +212,7 @@ export interface Retype {
  * Type of the job.
  */
 export enum JobType {
+    AuditExport = "AUDIT_EXPORT",
     CSVExport = "CSV_EXPORT",
     CSVImport = "CSV_IMPORT",
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",

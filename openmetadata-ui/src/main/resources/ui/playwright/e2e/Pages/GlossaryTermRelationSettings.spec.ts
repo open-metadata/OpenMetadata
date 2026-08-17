@@ -13,7 +13,13 @@
 
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  getAuthContext,
+  getSavedAdminToken,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 
 const PAGE_SIZE_BASE = 15;
 const RELATION_SETTINGS_ROUTE = '/settings/governance/glossary-term-relations';
@@ -70,15 +76,13 @@ const deleteRelationTypeByNameViaApi = async (
 };
 
 const goToRelationSettings = async (page: Page) => {
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes(RELATION_TYPES_API) &&
-      response.request().method() === 'GET'
-  );
   await page.goto(RELATION_SETTINGS_ROUTE);
-  await listResponse;
-
-  await expect(page.getByTestId('relation-types-table')).toBeVisible();
+  // Wait for at least one row rather than intercepting the API response.
+  // React Query may serve data from cache without a network request, so
+  // page.waitForResponse would hang forever on repeat navigations.
+  await expect(
+    page.locator('[data-testid="relation-types-table"] tbody tr').first()
+  ).toBeVisible();
 };
 
 const fillInput = async (page: Page, testId: string, value: string) => {
@@ -114,6 +118,10 @@ const deleteRelationInUi = async (page: Page, id: string, name: string) => {
   await page.getByTestId('confirm-delete-btn').click();
 
   expect((await mutation).status()).toBeLessThan(300);
+
+  // Wait for React to remove the row from the DOM — the API response arrives
+  // before the re-render, so the helper must not return while the stale row remains.
+  await expect(page.getByTestId(`relation-name-${name}`)).toHaveCount(0);
 };
 
 // Parallel test workers can push the table past PAGE_SIZE_BASE, putting the
@@ -150,6 +158,13 @@ const findRowAcrossPages = async (
     const pageNumber = Number(await currentPage.inputValue());
     await nextBtn.click();
     await expect(currentPage).toHaveValue(String(pageNumber + 1));
+
+    // The page indicator is the cache-safe signal that pagination completed. Wait for a row too so
+    // the next iteration reads the rendered page rather than the previous DOM.
+    await page
+      .locator('[data-testid="relation-types-table"] tbody tr')
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 });
   }
 };
 
@@ -327,6 +342,124 @@ test.describe('Glossary Term Relation Settings', () => {
         await deleteRelationTypeViaApi(apiContext, relationshipType.id);
       }
       await afterAction();
+    }
+  });
+
+  // ── Parallel-execution regression tests ────────────────────────────────────
+  //
+  // These tests exercise the parallel and pagination paths that previously made this suite flaky
+  // under multi-worker CI runs.
+
+  test('parallel API writers both create relationship types', async () => {
+    // Independent request contexts ensure the first-class relationship type API accepts concurrent
+    // writers rather than only serialized requests from one browser session.
+    const token = await getSavedAdminToken();
+    const [ctxA, ctxB] = await Promise.all([
+      getAuthContext(token),
+      getAuthContext(token),
+    ]);
+
+    const nameA = `pwParallelA${uuid()}`;
+    const nameB = `pwParallelB${uuid()}`;
+
+    try {
+      const [resA, resB] = await Promise.all([
+        createRelationTypeViaApi(ctxA, {
+          name: nameA,
+          displayName: 'PW Parallel A',
+        }),
+        createRelationTypeViaApi(ctxB, {
+          name: nameB,
+          displayName: 'PW Parallel B',
+        }),
+      ]);
+
+      expect(resA.id).toBeTruthy();
+      expect(resB.id).toBeTruthy();
+    } finally {
+      await deleteRelationTypeByNameViaApi(ctxA, nameA);
+      await deleteRelationTypeByNameViaApi(ctxB, nameB);
+      await ctxA.dispose();
+      await ctxB.dispose();
+    }
+  });
+
+  test('delete removes the row from the DOM before the caller proceeds', async ({
+    page,
+  }) => {
+    const token = await getSavedAdminToken();
+    const apiContext = await getAuthContext(token);
+    const relationName = `pwDeleteDOM${uuid()}`;
+
+    try {
+      const relationshipType = await createRelationTypeViaApi(apiContext, {
+        name: relationName,
+        displayName: 'PW Delete DOM',
+      });
+
+      await goToRelationSettings(page);
+      await findRowAcrossPages(page, `relation-name-${relationName}`);
+
+      await deleteRelationInUi(page, relationshipType.id, relationName);
+
+      // The HTTP response arrives before React re-renders. Assert toHaveCount(0)
+      // to confirm the row is gone from the DOM, not just from the API.
+      await expect(
+        page.getByTestId(`relation-name-${relationName}`)
+      ).toHaveCount(0, { timeout: 10_000 });
+    } finally {
+      await deleteRelationTypeByNameViaApi(apiContext, relationName);
+      await apiContext.dispose();
+    }
+  });
+
+  test('findRowAcrossPages locates a row when the table has multiple pages', async ({
+    page,
+  }) => {
+    const token = await getSavedAdminToken();
+    const apiContext = await getAuthContext(token);
+
+    const targetName = `pwFindRow${uuid()}`;
+    const fillerNames: string[] = [];
+
+    try {
+      // Seed enough rows so the table has at least two pages total, then create
+      // the target. findRowAcrossPages must locate it regardless of which page
+      // it lands on under the table's actual sort order.
+      const countRes = await apiContext.get(
+        `${RELATION_TYPES_API}?limit=1&offset=0`
+      );
+      const currentTotal: number = (await countRes.json()).paging?.total ?? 0;
+      const fillerCount = Math.max(0, PAGE_SIZE_BASE + 1 - currentTotal);
+
+      for (let i = 0; i < fillerCount; i++) {
+        const name = `pwFiller${uuid()}`;
+        await createRelationTypeViaApi(apiContext, {
+          name,
+          displayName: `PW Filler ${i}`,
+        });
+        fillerNames.push(name);
+      }
+
+      await createRelationTypeViaApi(apiContext, {
+        name: targetName,
+        displayName: 'PW Find Row Target',
+      });
+
+      await goToRelationSettings(page);
+
+      // findRowAcrossPages waits for the page indicator and rendered rows before inspecting the
+      // next page.
+      await findRowAcrossPages(page, `relation-name-${targetName}`);
+      await expect(
+        page.getByTestId(`relation-name-${targetName}`)
+      ).toBeVisible();
+    } finally {
+      await deleteRelationTypeByNameViaApi(apiContext, targetName);
+      for (const name of fillerNames) {
+        await deleteRelationTypeByNameViaApi(apiContext, name);
+      }
+      await apiContext.dispose();
     }
   });
 });

@@ -15,7 +15,7 @@ import { expect, test } from '@playwright/test';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
-  addRelationTypeWithCardinality,
+  addRelationTypesWithCardinality,
   addTermRelation,
   applyGlossaryFilter,
   createApiContext,
@@ -76,33 +76,42 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     await relSrc.create(apiContext);
     await relDst.create(apiContext);
 
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
-      displayName: 'PW One To One',
-      cardinality: 'ONE_TO_ONE',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.ONE_TO_MANY,
-      displayName: 'PW One To Many',
-      cardinality: 'ONE_TO_MANY',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.MANY_TO_ONE,
-      displayName: 'PW Many To One',
-      cardinality: 'MANY_TO_ONE',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.MANY_TO_MANY,
-      displayName: 'PW Many To Many',
-      cardinality: 'MANY_TO_MANY',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.CUSTOM_1_M,
-      displayName: 'PW Custom 1:M',
-      cardinality: 'CUSTOM',
-      sourceMax: 1,
-      targetMax: null,
-    });
+    // Keep setup idempotent because CI retries can encounter relationship types
+    // retained by an interrupted prior attempt.
+    const ALL_CUSTOM_TYPES = [
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
+        displayName: 'PW One To One',
+        cardinality: 'ONE_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_MANY,
+        displayName: 'PW One To Many',
+        cardinality: 'ONE_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_ONE,
+        displayName: 'PW Many To One',
+        cardinality: 'MANY_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_MANY,
+        displayName: 'PW Many To Many',
+        cardinality: 'MANY_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.CUSTOM_1_M,
+        displayName: 'PW Custom 1:M',
+        cardinality: 'CUSTOM',
+        sourceMax: 1,
+        targetMax: null,
+      },
+    ];
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
+
+    // Reconfirm the first-class entities before patching terms so a concurrent
+    // cleanup cannot turn the following failures into misleading graph errors.
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
 
     await addTermRelation(
       apiContext,

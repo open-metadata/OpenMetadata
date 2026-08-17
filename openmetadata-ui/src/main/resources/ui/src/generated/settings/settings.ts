@@ -29,6 +29,7 @@ export interface Settings {
  */
 export enum SettingType {
     AirflowConfiguration = "airflowConfiguration",
+    AppConfiguration = "appConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
     AuthorizerConfiguration = "authorizerConfiguration",
@@ -111,6 +112,9 @@ export enum SettingType {
  * relations between glossary terms.
  *
  * Administrator-managed SPARQL query templates available across the installation.
+ *
+ * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
+ * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -656,6 +660,12 @@ export interface PipelineServiceClientConfiguration {
      * Installation query templates visible to SPARQL console users.
      */
     queryTemplates?: SavedSparqlQuery[];
+    /**
+     * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
+     * not chosen one; user preference and persona-level app mode still win over this default.
+     * Null means no tenant default is configured.
+     */
+    defaultAppMode?: DefaultAppMode | null;
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -988,6 +998,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }
@@ -1822,6 +1833,11 @@ export interface Aws {
      */
     serviceName?: string;
     [property: string]: any;
+}
+
+export enum DefaultAppMode {
+    AI = "ai",
+    Classic = "classic",
 }
 
 /**

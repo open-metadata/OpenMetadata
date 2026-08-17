@@ -34,8 +34,11 @@ import {
 } from '../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getCanonicalEntityType } from '../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';
+import { EntityIconSize } from '../../utils/TableUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -102,7 +105,17 @@ const ENTITY_TYPE_OPTIONS: FilterOption[] = [
 ];
 
 const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
-  ENTITY_TYPE_OPTIONS.map((o) => ({ key: o.value, label: o.label }));
+  ENTITY_TYPE_OPTIONS.map((o) => ({
+    key: o.value,
+    label: o.label,
+    icon:
+      searchClassBase.getEntityIcon(
+        getCanonicalEntityType(o.value),
+        '',
+        {},
+        EntityIconSize.Size16
+      ) ?? undefined,
+  }));
 
 const AuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,

@@ -43,7 +43,7 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
-import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
   size?: number;
@@ -62,6 +62,14 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
+};
+
+export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
+  [`/${ENTITY_PATH.metrics}`]: ROUTES.METRICS,
+  [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
+  '/glossary-term': ROUTES.GLOSSARY,
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
+  '/test-case': ROUTES.INCIDENT_MANAGER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [

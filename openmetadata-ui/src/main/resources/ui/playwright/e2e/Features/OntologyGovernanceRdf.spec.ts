@@ -12,7 +12,7 @@
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'crypto';
 import {
   CreateGlossary,
   Layer,

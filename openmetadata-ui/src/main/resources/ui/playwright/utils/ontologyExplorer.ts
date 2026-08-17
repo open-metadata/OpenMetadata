@@ -425,6 +425,16 @@ export async function addRelationTypeWithCardinality(
     },
   });
   if (!response.ok()) {
+    if (response.status() === 409) {
+      const concurrentCreate = await apiContext.get(
+        `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(
+          relationType.name
+        )}`
+      );
+      if (concurrentCreate.ok()) {
+        return;
+      }
+    }
     throw new Error(
       `Failed to create relationship type "${
         relationType.name
@@ -458,6 +468,35 @@ export async function deleteRelationTypeByName(
       `Failed to delete relationship type "${name}": ${response.status()} ${await response.text()}`
     );
   }
+}
+
+// Relationship types are first-class entities, so parallel workers can create
+// independent types without replacing a shared settings document.
+export async function addRelationTypesWithCardinality(
+  apiContext: APIRequestContext,
+  relationTypes: TestRelationType[]
+): Promise<void> {
+  await Promise.all(
+    relationTypes.map(async (relationType) => {
+      const lookup = await apiContext.get(
+        `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(
+          relationType.name
+        )}`
+      );
+      if (lookup.ok()) {
+        return;
+      }
+      if (lookup.status() !== 404) {
+        throw new Error(
+          `Failed to look up relationship type "${
+            relationType.name
+          }": ${lookup.status()} ${await lookup.text()}`
+        );
+      }
+
+      await addRelationTypeWithCardinality(apiContext, relationType);
+    })
+  );
 }
 
 export async function waitForMoreNodesThan(

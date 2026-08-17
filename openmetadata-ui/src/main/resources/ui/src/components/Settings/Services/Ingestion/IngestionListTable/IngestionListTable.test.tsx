@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
 import {
@@ -58,6 +59,11 @@ jest.mock('../../../../../utils/IngestionUtils', () => ({
       <div data-testid="error-placeholder">ErrorPlaceholder</div>
     )),
 }));
+
+jest.mock(
+  '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
+  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolderIngestion</div>)
+);
 
 jest.mock('./PipelineActions/PipelineActions', () =>
   jest.fn().mockImplementation(({ handleDeleteSelection }) => (
@@ -184,6 +190,58 @@ describe('Ingestion', () => {
     const lastCall = (getErrorPlaceHolder as jest.Mock).mock.calls.at(-1);
 
     expect(lastCall?.[4]).toBe('tw:relative tw:py-8');
+  });
+
+  it('should explain the unreachable pipeline service instead of claiming there are no pipelines', async () => {
+    (getErrorPlaceHolder as jest.Mock).mockClear();
+
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: false,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
+    expect(getErrorPlaceHolder).not.toHaveBeenCalled();
+  });
+
+  it('should not claim the pipeline service is unreachable while its status is still being fetched', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: true,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.getByText('ErrorPlaceholder')).toBeInTheDocument();
   });
 
   it('should not show the description column if showDescriptionCol is false', async () => {

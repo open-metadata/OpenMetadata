@@ -19,7 +19,7 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
@@ -28,7 +28,10 @@ import { AlignRightIconButton } from '../../components/common/IconButtons/EditIc
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import {
+  DataAssetsHeaderProps,
+  DataAssetWithDomains,
+} from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -122,6 +125,12 @@ const TableDetailsPageV1: React.FC = () => {
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const breadcrumbData = (
+    location.state as {
+      breadcrumbData?: DataAssetsHeaderProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
   const USERId = currentUser?.id ?? '';
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -481,6 +490,7 @@ const TableDetailsPageV1: React.FC = () => {
       if (!isTourOpen) {
         navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
           replace: true,
+          state: location.state,
         });
       }
     }
@@ -1044,6 +1054,7 @@ const TableDetailsPageV1: React.FC = () => {
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
+              breadcrumbData={breadcrumbData}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}

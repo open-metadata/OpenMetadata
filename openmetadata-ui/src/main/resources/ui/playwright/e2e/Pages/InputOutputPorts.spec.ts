@@ -33,6 +33,8 @@ import {
   navigateToPortsTab,
   selectDataProduct,
   verifyPortCounts,
+  waitForLineageGraph,
+  waitForPortRow,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -867,6 +869,7 @@ test.describe('Input Output Ports', () => {
         const portId = tables[0].entityResponseData.id;
         await expect(page.getByTestId(`port-actions-${portId}`)).toBeVisible();
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await expect(
           page.getByRole('menuitem', { name: 'Remove' })
@@ -952,6 +955,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove first output port', async () => {
         const portId = dashboards[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -994,6 +998,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Open and cancel removal dialog', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -1035,6 +1040,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove the only input port', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -1085,7 +1091,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Expand lineage section', async () => {
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify lineage view is visible', async () => {
@@ -1113,7 +1119,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify data product node is visible', async () => {
@@ -1154,7 +1160,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify input port nodes are visible', async () => {
@@ -1203,7 +1209,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify only input port is shown', async () => {
@@ -1233,7 +1239,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify only output port is shown', async () => {
@@ -1266,7 +1272,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify ReactFlow controls are visible', async () => {
@@ -1461,7 +1467,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen mode', async () => {
@@ -1492,7 +1498,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter and exit fullscreen mode', async () => {
@@ -1526,7 +1532,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
@@ -1560,7 +1566,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen and verify controls', async () => {

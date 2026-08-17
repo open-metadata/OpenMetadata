@@ -32,15 +32,17 @@ import {
 import { GraphNode3D, Level, NodeType } from './types';
 
 const GLOW_CANVAS_SIZE = 128;
+const GLOW_TEXTURE_CACHE_MAX = 128;
+const ICON_TEXTURE_CACHE_MAX = 128;
 const AVATAR_TEXTURE_CACHE_MAX = 256;
 
 export const NODE_LABEL_OBJECT_NAME = 'knowledge-graph-node-label';
 
 /**
  * Textures are shared across sprites and reused across re-renders. Glow and
- * icon textures are keyed by color/type (a small, fixed set), so plain Maps
- * are inherently bounded. Avatars are keyed by name, so that cache is FIFO-
- * capped. Caching avoids re-rasterizing hundreds of canvases on large graphs.
+ * icon textures are keyed by color/type (a small, fixed set), and every cache
+ * is explicitly capped. Caching avoids re-rasterizing hundreds of canvases on
+ * large graphs.
  */
 const glowTextureCache = new Map<string, THREE.CanvasTexture>();
 const iconTextureCache = new Map<string, THREE.CanvasTexture>();
@@ -93,6 +95,13 @@ const glowTexture = (color: string): THREE.CanvasTexture => {
   let texture = glowTextureCache.get(color);
   if (!texture) {
     texture = asTexture(drawGlowCanvas(color));
+    if (glowTextureCache.size >= GLOW_TEXTURE_CACHE_MAX) {
+      const oldest = glowTextureCache.keys().next().value;
+      if (oldest !== undefined) {
+        glowTextureCache.get(oldest)?.dispose();
+        glowTextureCache.delete(oldest);
+      }
+    }
     glowTextureCache.set(color, texture);
   }
 
@@ -104,6 +113,13 @@ const iconTexture = (type: NodeType): THREE.CanvasTexture => {
   let texture = iconTextureCache.get(key);
   if (!texture) {
     texture = asTexture(iconCanvas(type, colorFor(type)));
+    if (iconTextureCache.size >= ICON_TEXTURE_CACHE_MAX) {
+      const oldest = iconTextureCache.keys().next().value;
+      if (oldest !== undefined) {
+        iconTextureCache.get(oldest)?.dispose();
+        iconTextureCache.delete(oldest);
+      }
+    }
     iconTextureCache.set(key, texture);
   }
 

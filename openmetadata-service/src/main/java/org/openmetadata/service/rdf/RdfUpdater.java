@@ -35,29 +35,39 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public class RdfUpdater {
 
   private static final int MAX_PENDING_RDF_WRITES = 1000;
-  private static final int MAX_CONCURRENT_RDF_WRITES = 8;
   private static final long QUEUE_FULL_WAIT_SECONDS = 30;
   private static final AtomicInteger PENDING_WRITES = new AtomicInteger(0);
   private static final AtomicLong DROPPED_WRITES = new AtomicLong(0L);
-  private static final Semaphore WRITE_PERMITS = new Semaphore(MAX_CONCURRENT_RDF_WRITES, true);
   private static final Semaphore QUEUE_PERMITS = new Semaphore(MAX_PENDING_RDF_WRITES, true);
   private static final ConcurrentMap<UUID, CompletableFuture<Void>> KEYED_WRITE_TAILS =
       new ConcurrentHashMap<>();
+  private static volatile int maxConcurrentRdfWrites =
+      new AsyncOperationsConfiguration().getMaxConcurrentRdfWrites();
+  private static volatile Semaphore rdfWritePermits = new Semaphore(maxConcurrentRdfWrites, true);
 
   private static RdfRepository rdfRepository;
 
   private RdfUpdater() {}
 
   public static void initialize(RdfConfiguration config) {
+    initialize(config, new AsyncOperationsConfiguration());
+  }
+
+  public static void initialize(
+      RdfConfiguration config, AsyncOperationsConfiguration asyncOperationsConfiguration) {
+    maxConcurrentRdfWrites = asyncOperationsConfiguration.getMaxConcurrentRdfWrites();
+    rdfWritePermits = new Semaphore(maxConcurrentRdfWrites, true);
     if (config.getEnabled() != null && config.getEnabled()) {
       RdfRepository.initialize(config);
       rdfRepository = RdfRepository.getInstance();
@@ -280,11 +290,10 @@ public class RdfUpdater {
   private static void submitPendingWrite(
       final String description, final Set<UUID> writeKeys, final Runnable task) {
     final Set<UUID> orderedKeys = normalizeWriteKeys(writeKeys);
-    final Runnable boundedTask = withWritePermit(task);
     if (orderedKeys.isEmpty()) {
-      submitUnkeyedAsync(description, boundedTask);
+      submitUnkeyedAsync(description, task);
     } else {
-      submitKeyedAsync(description, orderedKeys, boundedTask);
+      submitKeyedAsync(description, orderedKeys, task);
     }
   }
 
@@ -294,7 +303,7 @@ public class RdfUpdater {
           .execute(
               () -> {
                 try {
-                  task.run();
+                  runRdfTask(description, task);
                 } finally {
                   decrementPendingWrites();
                 }
@@ -318,7 +327,10 @@ public class RdfUpdater {
       final CompletableFuture<Void> previousWrites =
           CompletableFuture.allOf(previous).handle((ignored, error) -> null);
       try {
-        next = previousWrites.thenRunAsync(task, AsyncService.getInstance().getExecutorService());
+        next =
+            previousWrites.thenRunAsync(
+                () -> runRdfTask(description, task),
+                AsyncService.getInstance().getExecutorService());
       } catch (RuntimeException e) {
         decrementPendingWrites();
         RdfProjectionHealth.markDegraded();
@@ -369,24 +381,38 @@ public class RdfUpdater {
     };
   }
 
-  private static Runnable withWritePermit(final Runnable task) {
-    return () -> {
-      WRITE_PERMITS.acquireUninterruptibly();
-      try {
-        task.run();
-      } finally {
-        WRITE_PERMITS.release();
-      }
-    };
-  }
-
   static int maxConcurrentWrites() {
-    return MAX_CONCURRENT_RDF_WRITES;
+    return maxConcurrentRdfWrites;
   }
 
   private static void decrementPendingWrites() {
     QUEUE_PERMITS.release();
     OntologyMetrics.recordRdfQueueDepth(PENDING_WRITES.decrementAndGet());
+  }
+
+  private static void runRdfTask(String description, Runnable task) {
+    Semaphore permits = rdfWritePermits;
+    boolean permitAcquired = false;
+    try {
+      permits.acquire();
+      permitAcquired = true;
+      AsyncService.getInstance()
+          .submitDatabaseTask(
+              DatabaseOperation.RDF_UPDATE,
+              description,
+              () -> {
+                task.run();
+                return null;
+              })
+          .join();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while waiting to write RDF", e);
+    } finally {
+      if (permitAcquired) {
+        permits.release();
+      }
+    }
   }
 
   private static Set<UUID> writeKeys(UUID... keys) {
