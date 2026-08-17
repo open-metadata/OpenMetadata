@@ -45,8 +45,8 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
