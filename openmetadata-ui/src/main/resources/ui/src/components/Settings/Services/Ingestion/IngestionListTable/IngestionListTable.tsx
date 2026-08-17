@@ -50,6 +50,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
+import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
@@ -62,6 +63,8 @@ import {
 } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
+
+const INGESTION_EMPTY_CARD_CLASS = 'tw:relative tw:py-8';
 
 function IngestionListTable({
   tableContainerClassName = '',
@@ -194,12 +197,37 @@ function IngestionListTable({
     });
   }, [ingestionData]);
 
-  const { isFetchingStatus, platform } = useMemo(
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation ?? ({} as AirflowStatusContextType),
     [airflowInformation]
   );
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
+
+  const defaultEmptyPlaceholder = useMemo(() => {
+    // The pipeline list is never fetched while the service is unreachable, so an empty table here
+    // means "could not load", not "none exist" — say which.
+    if (!isFetchingStatus && !isAirflowAvailable) {
+      return (
+        <ErrorPlaceHolderIngestion cardClassName={INGESTION_EMPTY_CARD_CLASS} />
+      );
+    }
+
+    return getErrorPlaceHolder(
+      ingestionData.length,
+      isPlatFormDisabled,
+      theme,
+      pipelineType,
+      INGESTION_EMPTY_CARD_CLASS
+    );
+  }, [
+    ingestionData.length,
+    isAirflowAvailable,
+    isFetchingStatus,
+    isPlatFormDisabled,
+    pipelineType,
+    theme,
+  ]);
 
   const handleDeleteConfirm = useCallback(async () => {
     await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
@@ -420,15 +448,7 @@ function IngestionListTable({
           dataSource={data}
           loading={isLoading}
           locale={{
-            emptyText:
-              emptyPlaceholder ??
-              getErrorPlaceHolder(
-                ingestionData.length,
-                isPlatFormDisabled,
-                theme,
-                pipelineType,
-                'tw:relative tw:py-8'
-              ),
+            emptyText: emptyPlaceholder ?? defaultEmptyPlaceholder,
           }}
           pagination={false}
           rowKey="fullyQualifiedName"

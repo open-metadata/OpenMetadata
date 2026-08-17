@@ -15,9 +15,18 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  expectNoErrorToast,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
-import { getFailedRowsData, visitDataQualityTab } from '../../utils/testCases';
+import {
+  getFailedRowsData,
+  verifyTestCaseLastRunBanner,
+  visitDataQualityTab,
+} from '../../utils/testCases';
 
 // use the admin user to login
 test.use({
@@ -222,6 +231,7 @@ test.describe('Failed rows sample fetch gating', () => {
         await page
           .locator('[data-testid="test-case-result-tab-container"]')
           .waitFor({ state: 'visible' });
+        await verifyTestCaseLastRunBanner(page, 'success');
 
         await page.unroute('**/failedRowsSample');
         expect(sampleRequested).toBe(false);
@@ -240,10 +250,11 @@ test.describe('Failed rows sample fetch gating', () => {
         await page
           .locator('[data-testid="test-case-result-tab-container"]')
           .waitFor({ state: 'visible' });
+        await verifyTestCaseLastRunBanner(page, 'failed');
 
         // The 404 is the expected "no sample stored" empty state — it must not
         // surface as an error toast.
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        await expectNoErrorToast(page);
       });
     }
   );

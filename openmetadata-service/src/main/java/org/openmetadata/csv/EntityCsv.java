@@ -108,6 +108,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -1289,9 +1290,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
@@ -1331,9 +1330,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
@@ -1368,10 +1365,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return;
     }
     List<String> eventsToInsert = new ArrayList<>(pendingChangeEvents);
-    pendingChangeEvents.clear(); // Clear immediately to avoid race condition
+    pendingChangeEvents.clear();
     AsyncService.getInstance()
-        .getExecutorService()
-        .submit(
+        .executeDatabaseTask(
+            DatabaseOperation.CSV_CHANGE_EVENT,
+            entityType + ":" + eventsToInsert.size(),
             () -> {
               try {
                 Entity.getCollectionDAO().changeEventDAO().insertBatch(eventsToInsert);
@@ -1574,9 +1572,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
+        createChangeEventForUserAndUpdateInES(response, importedBy);
       } catch (Exception ex) {
         pendingCsvResults.put(csvRecord, ex.getMessage());
         importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);

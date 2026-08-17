@@ -20,15 +20,9 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -70,13 +64,14 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
-import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
@@ -516,20 +511,62 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    postDelete(entity, hardDelete, false);
+  }
+
+  private boolean postDelete(
+      IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    // Delete deployed pipeline in the Pipeline Service Client
+    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    deletePipelineStatuses(entity);
+    return wasRunnerCleanupSkipped;
+  }
+
+  protected boolean deleteDeployedPipeline(
+      IngestionPipeline entity, boolean allowUnavailableRunner) {
+    boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
-      pipelineServiceClient.deletePipeline(entity);
+      try {
+        pipelineServiceClient.deletePipeline(entity);
+      } catch (IngestionRunnerUnavailableException exception) {
+        if (allowUnavailableRunner) {
+          wasRunnerCleanupSkipped = true;
+        } else {
+          throw exception;
+        }
+      }
     } else {
       LOG.debug(
           "Skipping pipeline service delete for '{}' because pipeline service client is not configured.",
           entity.getFullyQualifiedName());
     }
-    // Clean pipeline status
+    return wasRunnerCleanupSkipped;
+  }
+
+  private void deletePipelineStatuses(IngestionPipeline entity) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(entity.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
   }
+
+  @Transaction
+  public ForcedDeleteResult forceDelete(String deletedBy, UUID id) {
+    RestUtil.DeleteResponse<IngestionPipeline> response =
+        deleteInternal(deletedBy, id, false, true);
+    boolean wasRunnerCleanupSkipped = postDelete(response.entity(), true, true);
+    deleteFromSearch(response.entity(), true);
+    if (wasRunnerCleanupSkipped) {
+      LOG.warn(
+          "Force delete skipped ingestion runner cleanup [user={}, pipelineFqn={}, pipelineId={}]",
+          deletedBy,
+          response.entity().getFullyQualifiedName(),
+          id);
+    }
+    return new ForcedDeleteResult(response, wasRunnerCleanupSkipped);
+  }
+
+  public record ForcedDeleteResult(
+      RestUtil.DeleteResponse<IngestionPipeline> response, boolean wasRunnerCleanupSkipped) {}
 
   @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
@@ -586,8 +623,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public RestUtil.PutResponse<?> addPipelineStatus(
       UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
-    // Validate the request content
-    IngestionPipeline ingestionPipeline = getByName(uriInfo, fqn, getFields("service"));
+    // updateEntityIndex below can rebuild the whole search document from this entity, so load
+    // every field it indexes; anything missing here gets wiped from the index on each run.
+    IngestionPipeline ingestionPipeline =
+        getByName(uriInfo, fqn, getFields("service,owners,domains,followers"));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -1075,13 +1114,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   private Map<String, Object> getLogsFromPipelineService(String pipelineFQN, String afterCursor) {
-    // Fall back to traditional pipeline service logs (Airflow/Argo)
+    // Fall back to traditional pipeline service logs (Airflow/Argo). Loads the service and reads
+    // the task-keyed content for the same reasons as DefaultLogStorage.getLogs.
     IngestionPipeline pipeline =
-        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "", Include.ALL);
+        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
     Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, afterCursor);
 
     Map<String, Object> result = new HashMap<>();
-    result.put("logs", logs.getOrDefault("logs", ""));
+    result.put("logs", DefaultLogStorage.extractLogContent(logs));
     result.put("after", logs.get("after"));
     result.put("total", logs.getOrDefault("total", "0"));
     return result;
@@ -1136,113 +1176,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       metrics.put("http2_percentage", (http2RequestCount * 100) / total);
     }
     return metrics;
-  }
-
-  public Response streamLogs(String pipelineFQN, UUID runId) {
-    try {
-      if (isS3LogStorageEnabled()) {
-        // S3 storage enabled - handle multi-server read scenario
-        // For S3, we need to poll from S3 directly since logs might be on another server
-        org.openmetadata.service.logstorage.S3LogStorage s3Storage =
-            (org.openmetadata.service.logstorage.S3LogStorage) logStorage;
-
-        return Response.ok()
-            .type("text/event-stream")
-            .entity(
-                (StreamingOutput)
-                    output -> {
-                      try {
-                        // Send SSE headers
-                        output.write("retry: 1000\n\n".getBytes());
-                        output.flush();
-
-                        // Create listener for live logs
-                        LogStreamListener listener =
-                            logLine -> {
-                              try {
-                                String event =
-                                    String.format(
-                                        "data: %s\n\n", logLine.replace("\n", "\ndata: "));
-                                output.write(event.getBytes(StandardCharsets.UTF_8));
-                                output.flush();
-                              } catch (IOException e) {
-                                LOG.debug("Client disconnected for {}/{}", pipelineFQN, runId);
-                                throw new RuntimeException(e);
-                              }
-                            };
-
-                        // Send recent logs first (from memory cache)
-                        List<String> recentLogs = s3Storage.getRecentLogs(pipelineFQN, runId, 100);
-                        for (String line : recentLogs) {
-                          output.write(
-                              String.format("data: %s\n\n", line).getBytes(StandardCharsets.UTF_8));
-                        }
-                        output.flush();
-
-                        // Then stream from S3 for complete history
-                        InputStream logStream = logStorage.getLogInputStream(pipelineFQN, runId);
-                        try (BufferedReader reader =
-                            new BufferedReader(
-                                new InputStreamReader(logStream, StandardCharsets.UTF_8))) {
-                          String line;
-                          int skipLines = recentLogs.size(); // Skip lines we already sent
-                          while ((line = reader.readLine()) != null) {
-                            if (skipLines > 0) {
-                              skipLines--;
-                              continue;
-                            }
-                            output.write(
-                                ("data: " + line + "\n\n").getBytes(StandardCharsets.UTF_8));
-                            output.flush();
-                          }
-                        }
-
-                        // Register listener for new logs
-                        s3Storage.registerLogListener(pipelineFQN, runId, listener);
-
-                        try {
-                          // Keep connection alive with periodic heartbeats
-                          while (!Thread.currentThread().isInterrupted()) {
-                            Thread.sleep(30000); // 30 second heartbeat
-                            output.write(": heartbeat\n\n".getBytes());
-                            output.flush();
-                          }
-                        } catch (InterruptedException e) {
-                          Thread.currentThread().interrupt();
-                        } finally {
-                          // Cleanup listener
-                          s3Storage.unregisterLogListener(pipelineFQN, runId, listener);
-                        }
-                      } catch (Exception e) {
-                        LOG.error("Error streaming logs", e);
-                      }
-                    })
-            .build();
-      } else if (isLogStorageEnabled()) {
-        // Default storage - fallback to traditional logs
-        return getTraditionalLogs(pipelineFQN, runId);
-      } else {
-        // No log storage configured
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity("Log storage is not configured")
-            .build();
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to stream logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
-      return Response.serverError().entity(e.getMessage()).build();
-    }
-  }
-
-  private Response getTraditionalLogs(String pipelineFQN, UUID runId) {
-    // Fallback to traditional pipeline service logs
-    try {
-      IngestionPipeline pipeline =
-          Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "", Include.ALL);
-      Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, null);
-      return Response.ok(logs).build();
-    } catch (Exception e) {
-      return Response.serverError().entity(e.getMessage()).build();
-    }
   }
 
   private List<PipelineStatus> getQueuedPipelineStatus(String pipelineFQN, int limit) {
