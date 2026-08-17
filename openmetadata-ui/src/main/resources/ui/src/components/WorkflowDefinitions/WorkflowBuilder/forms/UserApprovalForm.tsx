@@ -44,6 +44,25 @@ interface UserApprovalFormProps {
   onDelete?: (nodeId: string) => void;
 }
 
+const DEFAULT_USER_APPROVAL_TRANSITIONS = [
+  {
+    id: 'approve',
+    label: 'Approve',
+    targetStageId: 'approved',
+    targetTaskStatus: 'Approved',
+    resolutionType: 'Approved',
+    requiresComment: false,
+  },
+  {
+    id: 'reject',
+    label: 'Reject',
+    targetStageId: 'rejected',
+    targetTaskStatus: 'Rejected',
+    resolutionType: 'Rejected',
+    requiresComment: false,
+  },
+];
+
 export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   node,
   onSave,
@@ -80,7 +99,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
       setAddOwners(assignees.addOwners ?? false);
       setEmptyAssigneeStrategy(assignees.emptyAssigneeStrategy ?? 'none');
       setCandidates(
-        Array.isArray(assignees.candidates) ? assignees.candidates : []
+        Array.isArray(assignees.candidates) ? assignees.candidates : [],
       );
     }
   }, [node]);
@@ -92,6 +111,20 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
       fullyQualifiedName: c.fullyQualifiedName,
       name: c.name,
     }));
+
+    // TaskResource.validateTransition rejects /resolve calls whose transitionId is not
+    // declared here, so a userApprovalTask saved without transitionMetadata is un-resolvable.
+    // Emit the default approve/reject pair whenever the node config does not already carry a
+    // non-empty list — preserves any hand-tuned metadata coming from a JSON-imported workflow.
+    const existingTransitionMetadata = (
+      node?.data?.config as { transitionMetadata?: unknown[] } | undefined
+    )?.transitionMetadata;
+    const transitionMetadata =
+      Array.isArray(existingTransitionMetadata) &&
+      existingTransitionMetadata.length > 0
+        ? existingTransitionMetadata
+        : DEFAULT_USER_APPROVAL_TRANSITIONS;
+
     const config = createNodeConfig({
       displayName,
       description,
@@ -106,6 +139,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
           emptyAssigneeStrategy,
           candidates: candidatesPayload,
         },
+        transitionMetadata,
       },
     });
     onSave(node.id, config);
@@ -125,7 +159,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
 
   const getApproversButtonLabel = (
     list: EntityReference[],
-    translate: (key: string, opts?: { count?: number }) => string
+    translate: (key: string, opts?: { count?: number }) => string,
   ): string => {
     if (list.length === 0) {
       return '';

@@ -2150,6 +2150,7 @@ public class MigrationUtil {
             if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
               addEntityStatusToTriggerExclude(workflowDefinition);
             }
+            backfillUserApprovalTransitionMetadata(workflowDefinition);
             workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
@@ -2167,6 +2168,68 @@ public class MigrationUtil {
       }
       return redeployed;
     }
+
+    /**
+     * Populate a default {@code transitionMetadata} of {@code [approve, reject]} on every
+     * {@code userApprovalTask} node whose config is missing the field or carries an empty array.
+     * 1.13 workflow definitions never emitted {@code transitionMetadata} (the field did not exist),
+     * and the pre-fix 2.x UI builder saved userApprovalTask nodes without it as well. Once
+     * {@code TaskResource.validateTransition} requires the resolve {@code transitionId} to match a
+     * declared transition, any task created from those definitions is un-resolvable.
+     * Backfilling the metadata during redeploy fixes the data at rest so future task creations
+     * project the correct {@code availableTransitions} onto the task row.
+     */
+    private void backfillUserApprovalTransitionMetadata(WorkflowDefinition workflowDefinition) {
+      List<WorkflowNodeDefinitionInterface> nodes = workflowDefinition.getNodes();
+      if (nullOrEmpty(nodes)) {
+        return;
+      }
+      for (WorkflowNodeDefinitionInterface node : nodes) {
+        if (node == null || !USER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())) {
+          continue;
+        }
+        Object rawConfig = node.getConfig();
+        if (rawConfig == null) {
+          continue;
+        }
+        Map<String, Object> config = JsonUtils.convertValue(rawConfig, Map.class);
+        if (config == null) {
+          continue;
+        }
+        Object existing = config.get(TRANSITION_METADATA_FIELD);
+        if (existing instanceof List<?> list && !list.isEmpty()) {
+          continue;
+        }
+        config.put(TRANSITION_METADATA_FIELD, defaultUserApprovalTransitionMetadata());
+        node.setConfig(config);
+        LOG.info(
+            "Backfilled default transitionMetadata on userApprovalTask '{}' in workflow '{}'",
+            node.getName(),
+            workflowDefinition.getName());
+      }
+    }
+
+    private List<Map<String, Object>> defaultUserApprovalTransitionMetadata() {
+      Map<String, Object> approve = new LinkedHashMap<>();
+      approve.put("id", "approve");
+      approve.put("label", "Approve");
+      approve.put("targetStageId", "approved");
+      approve.put("targetTaskStatus", TaskEntityStatus.Approved.value());
+      approve.put("resolutionType", TaskResolutionType.Approved.value());
+      approve.put("requiresComment", false);
+
+      Map<String, Object> reject = new LinkedHashMap<>();
+      reject.put("id", "reject");
+      reject.put("label", "Reject");
+      reject.put("targetStageId", "rejected");
+      reject.put("targetTaskStatus", TaskEntityStatus.Rejected.value());
+      reject.put("resolutionType", TaskResolutionType.Rejected.value());
+      reject.put("requiresComment", false);
+
+      return List.of(approve, reject);
+    }
+
+    private static final String TRANSITION_METADATA_FIELD = "transitionMetadata";
 
     private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
       if (workflowDefinition.getTrigger()
