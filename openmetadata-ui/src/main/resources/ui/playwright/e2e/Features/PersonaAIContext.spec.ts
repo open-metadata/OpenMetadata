@@ -1666,9 +1666,14 @@ test.describe.serial('Persona AI Context', () => {
         .fill('alpha');
     });
 
-    await test.step('switch connector to OR and fill second condition', async () => {
-      await drawer.getByRole('button', { name: 'Or', exact: true }).click();
-      // Wait for the second row to appear before interacting with it.
+    await test.step('add second condition, fill it, then switch connector to OR', async () => {
+      // Add the second condition via the same custom button so both rules
+      // land in the root group (addRule([]) targets the root path).
+      // Switching to OR AFTER both conditions are filled avoids the RAQB
+      // structural change that clicking "Or" first triggers — which prepends a
+      // nested OR group and causes .last() to target the original alpha rule
+      // instead of the new empty slot, overwriting alpha with beta.
+      await adminPage.getByTestId('add-context-condition').click();
       await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
         2
       );
@@ -1683,6 +1688,11 @@ test.describe.serial('Persona AI Context', () => {
         .locator('.rule--widget--TEXT input[type="text"]')
         .last()
         .fill('beta');
+
+      // Only now change the root conjunction to OR — this just flips the
+      // conjunction on the existing two-rule group without any structural
+      // change, so both alpha and beta remain in the serialized query.
+      await drawer.getByRole('button', { name: 'Or', exact: true }).click();
     });
 
     const createRuleRequest = adminPage.waitForRequest(
