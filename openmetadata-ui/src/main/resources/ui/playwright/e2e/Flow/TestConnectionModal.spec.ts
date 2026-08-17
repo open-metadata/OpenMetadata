@@ -318,6 +318,8 @@ test.describe(
               name: 'CheckAccess',
               passed: false,
               mandatory: true,
+              message:
+                'Failed to connect to mysql, please validate the credentials',
               errorLog: 'Connection refused: localhost:3306',
             },
           ],
@@ -329,9 +331,19 @@ test.describe(
 
       await page.getByTestId('test-connection-btn').click();
 
-      await expect(page.getByTestId('connection-remediation-card')).toBeVisible(
-        { timeout: 30000 }
-      );
+      const remediationCard = page.getByTestId('connection-remediation-card');
+
+      await expect(remediationCard).toBeVisible({ timeout: 30000 });
+
+      // The definition's errorMessage is the headline; the raw driver output sits below it.
+      await expect(
+        remediationCard.getByText(
+          'Failed to connect to mysql, please validate the credentials'
+        )
+      ).toBeVisible();
+      await expect(
+        remediationCard.getByText('Connection refused: localhost:3306')
+      ).toBeVisible();
     });
 
     test('Edit Connection click dismisses the modal', async ({ page }) => {

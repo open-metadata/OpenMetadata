@@ -716,6 +716,122 @@ describe('TestConnectionModal', () => {
     ).toBeInTheDocument();
   });
 
+  it('should headline the remediation card with the step message, not the raw errorLog', () => {
+    const stackTrace = [
+      '(teradatasql.OperationalError) [Version 20.0.0.65] [Error 8017] The UserId, Password or Account is invalid.',
+      ' at gosqldriver/teradatasql.formatError ErrorUtil.go:84',
+    ].join('\n');
+
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: false,
+            mandatory: true,
+            message:
+              'Failed to connect to Teradata, please validate the credentials',
+            errorLog: stackTrace,
+          },
+        ]}
+      />
+    );
+
+    const card = screen.getByTestId('connection-remediation-card');
+
+    expect(
+      within(card).getByText(
+        'Failed to connect to Teradata, please validate the credentials'
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(card).queryByText('message.connection-gate-failed')
+    ).not.toBeInTheDocument();
+    expect(card).toHaveTextContent('teradatasql.OperationalError');
+  });
+
+  it('should prefer the diagnosis title over the step message in the remediation card', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: false,
+            mandatory: true,
+            message: 'Failed to connect, please validate the credentials',
+            errorLog: 'Auth failure',
+            diagnosis: {
+              title: 'Invalid credentials',
+              remediation: 'Check the username and password',
+            },
+          },
+        ]}
+      />
+    );
+
+    const card = screen.getByTestId('connection-remediation-card');
+
+    expect(within(card).getByText('Invalid credentials')).toBeInTheDocument();
+    expect(
+      within(card).getByText('Check the username and password')
+    ).toBeInTheDocument();
+    expect(card).not.toHaveTextContent('Auth failure');
+  });
+
+  it('should not render a failed step message in the success colour', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: false,
+            mandatory: true,
+            message:
+              'Failed to connect to Teradata, please validate the credentials',
+            errorLog: 'teradatasql.OperationalError',
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const rawLog = screen.getByTestId('raw-connection-log');
+    const successSpans = Array.from(
+      rawLog.querySelectorAll('.tw\\:text-utility-success-300')
+    );
+
+    expect(
+      successSpans.find((el) => el.textContent?.includes('Failed to connect'))
+    ).toBeUndefined();
+
+    const advisorySpans = Array.from(
+      rawLog.querySelectorAll('.tw\\:text-utility-warning-300')
+    );
+
+    expect(
+      advisorySpans.find((el) => el.textContent?.includes('Failed to connect'))
+    ).toBeDefined();
+  });
+
   it('should not render the remediation card when test succeeds', () => {
     render(
       <TestConnectionModal
