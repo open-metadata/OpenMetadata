@@ -51,7 +51,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   @Override
   public boolean indexExists(String indexName) {
     if (!isClientAvailable) {
-      throw new IllegalStateException("ElasticSearch client is not available");
+      LOG.error("ElasticSearch client is not available. Cannot check index exists.");
+      return false;
     }
     try {
       ElasticsearchIndicesClient indicesClient = client.indices();
@@ -60,7 +61,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.info("index {} exist: {}", indexName, response.value());
       return response.value();
     } catch (Exception e) {
-      throw new IllegalStateException("Failed to check if index " + indexName + " exists", e);
+      LOG.error("Failed to check if index {} exists", indexName, e);
+      return false;
     }
   }
 
@@ -465,7 +467,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   public Set<String> getIndicesByAlias(String aliasName) {
     Set<String> indices = new HashSet<>();
     if (!isClientAvailable) {
-      throw new IllegalStateException("ElasticSearch client is not available");
+      LOG.error("ElasticSearch client is not available. Cannot get indices by alias.");
+      return indices;
     }
     try {
 
@@ -487,11 +490,14 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         return indices;
       }
 
-      throw new IllegalStateException(
-          "Failed to get indices for Elasticsearch alias " + aliasName, esEx);
+      // Other errors should not be masked
+      LOG.error(
+          "Unexpected ElasticsearchException while getting alias {}: {}",
+          aliasName,
+          esEx.getMessage(),
+          esEx);
     } catch (Exception e) {
-      throw new IllegalStateException(
-          "Failed to get indices for Elasticsearch alias " + aliasName, e);
+      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
     }
     return indices;
   }
@@ -534,6 +540,9 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     List<IndexStats> result = new ArrayList<>();
     String statsPattern = buildScopedPattern(null);
     var statsResponse = client.indices().stats(s -> s.index(statsPattern));
+    // Fetch aliases once for the inventory instead of leasing one connection per index.
+    var aliasResponse = client.indices().getAlias(g -> g.index(statsPattern));
+    var aliasesByIndex = aliasResponse.aliases();
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();
@@ -569,7 +578,9 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         }
       }
       String health = stats.health() != null ? stats.health().name().toUpperCase() : "UNKNOWN";
-      Set<String> aliases = getAliases(indexName);
+      var aliasMetadata = aliasesByIndex.get(indexName);
+      Set<String> aliases =
+          aliasMetadata == null ? Set.of() : new HashSet<>(aliasMetadata.aliases().keySet());
       result.add(
           new IndexStats(
               indexName,

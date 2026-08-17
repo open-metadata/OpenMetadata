@@ -74,9 +74,9 @@
       "default": 30
     },
     "maxConnPerRoute": {
-      "description": "Maximum connections per host/route in the connection pool",
+      "description": "Maximum connections per host/route in the connection pool. Keep this below maxConnTotal for multi-host clusters so one slow host cannot consume the entire pool; single-host deployments can raise it up to maxConnTotal.",
       "type": "integer",
-      "default": 30
+      "default": 10
     },
     "batchSize": {
       "description": "Batch Size for Requests",

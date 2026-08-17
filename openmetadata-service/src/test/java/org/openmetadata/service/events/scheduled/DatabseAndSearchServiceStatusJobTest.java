@@ -2,7 +2,6 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -58,7 +57,7 @@ class DatabseAndSearchServiceStatusJobTest {
       new DatabseAndSearchServiceStatusJob().execute(context);
     }
 
-    verify(searchClient, never()).listIndicesByPrefix(anyString());
+    verify(searchClient, never()).getAllIndexStats();
     verify(searchRepository, never()).getEntityIndexMap();
     assertEquals(
         1.0,

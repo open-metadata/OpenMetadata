@@ -14,7 +14,7 @@ class SearchClientConfigurationTest {
 
     assertEquals(5, config.getConnectionRequestTimeoutSecs());
     assertEquals(30, config.getMaxConnTotal());
-    assertEquals(30, config.getMaxConnPerRoute());
+    assertEquals(10, config.getMaxConnPerRoute());
   }
 
   @Test

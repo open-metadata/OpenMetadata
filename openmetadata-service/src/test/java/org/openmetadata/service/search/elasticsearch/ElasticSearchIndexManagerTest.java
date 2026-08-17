@@ -8,11 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -110,11 +109,13 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
-  void testIndexExists_PropagatesConnectionFailure() throws IOException {
+  void testIndexExists_ReturnsFalseOnException() throws IOException {
     when(indicesClient.exists(any(ExistsRequest.class)))
         .thenThrow(new IOException("Connection error"));
 
-    assertThrows(IllegalStateException.class, () -> indexManager.indexExists(TEST_INDEX));
+    boolean result = indexManager.indexExists(TEST_INDEX);
+
+    assertFalse(result);
     verify(indicesClient).exists(any(ExistsRequest.class));
   }
 
@@ -296,7 +297,7 @@ class ElasticSearchIndexManagerTest {
         new ElasticSearchIndexManager(null, CLUSTER_ALIAS);
 
     assertNotNull(managerWithNullClient);
-    assertThrows(IllegalStateException.class, () -> managerWithNullClient.indexExists(TEST_INDEX));
+    assertFalse(managerWithNullClient.indexExists(TEST_INDEX));
   }
 
   @Test
@@ -506,14 +507,16 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
-  void testGetIndicesByAlias_PropagatesConnectionFailure() throws IOException {
+  void testGetIndicesByAlias_HandlesException() throws IOException {
     when(indicesClient.existsAlias(any(java.util.function.Function.class)))
         .thenReturn(booleanResponse);
     when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class)))
         .thenThrow(new IOException("Get indices by alias failed"));
 
-    assertThrows(IllegalStateException.class, () -> indexManager.getIndicesByAlias(TEST_ALIAS));
+    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
+
+    assertTrue(result.isEmpty());
     verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
@@ -548,7 +551,7 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
-  void testGetIndicesByAlias_PropagatesUnexpectedElasticsearchException() throws IOException {
+  void testGetIndicesByAlias_HandlesUnexpectedElasticsearchException() throws IOException {
     es.co.elastic.clients.elasticsearch._types.ElasticsearchException unexpectedException =
         new es.co.elastic.clients.elasticsearch._types.ElasticsearchException(
             "Internal error", buildErrorResponse(500, "internal_server_error"));
@@ -557,7 +560,9 @@ class ElasticSearchIndexManagerTest {
     when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenThrow(unexpectedException);
 
-    assertThrows(IllegalStateException.class, () -> indexManager.getIndicesByAlias(TEST_ALIAS));
+    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
+
+    assertTrue(result.isEmpty());
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
 
@@ -676,8 +681,9 @@ class ElasticSearchIndexManagerTest {
     ElasticSearchIndexManager managerWithNullClient =
         new ElasticSearchIndexManager(null, CLUSTER_ALIAS);
 
-    assertThrows(
-        IllegalStateException.class, () -> managerWithNullClient.getIndicesByAlias(TEST_ALIAS));
+    Set<String> result = managerWithNullClient.getIndicesByAlias(TEST_ALIAS);
+
+    assertTrue(result.isEmpty());
     verifyNoInteractions(indicesClient);
   }
 
@@ -785,9 +791,8 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
-  void testGetAllIndexStats_AggregatesVisibleIndicesAndHealth() throws IOException {
-    ElasticSearchIndexManager spyManager =
-        spy(new ElasticSearchIndexManager(elasticsearchClient, CLUSTER_ALIAS));
+  void testGetAllIndexStats_AggregatesVisibleIndicesAndHealthWithOneAliasRequest()
+      throws IOException {
     IndicesStats visibleStats = mock(IndicesStats.class);
     IndicesStats statsWithoutPrimaries = mock(IndicesStats.class);
     IndexStats primaryStats = mock(IndexStats.class);
@@ -800,6 +805,8 @@ class ElasticSearchIndexManagerTest {
 
     when(indicesClient.stats(any(java.util.function.Function.class)))
         .thenReturn(indicesStatsResponse);
+    when(indicesClient.getAlias(any(java.util.function.Function.class)))
+        .thenReturn(getAliasResponse);
     when(indicesStatsResponse.indices())
         .thenReturn(
             Map.of(
@@ -809,6 +816,13 @@ class ElasticSearchIndexManagerTest {
                 visibleStats,
                 "entity_search_index",
                 statsWithoutPrimaries));
+    IndexAliases tableAliasMetadata = mock(IndexAliases.class);
+    IndexAliases entityAliasMetadata = mock(IndexAliases.class);
+    when(getAliasResponse.aliases())
+        .thenReturn(
+            Map.of(TEST_INDEX, tableAliasMetadata, "entity_search_index", entityAliasMetadata));
+    when(tableAliasMetadata.aliases()).thenReturn(Map.of("table", mock(AliasDefinition.class)));
+    when(entityAliasMetadata.aliases()).thenReturn(Map.of("entity", mock(AliasDefinition.class)));
     when(visibleStats.primaries()).thenReturn(primaryStats);
     when(primaryStats.docs()).thenReturn(docStats);
     when(docStats.count()).thenReturn(42L);
@@ -823,10 +837,7 @@ class ElasticSearchIndexManagerTest {
     when(statsWithoutPrimaries.health()).thenReturn(null);
     when(statsWithoutPrimaries.primaries()).thenReturn(null);
     when(statsWithoutPrimaries.shards()).thenReturn(null);
-    doReturn(Set.of("table")).when(spyManager).getAliases(TEST_INDEX);
-    doReturn(Set.of("entity")).when(spyManager).getAliases("entity_search_index");
-
-    var result = spyManager.getAllIndexStats();
+    var result = indexManager.getAllIndexStats();
     var testIndexStats =
         result.stream().filter(stat -> TEST_INDEX.equals(stat.name())).findFirst().orElseThrow();
     var entityIndexStats =
@@ -848,9 +859,17 @@ class ElasticSearchIndexManagerTest {
     assertEquals(0L, entityIndexStats.sizeInBytes());
     assertEquals("UNKNOWN", entityIndexStats.health());
     assertEquals(Set.of("entity"), entityIndexStats.aliases());
-    verify(spyManager).getAliases(TEST_INDEX);
-    verify(spyManager).getAliases("entity_search_index");
-    verify(spyManager, never()).getAliases(".kibana");
+    verify(indicesClient, times(1)).getAlias(any(java.util.function.Function.class));
+  }
+
+  @Test
+  void testGetAllIndexStats_PropagatesBulkAliasFailure() throws IOException {
+    when(indicesClient.stats(any(java.util.function.Function.class)))
+        .thenReturn(indicesStatsResponse);
+    when(indicesClient.getAlias(any(java.util.function.Function.class)))
+        .thenThrow(new IOException("alias inventory failed"));
+
+    assertThrows(IOException.class, indexManager::getAllIndexStats);
   }
 
   private es.co.elastic.clients.elasticsearch._types.ErrorResponse buildErrorResponse(
