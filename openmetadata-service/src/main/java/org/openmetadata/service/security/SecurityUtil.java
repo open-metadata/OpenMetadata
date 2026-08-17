@@ -41,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -246,8 +247,11 @@ public final class SecurityUtil {
         .orElseThrow(
             () ->
                 new AuthenticationException(
-                    "Invalid JWT token, none of the following claims are present "
-                        + jwtPrincipalClaimsOrder));
+                    String.format(
+                        "Invalid JWT token, none of the configured principal claims %s are present"
+                            + " -- the token carries %s. Set jwtPrincipalClaims to a claim this"
+                            + " identity provider issues.",
+                        jwtPrincipalClaimsOrder, new TreeSet<>(claims.keySet()))));
   }
 
   /**

@@ -381,7 +381,30 @@ class SecurityUtilTest {
             AuthenticationException.class,
             () -> SecurityUtil.getFirstMatchJwtClaim(List.of("email"), Map.of("sub", "1234")));
 
-    assertTrue(exception.getMessage().contains("none of the following claims are present"));
+    assertTrue(exception.getMessage().contains("none of the configured principal claims"));
+  }
+
+  @Test
+  void testGetFirstMatchJwtClaimNamesTheClaimsTheTokenActuallyCarries() {
+    // Naming only what was expected leaves an admin guessing what to configure instead: the token's
+    // own claim names are what turn this into a one-line jwtPrincipalClaims change. Names only --
+    // claim values identify people and must not reach a log.
+    AuthenticationException exception =
+        assertThrows(
+            AuthenticationException.class,
+            () ->
+                SecurityUtil.getFirstMatchJwtClaim(
+                    List.of("email"),
+                    Map.of(
+                        "preferred_username", stringClaim("alice@example.com"),
+                        "oid", stringClaim("6bf1d0f6-opaque"))));
+
+    String message = exception.getMessage();
+    assertTrue(message.contains("[email]"), "the configured claims must be named");
+    assertTrue(message.contains("preferred_username"), "the token's own claims must be named");
+    assertTrue(message.contains("oid"), "the token's own claims must be named");
+    assertFalse(message.contains("alice@example.com"), "claim values must never be disclosed");
+    assertFalse(message.contains("6bf1d0f6-opaque"), "claim values must never be disclosed");
   }
 
   @Test
