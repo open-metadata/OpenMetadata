@@ -40,7 +40,7 @@ const tier = new TagClass({
 const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
-const user = new UserClass();
+let user: UserClass;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -51,6 +51,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tier.create(apiContext);
   // Create second tier but do NOT assign it to any asset
   await tierWithoutAsset.create(apiContext);
+  user = new UserClass();
   await user.create(apiContext);
 
   await table.patch({
