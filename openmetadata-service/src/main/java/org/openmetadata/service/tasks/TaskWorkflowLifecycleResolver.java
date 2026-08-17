@@ -469,40 +469,49 @@ public final class TaskWorkflowLifecycleResolver {
    * configured workflow can still override the defaults; falls back to
    * {@link #DEFAULT_USER_APPROVAL_TRANSITIONS} when the task carries no {@code workflowStageId}
    * (as happens on tasks created before Task V2 populated the stage id, and on tasks whose
-   * userApprovalTask node was saved with an empty {@code transitionMetadata}).
+   * userApprovalTask node was saved with an empty {@code transitionMetadata}). The
+   * {@link WorkflowDefinition} is loaded once and shared across both checks — this method runs on
+   * every {@code /resolve} for at-rest legacy tasks with empty availableTransitions, and the
+   * definition load hits the repository + JSON deserialization.
    */
   private static List<TaskAvailableTransition> resolveDefaultUserApprovalTransitions(Task task) {
     List<TaskAvailableTransition> transitions = List.of();
-    if (!nullOrEmpty(task.getWorkflowStageId())) {
-      transitions =
-          resolveTransitionsForStage(task.getWorkflowDefinitionId(), task.getWorkflowStageId());
+    WorkflowDefinition workflowDefinition = loadWorkflowDefinition(task.getWorkflowDefinitionId());
+    if (workflowDefinition == null) {
+      return transitions;
     }
-    if (transitions.isEmpty() && workflowHasUserApprovalTask(task.getWorkflowDefinitionId())) {
+    if (!nullOrEmpty(task.getWorkflowStageId())) {
+      transitions = resolveTransitionsForStage(workflowDefinition, task.getWorkflowStageId());
+    }
+    if (transitions.isEmpty() && hasUserApprovalTaskNode(workflowDefinition)) {
       transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
     }
     return transitions;
   }
 
-  private static boolean workflowHasUserApprovalTask(UUID workflowDefinitionId) {
-    boolean present = false;
+  private static WorkflowDefinition loadWorkflowDefinition(UUID workflowDefinitionId) {
+    WorkflowDefinition workflowDefinition = null;
     if (workflowDefinitionId != null) {
       try {
-        WorkflowDefinition workflowDefinition =
+        workflowDefinition =
             Entity.getEntity(
                 Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "nodes", Include.NON_DELETED);
-        if (workflowDefinition != null && !nullOrEmpty(workflowDefinition.getNodes())) {
-          for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
-            if (node != null && USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())) {
-              present = true;
-              break;
-            }
-          }
-        }
       } catch (Exception e) {
         LOG.debug(
-            "Failed to inspect workflow definition '{}' for userApprovalTask nodes: {}",
-            workflowDefinitionId,
-            e.getMessage());
+            "Failed to load workflow definition '{}': {}", workflowDefinitionId, e.getMessage());
+      }
+    }
+    return workflowDefinition;
+  }
+
+  private static boolean hasUserApprovalTaskNode(WorkflowDefinition workflowDefinition) {
+    boolean present = false;
+    if (workflowDefinition != null && !nullOrEmpty(workflowDefinition.getNodes())) {
+      for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+        if (node != null && USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())) {
+          present = true;
+          break;
+        }
       }
     }
     return present;
