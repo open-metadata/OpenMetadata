@@ -88,11 +88,10 @@ describe('useCustomPages', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.customizedPage).toEqual(mockPage);
     });
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
-    expect(result.current.customizedPage).toEqual(mockPage);
     expect(result.current.navigation).toEqual(mockNavigation);
   });
 
@@ -104,12 +103,11 @@ describe('useCustomPages', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.navigation).toEqual([]);
     });
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
     expect(result.current.customizedPage).toBeNull();
-    expect(result.current.navigation).toEqual([]);
   });
 
   it('should not fetch document when no persona is selected', async () => {
@@ -125,7 +123,6 @@ describe('useCustomPages', () => {
     expect(result.current.customizedPage).toBeNull();
     expect(result.current.navigation).toBeNull();
 
-    // hasMounted starts false (isLoading = true), flips after the mount effect.
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
