@@ -86,7 +86,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
-import org.openmetadata.service.jdbi3.IngestionPipelineRepository.KeysetPageParams;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
@@ -106,7 +105,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -125,7 +123,6 @@ public class IngestionPipelineResource
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   static final String SORT_FIELD_DISPLAY_NAME = "displayName";
-  private static final String SORT_ORDER_DESC = "desc";
   static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
   static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
@@ -251,37 +248,13 @@ public class IngestionPipelineResource
     }
   }
 
-  /**
-   * Mirrors {@link EntityResource#listInternal} — cursor validation, authorization and the domain
-   * filter all still apply — but orders by the effective display name instead of {@code name}. See
-   * {@link IngestionPipelineRepository#listByDisplayName} for why (collate#3919).
-   */
-  private ResultList<IngestionPipeline> listSortedByDisplayName(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String fieldsParam,
-      ListFilter filter,
-      KeysetPageParams page) {
-    Fields fields = getFields(fieldsParam);
-    RestUtil.validateCursors(page.before(), page.after());
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, getViewOperations(fields)),
-        filter.getResourceContext(entityType));
-    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-    return addHref(uriInfo, repository.listByDisplayName(uriInfo, fields, filter, page));
-  }
-
   // Sorting is optional and lenient: only `displayName` is supported, and any other value (or none)
-  // falls through to the default name-ordered listing rather than erroring.
+  // falls through to the default name-ordered listing rather than erroring. The repository reads
+  // the
+  // sort off the filter and swaps in the display-name keyset query, so the resource keeps a single
+  // listInternal path — auth, domain filter and cursor validation are shared, not forked.
   private boolean isDisplayNameSort(String sortField) {
     return SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField);
-  }
-
-  // Ascending unless `desc` is explicitly asked for; an unrecognised value defaults to ascending
-  // rather than rejecting the request.
-  private boolean isAscending(String sortOrder) {
-    return !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder);
   }
 
   @GET
@@ -389,17 +362,12 @@ public class IngestionPipelineResource
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
-    ResultList<IngestionPipeline> ingestionPipelines;
     if (isDisplayNameSort(sortField)) {
-      KeysetPageParams page =
-          new KeysetPageParams(limitParam, before, after, isAscending(sortOrder));
-      ingestionPipelines =
-          listSortedByDisplayName(uriInfo, securityContext, fieldsParam, filter, page);
-    } else {
-      ingestionPipelines =
-          super.listInternal(
-              uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+      filter.withSort(SORT_FIELD_DISPLAY_NAME, sortOrder);
     }
+    ResultList<IngestionPipeline> ingestionPipelines =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       decryptOrNullify(securityContext, ingestionPipeline, false);
