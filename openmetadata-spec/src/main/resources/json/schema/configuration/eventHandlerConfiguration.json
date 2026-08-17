@@ -12,11 +12,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "enableQueryChangeEvents": {
-      "description": "Produce Change Events for Query entity create, update, and delete operations. Disabled by default since queries are often ingested in large bulk batches.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["eventHandlerClassNames"],

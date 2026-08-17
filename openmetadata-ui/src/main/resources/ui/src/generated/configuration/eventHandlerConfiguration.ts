@@ -15,11 +15,6 @@
  */
 export interface EventHandlerConfiguration {
     /**
-     * Produce Change Events for Query entity create, update, and delete operations.
-     * Disabled by default since queries are often ingested in large bulk batches.
-     */
-    enableQueryChangeEvents?: boolean;
-    /**
      * Event Handler Class Names
      */
     eventHandlerClassNames: string[];
