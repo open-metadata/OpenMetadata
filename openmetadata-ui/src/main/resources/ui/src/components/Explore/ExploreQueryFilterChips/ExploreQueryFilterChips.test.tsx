@@ -105,6 +105,7 @@ describe('ExploreQueryFilterChips', () => {
       'tw:font-medium',
       'tw:text-quaternary'
     );
+    expect(emptyText.parentElement).toHaveClass('prose');
     expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
   });
 
