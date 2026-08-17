@@ -180,6 +180,17 @@ def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
     return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
+def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Check that a table reference coming from a query parser actually holds a table name.
+
+    Query parsers can return references whose table part is empty, e.g. `db.schema.` when
+    the query contains an empty identifier (`db.schema.""`). There is nothing to look up in
+    those, so they are dropped instead of failing later on while building the FQN.
+    """
+    return bool(name and name.rsplit(".", maxsplit=1)[-1].strip())
+
+
 def replace_special_with(raw: str, replacement: str) -> str:
     """
     Replace special characters in a string by a hyphen
