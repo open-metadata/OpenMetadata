@@ -768,7 +768,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Dropdown.Root>
               <Button
-                className="tw:p-0"
+                className="quick-filter-dropdown-trigger-btn"
                 color="tertiary"
                 iconTrailing={<ChevronDown size={14} />}
                 size="sm">
@@ -866,7 +866,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          className: 'content-resizable-panel-container',
+          className:
+            'content-resizable-panel-container explore-browse-estate-panel',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),

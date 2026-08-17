@@ -43,7 +43,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
   return (
     <Dropdown.Root data-testid="dropdown">
       <Button
-        className="tw:p-0"
+        className="quick-filter-dropdown-trigger-btn"
         color="tertiary"
         data-testid="sorting-dropdown-label"
         iconTrailing={<ChevronDown size={14} />}>

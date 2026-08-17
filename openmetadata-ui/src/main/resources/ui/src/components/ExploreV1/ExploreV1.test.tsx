@@ -240,7 +240,10 @@ jest.mock('../common/ResizablePanels/ResizablePanels', () => {
 jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
-      <div>{firstPanel.children}</div>
+      <div className={firstPanel.className} data-testid="resizable-left-panel">
+        {firstPanel.title}
+        {firstPanel.children}
+      </div>
       <div>{secondPanel.children}</div>
     </div>
   ));
@@ -538,6 +541,20 @@ describe('ExploreV1', () => {
     fireEvent.click(screen.getByTestId('sort-order-button'));
 
     expect(onChangeSortOder).toHaveBeenCalled();
+  });
+
+  it('uses the quick-filter hover treatment for Explore header actions', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    expect(screen.getByTestId('resizable-left-panel')).toHaveClass(
+      'explore-browse-estate-panel'
+    );
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveClass(
+      'quick-filter-dropdown-trigger-btn'
+    );
+    expect(screen.getByText('label.tool-plural').closest('button')).toHaveClass(
+      'quick-filter-dropdown-trigger-btn'
+    );
   });
 
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
