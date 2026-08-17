@@ -228,7 +228,7 @@ const DomainsWidget = ({
         </div>
       </div>
     ),
-    [domains, isFullSize]
+    [domains, isFullSize, assetsCounts, handleDomainClick]
   );
 
   const showWidgetFooterMoreButton = useMemo(

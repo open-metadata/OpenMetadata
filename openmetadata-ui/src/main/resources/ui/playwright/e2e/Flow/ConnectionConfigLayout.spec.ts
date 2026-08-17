@@ -12,8 +12,10 @@
  */
 
 import { expect, Locator, Page, test } from '@playwright/test';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -574,6 +576,7 @@ test.describe('Connection config layout', () => {
     }
 
     await page.locator('#service-name').fill('pw-snowflake-auth-payload');
+    await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
     await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
       timeout: 10000,
     });
