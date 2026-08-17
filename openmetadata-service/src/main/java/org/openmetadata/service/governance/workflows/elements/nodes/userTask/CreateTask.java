@@ -38,6 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.common.engine.impl.cfg.TransactionContext;
+import org.flowable.common.engine.impl.cfg.TransactionState;
+import org.flowable.common.engine.impl.context.Context;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
@@ -192,6 +195,28 @@ public class CreateTask implements TaskListener {
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  // Run the task-entity persist after the surrounding Flowable command's JDBC commit. COMMITTED
+  // listeners fire synchronously on this thread inside the command's commit (before a synchronous
+  // taskService.complete() returns, so a synchronous stage advance still reflects the new stage in
+  // its response), and never fire on rollback — so the entity is only advanced once the runtime
+  // task it advertises is durable. Never blocks or waits: the persist is reordered, not retried.
+  void registerPostCommitPersist(Runnable persist) {
+    TransactionContext transactionContext = Context.getTransactionContext();
+    if (transactionContext != null) {
+      transactionContext.addTransactionListener(
+          TransactionState.COMMITTED,
+          commandContext -> {
+            try {
+              persist.run();
+            } catch (RuntimeException e) {
+              LOG.error("[CreateTask] Post-commit task stage persist failed", e);
+            }
+          });
+    } else {
+      persist.run();
     }
   }
 
@@ -548,7 +573,29 @@ public class CreateTask implements TaskListener {
                 new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {}));
       }
 
-      return taskRepository.update(null, currentTask, updatedTask, updatedBy).getEntity();
+      // Persist the stage/availableTransitions change only AFTER the Flowable transaction that
+      // creates the backing runtime user task commits. taskRepository.update commits on JDBI's own
+      // connection mid-command, so writing here would make the entity advertise the next transition
+      // (e.g. markAsGranted) milliseconds before ACT_RU_TASK + the customTaskId variable exist —
+      // a client that polls availableTransitions then resolves into a not-yet-committed task and
+      // gets a spurious 409. Reordering the write is non-blocking: it is the same work, deferred to
+      // the post-commit listener, which runs synchronously on this thread inside the command's
+      // commit (before a synchronous resolve returns), and is simply skipped if Flowable rolls
+      // back.
+      final Task desired = updatedTask;
+      final UUID persistTaskId = updatedTask.getId();
+      registerPostCommitPersist(
+          () -> {
+            // Re-read the committed row as the update baseline: between building `desired` and this
+            // post-commit callback the stored task may have advanced, and updating against a stale
+            // snapshot would lose the optimistic-version check. On a hard persist failure the
+            // entity
+            // stays one stage behind the (already committed) Flowable runtime and self-heals on the
+            // next stage advance, which re-reads the current task.
+            Task latest = taskRepository.get(null, persistTaskId, taskRepository.getFields("*"));
+            taskRepository.update(null, latest, desired, updatedBy);
+          });
+      return updatedTask;
     }
 
     // Create the task
