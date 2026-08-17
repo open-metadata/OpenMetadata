@@ -400,11 +400,11 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @QueryParam("activeFqn")
           String activeFqn,
       @Parameter(
-              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              description = "Field to sort by. Supported: name, updatedAt.",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name", "createdAt", "updatedAt"}))
+                      allowableValues = {"name", "updatedAt"}))
           @QueryParam("sortBy")
           String sortBy,
       @Parameter(
