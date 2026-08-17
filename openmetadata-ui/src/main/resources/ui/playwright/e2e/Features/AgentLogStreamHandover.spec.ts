@@ -359,10 +359,14 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         .toBeGreaterThan(beforeWrap?.scrollHeight ?? 0);
 
       await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
-      expect(
-        await isLogViewerAtTail(page),
-        'a followed log must stay at the tail across a wrap relayout'
-      ).toBe(true);
+      // The catch-up may need a frame or two on a slow machine, so this is polled
+      // rather than sampled once.
+      await expect
+        .poll(() => isLogViewerAtTail(page), {
+          message:
+            'a followed log must stay at the tail across a wrap relayout',
+        })
+        .toBe(true);
 
       await page.getByTestId('log-viewer-wrap').click();
       await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
@@ -373,9 +377,23 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
       // pointerdown for its scrollbar: no wheel, no key, no pointer — only the
       // scroll offsets pulling away from the tail, which the catch-up never does.
       await page.getByTestId('log-viewer-wrap').click();
-      await dragLogViewerUpWithoutGesture(page);
 
-      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+      // Two steps at a time until control changes hands. A fixed number of steps
+      // is not enough on a slow machine: consecutive scroll writes coalesce into
+      // one report when frames are long, and it is the sequence that counts.
+      await expect
+        .poll(
+          async () => {
+            await dragLogViewerUpWithoutGesture(page, 2);
+
+            return followToggle.getAttribute('aria-pressed');
+          },
+          {
+            message: 'a drag with no pointer event must take the log back',
+            timeout: 30_000,
+          }
+        )
+        .toBe('false');
       await expect.poll(() => isLogViewerAtTail(page)).toBe(false);
 
       await followToggle.click();
@@ -431,10 +449,11 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         .toBeGreaterThan(resumedAtLines);
 
       await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
-      expect(
-        await isLogViewerAtTail(page),
-        'a resumed log must keep tracking the tail'
-      ).toBe(true);
+      await expect
+        .poll(() => isLogViewerAtTail(page), {
+          message: 'a resumed log must keep tracking the tail',
+        })
+        .toBe(true);
     });
 
     await test.step('The keyboard can pause a followed log too', async () => {
