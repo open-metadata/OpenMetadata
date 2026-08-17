@@ -15,7 +15,7 @@ Kafka configuration parser for Databricks DLT pipelines
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional  # noqa: UP035
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -74,6 +74,16 @@ DLT_READ_PATTERN = re.compile(
 S3_PATH_PATTERN = re.compile(
     r'spark\.read.*?\.(?:load|json|parquet|csv|orc|avro)\s*\(\s*["\']([^"\']+)["\']\s*\)',
     re.DOTALL | re.IGNORECASE,
+)
+
+# A DLT dataset declared in SQL rather than through the Python API. Databricks allows
+# CREATE OR REFRESH, an optional TEMPORARY/PRIVATE modifier, and MATERIALIZED VIEW,
+# STREAMING TABLE or the legacy LIVE TABLE spelling. This only detects the shape so we
+# know the file is worth handing to the lineage parser, which does the real work.
+SQL_DLT_CREATE_PATTERN = re.compile(
+    r"\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+|PRIVATE\s+)?"
+    r"(?:MATERIALIZED\s+VIEW|STREAMING\s+(?:LIVE\s+)?TABLE|LIVE\s+TABLE)\b",
+    re.IGNORECASE,
 )
 
 
@@ -506,6 +516,82 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
 
     except Exception as exc:
         logger.warning(f"Error extracting DLT table dependencies: {exc}")
+
+    # A pipeline is either Python or SQL, so only fall back once the Python API found
+    # nothing. This keeps existing Python pipelines on exactly the path they use today.
+    if not dependencies:
+        dependencies = extract_sql_dlt_dependencies(source_code)
+
+    return dependencies
+
+
+def extract_sql_dlt_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
+    """
+    Extract DLT dependencies from transformations written in SQL instead of Python.
+
+    A SQL DLT file declares its datasets with statements such as::
+
+        CREATE OR REFRESH MATERIALIZED VIEW customer_orders AS
+        SELECT ...
+        FROM raw_catalog.raw_schema.orders_raw o
+        INNER JOIN order_totals t ON t.order_id = o.order_id
+
+    Each statement yields one dataset plus the tables it reads. Upstreams may be fully
+    qualified or bare, the latter referring to a sibling dataset in the same pipeline.
+    Both are returned verbatim and resolved against the pipeline's target catalog and
+    schema by the caller.
+
+    Returns an empty list when the source is not SQL DLT or cannot be parsed.
+    """
+    dependencies = []
+
+    if not source_code or not SQL_DLT_CREATE_PATTERN.search(source_code):
+        return dependencies
+
+    # Imported here so pipelines that only use the Python DLT API do not pay the
+    # import cost of the SQL lineage stack.
+    import sqlparse
+
+    from metadata.ingestion.lineage.models import Dialect
+    from metadata.ingestion.lineage.parser import LineageParser
+    from metadata.utils.helpers import (
+        get_formatted_entity_name,
+        has_table_name,
+    )
+
+    def _clean(table) -> Optional[str]:  # noqa: UP045
+        name = get_formatted_entity_name(str(table))
+        return name if has_table_name(name) else None
+
+    try:
+        for raw_statement in sqlparse.split(source_code):
+            statement = raw_statement.strip()
+            if not statement or not SQL_DLT_CREATE_PATTERN.search(statement):
+                continue
+            try:
+                parser = LineageParser(statement, Dialect.DATABRICKS)
+                # LineageParser exposes these through the third-party cached_property,
+                # which type checkers cannot resolve to the underlying list
+                parsed_targets: Any = parser.target_tables or []
+                parsed_sources: Any = parser.source_tables or []
+
+                targets = [name for name in map(_clean, parsed_targets) if name]
+                if not targets:
+                    logger.debug(f"No target dataset parsed from SQL DLT statement: {statement[:120]}")
+                    continue
+
+                sources = [name for name in map(_clean, parsed_sources) if name]
+                # A dataset never depends on itself, even if the statement self-references
+                depends_on = [name for name in sources if name not in targets]
+
+                for target in targets:
+                    dependencies.append(DLTTableDependency(table_name=target, depends_on=depends_on))
+                    logger.debug(f"Extracted SQL DLT dataset {target} depends_on={depends_on}")
+            except Exception as exc:
+                logger.debug(f"Error parsing SQL DLT statement: {exc}")
+                continue
+    except Exception as exc:
+        logger.warning(f"Error extracting SQL DLT dependencies: {exc}")
 
     return dependencies
 

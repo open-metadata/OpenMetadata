@@ -400,6 +400,57 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
             return []
 
+    def _expand_workspace_directory(self, path: str, max_depth: int = 5) -> List[str]:  # noqa: UP006
+        """
+        List the notebooks and files under a workspace directory.
+
+        The Databricks `workspace/list` API returns immediate children only, so a glob
+        such as `/Repos/project/transformations/**` needs the subdirectories walked
+        explicitly. Depth is capped so an unexpected cycle cannot spin forever.
+        """
+        collected = []
+        try:
+            objects = self.client.list_workspace_objects(path) or []
+            for obj in objects:
+                obj_type = obj.get("object_type")
+                obj_path = obj.get("path")
+                if not obj_path:
+                    continue
+                if obj_type in ("NOTEBOOK", "FILE"):
+                    collected.append(obj_path)
+                    logger.info(f"   ✓ Found {obj_type.lower()}: {obj_path}")
+                elif obj_type == "DIRECTORY":
+                    if max_depth <= 0:
+                        logger.warning(f"   ⊗ Max depth reached, not descending into {obj_path}")
+                        continue
+                    collected.extend(self._expand_workspace_directory(obj_path.rstrip("/") + "/", max_depth - 1))
+        except Exception as exc:
+            logger.warning(f"   ✗ Could not list directory {path}: {exc}")
+            logger.debug(traceback.format_exc())
+        return collected
+
+    @staticmethod
+    def _qualify_dlt_table_name(
+        table_name: str,
+        catalog: Optional[str],  # noqa: UP045
+        schema: Optional[str],  # noqa: UP045
+    ) -> Tuple[Optional[str], Optional[str], str]:  # noqa: UP006, UP045
+        """
+        Split a dataset reference into (catalog, schema, table).
+
+        SQL transformations reference upstreams either bare (`order_totals`, a sibling
+        dataset in the same pipeline) or qualified (`catalog.schema.table`). The Python
+        API only ever yields bare names. Qualifiers carried by the reference itself
+        describe where the table actually lives, so they take precedence over the
+        pipeline's target catalog and schema.
+        """
+        parts = [part for part in (table_name or "").split(".") if part]
+        if len(parts) >= 3:
+            return parts[-3], parts[-2], parts[-1]
+        if len(parts) == 2:
+            return catalog, parts[0], parts[1]
+        return catalog, schema, table_name
+
     def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:  # noqa: UP045
         """
         Find DLT table in OpenMetadata by iterating through Databricks services
@@ -408,7 +459,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         Uses catalog.schema.table_name from DLT spec to build FQN for each Databricks service.
 
         Args:
-            table_name: Table name extracted from notebook code
+            table_name: Table name extracted from notebook code. May already be qualified
+                as catalog.schema.table or schema.table when it came from SQL, in which
+                case those qualifiers win over the pipeline defaults.
             catalog: Catalog name from DLT pipeline spec (database in OpenMetadata)
             schema: Schema name from DLT pipeline spec
 
@@ -416,6 +469,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
             Table entity if found, None otherwise
         """
         try:
+            catalog, schema, table_name = self._qualify_dlt_table_name(table_name, catalog, schema)
+
             # Check cache first to avoid duplicate API calls
             cache_key = f"{catalog}.{schema}.{table_name}"
             if cache_key in self._dlt_table_cache:
@@ -660,6 +715,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 if path:
                                     notebook_paths.append(path)
                                     logger.info(f"   ✓ Found notebook: {path}")
+                            # Pipelines sourced from Git folders or Asset Bundles declare
+                            # their transformations as files rather than notebooks
+                            elif "file" in lib and lib["file"]:  # noqa: RUF019
+                                source_file = lib["file"]
+                                path = source_file.get("path") if isinstance(source_file, dict) else source_file
+                                if path:
+                                    notebook_paths.append(path)
+                                    logger.info(f"   ✓ Found file: {path}")
                             # Check for glob pattern
                             elif "glob" in lib and lib["glob"]:  # noqa: RUF019
                                 glob_pattern = lib["glob"]
@@ -710,23 +773,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
             for path in notebook_paths:
                 # If path ends with /, it's a directory - list all notebooks in it
                 if path.endswith("/"):
-                    try:
-                        logger.debug(f"   Listing directory: {path}")
-                        # List workspace directory to get all notebooks
-                        objects = self.client.list_workspace_objects(path)
-                        if objects:
-                            for obj in objects:
-                                obj_type = obj.get("object_type")
-                                if obj_type in ("NOTEBOOK", "FILE"):
-                                    notebook_path = obj.get("path")
-                                    if notebook_path:
-                                        expanded_paths.append(notebook_path)
-                                        logger.info(f"   ✓ Found {obj_type.lower()}: {notebook_path}")
-                        if not expanded_paths:
-                            logger.debug(f"   ⊗ No notebooks found in directory {path}")
-                    except Exception as exc:
-                        logger.warning(f"   ✗ Could not list directory {path}: {exc}")
-                        logger.debug(traceback.format_exc())
+                    found = self._expand_workspace_directory(path)
+                    if not found:
+                        logger.debug(f"   ⊗ No notebooks found in directory {path}")
+                    expanded_paths.extend(found)
                 else:
                     expanded_paths.append(path)
                     logger.debug(f"   Direct path: {path}")
