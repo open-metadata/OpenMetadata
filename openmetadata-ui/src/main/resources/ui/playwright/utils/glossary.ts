@@ -440,13 +440,6 @@ export const createGlossary = async (
     }
   }
 
-  // Toasts from prior tests' teardowns sit at z-[1000] and intercept the save click.
-  // Wait for every stacked alert to clear before proceeding.
-  const alertBars = page.locator('[data-testid="alert-bar"]');
-  if ((await alertBars.count()) > 0) {
-    await expect(alertBars).toHaveCount(0, { timeout: 15_000 });
-  }
-
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
   await page.click('[data-testid="save-glossary"]');
   await glossaryResponse;
