@@ -565,6 +565,19 @@
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
+    },
+    {
+      "_comment": "PersonaAIContextRules.spec.ts covers the AI Context rule builder on the Persona settings page. Without this entry, changes to the PersonaAIContext component tree or PersonaAPI are not caught before merge.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
+      ]
     }
   ]
 }
