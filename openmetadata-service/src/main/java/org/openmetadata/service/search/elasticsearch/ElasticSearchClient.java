@@ -103,6 +103,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private volatile boolean isClientAvailable;
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private static final String SORT_ORDER_DESC = "desc";
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
 
   private volatile boolean isNewClientAvailable;
@@ -1174,10 +1175,12 @@ public class ElasticSearchClient implements SearchClient {
     List<SortOptions> sortOptions = new ArrayList<>();
     if (sortFilter != null
         && sortFilter.getSortField() != null
-        && !"fullyQualifiedName".equals(sortFilter.getSortField())) {
+        && !Entity.FIELD_FULLY_QUALIFIED_NAME.equals(sortFilter.getSortField())) {
       String field = sortFilter.getSortField();
       SortOrder order =
-          "desc".equalsIgnoreCase(sortFilter.getSortType()) ? SortOrder.Desc : SortOrder.Asc;
+          SORT_ORDER_DESC.equalsIgnoreCase(sortFilter.getSortType())
+              ? SortOrder.Desc
+              : SortOrder.Asc;
       sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
     }
     // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
@@ -1185,7 +1188,8 @@ public class ElasticSearchClient implements SearchClient {
     // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
     // indices.id_field_data.enabled=true at the cluster level.
     sortOptions.add(
-        SortOptions.of(so -> so.field(f -> f.field("fullyQualifiedName").order(SortOrder.Asc))));
+        SortOptions.of(
+            so -> so.field(f -> f.field(Entity.FIELD_FULLY_QUALIFIED_NAME).order(SortOrder.Asc))));
     return sortOptions;
   }
 
