@@ -221,9 +221,7 @@ describe('CustomizablePage component', () => {
       renderCustomizablePage();
     });
 
-    expect(
-      screen.getByTestId('settings-navigation-page')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('settings-navigation-page')).toBeInTheDocument();
 
     expect(
       screen.getByTestId('settings-navigation-persona-name')
