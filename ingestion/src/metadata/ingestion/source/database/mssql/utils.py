@@ -147,7 +147,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             Column("object_id", Integer, primary_key=True),
             Column("name", String, primary_key=True),
             Column("column_id", Integer, primary_key=True),
-            Column("generated_always_type", Integer),
             schema="sys",
         )
     )
@@ -216,7 +215,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
             sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
-            sys_columns.c.generated_always_type,
         )
         .where(whereclause)
         .select_from(join)
@@ -228,9 +226,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
     cols = []
     for row in cursr.mappings():
         name = row[columns.c.column_name]
-        generated_always_type = row[sys_columns.c.generated_always_type]
-        if generated_always_type in (1, 2):
-            continue
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
         charlen = row[columns.c.character_maximum_length]
@@ -379,6 +374,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             referred_table_schema=sqltypes.Unicode(),
             referred_table_name=sqltypes.Unicode(),
             referred_column=sqltypes.Unicode(),
+            referred_database=sqltypes.Unicode(),
         )
     )
 
@@ -389,6 +385,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
         return {
             "name": None,
             "constrained_columns": [],
+            "referred_database": None,
             "referred_schema": None,
             "referred_table": None,
             "referred_columns": [],
@@ -412,10 +409,12 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             _,  # match rule
             fkuprule,
             fkdelrule,
+            rdbname,
         ) = row_
 
         rec = fkeys[rfknm]
         rec["name"] = rfknm
+        rec["referred_database"] = rdbname
 
         if fkuprule != "NO ACTION":
             rec["options"]["onupdate"] = fkuprule
@@ -490,14 +489,41 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
+# sys.database_query_store_options.readonly_reason value that means the database is
+# a readable Availability Group secondary (SQL Server < 2025).  On such a replica the
+# Query Store contains the *primary*'s captured workload, not this node's, so we must
+# fall back to the plan-cache DMVs to see the secondary's actual query traffic.
+_QS_READONLY_REASON_AG_SECONDARY = 8
+
+
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
-    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    """Return True if Query Store holds this database's own workload history.
+
+    Returns False when:
+    - Query Store is OFF or in ERROR state.
+    - The connected database is a readable AG secondary (readonly_reason == 8).
+      On SQL Server < 2025 the replica's Query Store contains only the primary's
+      captured workload; ingesting it would silently replace the secondary's usage
+      and lineage with the primary's.
+    """
     enabled = False
     if engine is not None:
         try:
             with engine.connect() as conn:
-                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
-            enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
+            if row is not None:
+                actual_state, readonly_reason = row[0], row[1]
+                is_ag_secondary = readonly_reason == _QS_READONLY_REASON_AG_SECONDARY
+                enabled = (
+                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                    and not is_ag_secondary
+                )
+                if is_ag_secondary:
+                    logger.info(
+                        "MSSQL query history: Query Store is READ-ONLY because this database "
+                        "is a readable AG secondary (readonly_reason=8). The replica's Query "
+                        "Store contains the primary's workload. Falling back to plan-cache DMVs."
+                    )
         except Exception as exc:
             logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc, exc_info=True)
     return enabled
