@@ -594,9 +594,14 @@ jobs:
               history_args+=(--history "$history_file")
             fi
           done < <(find "$RUNNER_TEMP/playwright-history" -name 'playwright-timing-history.json' -type f 2>/dev/null | sort)
-          if [[ ${#history_args[@]} -eq 0 ]]; then
-            history_args=(--history .github/playwright/timing-baseline.json)
-          fi
+          # Always include timing-baseline.json alongside any downloaded history
+          # artifacts. When history artifacts exist it acts as a supplemental
+          # seed for newly-added spec files that have not yet appeared in any
+          # full-run artifact; when no artifacts were downloaded it is the sole
+          # source. Without this, a new spec whose durations were seeded into
+          # timing-baseline.json still fails the stale-baseline gate because the
+          # conditional below never fires once the first history artifact lands.
+          history_args+=(--history .github/playwright/timing-baseline.json)
 
           python3 .github/scripts/build_playwright_shards.py \
             --test-list "$RUNNER_TEMP/playwright-test-list.json" \
