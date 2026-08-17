@@ -1201,9 +1201,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
 
-    PipelineServiceClientResponse response = pipelineServiceClient.runPipeline(pipeline, testSuite);
-    ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
-        .recordQueuedPipelineStatus(null, pipeline.getFullyQualifiedName(), response.getRunId());
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {

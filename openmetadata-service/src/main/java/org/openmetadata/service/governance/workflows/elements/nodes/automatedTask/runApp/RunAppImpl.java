@@ -251,13 +251,9 @@ public class RunAppImpl {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
-    PipelineServiceClientResponse response =
-        pipelineServiceClient.runPipeline(
-            ingestionPipeline,
-            Entity.getEntity(
-                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
-    repository.recordQueuedPipelineStatus(
-        null, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    pipelineServiceClient.runPipeline(
+        ingestionPipeline,
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
 
     if (waitForCompletion) {
       return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
