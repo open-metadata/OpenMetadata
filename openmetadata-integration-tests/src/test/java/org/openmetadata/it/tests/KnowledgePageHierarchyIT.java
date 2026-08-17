@@ -172,7 +172,7 @@ public class KnowledgePageHierarchyIT {
         .untilAsserted(
             () -> {
               List<PageHierarchy> asc =
-                  listSearchHierarchy(rest, "?limit=1000000&sortBy=name&sortOrder=asc").getData();
+                  listSearchHierarchy(rest, "?limit=1000&sortBy=name&sortOrder=asc").getData();
               int a = indexOfId(asc, pageA.getId());
               int m = indexOfId(asc, pageM.getId());
               int z = indexOfId(asc, pageZ.getId());
@@ -182,7 +182,7 @@ public class KnowledgePageHierarchyIT {
             });
 
     List<PageHierarchy> desc =
-        listSearchHierarchy(rest, "?limit=1000000&sortBy=name&sortOrder=desc").getData();
+        listSearchHierarchy(rest, "?limit=1000&sortBy=name&sortOrder=desc").getData();
     int a = indexOfId(desc, pageA.getId());
     int m = indexOfId(desc, pageM.getId());
     int z = indexOfId(desc, pageZ.getId());
