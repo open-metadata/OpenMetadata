@@ -568,6 +568,13 @@ describe('LogViewerModal — auto-follow', () => {
   // Geometry as the viewer reports it: tall content parked at the top vs. at the tail.
   const scrolledUp = { scrollTop: 0, scrollHeight: 1000, clientHeight: 400 };
   const atTail = { scrollTop: 600, scrollHeight: 1000, clientHeight: 400 };
+  // What a relayout or an append looks like: the offset stands still while the
+  // content grows, so the tail moves away from the view on its own.
+  const tailMovedAway = {
+    scrollTop: 600,
+    scrollHeight: 2000,
+    clientHeight: 400,
+  };
 
   beforeEach(() => {
     mockLazyLog.scrollToIndex.mockClear();
@@ -630,47 +637,37 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
-  it('keeps following when wrap or full-screen reparks the list at the top', () => {
+  it('keeps following and catches up when the tail moves away on its own', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
-    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
-
-    // The relayout parks the virtualised list at the top and reports it as a
-    // scroll; treating that as the user taking over is the bug this covers.
-    act(() => mockLazyLog.onScroll?.(scrolledUp));
-
-    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-
-    fireEvent.click(screen.getByTestId('log-viewer-fullscreen'));
-    act(() => mockLazyLog.onScroll?.(scrolledUp));
-
-    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-  });
-
-  it('scrolls back to the tail when a relayout parks the list at the top', () => {
-    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    act(() => mockLazyLog.onScroll?.(atTail));
     mockLazyLog.scrollToIndex.mockClear();
 
+    // Toggling wrap re-measures every row, so the content grows under a standing
+    // offset. Reading that as the user taking over is the bug this covers.
     fireEvent.click(screen.getByTestId('log-viewer-wrap'));
-    act(() => mockLazyLog.onScroll?.(scrolledUp));
+    act(() => mockLazyLog.onScroll?.(tailMovedAway));
 
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
   });
 
-  it('does not treat a relayout as intent when the user had already paused', () => {
+  it('does not chase the tail for a user who has already paused', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
     act(() => mockLazyLog.onScroll?.(scrolledUp));
     mockLazyLog.scrollToIndex.mockClear();
 
     fireEvent.click(screen.getByTestId('log-viewer-wrap'));
-    act(() => mockLazyLog.onScroll?.(scrolledUp));
+    act(() =>
+      mockLazyLog.onScroll?.({
+        ...tailMovedAway,
+        scrollTop: scrolledUp.scrollTop,
+      })
+    );
 
     expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
@@ -679,15 +676,46 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
-  it('lets a gesture during the relayout window win instead of fighting it', () => {
+  it('hands control back to a drag that starts during a relayout', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
     const body = screen.getByTestId('log-viewer-body');
 
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    // A scrollbar drag reports no wheel and no key, only the pointer press that
+    // starts it — which has to be enough to stop the relayout catch-up from
+    // reversing the drag.
     fireEvent.click(screen.getByTestId('log-viewer-wrap'));
     mockLazyLog.scrollToIndex.mockClear();
+    fireEvent.pointerDown(body);
+    act(() => mockLazyLog.onScroll?.({ ...tailMovedAway, scrollTop: 120 }));
 
-    // Wheeling up inside the relayout window is the user taking over; the
-    // relayout correction must not drag the view back to the tail.
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
+  });
+
+  it('does not pause on a pointer press alone — a click in the log is not a scroll', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.pointerDown(screen.getByTestId('log-viewer-body'));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('lets a gesture win over the catch-up instead of being fought by it', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    const body = screen.getByTestId('log-viewer-body');
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    mockLazyLog.scrollToIndex.mockClear();
+
     fireEvent.wheel(body, { deltaY: -120 });
     act(() => mockLazyLog.onScroll?.(scrolledUp));
 
@@ -755,27 +783,8 @@ describe('LogViewerModal — auto-follow', () => {
     }
   });
 
-  it('still pauses on a user scroll once the relayout grace has elapsed', () => {
-    jest.useFakeTimers();
-
-    try {
-      render(<LogViewerModal {...defaultProps} mode="stream" />);
-
-      fireEvent.click(screen.getByTestId('log-viewer-wrap'));
-      // Past the window in which knock-on scrolls belong to the relayout.
-      act(() => jest.advanceTimersByTime(5000));
-      act(() => mockLazyLog.onScroll?.(scrolledUp));
-
-      expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
-        'aria-pressed',
-        'false'
-      );
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
   it('pauses following when the user scrolls away from the tail and resumes at the tail', () => {
+    jest.useFakeTimers();
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
     act(() => mockLazyLog.onScroll?.(scrolledUp));
@@ -789,6 +798,8 @@ describe('LogViewerModal — auto-follow', () => {
       'false'
     );
 
+    // Past the window that protects a fresh pause from an automatic snap-back.
+    act(() => jest.advanceTimersByTime(5000));
     act(() => mockLazyLog.onScroll?.(atTail));
 
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
@@ -799,6 +810,8 @@ describe('LogViewerModal — auto-follow', () => {
       'data-follow',
       'true'
     );
+
+    jest.useRealTimers();
   });
 
   it('keeps following while the content does not fill the viewport', () => {

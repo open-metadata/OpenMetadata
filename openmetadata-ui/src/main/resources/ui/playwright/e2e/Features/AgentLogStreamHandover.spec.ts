@@ -341,6 +341,9 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     });
 
     await test.step('Scrolling up hands control back to the user', async () => {
+      // Deliberately immediately after the wrap toggle above: a scroll performed
+      // while the relayout is still settling is still the user's, and must not be
+      // reversed on the grounds that a layout change just happened.
       await scrollLogViewerAwayFromTail(page);
 
       await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
