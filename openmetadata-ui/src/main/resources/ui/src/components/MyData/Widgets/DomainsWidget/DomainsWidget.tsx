@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/entity/domain.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -38,9 +38,9 @@ import {
 import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import {
+  DOMAIN_WIDGET_STALE_TIME,
   domainAssetsCountQueryKey,
   domainWidgetSearchQueryKey,
-  DOMAIN_WIDGET_STALE_TIME,
 } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
@@ -254,7 +254,7 @@ const DomainsWidget = ({
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         icon={
-          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+          <DomainIcon className="domains-widget-globe" height={24} width={24} />
         }
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}

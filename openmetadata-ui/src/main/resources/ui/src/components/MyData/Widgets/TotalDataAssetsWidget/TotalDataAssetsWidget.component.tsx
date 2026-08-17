@@ -29,11 +29,11 @@ import {
   Cell,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip as RechartsTooltip,
+  ResponsiveContainer,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
