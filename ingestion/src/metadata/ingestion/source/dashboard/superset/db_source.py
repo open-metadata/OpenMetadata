@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine  # noqa: TC002
@@ -95,9 +95,9 @@ class SupersetDBSource(SupersetSourceMixin):
                 self.all_charts[chart_detail.id] = chart_detail
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch chart list due to - {err}]")
+            logger.error(f"Failed to fetch chart list due to - {err}]")  # noqa: G004
 
-    def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:  # noqa: UP045
+    def get_column_list(self, table_id: int | None) -> Iterable[FetchChart]:
         try:
             if table_id:
                 with self.engine.connect() as conn:
@@ -105,7 +105,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 return [FetchColumn(**dict(col._mapping)) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch column name list for table: [{table_id} due to - {err}]")
+            logger.warning(f"Failed to fetch column name list for table: [{table_id} due to - {err}]")  # noqa: G004
         return []
 
     def get_dashboards_list(self) -> Iterable[FetchDashboard]:
@@ -157,7 +157,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 )
             )
 
-    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart, db_service_prefix: Optional[str]):  # noqa: UP045
+    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart, db_service_prefix: str | None):
         return self._get_datasource_fqn(db_service_prefix, chart_json) if chart_json.table_name else None
 
     def yield_dashboard_chart(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateChartRequest]]:
@@ -168,7 +168,7 @@ class SupersetDBSource(SupersetSourceMixin):
             try:
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
 
                     continue
                 chart_request = CreateChartRequest(
@@ -192,7 +192,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
                 )
 
-    def _get_database_name(self, sqa_str: str, db_service_entity: DatabaseService) -> Optional[str]:  # noqa: UP045
+    def _get_database_name(self, sqa_str: str, db_service_entity: DatabaseService) -> str | None:
         default_db_name = None
         if sqa_str:
             sqa_url = make_url(sqa_str)
@@ -200,7 +200,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
-    def _get_datasource_fqn(self, db_service_prefix: Optional[str], chart_json: FetchChart) -> Optional[str]:  # noqa: UP045
+    def _get_datasource_fqn(self, db_service_prefix: str | None, chart_json: FetchChart) -> str | None:
         try:
             (
                 db_service_name,
@@ -215,7 +215,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 database_name = self._get_database_name(chart_json.sqlalchemy_uri, db_service_entity)
 
             if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
                 return None
 
             if (
@@ -223,7 +223,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_schema
                 and prefix_schema_name.lower() != chart_json.table_schema.lower()
             ):
-                logger.debug(f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}")
+                logger.debug(f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}")  # noqa: G004
                 return None
 
             if (
@@ -231,7 +231,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 and chart_json.table_name
                 and prefix_table_name.lower() != chart_json.table_name.lower()
             ):
-                logger.debug(f"Table {chart_json.table_name} does not match prefix {prefix_table_name}")
+                logger.debug(f"Table {chart_json.table_name} does not match prefix {prefix_table_name}")  # noqa: G004
                 return None
 
             return build_es_fqn_search_string(
@@ -242,7 +242,7 @@ class SupersetDBSource(SupersetSourceMixin):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}")
+            logger.warning(f"Failed to fetch Datasource with id [{chart_json.table_name}]: {err}")  # noqa: G004
         return None
 
     def yield_datamodel(self, dashboard_details: FetchDashboard) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -250,7 +250,7 @@ class SupersetDBSource(SupersetSourceMixin):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json or not chart_json.datasource_id:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
                     continue
                 if filter_by_datamodel(self.source_config.dataModelFilterPattern, chart_json.table_name):
                     self.status.filter(chart_json.table_name, "Data model filtered out.")
@@ -275,7 +275,7 @@ class SupersetDBSource(SupersetSourceMixin):
                         )
                     )
 
-    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:  # noqa: UP006
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> list[str]:
         """
         Args:
             chart_json: FetchChart

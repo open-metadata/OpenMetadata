@@ -14,8 +14,9 @@ DBTcloud source to extract metadata from OM UI
 
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 from cachetools import LRUCache
 
@@ -111,7 +112,7 @@ class DbtcloudSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DBTCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, DBTCloudConnection):
@@ -129,7 +130,7 @@ class DbtcloudSource(PipelineServiceSource):
         # Bounded cache for the exact-FQN table fallback, keyed by table FQN
         self._exact_fqn_cache: LRUCache = LRUCache(maxsize=EXACT_FQN_CACHE_SIZE)
 
-    def _resolve_table_entity(self, db_service_name: Optional[str], node: DBTModel) -> Optional[Table]:  # noqa: UP045
+    def _resolve_table_entity(self, db_service_name: str | None, node: DBTModel) -> Table | None:
         """
         Resolve the OpenMetadata table backing a dbt model, seed or source.
 
@@ -161,11 +162,11 @@ class DbtcloudSource(PipelineServiceSource):
         if table_entity is None and db_service_name:
             table_entity = self._get_table_by_exact_fqn(db_service_name, node)
         if table_entity is None:
-            logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")
+            logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")  # noqa: G004
         return table_entity
 
     @staticmethod
-    def _pick_matching_table(matches: List[Table], node: DBTModel) -> Optional[Table]:  # noqa: UP006, UP045
+    def _pick_matching_table(matches: list[Table], node: DBTModel) -> Table | None:
         """
         Pick one table out of a search page.
 
@@ -188,7 +189,7 @@ class DbtcloudSource(PipelineServiceSource):
             picked = exact[0]
             if len(exact) > 1:
                 logger.warning(
-                    f"dbt node {node.uniqueId} matches {len(exact)} tables across services "
+                    f"dbt node {node.uniqueId} matches {len(exact)} tables across services "  # noqa: G004
                     f"({[DbtcloudSource._table_fqn(table) for table in exact]}); using "
                     f"{DbtcloudSource._table_fqn(picked)}. Set 'dbServiceNames' to disambiguate."
                 )
@@ -199,7 +200,7 @@ class DbtcloudSource(PipelineServiceSource):
         """FQN of a resolved table as a plain string."""
         return model_str(table.fullyQualifiedName) if table.fullyQualifiedName else ""
 
-    def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Optional[Table]:  # noqa: UP045
+    def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Table | None:
         """
         Look the table up by its deterministic FQN, bypassing the search index.
 
@@ -224,7 +225,7 @@ class DbtcloudSource(PipelineServiceSource):
             self._exact_fqn_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         return self._exact_fqn_cache[table_fqn]
 
-    def _fetch_runs(self, job_id: int) -> List[DBTRun]:  # noqa: UP006
+    def _fetch_runs(self, job_id: int) -> list[DBTRun]:
         """
         Runs backing the pipeline status time series.
 
@@ -238,7 +239,7 @@ class DbtcloudSource(PipelineServiceSource):
         runs = list(self.client.get_runs(job_id=job_id, lookback_days=lookback_days))
         if not runs:
             logger.debug(
-                f"No dbt Cloud run for job {job_id} within the last {lookback_days} day(s); "
+                f"No dbt Cloud run for job {job_id} within the last {lookback_days} day(s); "  # noqa: G004
                 f"falling back to the latest run"
             )
             latest_run = self.client.get_latest_run(job_id=job_id)
@@ -266,10 +267,10 @@ class DbtcloudSource(PipelineServiceSource):
                 ctx.current_runs = runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")
+            logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")  # noqa: G004
 
     @staticmethod
-    def _get_task_list(job_url: str) -> List[Task]:  # noqa: UP006
+    def _get_task_list(job_url: str) -> list[Task]:
         """
         The job's single task, carrying its whole run history.
 
@@ -335,7 +336,7 @@ class DbtcloudSource(PipelineServiceSource):
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")  # noqa: G004
                 return
 
             # Use combined GraphQL call instead of two separate calls
@@ -439,7 +440,7 @@ class DbtcloudSource(PipelineServiceSource):
         if unmatched_nodes:
             sample = sorted(unmatched_nodes)[:UNMATCHED_NODES_SAMPLE_SIZE]
             logger.warning(
-                f"{len(unmatched_nodes)} dbt node(s) of job {pipeline_details.name} could not be matched to a "
+                f"{len(unmatched_nodes)} dbt node(s) of job {pipeline_details.name} could not be matched to a "  # noqa: G004
                 f"table in OpenMetadata, so no lineage was created for them. Ingest the warehouse holding those "
                 f"tables first and check the 'dbServiceNames' lineage configuration. Unmatched (first "
                 f"{len(sample)}): {sample}"
@@ -455,17 +456,17 @@ class DbtcloudSource(PipelineServiceSource):
         """
         is_candidate = True
         if not is_source and not node.runGeneratedAt:
-            logger.debug(f"Skipping dbt node with missing runGeneratedAt: name={node.name}")
+            logger.debug(f"Skipping dbt node with missing runGeneratedAt: name={node.name}")  # noqa: G004
             is_candidate = False
         elif not all([node.name, node.database, node.dbtschema]):
             logger.debug(
-                f"Skipping dbt node with missing attributes: name={node.name}, "
+                f"Skipping dbt node with missing attributes: name={node.name}, "  # noqa: G004
                 f"database={node.database}, schema={node.dbtschema}"
             )
             is_candidate = False
         return is_candidate
 
-    def _track_table_fqn(self, table_fqn: str, cache_key: Optional[Tuple[int, str]]) -> None:  # noqa: UP006, UP045
+    def _track_table_fqn(self, table_fqn: str, cache_key: tuple[int, str] | None) -> None:
         """
         Record a resolved table FQN so the observability stage can attach the
         job's run data to it, both for the pipeline being processed and for the
@@ -525,7 +526,7 @@ class DbtcloudSource(PipelineServiceSource):
             )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")
+            logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")  # noqa: G004
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the ``Pipeline`` denominator from the dbt Cloud job count.
@@ -550,7 +551,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield from self.client.get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")
+            logger.error(f"Failed to get pipeline list due to : {exc}")  # noqa: G004
 
     def get_pipeline_name(self, pipeline_details: DBTJob) -> str:
         """
@@ -560,11 +561,11 @@ class DbtcloudSource(PipelineServiceSource):
             return pipeline_details.name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name due to : {exc}")
+            logger.error(f"Failed to get pipeline name due to : {exc}")  # noqa: G004
 
         return None
 
-    def _parse_timestamp(self, timestamp_str: str) -> Optional[Timestamp]:  # noqa: UP045
+    def _parse_timestamp(self, timestamp_str: str) -> Timestamp | None:
         """Parse ISO timestamp string to Timestamp."""
         try:
             # Try primary format
@@ -576,7 +577,7 @@ class DbtcloudSource(PipelineServiceSource):
                 dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                 return Timestamp(datetime_to_ts(dt))
             except Exception as exc:
-                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {exc}")
+                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {exc}")  # noqa: G004
                 return None
 
     @staticmethod
@@ -584,7 +585,7 @@ class DbtcloudSource(PipelineServiceSource):
         """Map dbt Cloud run status to OpenMetadata StatusType."""
         return STATUS_MAP.get(status, StatusType.Pending.value)
 
-    def _build_task_statuses(self, run: DBTRun) -> List[TaskStatus]:  # noqa: UP006
+    def _build_task_statuses(self, run: DBTRun) -> list[TaskStatus]:
         """
         The run's outcome, reported against the pipeline's single task.
 
@@ -607,7 +608,7 @@ class DbtcloudSource(PipelineServiceSource):
         self,
         run,
         pipeline_entity: Pipeline,
-        schedule_interval: Optional[str] = None,  # noqa: UP045
+        schedule_interval: str | None = None,
     ) -> PipelineObservability:
         """Build PipelineObservability object from run data."""
         return PipelineObservability(
@@ -627,13 +628,13 @@ class DbtcloudSource(PipelineServiceSource):
 
     def get_table_pipeline_observability(
         self, pipeline_details: DBTJob
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
+    ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current job), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
+            table_pipeline_map: dict[str, list[PipelineObservability]] = defaultdict(list)
 
             ctx = self.context.get()
             if (
@@ -644,7 +645,7 @@ class DbtcloudSource(PipelineServiceSource):
                 and ctx.current_pipeline_entity
                 and ctx.current_table_fqns
             ):
-                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")
+                logger.debug(f"Using context data for observability - {len(ctx.current_table_fqns)} tables")  # noqa: G004
 
                 schedule_interval = str(pipeline_details.schedule.cron) if pipeline_details.schedule else None
 
@@ -696,7 +697,7 @@ class DbtcloudSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")
+            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
     def yield_pipeline_status(self, pipeline_details: DBTJob) -> Iterable[Either[OMetaPipelineStatus]]:
@@ -728,7 +729,7 @@ class DbtcloudSource(PipelineServiceSource):
                 status_timestamp = end_time if end_time else start_time
                 if status_timestamp is None:
                     logger.debug(
-                        f"Skipping pipeline status for run '{run.id}' in pipeline {pipeline_fqn}: "
+                        f"Skipping pipeline status for run '{run.id}' in pipeline {pipeline_fqn}: "  # noqa: G004
                         f"run has no start or finish timestamp"
                     )
                     continue

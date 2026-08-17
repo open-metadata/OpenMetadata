@@ -13,7 +13,6 @@ Wrapper module of Athena client
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
@@ -39,7 +38,7 @@ class AthenaLakeFormationClient:
         self.lake_formation_client = get_lake_formation_client(connection=connection)
         self.catalog_id = connection.catalogId
 
-    def get_database_tags(self, name: str) -> Optional[List[TagItem]]:  # noqa: UP006, UP045
+    def get_database_tags(self, name: str) -> list[TagItem] | None:
         """
         Method to call the API and get the database tags
         """
@@ -52,7 +51,7 @@ class AthenaLakeFormationClient:
             return lf_tags.LFTagOnDatabase  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping.")
+            logger.warning(f"Unable to get LF-Tags for database resource [{name}] due to: {exc}. Skipping.")  # noqa: G004
         return None
 
     def get_table_and_column_tags(self, schema_name: str, table_name: str) -> LFTags:
@@ -80,5 +79,5 @@ class AthenaLakeFormationClient:
             return LFTags(**response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping.")
+            logger.warning(f"Unable to get LF-Tags for table resource [{table_name}] due to: {exc}. Skipping.")  # noqa: G004
         return LFTags()

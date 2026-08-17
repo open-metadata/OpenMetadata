@@ -13,8 +13,6 @@
 Define constraints helper methods useful for the metadata ingestion
 """
 
-from typing import Dict, List  # noqa: UP035
-
 from metadata.generated.schema.entity.data.table import (
     Column,
     ConstraintType,
@@ -23,7 +21,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.ingestion.ometa.utils import model_str
 
 
-def _is_column_unique(column: Dict, columns: List[Column]) -> bool:  # noqa: UP006
+def _is_column_unique(column: dict, columns: list[Column]) -> bool:
     """
     Method to check if the column in unique in the table
     """
@@ -40,7 +38,7 @@ def _is_column_unique(column: Dict, columns: List[Column]) -> bool:  # noqa: UP0
     return False
 
 
-def get_relationship_type(column: Dict, referred_table_columns: List[Column], columns: List[Column]) -> str:  # noqa: UP006
+def get_relationship_type(column: dict, referred_table_columns: list[Column], columns: list[Column]) -> str:
     """
     Determine the type of relationship (one-to-one, one-to-many, etc.)
     """

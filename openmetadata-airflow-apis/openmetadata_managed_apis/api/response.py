@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Optional, Union
 
 from airflow.models import DagRun
 from flask import Response, jsonify, make_response
@@ -38,7 +37,7 @@ class ApiResponse:
         return make_response(jsonify(response_obj), status)
 
     @staticmethod
-    def success(response_obj: Union[Optional[dict], Optional[list]] = None):  # noqa: UP007, UP045
+    def success(response_obj: dict | None | list | None = None):
         response_body = response_obj if response_obj is not None else {}
         return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_body)
 

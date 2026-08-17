@@ -13,8 +13,8 @@ Postgres lineage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -82,7 +82,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
         try:
             with get_connection(self.service_connection).connect() as conn:
                 sql_statement = self.get_sql_statement()
-                logger.debug(f"Executing lineage query: {sql_statement}")
+                logger.debug(f"Executing lineage query: {sql_statement}")  # noqa: G004
                 rows = conn.execute(text(sql_statement))
                 row_count = 0
                 for row in rows:
@@ -103,7 +103,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
-                logger.info(f"Processed {row_count} query log entries for lineage")
+                logger.info(f"Processed {row_count} query log entries for lineage")  # noqa: G004
         except Exception as err:
-            logger.error(f"Source usage processing error - {err}")
+            logger.error(f"Source usage processing error - {err}")  # noqa: G004
             logger.debug(traceback.format_exc())

@@ -22,7 +22,7 @@ To be extended by any other workflow:
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
@@ -77,7 +77,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     # All workflows require a source as a first step
     source: Source
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step, ...]  # noqa: UP006
+    steps: tuple[Step, ...]
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
@@ -90,7 +90,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             service_type=self.service_type,
         )
 
-    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+    def _build_user_agent(self) -> str | None:
         """
         HTTP User-Agent identifying the connector, workflow type and service to the
         OpenMetadata server, e.g. ``snowflake_metadata (service: prod-snowflake; v1.10.0.0)``.
@@ -105,11 +105,11 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             agent = f"{connector}_{workflow_type}" if workflow_type else connector
             context = self._user_agent_context()
         except Exception as exc:
-            logger.debug(f"Could not build the connector User-Agent header: {exc}")
+            logger.debug(f"Could not build the connector User-Agent header: {exc}")  # noqa: G004
             return None
         return f"{agent} ({context})" if context else agent
 
-    def _resolve_workflow_type(self) -> Optional[str]:  # noqa: UP045
+    def _resolve_workflow_type(self) -> str | None:
         """
         Clean workflow type token (metadata/lineage/usage/...), falling back to the raw
         source-config discriminator (e.g. ``AutoClassification``) when the pipeline type
@@ -119,7 +119,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         try:
             return get_pipeline_type_from_source_config(source_config).value
         except Exception as exc:
-            logger.debug(f"Using the raw source-config type for the User-Agent: {exc}")
+            logger.debug(f"Using the raw source-config type for the User-Agent: {exc}")  # noqa: G004
             return getattr(getattr(source_config.config, "type", None), "value", None)
 
     def _user_agent_context(self) -> str:
@@ -131,7 +131,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         try:
             parts.append(f"v{get_client_version()}")
         except Exception as exc:
-            logger.debug(f"Could not resolve the ingestion client version: {exc}")
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")  # noqa: G004
         return "; ".join(parts)
 
     @abstractmethod
@@ -177,10 +177,10 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         if bulk_sink:
             bulk_sink.run()
 
-    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
+    def get_failures(self) -> list[StackTraceError]:
         return self.source.get_status().failures
 
-    def workflow_steps(self) -> List[Step]:  # noqa: UP006
+    def workflow_steps(self) -> list[Step]:
         return [self.source] + list(self.steps)
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
@@ -216,12 +216,12 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Unknown error getting service connection for service name [{service_name}]"
+                    f"Unknown error getting service connection for service name [{service_name}]"  # noqa: G004
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
     @inject
-    def validate(self, profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None):  # noqa: UP006
+    def validate(self, profiler_config_class: Inject[type[ProfilerProcessorConfig]] = None):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
                 "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
@@ -233,14 +233,14 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         except AttributeError:
             if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
                 logger.debug(
-                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"  # noqa: G004
                 )
                 return
             raise WorkflowExecutionError(  # noqa: B904
                 f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
             )
 
-    def import_source_class(self) -> Type[Source]:  # noqa: UP006
+    def import_source_class(self) -> type[Source]:
         source_type = self.config.source.type.lower()
         try:
             return (
@@ -252,5 +252,5 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
                 raise e  # noqa: TRY201
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import source of type '{source_type}'")
+            logger.error(f"Failed to import source of type '{source_type}'")  # noqa: G004
             raise MissingPluginException(source_type)  # noqa: B904

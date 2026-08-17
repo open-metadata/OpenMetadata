@@ -13,7 +13,7 @@ Client to interact with fivetran apis
 """
 
 import base64
-from typing import Iterable  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
@@ -54,11 +54,11 @@ class FivetranClient:
         if response is None:
             raise RuntimeError(f"Fivetran API request failed for {path} — received None response")
         if not isinstance(response, dict):
-            logger.warning(f"Unexpected response type for {path}: {type(response)}")
+            logger.warning(f"Unexpected response type for {path}: {type(response)}")  # noqa: G004
             return {}
         data = response.get("data")
         if not isinstance(data, dict):
-            logger.warning(f"Missing or invalid 'data' field in response for {path}")
+            logger.warning(f"Missing or invalid 'data' field in response for {path}")  # noqa: G004
             return {}
         return data
 

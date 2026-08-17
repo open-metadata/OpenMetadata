@@ -14,7 +14,7 @@ Client to interact with Kafka Connect REST APIs
 
 import re
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 from urllib.parse import urlparse
 
 from kafka_connect import KafkaConnect
@@ -140,7 +140,7 @@ def _apply_regex_router(topic_name: str, connector_config: dict, transform: str)
             python_regex = JAVA_NAMED_GROUP_PATTERN.sub(r"(?P<\1>", regex)
             result = re.sub(python_regex, _to_python_replacement(replacement), topic_name)
         except re.error as exc:
-            logger.warning(f"Invalid RegexRouter config for transform '{transform}': {exc}")
+            logger.warning(f"Invalid RegexRouter config for transform '{transform}': {exc}")  # noqa: G004
     return result
 
 
@@ -196,7 +196,7 @@ class KafkaConnectClient:
         # None until the /topics endpoint has been probed once for this cluster
         self._topics_endpoint_supported = None
 
-    def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+    def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> list[KafkaConnectTopics] | None:
         """
         For CDC connectors, infer topic names based on database.server.name or topic.prefix.
         CDC connectors create topics with pattern: {server-name}.{database}.{table}
@@ -217,10 +217,10 @@ class KafkaConnectClient:
             # Get all connectors and check their topics
             # Note: This is a best-effort approach for Confluent Cloud
             # In practice, the messaging service should already have ingested these topics
-            logger.debug(f"CDC connector detected with server name: {database_server_name}")
+            logger.debug(f"CDC connector detected with server name: {database_server_name}")  # noqa: G004
             return None  # Topics will be matched via messaging service during lineage  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Unable to infer CDC topics: {exc}")
+            logger.debug(f"Unable to infer CDC topics: {exc}")  # noqa: G004
             return None
 
     def _enrich_connector_details(self, connector_details: KafkaConnectPipelineDetails, connector_name: str) -> None:
@@ -240,7 +240,7 @@ class KafkaConnectClient:
                     if inferred_topics:
                         connector_details.topics = inferred_topics
 
-    def get_cluster_info(self) -> Optional[dict]:  # noqa: UP045
+    def get_cluster_info(self) -> dict | None:
         """
         Get the version and other details of the Kafka Connect cluster.
 
@@ -255,7 +255,7 @@ class KafkaConnectClient:
                 connectors = self.client.list_connectors()
                 # Connection successful - return a valid response
                 logger.info(
-                    f"Confluent Cloud connection successful - found {len(connectors) if connectors else 0} connectors"
+                    f"Confluent Cloud connection successful - found {len(connectors) if connectors else 0} connectors"  # noqa: G004
                 )
                 return {  # noqa: TRY300
                     "version": "confluent-cloud",
@@ -263,7 +263,7 @@ class KafkaConnectClient:
                     "kafka_cluster_id": "confluent-managed",
                 }
             except Exception as exc:
-                logger.error(f"Failed to connect to Confluent Cloud: {exc}")
+                logger.error(f"Failed to connect to Confluent Cloud: {exc}")  # noqa: G004
                 raise
 
         return self.client.get_cluster_info()
@@ -284,7 +284,7 @@ class KafkaConnectClient:
         expand: str = None,  # noqa: RUF013
         pattern: str = None,  # noqa: RUF013
         state: str = None,  # noqa: RUF013
-    ) -> Optional[dict]:  # noqa: UP045
+    ) -> dict | None:
         """
         Get the list of connectors.
         Args:
@@ -297,11 +297,11 @@ class KafkaConnectClient:
             return self.get_connectors_list(expand=expand, pattern=pattern, state=state)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connectors list {exc}")
+            logger.error(f"Unable to get connectors list {exc}")  # noqa: G004
 
         return None
 
-    def get_connector_plugins(self) -> Optional[dict]:  # noqa: UP045
+    def get_connector_plugins(self) -> dict | None:
         """
         Get the list of connector plugins.
         """
@@ -309,9 +309,9 @@ class KafkaConnectClient:
             return self.client.list_connector_plugins()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector plugins  {exc}")
+            logger.error(f"Unable to get connector plugins  {exc}")  # noqa: G004
 
-    def get_connector_config(self, connector: str) -> Optional[dict]:  # noqa: UP045
+    def get_connector_config(self, connector: str) -> dict | None:
         """
         Get the details of a single connector.
 
@@ -343,11 +343,11 @@ class KafkaConnectClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector configuration details {exc}")
+            logger.error(f"Unable to get connector configuration details {exc}")  # noqa: G004
 
         return None
 
-    def extract_column_mappings(self, connector_config: dict) -> Optional[List[KafkaConnectColumnMapping]]:  # noqa: UP006, UP045
+    def extract_column_mappings(self, connector_config: dict) -> list[KafkaConnectColumnMapping] | None:
         """
         Extract column mappings from connector configuration.
         For Debezium and JDBC connectors, columns are typically mapped 1:1
@@ -393,11 +393,11 @@ class KafkaConnectClient:
 
         except (KeyError, AttributeError, ValueError) as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to extract column mappings: {exc}")
+            logger.error(f"Unable to extract column mappings: {exc}")  # noqa: G004
 
         return None
 
-    def _list_topics_from_api(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+    def _list_topics_from_api(self, connector: str) -> list[KafkaConnectTopics] | None:
         """
         Ask the Connect runtime which topics the connector actually produced (KIP-558).
 
@@ -428,19 +428,19 @@ class KafkaConnectClient:
                 if self._topics_endpoint_supported is None:
                     self._topics_endpoint_supported = False
                     logger.info(
-                        f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc}); "
+                        f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc}); "  # noqa: G004
                         "falling back to topic names declared in connector configs. Connectors that route "
                         "by row value (e.g. a Debezium outbox EventRouter) cannot be resolved this way."
                     )
             else:
                 logger.warning(
-                    f"Transient failure listing topics for connector '{connector}' ({exc}); "
+                    f"Transient failure listing topics for connector '{connector}' ({exc}); "  # noqa: G004
                     "will retry the endpoint for the next connector."
                 )
             logger.debug(traceback.format_exc())
         return None
 
-    def get_connector_topics(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+    def get_connector_topics(self, connector: str) -> list[KafkaConnectTopics] | None:
         """
         Get the list of topics for a connector.
 
@@ -474,15 +474,15 @@ class KafkaConnectClient:
                             topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
 
                 if topics:
-                    logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
+                    logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")  # noqa: G004
                     return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector Topics {exc}")
+            logger.error(f"Unable to get connector Topics {exc}")  # noqa: G004
 
         return None
 
-    def get_connector_list(self) -> Optional[Iterable[KafkaConnectPipelineDetails]]:  # noqa: UP045
+    def get_connector_list(self) -> Iterable[KafkaConnectPipelineDetails] | None:
         """
         Get the information of all connectors.
         Returns:
@@ -503,6 +503,6 @@ class KafkaConnectClient:
                         yield connector_details
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get connector information {exc}")
+            logger.error(f"Unable to get connector information {exc}")  # noqa: G004
 
         return None

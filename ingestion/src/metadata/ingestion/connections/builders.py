@@ -13,8 +13,9 @@
 Get and test connection utilities
 """
 
+from collections.abc import Callable
 from functools import partial
-from typing import Any, Callable, Dict, Optional  # noqa: UP035
+from typing import Any
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -41,7 +42,7 @@ logger = cli_logger()
 
 
 @connection_with_options_secrets
-def get_connection_args_common(connection) -> Dict[str, Any]:  # noqa: UP006
+def get_connection_args_common(connection) -> dict[str, Any]:
     """
     Read the connection arguments of a connection.
 
@@ -138,7 +139,7 @@ def create_generic_db_connection(
     return engine
 
 
-def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+def get_connection_options_dict(connection) -> dict[str, Any] | None:
     """
     Given a connection object, returns the connection options
     dictionary if exists

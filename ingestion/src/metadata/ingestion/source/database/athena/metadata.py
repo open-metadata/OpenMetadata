@@ -14,7 +14,7 @@
 import hashlib
 import re
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import text
@@ -107,7 +107,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
@@ -144,15 +144,15 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     if database.Description:
                         self.schema_description_map[database.Name] = database.Description
         except Exception as exc:
-            logger.warning(f"Error preparing Athena source: {exc}")
+            logger.warning(f"Error preparing Athena source: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
         try:
             self._string_property_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
         except Exception as exc:
-            logger.warning(f"Failed to fetch string property type ref: {exc}")
+            logger.warning(f"Failed to fetch string property type ref: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -174,7 +174,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 return results  # noqa: TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}")
+                logger.warning(f"Failed to fetch Glue table metadata for schema [{schema_name}]: {exc}")  # noqa: G004
         return [
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name) or []
@@ -182,7 +182,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """Get Athena table partition detail
 
         Args:
@@ -218,7 +218,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -256,7 +256,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield table and column tags
@@ -325,7 +325,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
         else:
             description = table_info.get("text")
         return description
@@ -386,7 +386,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     self._processed_prop.add(sanitized_name)
                 except Exception as exc:
                     logger.warning(
-                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
+                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"  # noqa: G004
                     )
                     logger.debug(traceback.format_exc())
                     continue
@@ -401,6 +401,6 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                 result = conn.execute(query)
                 return {str(row[0]): str(row[1]) for row in result if row[0] is not None and row[1] is not None}
         except Exception as exc:
-            logger.debug(f"Unable to read Iceberg $properties for [{schema_name}.{table_name}]: {exc}")
+            logger.debug(f"Unable to read Iceberg $properties for [{schema_name}.{table_name}]: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return {}

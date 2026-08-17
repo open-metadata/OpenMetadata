@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -50,8 +50,8 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
-        self.system_metrics_class = cast(Type[SnowflakeSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+    ) -> list[SystemProfile]:
+        self.system_metrics_class = cast(type[SnowflakeSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -62,6 +62,6 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
 
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
         if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(session.get_bind().dialect.name):
-            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")
+            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")  # noqa: G004
             return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
         return None

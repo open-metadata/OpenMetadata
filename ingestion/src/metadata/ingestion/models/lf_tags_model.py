@@ -12,23 +12,21 @@
 Custom models for LF tags
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel
 
 
 class TagItem(BaseModel):
     CatalogId: str
     TagKey: str
-    TagValues: List[str]  # noqa: UP006
+    TagValues: list[str]
 
 
 class LFTagsOnColumnsItem(BaseModel):
     Name: str
-    LFTags: List[TagItem]  # noqa: UP006
+    LFTags: list[TagItem]
 
 
 class LFTags(BaseModel):
-    LFTagOnDatabase: Optional[List[TagItem]] = None  # noqa: UP006, UP045
-    LFTagsOnTable: Optional[List[TagItem]] = None  # noqa: UP006, UP045
-    LFTagsOnColumns: Optional[List[LFTagsOnColumnsItem]] = None  # noqa: UP006, UP045
+    LFTagOnDatabase: list[TagItem] | None = None
+    LFTagsOnTable: list[TagItem] | None = None
+    LFTagsOnColumns: list[LFTagsOnColumnsItem] | None = None

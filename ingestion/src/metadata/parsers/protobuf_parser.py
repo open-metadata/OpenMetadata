@@ -20,7 +20,6 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path, PureWindowsPath
-from typing import List, Optional, Type, Union  # noqa: UP035
 
 import grpc_tools.protoc
 from pydantic import BaseModel
@@ -83,7 +82,7 @@ class ProtobufParserConfig(BaseModel):
 
     schema_name: str
     schema_text: str
-    base_file_path: Optional[str] = "/tmp/protobuf_openmetadata"  # noqa: UP045
+    base_file_path: str | None = "/tmp/protobuf_openmetadata"
 
 
 class ProtobufParser:
@@ -138,7 +137,7 @@ class ProtobufParser:
             return proto_path, str(file_path)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")
+            logger.warning(f"Unable to create protobuf directory structure for {self.config.schema_name}: {exc}")  # noqa: G004
         return None
 
     def get_protobuf_python_object(self, proto_path: str, file_path: str):
@@ -169,10 +168,10 @@ class ProtobufParser:
             return instance  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")
+            logger.warning(f"Unable to create protobuf python module for {self.config.schema_name}: {exc}")  # noqa: G004
         return None
 
-    def parse_protobuf_schema(self, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
+    def parse_protobuf_schema(self, cls: type[BaseModel] = FieldModel) -> list[FieldModel | Column] | None:
         """
         Method to parse the protobuf schema
         """
@@ -196,10 +195,10 @@ class ProtobufParser:
             return field_models  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")
+            logger.warning(f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}")  # noqa: G004
         return None
 
-    def _get_field_type(self, type_: int, cls: Type[BaseModel] = FieldModel) -> str:  # noqa: UP006
+    def _get_field_type(self, type_: int, cls: type[BaseModel] = FieldModel) -> str:
         if type_ > 18:
             return DataType.UNKNOWN.value
         data_type = ProtobufDataTypes(type_).name
@@ -210,8 +209,8 @@ class ProtobufParser:
     def get_protobuf_fields(
         self,
         fields,
-        cls: Type[BaseModel] = FieldModel,  # noqa: UP006
-    ) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
+        cls: type[BaseModel] = FieldModel,
+    ) -> list[FieldModel | Column] | None:
         """
         Recursively convert the parsed schema into required models
         """
@@ -230,6 +229,6 @@ class ProtobufParser:
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")
+                logger.warning(f"Unable to parse the protobuf schema into models: {exc}")  # noqa: G004
 
         return field_models

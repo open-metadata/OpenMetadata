@@ -15,7 +15,7 @@ OpenMetadata Airflow Lineage Backend
 
 import logging
 import traceback
-from typing import TYPE_CHECKING, Dict  # noqa: UP035
+from typing import TYPE_CHECKING
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
 from airflow_provider_openmetadata.lineage.status import add_status
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator
 
 
-def failure_callback(context: Dict[str, str]) -> None:  # noqa: UP006
+def failure_callback(context: dict[str, str]) -> None:
     """
     Add this function to the args of your DAG or Task
     as the value of `on_failure_callback` to track
@@ -61,7 +61,7 @@ def failure_callback(context: Dict[str, str]) -> None:  # noqa: UP006
             )
         else:
             logging.warning(
-                f"Pipeline {airflow_service_entity.name.root}.{dag.dag_id} not found. Skipping status update."
+                f"Pipeline {airflow_service_entity.name.root}.{dag.dag_id} not found. Skipping status update."  # noqa: G004
             )
 
     except Exception as exc:  # pylint: disable=broad-except
@@ -69,7 +69,7 @@ def failure_callback(context: Dict[str, str]) -> None:  # noqa: UP006
         logging.error("Lineage Callback exception %s", exc)
 
 
-def success_callback(context: Dict[str, str]) -> None:  # noqa: UP006
+def success_callback(context: dict[str, str]) -> None:
     """
     Add this function to the args of your DAG or Task
     as the value of `on_success_callback` to track

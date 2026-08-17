@@ -1,6 +1,5 @@
 import json
 import uuid
-from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
 from urllib.parse import quote_plus
 
@@ -173,7 +172,7 @@ class NestedModel(BaseModel):
 class RootModel(BaseModel):
     root_secret: CustomSecretStr
     nested: NestedModel
-    items: List[NestedModel]  # noqa: UP006
+    items: list[NestedModel]
 
 
 data = {
@@ -786,8 +785,8 @@ class CustomSecretStrExtendedTest(TestCase):
 
         class OptionalSecretModel(BaseModel):
             required_secret: CustomSecretStr
-            optional_secret: Optional[CustomSecretStr] = None  # noqa: UP045
-            optional_value: Optional[str] = None  # noqa: UP045
+            optional_secret: CustomSecretStr | None = None
+            optional_value: str | None = None
 
         # Test with all fields
         full_model = OptionalSecretModel(
@@ -813,8 +812,8 @@ class CustomSecretStrExtendedTest(TestCase):
         """Test secrets in lists and dictionaries."""
 
         class ComplexSecretModel(BaseModel):
-            secret_list: List[CustomSecretStr]  # noqa: UP006
-            nested_secrets: List[dict]  # noqa: UP006
+            secret_list: list[CustomSecretStr]
+            nested_secrets: list[dict]
 
         complex_data = {
             "secret_list": ["password1", "password2", "password3"],

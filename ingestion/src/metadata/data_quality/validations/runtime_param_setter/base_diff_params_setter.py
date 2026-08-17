@@ -1,12 +1,7 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import (  # noqa: UP035
-    List,
-    Optional,
+from typing import (
     Protocol,
-    Set,
-    Type,
-    Union,
     runtime_checkable,
 )
 
@@ -55,10 +50,10 @@ class ServiceSpecPatch:
             )
         )
 
-    def get_data_diff_class(self) -> Type["BaseTableParameter"]:  # noqa: UP006
+    def get_data_diff_class(self) -> type["BaseTableParameter"]:
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
+    def get_connection_class(self) -> type[BaseConnection] | None:
         if self.service_spec.connection_class:
             return import_from_module(self.service_spec.connection_class)
         return None
@@ -81,7 +76,7 @@ class BaseTableParameter:
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[Union[str, dict]],  # noqa: UP007, UP045
+        service_url: str | dict | None,
     ) -> TableParameter:
         """Getter table parameter for the table diff test.
 
@@ -128,7 +123,7 @@ class BaseTableParameter:
                 table = dialect_instance.denormalize_name(name=table)
                 schema = dialect_instance.denormalize_name(name=schema)
         except Exception as e:
-            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")
+            logger.debug(f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}")  # noqa: G004
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
@@ -137,7 +132,7 @@ class BaseTableParameter:
     def _get_service_connection_config(
         cls,
         service_connection_config,
-    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
+    ) -> str | dict | None:
         """Return the service connection for data diff, as a dict or URL string."""
         if not service_connection_config:
             return None
@@ -152,7 +147,7 @@ class BaseTableParameter:
                     return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             logger.debug(
-                f"[Data Diff]: Could not build a connection dict for "
+                f"[Data Diff]: Could not build a connection dict for "  # noqa: G004
                 f"{service_connection_config.type.value}; falling back to the connection URL",
                 exc_info=True,
             )
@@ -162,15 +157,15 @@ class BaseTableParameter:
     def get_service_connection_config(
         cls,
         service: DatabaseService,
-    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
+    ) -> str | dict | None:
         return cls._get_service_connection_config(service.connection.config)
 
     def get_data_diff_url(
         self,
         db_service: DatabaseService,
         table_fqn,
-        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
-    ) -> Union[str, dict]:  # noqa: UP007
+        override_url: str | dict | None = None,
+    ) -> str | dict:
         """Get the url for the data diff service.
 
         Args:
@@ -209,11 +204,11 @@ class BaseTableParameter:
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column],  # noqa: UP006
-        key_columns: Set[str],  # noqa: UP006
-        extra_columns: Set[str],  # noqa: UP006
+        columns: list[Column],
+        key_columns: set[str],
+        extra_columns: set[str],
         case_sensitive: bool,
-    ) -> List[Column]:  # noqa: UP006
+    ) -> list[Column]:
         """Filter relevant columns.
 
         Args:

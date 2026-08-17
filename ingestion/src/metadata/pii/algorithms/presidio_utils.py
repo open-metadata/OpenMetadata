@@ -152,7 +152,7 @@ def _load_spacy_model(model_name: str) -> None:
     try:
         _ = spacy.load(model_name)
     except OSError:
-        logger.warning(f"Downloading {model_name} language model for the spaCy")
+        logger.warning(f"Downloading {model_name} language model for the spaCy")  # noqa: G004
         download(model_name)
         _ = spacy.load(model_name)
 
@@ -318,7 +318,7 @@ class ValidatedDateRecognizer(DateRecognizer):
         try:
             _ = parser.parse(pattern_text)
         except Exception as e:
-            logger.debug(f"Failed to parse {pattern_text}: {e}")
+            logger.debug(f"Failed to parse {pattern_text}: {e}")  # noqa: G004
             # Return None so score isn't modified, relying on Regex score
             return None
 
@@ -383,7 +383,7 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
             ] = True
 
             logger.debug(
-                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"  # noqa: G004
             )
 
         return raw_recognizer_results
@@ -491,7 +491,7 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             ] = True
 
             logger.debug(
-                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"  # noqa: G004
             )
 
         return results

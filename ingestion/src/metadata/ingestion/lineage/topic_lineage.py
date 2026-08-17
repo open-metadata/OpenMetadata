@@ -16,8 +16,6 @@ messageSchema.schemaFields rather than a flat `columns` list, and Debezium
 wraps the real record under an after/before envelope.
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger
@@ -27,14 +25,14 @@ logger = ingestion_logger()
 CDC_ENVELOPE_FIELDS = {"after", "before", "op"}
 
 
-def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: C901, UP045
+def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> str | None:  # noqa: C901
     """
     Get the fully qualified name for a field in a Topic's schema.
     Handles nested structures where fields may be children of a parent RECORD.
     For Debezium CDC topics, searches for fields inside after/before envelope children.
     """
     if not topic_entity.messageSchema or not topic_entity.messageSchema.schemaFields:
-        logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")
+        logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")  # noqa: G004
         return None
 
     for field in topic_entity.messageSchema.schemaFields:
@@ -76,5 +74,5 @@ def get_topic_field_fqn(topic_entity: Topic, field_name: str) -> Optional[str]: 
             envelope_fqn = field.fullyQualifiedName.root
             return f"{envelope_fqn}.{field_name}"
 
-    logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")
+    logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")  # noqa: G004
     return None

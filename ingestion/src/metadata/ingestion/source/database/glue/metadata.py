@@ -13,7 +13,8 @@ Glue source methods.
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -101,7 +102,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GlueConnection = config.serviceConnection.root.config
         if not isinstance(connection, GlueConnection):
@@ -239,7 +240,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -296,7 +297,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         )
                     )
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -368,7 +369,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         return Column(**parsed_string)
 
     # pylint: disable=too-many-locals
-    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
+    def get_columns(self, column_data: StorageDetails) -> Iterable[Column] | None:
         """
         Get columns from Glue.
         """
@@ -428,7 +429,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             except Exception as e:
                 # If we can't get Glue metadata, fall back to the original method
                 # This ensures backward compatibility
-                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")
+                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")  # noqa: G004
 
         # For non-Iceberg tables or if Glue access fails, use the original method
         # process table regular columns info
@@ -440,7 +441,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             yield self._get_column_object(column)
 
     @classmethod
-    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:  # noqa: UP045
+    def get_format(cls, storage: StorageDetails) -> FileFormat | None:
         library = storage.SerdeInfo.SerializationLibrary
         if library is None:
             return None
@@ -467,10 +468,10 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for dynamodb
         """
@@ -491,5 +492,5 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 return table_url  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
+            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
         return None

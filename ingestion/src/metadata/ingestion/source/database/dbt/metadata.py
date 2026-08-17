@@ -17,9 +17,10 @@ DBT source methods.
 import contextlib
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -174,7 +175,7 @@ class DbtSource(DbtServiceSource):
         self._load_omd_custom_properties()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -201,11 +202,11 @@ class DbtSource(DbtServiceSource):
                 for prop in response["customProperties"]:
                     self.omd_custom_properties[prop["name"]] = prop
 
-            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")
+            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")  # noqa: G004
         except Exception as exc:
-            logger.warning(f"Error loading custom properties: {exc}")
+            logger.warning(f"Error loading custom properties: {exc}")  # noqa: G004
 
-    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:  # noqa: UP045
+    def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
         """
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
@@ -224,15 +225,15 @@ class DbtSource(DbtServiceSource):
                         entity_ref = EntityReference(**domain_ref_data)
                         return entity_ref  # noqa: RET504
                 else:
-                    logger.warning(f"Domain '{domain_name}' not found in OpenMetadata")
+                    logger.warning(f"Domain '{domain_name}' not found in OpenMetadata")  # noqa: G004
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to ingest domain from DBT due to: {exc}")
+            logger.warning(f"Unable to ingest domain from DBT due to: {exc}")  # noqa: G004
 
         return None
 
-    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:  # noqa: C901, UP045
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Any | None) -> EntityReferenceList | None:  # noqa: C901
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -265,7 +266,7 @@ class DbtSource(DbtServiceSource):
                         if catalog_owner:
                             dbt_owner = catalog_owner
                     except Exception as catalog_exc:
-                        logger.debug(f"Error accessing catalog_node.metadata.owner: {catalog_exc}")
+                        logger.debug(f"Error accessing catalog_node.metadata.owner: {catalog_exc}")  # noqa: G004
 
             if dbt_owner and isinstance(dbt_owner, str):
                 owner_ref = self.metadata.get_reference_by_name(
@@ -273,7 +274,7 @@ class DbtSource(DbtServiceSource):
                 ) or self.metadata.get_reference_by_email(email=dbt_owner)
                 if owner_ref:
                     return owner_ref
-                logger.warning(f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}")
+                logger.warning(f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}")  # noqa: G004
             elif dbt_owner and isinstance(dbt_owner, list):
                 owner_list = EntityReferenceList(root=[])
                 for owner_name in dbt_owner:
@@ -284,22 +285,22 @@ class DbtSource(DbtServiceSource):
                         owner_list.root.extend(owner_ref.root)
                     else:
                         logger.warning(
-                            f"Unable to ingest owner from DBT since no user or team was found with name {owner_name}"
+                            f"Unable to ingest owner from DBT since no user or team was found with name {owner_name}"  # noqa: G004
                         )
                 if owner_list.root:
                     return owner_list
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to ingest owner from DBT due to: {exc}")
+            logger.warning(f"Unable to ingest owner from DBT due to: {exc}")  # noqa: G004
         return None
 
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
             if all(required_catalog_key in catalog_column for required_catalog_key in REQUIRED_CATALOG_KEYS):
-                logger.debug(f"Successfully Validated DBT Column: {catalog_key}")
+                logger.debug(f"Successfully Validated DBT Column: {catalog_key}")  # noqa: G004
             else:
                 logger.warning(
-                    f"Error validating DBT Column: {catalog_key}\n"
+                    f"Error validating DBT Column: {catalog_key}\n"  # noqa: G004
                     f"Please check if following keys exist for the column node: {REQUIRED_CATALOG_KEYS}"
                 )
 
@@ -328,10 +329,10 @@ class DbtSource(DbtServiceSource):
 
                 if manifest_node[DbtCommonEnum.RESOURCETYPE.value] == DbtCommonEnum.EXPOSURE.value:
                     if all(required_key in manifest_node for required_key in REQUIRED_EXPOSURE_KEYS):
-                        logger.debug(f"Successfully Validated DBT Node: {key}")
+                        logger.debug(f"Successfully Validated DBT Node: {key}")  # noqa: G004
                     else:
                         logger.warning(
-                            f"Error validating DBT Node: {key}\n"
+                            f"Error validating DBT Node: {key}\n"  # noqa: G004
                             f"Please check if following keys exist for the node: {REQUIRED_EXPOSURE_KEYS}"
                         )
 
@@ -339,10 +340,10 @@ class DbtSource(DbtServiceSource):
 
                 # Validate if all the required keys are present in the manifest nodes
                 if all(required_key in manifest_node for required_key in REQUIRED_MANIFEST_KEYS):
-                    logger.debug(f"Successfully Validated DBT Node: {key}")
+                    logger.debug(f"Successfully Validated DBT Node: {key}")  # noqa: G004
                 else:
                     logger.warning(
-                        f"Error validating DBT Node: {key}\n"
+                        f"Error validating DBT Node: {key}\n"  # noqa: G004
                         f"Please check if following keys exist for the node: {REQUIRED_MANIFEST_KEYS}"
                     )
 
@@ -352,9 +353,9 @@ class DbtSource(DbtServiceSource):
                     if catalog_node and "columns" in catalog_node:
                         self.check_columns(catalog_node=catalog_node)
                     else:
-                        logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
+                        logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")  # noqa: G004
 
-    def filter_tags(self, tags: List[str]) -> List[str]:  # noqa: UP006
+    def filter_tags(self, tags: list[str]) -> list[str]:
         """
         Filter tags based on tag filter pattern if configured
         """
@@ -372,24 +373,24 @@ class DbtSource(DbtServiceSource):
             return
 
         table_fqn = table_entity.fullyQualifiedName.root
-        logger.debug(f"Processing DBT domain for: {table_fqn}")
+        logger.debug(f"Processing DBT domain for: {table_fqn}")  # noqa: G004
 
         try:
             domain_name = self.extracted_domains.get(table_fqn)
 
             if not domain_name:
-                logger.debug(f"No domain found for table {table_fqn}")
+                logger.debug(f"No domain found for table {table_fqn}")  # noqa: G004
                 return
 
             domain_entity = find_domain_by_name(self.metadata, domain_name)
 
             if not domain_entity:
-                logger.warning(f"Domain '{domain_name}' not found in OpenMetadata for table {table_fqn}")
+                logger.warning(f"Domain '{domain_name}' not found in OpenMetadata for table {table_fqn}")  # noqa: G004
                 return
 
             domain_ref_data = format_domain_reference(domain_entity)
             if not domain_ref_data:
-                logger.warning(f"Failed to format domain reference for '{domain_name}'")
+                logger.warning(f"Failed to format domain reference for '{domain_name}'")  # noqa: G004
                 return
 
             domain_ref = EntityReference(**domain_ref_data)
@@ -401,12 +402,12 @@ class DbtSource(DbtServiceSource):
             updated_entity = self.metadata.patch_domain(entity=Table, source=table_entity, domains=domain_list)
 
             if updated_entity:
-                logger.info(f"Successfully updated domain for table {table_fqn}")
+                logger.info(f"Successfully updated domain for table {table_fqn}")  # noqa: G004
             else:
-                logger.debug(f"Domain already set for table {table_fqn}, skipping update")
+                logger.debug(f"Domain already set for table {table_fqn}, skipping update")  # noqa: G004
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
+            logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
@@ -419,22 +420,22 @@ class DbtSource(DbtServiceSource):
             return
 
         table_fqn = table_entity.fullyQualifiedName.root
-        logger.debug(f"Processing DBT custom properties for: {table_fqn}")
+        logger.debug(f"Processing DBT custom properties for: {table_fqn}")  # noqa: G004
 
         try:
             custom_properties = self.extracted_custom_properties.get(table_fqn, {})
 
             if not custom_properties:
-                logger.debug(f"No custom_properties found for table {table_fqn}")
+                logger.debug(f"No custom_properties found for table {table_fqn}")  # noqa: G004
                 return
 
-            logger.info(f"Processing {len(custom_properties)} custom_properties for table {table_fqn}")
+            logger.info(f"Processing {len(custom_properties)} custom_properties for table {table_fqn}")  # noqa: G004
 
             # Validate and convert custom properties
             valid_custom_properties = self._validate_custom_properties(table_entity, custom_properties)
 
             if not valid_custom_properties:
-                logger.warning(f"No valid custom properties found for table {table_fqn}")
+                logger.warning(f"No valid custom properties found for table {table_fqn}")  # noqa: G004
                 return
 
             # Use the new patch_custom_properties method
@@ -446,19 +447,19 @@ class DbtSource(DbtServiceSource):
             )
 
             if updated_entity:
-                logger.info(f"Successfully updated custom properties for table {table_fqn}")
+                logger.info(f"Successfully updated custom properties for table {table_fqn}")  # noqa: G004
             else:
-                logger.warning(f"Failed to update custom properties for table {table_fqn}")
+                logger.warning(f"Failed to update custom properties for table {table_fqn}")  # noqa: G004
 
         except Exception as exc:
-            logger.warning(f"Failed to process custom properties for {table_fqn}: {exc}")
+            logger.warning(f"Failed to process custom properties for {table_fqn}: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
     def _validate_custom_properties(
         self,
         table_entity: Table,
-        custom_properties: Dict[str, Any],  # noqa: UP006
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        custom_properties: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         Validates and converts custom properties with comprehensive type checking.
 
@@ -478,7 +479,7 @@ class DbtSource(DbtServiceSource):
         validation_errors = []
         table_fqn = table_entity.fullyQualifiedName.root
 
-        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")
+        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")  # noqa: G004
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
@@ -487,7 +488,7 @@ class DbtSource(DbtServiceSource):
                     f"Custom property '{field_name}' not found in OpenMetadata. "
                     f"Please create it in the OpenMetadata UI before ingesting."
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning(f"Table {table_fqn}: {error_msg}")  # noqa: G004
                 validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
@@ -517,7 +518,7 @@ class DbtSource(DbtServiceSource):
                     value=field_value,
                     error_detail=error_detail,
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning(f"Table {table_fqn}: {error_msg}")  # noqa: G004
                 validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
@@ -526,20 +527,20 @@ class DbtSource(DbtServiceSource):
                 error_msg = (
                     f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning(f"Table {table_fqn}: {error_msg}")  # noqa: G004
                 validation_errors.append(f"{field_name}: Conversion failed")
                 continue
 
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
+                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"  # noqa: G004
                 )
 
             # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
             logger.debug(
-                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "
+                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "  # noqa: G004
                 f"{field_value} → {converted_value} (type: {property_type})"
             )
 
@@ -552,12 +553,12 @@ class DbtSource(DbtServiceSource):
 
         if valid_custom_properties:
             logger.debug(
-                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
+                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "  # noqa: G004
                 f"custom properties for table {table_fqn}"
             )
         else:
             logger.warning(
-                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"
+                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"  # noqa: G004
             )
 
         return valid_custom_properties if valid_custom_properties else None
@@ -725,7 +726,7 @@ class DbtSource(DbtServiceSource):
         )
         table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
         if not table_entity:
-            logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
+            logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")  # noqa: G004
             return
 
         # searchAcrossDatabases lets the lookup resolve under a different service, so the
@@ -743,8 +744,8 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
-        def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
+    def _get_table_entity(self, table_fqn) -> Table | None:
+        def search_table(fqn_search_string: str) -> Table | None:
             table_entities = get_entity_from_es_result(
                 entity_list=self.metadata.es_search_from_fqn(
                     entity_type=Table,
@@ -757,18 +758,18 @@ class DbtSource(DbtServiceSource):
             if not table_entities:
                 return None
 
-            logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities)} entities")
+            logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities)} entities")  # noqa: G004
             return next(iter(filter(None, table_entities)), None) if table_entities else None
 
         try:
             table_entity = search_table(table_fqn)
             if table_entity:
-                logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
+                logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")  # noqa: G004
                 return table_entity
 
             if self.source_config.searchAcrossDatabases:
                 logger.warning(
-                    f"Table {table_fqn} not found under service: {self.config.serviceName}."
+                    f"Table {table_fqn} not found under service: {self.config.serviceName}."  # noqa: G004
                     "Trying to find table across services"
                 )
                 _, database_name, schema_name, table_name = fqn.split(table_fqn)
@@ -785,14 +786,14 @@ class DbtSource(DbtServiceSource):
                     return table_entity
 
             logger.warning(
-                f"Unable to find the table '{table_fqn}' in OpenMetadata. "
+                f"Unable to find the table '{table_fqn}' in OpenMetadata. "  # noqa: G004
                 "Please check if the table exists and is ingested in OpenMetadata. "
                 "Also, ensure the name, database, and schema of the manifest node"
                 "match the table present in OpenMetadata."
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}")
+            logger.warning(f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}")  # noqa: G004
 
         return None
 
@@ -862,12 +863,12 @@ class DbtSource(DbtServiceSource):
 
                     # Skip the ephemeral nodes since it is not materialized
                     if check_ephemeral_node(manifest_node):
-                        logger.debug(f"Skipping ephemeral DBT node: {key}.")
+                        logger.debug(f"Skipping ephemeral DBT node: {key}.")  # noqa: G004
                         continue
 
                     # Skip the analysis and test nodes
                     if resource_type in [item.value for item in SkipResourceTypeEnum]:
-                        logger.debug(f"Skipping DBT node: {key}.")
+                        logger.debug(f"Skipping DBT node: {key}.")  # noqa: G004
                         continue
 
                     model_name = get_dbt_model_name(manifest_node)
@@ -891,7 +892,7 @@ class DbtSource(DbtServiceSource):
                         self.status.filter(filter_model.model_fqn, filter_model.message)
                         continue
 
-                    logger.debug(f"Processing DBT node: {model_name}")
+                    logger.debug(f"Processing DBT node: {model_name}")  # noqa: G004
 
                     catalog_node = None
                     if catalog_entities:
@@ -926,7 +927,7 @@ class DbtSource(DbtServiceSource):
 
                     if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
-                            f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
+                            f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"  # noqa: G004
                             f"with id {table_entity.id}"
                         )
 
@@ -976,7 +977,7 @@ class DbtSource(DbtServiceSource):
         semantic_models = getattr(manifest, "semantic_models", None) or {}
         if not metrics:
             return
-        logger.debug(f"Found {len(metrics)} dbt metrics to process")
+        logger.debug(f"Found {len(metrics)} dbt metrics to process")  # noqa: G004
         for key in order_metrics_by_dependency(metrics):
             self.context.get().dbt_metrics[key] = {
                 "metric_node": metrics[key],
@@ -1049,12 +1050,12 @@ class DbtSource(DbtServiceSource):
                             upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
+                    logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")  # noqa: G004
                     continue
 
         return upstream_nodes
 
-    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:  # noqa: UP006
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> list[Column]:
         """
         Method to parse the DBT columns
         """
@@ -1063,7 +1064,7 @@ class DbtSource(DbtServiceSource):
         manifest_columns = manifest_node.columns or {}
         for key, manifest_column in manifest_columns.items():
             try:
-                logger.debug(f"Processing DBT column: {key}")
+                logger.debug(f"Processing DBT column: {key}")  # noqa: G004
                 # If catalog file is passed, pass the column information from catalog file
                 catalog_column = None
                 if catalog_node and catalog_node.columns:
@@ -1087,7 +1088,7 @@ class DbtSource(DbtServiceSource):
 
                 if manifest_column.meta:
                     dbt_column_meta = DbtMeta(**manifest_column.meta)
-                    logger.debug(f"Processing DBT column glossary: {key}")
+                    logger.debug(f"Processing DBT column glossary: {key}")  # noqa: G004
                     if dbt_column_meta.openmetadata and dbt_column_meta.openmetadata.glossary:
                         dbt_column_tag_list.extend(
                             get_tag_labels(
@@ -1111,7 +1112,7 @@ class DbtSource(DbtServiceSource):
                                 tag_parts = fqn.split(tag_fqn)
                             except Exception as exc:  # pylint: disable=broad-except
                                 logger.debug(traceback.format_exc())
-                                logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for column {column_name}: {exc}")
+                                logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for column {column_name}: {exc}")  # noqa: G004
                                 continue
                             if len(tag_parts) >= 2:
                                 classification_name = tag_parts[0]
@@ -1139,14 +1140,14 @@ class DbtSource(DbtServiceSource):
                         tags=dbt_column_tag_list or [],
                     )
                 )
-                logger.debug(f"Successfully processed DBT column: {key}")
+                logger.debug(f"Successfully processed DBT column: {key}")  # noqa: G004
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to parse DBT column {column_name}: {exc}")
+                logger.warning(f"Failed to parse DBT column {column_name}: {exc}")  # noqa: G004
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:  # noqa: UP045
+    def parse_exposure_node(self, exposure_spec) -> Any | None:
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
@@ -1174,20 +1175,20 @@ class DbtSource(DbtServiceSource):
         entity_type = ExposureTypeMap.get(exposure_type, {}).get("entity_type")
 
         if not entity_type:
-            logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
+            logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")  # noqa: G004
 
             return None
 
         try:
             entity_fqn = exposure_spec.meta["open_metadata_fqn"]
         except KeyError:
-            logger.warning(f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec.")
+            logger.warning(f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec.")  # noqa: G004
             return None
 
         entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
 
         if not entity:
-            logger.warning(f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata.")
+            logger.warning(f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata.")  # noqa: G004
 
             return None
 
@@ -1198,11 +1199,11 @@ class DbtSource(DbtServiceSource):
         Method to process DBT lineage from upstream nodes
         """
         to_entity: Table = data_model_link.table_entity
-        logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
+        logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")  # noqa: G004
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)  # noqa: UP045
+                from_entity: Table | None = self._get_table_entity(table_fqn=upstream_node)
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
@@ -1242,7 +1243,7 @@ class DbtSource(DbtServiceSource):
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
+                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")  # noqa: G004
 
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
@@ -1250,7 +1251,7 @@ class DbtSource(DbtServiceSource):
         """
         if data_model_link.datamodel.sql:
             to_entity: Table = data_model_link.table_entity
-            logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")
+            logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")  # noqa: G004
 
             try:
                 source_elements = fqn.split(to_entity.fullyQualifiedName.root)
@@ -1308,7 +1309,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
+                from_entity: Table | list[Table] | None = get_entity_from_es_result(
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1344,7 +1345,7 @@ class DbtSource(DbtServiceSource):
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
+                logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")  # noqa: G004
 
     def yield_dbt_metrics(self, metric_entry: dict) -> Iterable[Either[CreateMetricRequest]]:
         metric_node = metric_entry["metric_node"]
@@ -1574,7 +1575,7 @@ class DbtSource(DbtServiceSource):
             fqn=metric_name,
         )
         if not metric_entity:
-            logger.debug(f"Metric entity '{metric_name}' not found, skipping lineage")
+            logger.debug(f"Metric entity '{metric_name}' not found, skipping lineage")  # noqa: G004
             return
 
         # Table → Metric lineage (from semantic models). Resolve transitively so
@@ -1626,7 +1627,7 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to create table lineage for metric '{metric_name}' from semantic model '{sm.name}': {exc}"
+                    f"Failed to create table lineage for metric '{metric_name}' from semantic model '{sm.name}': {exc}"  # noqa: G004
                 )
 
         # Metric → Metric lineage (for derived/ratio/conversion metrics)
@@ -1660,7 +1661,7 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to create metric lineage for '{metric_name}' from parent metric '{parent_name}': {exc}"
+                    f"Failed to create metric lineage for '{metric_name}' from parent metric '{parent_name}': {exc}"  # noqa: G004
                 )
 
     _SIMPLE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -1783,7 +1784,7 @@ class DbtSource(DbtServiceSource):
                         tag_parts = fqn.split(tag_fqn)
                     except Exception as exc:  # pylint: disable=broad-except
                         logger.debug(traceback.format_exc())
-                        logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for table {table_fqn}: {exc}")
+                        logger.warning(f"Failed to parse tag FQN {tag_fqn!r} for table {table_fqn}: {exc}")  # noqa: G004
                         continue
                     if len(tag_parts) >= 2:
                         classification_name = tag_parts[0]
@@ -1800,7 +1801,7 @@ class DbtSource(DbtServiceSource):
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to process meta dbt Tags and GlossaryTerms: {exc}")
+            logger.warning(f"Failed to process meta dbt Tags and GlossaryTerms: {exc}")  # noqa: G004
 
         return dbt_table_tags_list or []
 
@@ -1809,7 +1810,7 @@ class DbtSource(DbtServiceSource):
         Method to process DBT descriptions using patch APIs
         """
         table_entity: Table = data_model_link.table_entity
-        logger.debug(f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}")
+        logger.debug(f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}")  # noqa: G004
         if table_entity:
             try:
                 service_name, database_name, schema_name, table_name = fqn.split(table_entity.fullyQualifiedName.root)
@@ -1853,7 +1854,7 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} to update dbt description: {exc}"
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} to update dbt description: {exc}"  # noqa: G004
                 )
 
     def process_dbt_owners(self, data_model_link: DataModelLink) -> Iterable[Either[PatchedEntity]]:
@@ -1862,11 +1863,11 @@ class DbtSource(DbtServiceSource):
         """
         table_entity: Table = data_model_link.table_entity
         if table_entity:
-            logger.debug(f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}")
+            logger.debug(f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}")  # noqa: G004
             try:
                 data_model = data_model_link.datamodel
                 if data_model.resourceType != DbtCommonEnum.SOURCE.value and self.source_config.dbtUpdateOwners:
-                    logger.debug(f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}")
+                    logger.debug(f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}")  # noqa: G004
                     if data_model.owners:
                         new_entity = deepcopy(table_entity)
                         new_entity.owners = data_model.owners
@@ -1895,7 +1896,7 @@ class DbtSource(DbtServiceSource):
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
+                logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")  # noqa: G004
                 entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
                 test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                 check_test_definition_exists = self.metadata.get_by_name(
@@ -1935,11 +1936,11 @@ class DbtSource(DbtServiceSource):
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
+                logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")  # noqa: G004
                 entity_link_list = generate_entity_link(dbt_test)
                 for entity_link_str in entity_link_list:
                     table_fqn = get_table_fqn(entity_link_str)
-                    logger.debug(f"Table fqn found: {table_fqn}")
+                    logger.debug(f"Table fqn found: {table_fqn}")  # noqa: G004
                     source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -1970,7 +1971,7 @@ class DbtSource(DbtServiceSource):
                             )
                         )
                     else:
-                        logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        logger.debug(f"Test case Already Exists: {test_case_fqn}")  # noqa: G004
                         self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
@@ -1981,7 +1982,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: str | None) -> None:
         """
         Keep the description of an already ingested test case in sync with dbt.
 
@@ -1990,7 +1991,7 @@ class DbtSource(DbtServiceSource):
         overridden when dbtUpdateDescriptions is enabled.
         """
         if description:
-            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")
+            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")  # noqa: G004
             self.metadata.patch_description(
                 entity=TestCase,
                 source=test_case,
@@ -2012,7 +2013,7 @@ class DbtSource(DbtServiceSource):
             return TestCaseStatus.Failed, 0
         return TestCaseStatus.Aborted, 0
 
-    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> datetime | None:
         """
         Resolve when a dbt result was produced.
 
@@ -2045,7 +2046,7 @@ class DbtSource(DbtServiceSource):
         return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
 
     @staticmethod
-    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
+    def _get_freshness_result_details(dbt_test_result) -> str | None:
         """
         Build the result detail of a source freshness check.
 
@@ -2072,7 +2073,7 @@ class DbtSource(DbtServiceSource):
 
         return "; ".join(details) or None
 
-    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a `dbt source freshness` run.
 
@@ -2106,7 +2107,7 @@ class DbtSource(DbtServiceSource):
             ),
         )
 
-    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a dbt test recorded in run_results.json
         """
@@ -2156,10 +2157,10 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 node_name = manifest_node.name
-                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")  # noqa: G004
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
-                    logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
+                    logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")  # noqa: G004
                     return
 
                 # sources.json freshness results and run_results.json test results reach
@@ -2190,7 +2191,7 @@ class DbtSource(DbtServiceSource):
                         test_case_name=manifest_node.name,
                     )
 
-                    logger.debug(f"Adding test case results to {test_case_fqn} ")
+                    logger.debug(f"Adding test case results to {test_case_fqn} ")  # noqa: G004
                     try:
                         self.metadata.add_test_case_results(
                             test_results=test_case_result,

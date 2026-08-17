@@ -18,7 +18,6 @@ No sample data is required beforehand
 
 import json
 import time
-from typing import List  # noqa: UP035
 from unittest import TestCase, TestLoader
 
 from _openmetadata_testutils.ometa import int_admin_ometa
@@ -111,7 +110,7 @@ class TestSQAProfiler(TestCase):
             except Exception as e:
                 self.fail(f"Profiler workflow failed for {type(container).__name__} with error {e}")
 
-        tables: List[Table] = []  # noqa: UP006
+        tables: list[Table] = []
         for container in self.container_builder.containers:
             service_name = type(container).__name__
             cfg = json.loads(container.get_config())
@@ -167,7 +166,7 @@ class TestSQAProfiler(TestCase):
             except Exception as e:
                 self.fail(f"Profiler workflow failed for {service_name} with error {e}")
 
-        tables: List[Table] = []  # noqa: UP006
+        tables: list[Table] = []
         for container in self.container_builder.containers:
             sn = type(container).__name__
             cfg = json.loads(container.get_config())

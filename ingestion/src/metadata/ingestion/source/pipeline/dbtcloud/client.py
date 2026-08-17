@@ -14,8 +14,9 @@ Client to interact with DBT Cloud REST APIs
 
 import json
 import traceback
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -156,7 +157,7 @@ class DBTCloudClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed to get job info for project_id: `{project_id}`, "
+                f"Failed to get job info for project_id: `{project_id}`, "  # noqa: G004
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
@@ -225,12 +226,12 @@ class DBTCloudClient:
                 yield from self._get_jobs()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get job info :{exc}")
+            logger.error(f"Unable to get job info :{exc}")  # noqa: G004
 
     def _get_jobs_total_count(
         self,
-        project_id: Optional[str] = None,  # noqa: UP045
-        environment_id: Optional[str] = None,  # noqa: UP045
+        project_id: str | None = None,
+        environment_id: str | None = None,
     ) -> int:
         """Read the paginated ``total_count`` for a single job filter. Returns
         0 on any failure so a single bad filter never aborts the whole count."""
@@ -251,11 +252,11 @@ class DBTCloudClient:
                 return job_list_response.extra.pagination.total_count
         except Exception as exc:
             logger.debug(
-                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"
+                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"  # noqa: G004
             )
         return 0
 
-    def get_jobs_count(self) -> Optional[int]:  # noqa: UP045
+    def get_jobs_count(self) -> int | None:
         """
         Total number of jobs that will be ingested for the configured filters,
         mirroring the ``get_jobs`` filter priority, or ``None`` when it cannot
@@ -276,10 +277,10 @@ class DBTCloudClient:
 
             return self._get_jobs_total_count()
         except Exception as exc:
-            logger.debug(f"Could not fetch job count: {exc}")
+            logger.debug(f"Could not fetch job count: {exc}")  # noqa: G004
         return None
 
-    def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
+    def get_latest_successful_run_id(self, job_id: int) -> int | None:
         """
         Get the latest successful run ID for a given job.
         """
@@ -301,10 +302,10 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
+            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")  # noqa: G004
             return None
 
-    def get_latest_run(self, job_id: int) -> Optional[DBTRun]:  # noqa: UP045
+    def get_latest_run(self, job_id: int) -> DBTRun | None:
         """
         Most recent run of a job, ignoring any lookback window.
 
@@ -326,10 +327,10 @@ class DBTCloudClient:
                 latest_run = runs[0]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")
+            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")  # noqa: G004
         return latest_run
 
-    def get_runs(self, job_id: int, lookback_days: Optional[int] = None) -> Iterable[DBTRun]:  # noqa: UP045
+    def get_runs(self, job_id: int, lookback_days: int | None = None) -> Iterable[DBTRun]:
         """
         List runs for a job in dbt cloud using generator pattern.
         yields run one at a time for memory efficiency.
@@ -385,11 +386,11 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get run info :{exc}")
+            logger.error(f"Unable to get run info :{exc}")  # noqa: G004
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
-    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[DBTModel] | None, list[DBTModel] | None, list[DBTModel] | None]:
         """
         Get models with dependsOn and seeds in a single GraphQL call.
         """
@@ -404,7 +405,7 @@ class DBTCloudClient:
             if result.get("data") and result["data"].get("job"):
                 model_list = DBTModelList.model_validate(result["data"]["job"])
                 logger.debug(
-                    f"Successfully fetched models and seeds from dbt for "
+                    f"Successfully fetched models and seeds from dbt for "  # noqa: G004
                     f"job_id:{job_id} run_id:{run_id}: "
                     f"models={len(model_list.models or [])}, seeds={len(model_list.seeds or [])}, sources={len(model_list.sources or [])}"
                 )
@@ -412,5 +413,5 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get models with lineage info: {exc}")
+            logger.error(f"Unable to get models with lineage info: {exc}")  # noqa: G004
         return None, None, None

@@ -13,7 +13,7 @@ Return a list of the 10 last status for the ingestion Pipeline
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response
 
@@ -61,7 +61,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get dag [{dag_id}] status: {exc}")
+            logger.error(f"Failed to get dag [{dag_id}] status: {exc}")  # noqa: G004
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to get status for [{dag_id}] due to [{exc}] ",

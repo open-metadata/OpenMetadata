@@ -14,7 +14,7 @@ s3 utils module
 """
 
 import traceback
-from typing import Iterable  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.utils.logger import utils_logger
 
@@ -31,4 +31,4 @@ def list_s3_objects(client, **kwargs) -> Iterable:
             yield from page.get("Contents", [])
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception to yield s3 object: {exc}")
+        logger.warning(f"Unexpected exception to yield s3 object: {exc}")  # noqa: G004

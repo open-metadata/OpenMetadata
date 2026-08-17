@@ -14,8 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Union
-
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.builders.validator_builder import (
@@ -71,7 +69,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self.session = create_and_bind_session(get_ssl_connection(self.service_connection_config))
 
     @property
-    def dataset(self) -> Union[type, AliasedClass]:  # noqa: UP007
+    def dataset(self) -> type | AliasedClass:
         """_summary_
 
         Returns:

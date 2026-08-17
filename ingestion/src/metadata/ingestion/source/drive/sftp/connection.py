@@ -15,7 +15,6 @@ SFTP connection and helpers
 import io
 import traceback
 from dataclasses import dataclass
-from typing import Optional
 
 import paramiko
 from paramiko import SFTPClient, Transport
@@ -60,10 +59,10 @@ class SftpClient:
             self.sftp.close()
             self.transport.close()
         except Exception as exc:
-            logger.warning(f"Error closing SFTP connection: {exc}")
+            logger.warning(f"Error closing SFTP connection: {exc}")  # noqa: G004
 
 
-def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:  # noqa: UP045
+def _parse_private_key(private_key_str: str, passphrase: str | None = None) -> paramiko.PKey | None:
     """
     Parse a private key string in PEM format.
     Tries RSA, Ed25519 and ECDSA key types.
@@ -141,8 +140,8 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection to SFTP server
@@ -159,7 +158,7 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
                 client.sftp.stat(".")
                 logger.info("Successfully authenticated to SFTP server")
             except Exception as exc:
-                logger.debug(f"Access check error traceback: {traceback.format_exc()}")
+                logger.debug(f"Access check error traceback: {traceback.format_exc()}")  # noqa: G004
                 raise SourceConnectionException(f"Failed to access SFTP server: {exc}")  # noqa: B904
 
         def list_directories():
@@ -173,15 +172,15 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
                 for root_dir in root_dirs:
                     try:
                         entries = client.sftp.listdir(root_dir)
-                        logger.info(f"Found {len(entries)} entries in '{root_dir}'")
+                        logger.info(f"Found {len(entries)} entries in '{root_dir}'")  # noqa: G004
                     except Exception as dir_exc:
-                        logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")
+                        logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")  # noqa: G004
                         raise SourceConnectionException(f"Failed to list directory '{root_dir}': {dir_exc}")  # noqa: B904
 
             except SourceConnectionException:
                 raise
             except Exception as exc:
-                logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")
+                logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")  # noqa: G004
                 raise SourceConnectionException(f"Failed to list directories: {exc}")  # noqa: B904
 
         test_fn = {

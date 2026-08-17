@@ -12,7 +12,7 @@
 """Builder for creating OpenMetadata workflow configurations for test suite execution."""
 # pyright: reportOptionalMemberAccess=false
 
-from typing import Any, List, Optional, Type, TypeVar, cast  # noqa: UP035
+from typing import Any, TypeVar, cast
 
 from typing_extensions import Self
 
@@ -81,9 +81,9 @@ class WorkflowConfigBuilder:
         """
         self.client: OMeta[Any, Any] = client
 
-        self.table: Optional[Table] = None  # noqa: UP045
-        self.service_connection: Optional[DatabaseConnection] = None  # noqa: UP045
-        self.test_definitions: List[TestCaseDefinition] = []  # noqa: UP006
+        self.table: Table | None = None
+        self.service_connection: DatabaseConnection | None = None
+        self.test_definitions: list[TestCaseDefinition] = []
         self.force_test_update: bool = True
         self.log_level: LogLevels = LogLevels.INFO
         self.raise_on_error: bool = False
@@ -101,7 +101,7 @@ class WorkflowConfigBuilder:
         self.test_definitions.append(test_definition)
         return self
 
-    def add_test_definitions(self, test_definitions: List[TestCaseDefinition]) -> Self:  # noqa: UP006
+    def add_test_definitions(self, test_definitions: list[TestCaseDefinition]) -> Self:
         """Add test definitions to the workflow configuration.
 
         Args:
@@ -218,7 +218,7 @@ class WorkflowConfigBuilder:
         return config  # noqa: RET504
 
     @staticmethod
-    def _convert_ometa_exception(entity: Type[T], identifier: str | Uuid, e: Exception) -> Exception:  # noqa: UP006
+    def _convert_ometa_exception(entity: type[T], identifier: str | Uuid, e: Exception) -> Exception:
         """Handle OpenMetadata exceptions."""
         if not isinstance(e, APIError):
             return e
@@ -235,7 +235,7 @@ class WorkflowConfigBuilder:
 
         return e
 
-    def _safe_get_by_name(self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None) -> T:  # noqa: UP006, UP045
+    def _safe_get_by_name(self, entity_type: type[T], fqn: str, fields: list[str] | None = None) -> T:
         """Safely fetch entity by name with exception handling.
 
         Args:
@@ -261,7 +261,7 @@ class WorkflowConfigBuilder:
         except Exception as exc:
             raise self._convert_ometa_exception(entity_type, fqn, exc)  # noqa: B904
 
-    def _safe_get_by_id(self, entity_type: Type[T], entity_id: str | Uuid) -> T:  # noqa: UP006
+    def _safe_get_by_id(self, entity_type: type[T], entity_id: str | Uuid) -> T:
         """Safely fetch entity by ID with exception handling.
 
         Args:

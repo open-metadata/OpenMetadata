@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import unittest
-from typing import Optional
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -88,8 +87,8 @@ MOCK_SCHEMA = [
 class MockTable(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    time_partitioning: Optional[TimePartitioning] = None  # noqa: UP045
-    range_partitioning: Optional[RangePartitioning] = None  # noqa: UP045
+    time_partitioning: TimePartitioning | None = None
+    range_partitioning: RangePartitioning | None = None
     schema_: list = MOCK_SCHEMA
 
     @property

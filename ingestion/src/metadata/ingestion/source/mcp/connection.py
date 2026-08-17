@@ -15,7 +15,6 @@ Handles connection creation and testing for MCP (Model Context Protocol) servers
 """
 
 from functools import partial
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -59,9 +58,9 @@ class McpConnectionManager:
 
     def __init__(self, connection: McpConnectionConfig):
         self.connection = connection
-        self._discovered_servers: Optional[List[McpServerInfo]] = None  # noqa: UP006, UP045
+        self._discovered_servers: list[McpServerInfo] | None = None
 
-    def discover_servers(self) -> List[McpServerInfo]:  # noqa: UP006
+    def discover_servers(self) -> list[McpServerInfo]:
         """Discover MCP servers based on the configured discovery method"""
         if self._discovered_servers is not None:
             return self._discovered_servers
@@ -75,12 +74,12 @@ class McpConnectionManager:
         elif discovery_method == DiscoveryMethod.Registry:
             self._discovered_servers = self._discover_from_registry()
         else:
-            logger.warning(f"Unknown discovery method: {discovery_method}")
+            logger.warning(f"Unknown discovery method: {discovery_method}")  # noqa: G004
             self._discovered_servers = []
 
         return self._discovered_servers
 
-    def _discover_from_config_files(self) -> List[McpServerInfo]:  # noqa: UP006
+    def _discover_from_config_files(self) -> list[McpServerInfo]:
         """Discover servers from configuration files"""
         config_paths = self.connection.configFilePaths or []
         if not config_paths:
@@ -89,7 +88,7 @@ class McpConnectionManager:
 
         return discover_servers_from_config_files(config_paths)
 
-    def _discover_from_direct_config(self) -> List[McpServerInfo]:  # noqa: UP006
+    def _discover_from_direct_config(self) -> list[McpServerInfo]:
         """Create server info from direct connection configuration"""
         servers = []
         direct_servers = self.connection.servers or []
@@ -108,7 +107,7 @@ class McpConnectionManager:
 
         return servers
 
-    def _discover_from_registry(self) -> List[McpServerInfo]:  # noqa: UP006
+    def _discover_from_registry(self) -> list[McpServerInfo]:
         """Discover servers from an MCP registry"""
         registry_url = self.connection.registryUrl
         if not registry_url:
@@ -136,10 +135,10 @@ class McpConnectionManager:
             client = self.connect_to_server(server)
             return True  # noqa: TRY300
         except McpProtocolError as e:
-            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")
+            logger.error(f"Failed to connect to MCP server '{server.name}': {e}")  # noqa: G004
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")
+            logger.warning(f"Unexpected error connecting to MCP server '{server.name}': {e}")  # noqa: G004
             return False
         finally:
             if client:
@@ -168,7 +167,7 @@ def _test_discover_servers(manager: McpConnectionManager) -> None:
     servers = manager.discover_servers()
     if not servers:
         raise SourceConnectionException("No MCP servers discovered")
-    logger.info(f"Discovered {len(servers)} MCP server(s)")
+    logger.info(f"Discovered {len(servers)} MCP server(s)")  # noqa: G004
 
 
 def _test_connect_to_servers(manager: McpConnectionManager) -> None:
@@ -178,10 +177,10 @@ def _test_connect_to_servers(manager: McpConnectionManager) -> None:
 
     for server in servers[:3]:
         if manager.test_server_connection(server):
-            logger.info(f"Successfully connected to MCP server '{server.name}'")
+            logger.info(f"Successfully connected to MCP server '{server.name}'")  # noqa: G004
             connected = True
             break
-        logger.warning(f"Could not connect to MCP server '{server.name}'")
+        logger.warning(f"Could not connect to MCP server '{server.name}'")  # noqa: G004
 
     if not connected:
         raise SourceConnectionException("Could not connect to any discovered MCP servers")
@@ -191,8 +190,8 @@ def test_connection(
     metadata: OpenMetadata,
     client: McpConnectionManager,
     service_connection: McpConnectionConfig,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection to MCP servers.
@@ -222,8 +221,8 @@ class McpConnection(BaseConnection[McpConnectionConfig, McpConnectionManager]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         return test_connection(
             metadata,

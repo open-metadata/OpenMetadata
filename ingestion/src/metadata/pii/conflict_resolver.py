@@ -13,7 +13,6 @@ Conflict resolution for auto-classification tags.
 """
 
 from collections import defaultdict
-from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -33,9 +32,9 @@ class ConflictResolver:
 
     def resolve_conflicts(
         self,
-        scored_tags: List[ScoredTag],  # noqa: UP006
-        enabled_classifications: List[Classification],  # noqa: UP006
-    ) -> List[ScoredTag]:  # noqa: UP006
+        scored_tags: list[ScoredTag],
+        enabled_classifications: list[Classification],
+    ) -> list[ScoredTag]:
         """
         Apply conflict resolution per classification.
 
@@ -52,11 +51,11 @@ class ConflictResolver:
         if not scored_tags:
             return []
 
-        by_classification: Dict[str, List[ScoredTag]] = defaultdict(list)  # noqa: UP006
+        by_classification: dict[str, list[ScoredTag]] = defaultdict(list)
         for scored_tag in scored_tags:
             by_classification[scored_tag.classification_name].append(scored_tag)
 
-        resolved: List[ScoredTag] = []  # noqa: UP006
+        resolved: list[ScoredTag] = []
 
         for classification in enabled_classifications:
             config = classification.autoClassificationConfig
@@ -74,11 +73,11 @@ class ConflictResolver:
 
             if not tags_above_threshold:
                 logger.debug(
-                    f"No tags in classification {classification_name} met minimum confidence {minimum_confidence}"
+                    f"No tags in classification {classification_name} met minimum confidence {minimum_confidence}"  # noqa: G004
                 )
                 continue
 
-            logger.debug(f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold")
+            logger.debug(f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold")  # noqa: G004
 
             if classification.mutuallyExclusive:
                 conflict_resolution = config.conflictResolution or ConflictResolution.highest_confidence
@@ -97,7 +96,7 @@ class ConflictResolver:
 
         return resolved
 
-    def _select_winner(self, tags: List[ScoredTag], strategy: ConflictResolution) -> ScoredTag:  # noqa: UP006
+    def _select_winner(self, tags: list[ScoredTag], strategy: ConflictResolution) -> ScoredTag:
         """
         Select winning tag based on strategy.
 
@@ -120,13 +119,13 @@ class ConflictResolver:
             # is the distinguishing per-column evidence and breaks the tie ahead of the
             # static priority prior; priority then disambiguates same-specificity ties.
             winner = max(tags, key=lambda t: (t.score, t.column_name_matched, t.priority))
-            logger.debug(f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})")
+            logger.debug(f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})")  # noqa: G004
             return winner
 
         elif strategy == ConflictResolution.highest_priority:  # noqa: RET505
             winner = max(tags, key=lambda t: (t.priority, t.score))
             logger.debug(
-                f"Strategy: highest_priority -> {winner.tag.fullyQualifiedName} (priority={winner.priority}, score={winner.score:.3f})"
+                f"Strategy: highest_priority -> {winner.tag.fullyQualifiedName} (priority={winner.priority}, score={winner.score:.3f})"  # noqa: G004
             )
             return winner
 
@@ -141,11 +140,11 @@ class ConflictResolver:
             winner = max(tags, key=get_depth)
             winner_fqn_str = winner.tag.fullyQualifiedName or "Unknown"
             depth = winner_fqn_str.count(".")
-            logger.debug(f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})")
+            logger.debug(f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})")  # noqa: G004
             return winner
 
         else:
             logger.warning(  # pyright: ignore[reportUnreachable]
-                f"Unknown conflict resolution strategy: {strategy}, defaulting to highest_confidence"
+                f"Unknown conflict resolution strategy: {strategy}, defaulting to highest_confidence"  # noqa: G004
             )
             return max(tags, key=lambda t: t.score)

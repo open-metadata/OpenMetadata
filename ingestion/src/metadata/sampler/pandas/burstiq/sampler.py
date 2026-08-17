@@ -17,7 +17,8 @@ so that PandasProfilerInterface can be used without any BurstIQ-specific
 profiler code.
 """
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -161,7 +162,7 @@ class BurstIQSampler(DatalakeSampler):
 
         return [[to_null(value) for value in row] for row in data_frame.dropna(how="all").values.tolist()]
 
-    def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
+    def _compute_total_limit(self, chain: str) -> int | None:
         """Compute the total record limit based on the sampling config.
 
         Uses ``resolve_static_sampling_config`` with ``row_count=None``

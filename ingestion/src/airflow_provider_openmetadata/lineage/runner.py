@@ -16,7 +16,6 @@ OpenMetadata Airflow Provider Lineage Runner
 import logging
 import os
 from itertools import groupby
-from typing import List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from airflow.configuration import conf
@@ -104,7 +103,7 @@ class AirflowLineageRunner:
         metadata: OpenMetadata,
         service_name: str,
         dag: "DAG",  # noqa: F821
-        xlets: Optional[List[XLets]] = None,  # noqa: UP006, UP045
+        xlets: list[XLets] | None = None,
         only_keep_dag_lineage: bool = False,
         max_status: int = 10,
     ):
@@ -167,7 +166,7 @@ class AirflowLineageRunner:
             f"?_flt_3_dag_id={quote(self.dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
         )
 
-    def get_om_tasks(self) -> List[Task]:  # noqa: UP006
+    def get_om_tasks(self) -> list[Task]:
         """
         Get all tasks from the DAG and map them to
         OpenMetadata Task Entities
@@ -232,7 +231,7 @@ class AirflowLineageRunner:
         logger.info("DAG has not changed since last run")
         return pipeline
 
-    def get_pipeline_status_via_api(self) -> List[PipelineStatus]:  # noqa: C901, UP006
+    def get_pipeline_status_via_api(self) -> list[PipelineStatus]:  # noqa: C901
         """
         Collect pipeline status using Airflow REST API (for Airflow 3.x).
         This avoids the direct database access restriction.
@@ -246,7 +245,7 @@ class AirflowLineageRunner:
             # Get authentication credentials from environment or config
             airflow_username = os.getenv("AIRFLOW_USERNAME", "admin")
             airflow_password = os.getenv("AIRFLOW_PASSWORD", "admin")
-            logger.info(f"Using Airflow API URL: {self.host_port}")
+            logger.info(f"Using Airflow API URL: {self.host_port}")  # noqa: G004
 
             # Build API URL
             api_url = f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns"
@@ -256,13 +255,13 @@ class AirflowLineageRunner:
             jwt_token = None
 
             try:
-                logger.info(f"Attempting JWT auth at: {token_url}")
+                logger.info(f"Attempting JWT auth at: {token_url}")  # noqa: G004
                 auth_response = requests.post(
                     token_url,
                     json={"username": airflow_username, "password": airflow_password},
                     timeout=5,
                 )
-                logger.info(f"JWT auth response status: {auth_response.status_code}")
+                logger.info(f"JWT auth response status: {auth_response.status_code}")  # noqa: G004
                 if auth_response.status_code in (200, 201):
                     token_data = auth_response.json()
                     jwt_token = token_data.get("access_token")
@@ -271,13 +270,13 @@ class AirflowLineageRunner:
                     else:
                         logger.warning("JWT response did not contain access_token")
                 else:
-                    logger.warning(f"Failed to get JWT token (status {auth_response.status_code})")
-                    logger.warning(f"JWT response: {auth_response.text[:200]}")
+                    logger.warning(f"Failed to get JWT token (status {auth_response.status_code})")  # noqa: G004
+                    logger.warning(f"JWT response: {auth_response.text[:200]}")  # noqa: G004
             except Exception as auth_error:
-                logger.warning(f"JWT authentication failed with exception: {auth_error}")
+                logger.warning(f"JWT authentication failed with exception: {auth_error}")  # noqa: G004
                 import traceback
 
-                logger.warning(f"Auth traceback: {traceback.format_exc()}")
+                logger.warning(f"Auth traceback: {traceback.format_exc()}")  # noqa: G004
 
             # Set headers based on whether we got a JWT token
             if jwt_token:
@@ -299,8 +298,8 @@ class AirflowLineageRunner:
 
             # Fetch DAG runs
             # Airflow 3.x uses 'logical_date' instead of 'execution_date'
-            logger.info(f"Fetching DAG runs from: {api_url}")
-            logger.info(f"Params: limit={self.max_status}, order_by=-logical_date")
+            logger.info(f"Fetching DAG runs from: {api_url}")  # noqa: G004
+            logger.info(f"Params: limit={self.max_status}, order_by=-logical_date")  # noqa: G004
             response = requests.get(
                 api_url,
                 params={"limit": self.max_status, "order_by": "-logical_date"},
@@ -308,20 +307,20 @@ class AirflowLineageRunner:
                 timeout=10,
             )
 
-            logger.info(f"DAG runs API response status: {response.status_code}")
+            logger.info(f"DAG runs API response status: {response.status_code}")  # noqa: G004
             if response.status_code != 200:
-                logger.error(f"Failed to fetch DAG runs: {response.status_code} - {response.text[:500]}")
+                logger.error(f"Failed to fetch DAG runs: {response.status_code} - {response.text[:500]}")  # noqa: G004
                 return []
 
             dag_runs_data = response.json().get("dag_runs", [])
             if not dag_runs_data:
                 logger.warning("No DAG runs found via API")
-                logger.warning(f"API response: {response.text[:500]}")
+                logger.warning(f"API response: {response.text[:500]}")  # noqa: G004
                 return []
 
-            logger.info(f"Found {len(dag_runs_data)} DAG runs via API")
+            logger.info(f"Found {len(dag_runs_data)} DAG runs via API")  # noqa: G004
             for dag_run in dag_runs_data:
-                logger.info(f"  - DAG run: {dag_run.get('dag_run_id')} state={dag_run.get('state')}")
+                logger.info(f"  - DAG run: {dag_run.get('dag_run_id')} state={dag_run.get('state')}")  # noqa: G004
 
             pipeline_statuses = []
 
@@ -335,22 +334,22 @@ class AirflowLineageRunner:
                 task_instances_url = (
                     f"{self.host_port}/api/v2/dags/{self.dag.dag_id}/dagRuns/{dag_run_id}/taskInstances"
                 )
-                logger.info(f"Fetching task instances from: {task_instances_url}")
+                logger.info(f"Fetching task instances from: {task_instances_url}")  # noqa: G004
                 ti_response = requests.get(task_instances_url, headers=headers, timeout=10)
 
-                logger.info(f"Task instances API response status: {ti_response.status_code}")
+                logger.info(f"Task instances API response status: {ti_response.status_code}")  # noqa: G004
                 if ti_response.status_code != 200:
                     logger.error(
-                        f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code} - {ti_response.text[:300]}"
+                        f"Failed to fetch task instances for {dag_run_id}: {ti_response.status_code} - {ti_response.text[:300]}"  # noqa: G004
                     )
                     continue
 
                 task_instances_data = ti_response.json().get("task_instances", [])
                 if not task_instances_data:
-                    logger.warning(f"No task instances found for DAG run {dag_run_id}")
+                    logger.warning(f"No task instances found for DAG run {dag_run_id}")  # noqa: G004
                     continue
 
-                logger.info(f"Found {len(task_instances_data)} task instances for run {dag_run_id}")
+                logger.info(f"Found {len(task_instances_data)} task instances for run {dag_run_id}")  # noqa: G004
 
                 # Build TaskStatus list from API response
                 task_status_list = []
@@ -411,20 +410,20 @@ class AirflowLineageRunner:
                 )
                 pipeline_statuses.append(pipeline_status)
                 logger.info(
-                    f"Created pipeline status for run {dag_run_id}: {len(task_status_list)} tasks, status={dag_status}"
+                    f"Created pipeline status for run {dag_run_id}: {len(task_status_list)} tasks, status={dag_status}"  # noqa: G004
                 )
 
-            logger.info(f"Successfully collected {len(pipeline_statuses)} pipeline statuses via REST API")
+            logger.info(f"Successfully collected {len(pipeline_statuses)} pipeline statuses via REST API")  # noqa: G004
             return pipeline_statuses  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Error collecting pipeline status via API: {e}")
+            logger.error(f"Error collecting pipeline status via API: {e}")  # noqa: G004
             import traceback
 
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"Traceback: {traceback.format_exc()}")  # noqa: G004
             raise
 
-    def get_all_pipeline_status(self) -> List[PipelineStatus]:  # noqa: UP006
+    def get_all_pipeline_status(self) -> list[PipelineStatus]:
         """
         Iterate over the DAG's task instances and map
         them to PipelineStatus.
@@ -433,11 +432,11 @@ class AirflowLineageRunner:
         the original behaviour. In Airflow 3.x we use the REST API
         to fetch status information.
         """
-        logger.info(f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}")
+        logger.info(f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}")  # noqa: G004
 
         if not IS_AIRFLOW_3_OR_HIGHER:
             # Airflow 2.x path - rely on get_task_instances()
-            grouped_ti: List[List["TaskInstance"]] = [  # noqa: F821, UP006, UP037
+            grouped_ti: list[list["TaskInstance"]] = [  # noqa: F821, UP037
                 list(value) for _, value in groupby(self.dag.get_task_instances(), key=lambda ti: ti.run_id)
             ]
             grouped_ti.reverse()
@@ -451,7 +450,7 @@ class AirflowLineageRunner:
                 return pipeline_statuses
             logger.info("REST API returned no statuses, trying direct DB access as fallback")
         except Exception as e:
-            logger.warning(f"Failed to get status via REST API: {e}, trying DB access as fallback")
+            logger.warning(f"Failed to get status via REST API: {e}, trying DB access as fallback")  # noqa: G004
 
         # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
@@ -478,11 +477,11 @@ class AirflowLineageRunner:
                 return []
             raise
         except Exception as e:
-            logger.warning(f"Could not collect pipeline status: {e}")
+            logger.warning(f"Could not collect pipeline status: {e}")  # noqa: G004
             return []
 
     @staticmethod
-    def get_dag_status_from_task_instances(task_instances: List["TaskInstance"]) -> str:  # noqa: F821, UP006
+    def get_dag_status_from_task_instances(task_instances: list["TaskInstance"]) -> str:  # noqa: F821
         """
         If any task is in pending state, then return pending.
         If any task is in failed state, return failed.
@@ -500,7 +499,7 @@ class AirflowLineageRunner:
 
     def get_pipeline_status(
         self,
-        task_instances: List["TaskInstance"],  # noqa: F821, UP006
+        task_instances: list["TaskInstance"],  # noqa: F821
     ) -> PipelineStatus:
         """
         Given the task instances for a run, prep the PipelineStatus
@@ -547,10 +546,10 @@ class AirflowLineageRunner:
         )
 
         for from_xlet in xlets.inlets or []:
-            from_entity: Optional[Table] = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)  # noqa: UP045
+            from_entity: Table | None = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)
             if from_entity:
                 for to_xlet in xlets.outlets or []:
-                    to_entity: Optional[Table] = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)  # noqa: UP045
+                    to_entity: Table | None = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
                     if to_entity:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(
@@ -568,12 +567,12 @@ class AirflowLineageRunner:
                         self.metadata.add_lineage(lineage)
                     else:
                         logger.warning(
-                            f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
+                            f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "  # noqa: G004
                             f"[{pipeline.fullyQualifiedName.root}] outlets"
                         )
             else:
                 logger.warning(
-                    f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
+                    f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "  # noqa: G004
                     f"[{pipeline.fullyQualifiedName.root}] inlets"
                 )
 
@@ -615,7 +614,7 @@ class AirflowLineageRunner:
 
         for edge in upstream_edges or []:
             if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
-                logger.info(f"Removing upstream edge with {edge.fqn}")
+                logger.info(f"Removing upstream edge with {edge.fqn}")  # noqa: G004
                 edge_to_remove = EntitiesEdge(
                     fromEntity=EntityReference(id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]),
                     toEntity=EntityReference(
@@ -627,7 +626,7 @@ class AirflowLineageRunner:
 
         for edge in downstream_edges or []:
             if edge.fqn not in (outlet.fqn for outlet in xlets.outlets):
-                logger.info(f"Removing downstream edge with {edge.fqn}")
+                logger.info(f"Removing downstream edge with {edge.fqn}")  # noqa: G004
                 edge_to_remove = EntitiesEdge(
                     fromEntity=EntityReference(
                         id=pipeline.id,
@@ -646,10 +645,10 @@ class AirflowLineageRunner:
         pipeline = self.create_or_update_pipeline_entity(pipeline_service)
         self.add_all_pipeline_status(pipeline)
 
-        logger.info(f"Processing XLet data {self.xlets}")
+        logger.info(f"Processing XLet data {self.xlets}")  # noqa: G004
 
         for xlet in self.xlets or []:
-            logger.info(f"Got some xlet data. Processing lineage for {xlet}")
+            logger.info(f"Got some xlet data. Processing lineage for {xlet}")  # noqa: G004
             self.add_lineage(pipeline, xlet)
             if self.only_keep_dag_lineage:
                 logger.info("`only_keep_dag_lineage` is set to True. Cleaning lineage not in inlets or outlets...")

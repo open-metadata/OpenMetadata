@@ -19,8 +19,8 @@ import csv
 import os
 import tempfile
 import unittest
+from collections.abc import Iterator
 from datetime import datetime, timedelta
-from typing import Iterator  # noqa: UP035
 from unittest.mock import Mock, patch
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest

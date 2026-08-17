@@ -14,10 +14,9 @@ Metabase Models
 
 import ast
 import json
-from typing import List, Optional  # noqa: UP035
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
-from typing_extensions import Annotated  # noqa: UP035
 
 MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]  # noqa: PLW0108
 
@@ -28,12 +27,12 @@ class MetabaseUser(BaseModel):
     """
 
     id: MetabaseStrId
-    first_name: Optional[str] = None  # noqa: UP045
-    last_name: Optional[str] = None  # noqa: UP045
-    common_name: Optional[str] = None  # noqa: UP045
-    email: Optional[str] = None  # noqa: UP045
-    is_superuser: Optional[bool] = False  # noqa: UP045
-    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")  # noqa: UP045
+    first_name: str | None = None
+    last_name: str | None = None
+    common_name: str | None = None
+    email: str | None = None
+    is_superuser: bool | None = False
+    last_edit_timestamp: str | None = Field(None, alias="timestamp")
 
 
 class MetabaseDashboard(BaseModel):
@@ -41,10 +40,10 @@ class MetabaseDashboard(BaseModel):
     Metabase dashboard model
     """
 
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
     name: str
     id: MetabaseStrId
-    collection_id: Optional[MetabaseStrId] = None  # noqa: UP045
+    collection_id: MetabaseStrId | None = None
 
 
 class MetabaseCollection(BaseModel):
@@ -57,22 +56,22 @@ class MetabaseCollection(BaseModel):
 
 
 class MetabaseDashboardList(BaseModel):
-    data: List[MetabaseDashboard] = []  # noqa: UP006
+    data: list[MetabaseDashboard] = []
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: List[MetabaseCollection] = []  # noqa: UP006
+    collections: list[MetabaseCollection] = []
 
 
 class Native(BaseModel):
-    query: Optional[str] = None  # noqa: UP045
+    query: str | None = None
 
 
 class DatasetQuery(BaseModel):
     model_config = {"extra": "ignore"}
 
-    type: Optional[str] = None  # noqa: UP045
-    native: Optional[Native] = None  # noqa: UP045
+    type: str | None = None
+    native: Native | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -104,14 +103,14 @@ class MetabaseChart(BaseModel):
     Metabase card model
     """
 
-    description: Optional[str] = None  # noqa: UP045
-    table_id: Optional[MetabaseStrId] = None  # noqa: UP045
-    database_id: Optional[MetabaseStrId] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    dataset_query: Optional[DatasetQuery] = None  # noqa: UP045
-    id: Optional[MetabaseStrId] = None  # noqa: UP045
-    display: Optional[str] = None  # noqa: UP045
-    dashboard_ids: List[str] = []  # noqa: UP006
+    description: str | None = None
+    table_id: MetabaseStrId | None = None
+    database_id: MetabaseStrId | None = None
+    name: str | None = None
+    dataset_query: DatasetQuery | None = None
+    id: MetabaseStrId | None = None
+    display: str | None = None
+    dashboard_ids: list[str] = []
 
     @field_validator("dataset_query", mode="before")
     @classmethod
@@ -164,16 +163,16 @@ class MetabaseDashboardDetails(BaseModel):
     Metabase dashboard details model
     """
 
-    description: Optional[str] = None  # noqa: UP045
-    card_ids: List[str] = []  # noqa: UP006
-    name: Optional[str] = None  # noqa: UP045
+    description: str | None = None
+    card_ids: list[str] = []
+    name: str | None = None
     id: MetabaseStrId
-    creator_id: Optional[MetabaseStrId] = None  # noqa: UP045
-    collection_id: Optional[MetabaseStrId] = None  # noqa: UP045
+    creator_id: MetabaseStrId | None = None
+    collection_id: MetabaseStrId | None = None
 
 
 class MetabaseDatabaseDetails(BaseModel):
-    db: Optional[str] = None  # noqa: UP045
+    db: str | None = None
 
 
 class MetabaseDatabase(BaseModel):
@@ -181,12 +180,12 @@ class MetabaseDatabase(BaseModel):
     Metabase database model
     """
 
-    details: Optional[MetabaseDatabaseDetails] = None  # noqa: UP045
+    details: MetabaseDatabaseDetails | None = None
 
 
 class MetabaseTable(BaseModel):
-    table_schema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
-    db: Optional[MetabaseDatabase] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    id: Optional[MetabaseStrId] = None  # noqa: UP045
-    display_name: Optional[str] = None  # noqa: UP045
+    table_schema: str | None = Field(None, alias="schema")
+    db: MetabaseDatabase | None = None
+    name: str | None = None
+    id: MetabaseStrId | None = None
+    display_name: str | None = None

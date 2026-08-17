@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List  # noqa: UP035
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -38,7 +38,7 @@ STATUS_MAP = {
 }
 
 
-def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):  # noqa: UP006
+def get_dag_status(all_tasks: list[str], task_status: list[TaskStatus]):
     """
     Based on the task information and the total DAG tasks, cook the
     DAG status.
@@ -64,7 +64,7 @@ def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
     metadata: OpenMetadata,
-    context: Dict,  # noqa: UP006
+    context: dict,
 ) -> None:
     """
     Add status information for this execution date
@@ -78,7 +78,7 @@ def add_status(
     # Let this fail if we cannot properly extract & cast the start_date
     run_date = getattr(dag_run, "logical_date", None) or dag_run.execution_date
     execution_date = datetime_to_ts(run_date)
-    operator.log.info(f"Logging pipeline status for execution {execution_date}")
+    operator.log.info(f"Logging pipeline status for execution {execution_date}")  # noqa: G004
 
     # Check if we already have a pipelineStatus for
     # our execution_date that we should update
@@ -114,5 +114,5 @@ def add_status(
         taskStatus=updated_task_status,
     )
 
-    operator.log.info(f"Added status to DAG {updated_status}")
+    operator.log.info(f"Added status to DAG {updated_status}")  # noqa: G004
     metadata.add_pipeline_status(fqn=pipeline.fullyQualifiedName.root, status=updated_status)

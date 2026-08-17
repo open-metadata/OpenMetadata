@@ -14,7 +14,7 @@ Base source for the data quality used to instantiate a data quality runner with 
 """
 
 from copy import deepcopy
-from typing import Optional, cast
+from typing import cast
 
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
@@ -79,7 +79,7 @@ class BaseTestSuiteRunner:
         self.ometa_client = ometa_client
 
     @property
-    def interface(self) -> Optional[TestSuiteInterface]:  # noqa: UP045
+    def interface(self) -> TestSuiteInterface | None:
         return self._interface
 
     @interface.setter
@@ -180,7 +180,7 @@ class BaseTestSuiteRunner:
                 profiler_config = cast("ProfilerConfiguration", settings.config_value)
                 sample_data_config = profiler_config.sampleDataConfig
         except Exception as exc:
-            logger.debug(f"Could not fetch global profiler config: {exc}")
+            logger.debug(f"Could not fetch global profiler config: {exc}")  # noqa: G004
         return sample_data_config
 
     def get_data_quality_runner(self) -> DataTestsRunner:

@@ -71,7 +71,7 @@ from collections import defaultdict
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
-from typing import Any, DefaultDict, Dict, List, Optional, Type  # noqa: UP035
+from typing import Any
 
 import attr
 from pydantic import BaseModel, ConfigDict
@@ -108,7 +108,7 @@ class OMEntity:
     """
 
     # Entity Type, such as Table, Container or Dashboard.
-    entity: Type[T] = attr.ib()  # noqa: UP006
+    entity: type[T] = attr.ib()
     # Entity Fully Qualified Name, e.g., service.database.schema.table
     fqn: str = attr.ib()
     # We will use the key in case we need to group different lineages from the same DAG
@@ -132,14 +132,14 @@ class XLets(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    inlets: List[OMEntity]  # noqa: UP006
-    outlets: List[OMEntity]  # noqa: UP006
+    inlets: list[OMEntity]
+    outlets: list[OMEntity]
 
 
 def concat_dict_values(
     dict_1: defaultdict[str, list[Any]],
-    dict_2: Optional[Dict[str, List[Any]]],  # noqa: UP006, UP045
-) -> DefaultDict[str, List[Any]]:  # noqa: UP006
+    dict_2: dict[str, list[Any]] | None,
+) -> defaultdict[str, list[Any]]:
     """
     Update d1 based on d2 values concatenating their results.
     """
@@ -150,7 +150,7 @@ def concat_dict_values(
     return dict_1
 
 
-def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
+def parse_xlets(xlet: list[Any]) -> dict[str, list[OMEntity]] | None:
     """
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
@@ -199,7 +199,7 @@ def _parse_xlets(xlet: Any) -> None:
     We can use this function to register further inlets/outlets
     representations, e.g., https://github.com/open-metadata/OpenMetadata/issues/11626
     """
-    logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")
+    logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")  # noqa: G004
 
 
 @_parse_xlets.register
@@ -278,7 +278,7 @@ def dictionary_lineage_annotation(
         entity_class = ENTITY_REFERENCE_CLASS_MAP.get(xlet_dict["entity"])
         if entity_class is None:
             logger.warning(
-                f"Skipping xlet with unknown entity type [{xlet_dict['entity']}] "
+                f"Skipping xlet with unknown entity type [{xlet_dict['entity']}] "  # noqa: G004
                 f"for fqn [{xlet_dict.get('fqn')}]. Known types: {sorted(ENTITY_REFERENCE_CLASS_MAP)}"
             )
             return None
@@ -305,7 +305,7 @@ def dictionary_lineage_annotation(
 
 
 @_parse_xlets.register
-def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
+def _(xlet: OMEntity) -> dict[str, list[OMEntity]] | None:
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -321,7 +321,7 @@ def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP
 
 
 @_parse_xlets.register
-def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
+def _(xlet: str) -> dict[str, list[OMEntity]] | None:
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -356,14 +356,14 @@ def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
 
         return {om_entity.key: [om_entity]}  # noqa: TRY300
     except Exception as exc:
-        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")
+        logger.error(f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]")  # noqa: G004
         return None
 
 
 def get_xlets_from_operator(
     operator: "BaseOperator",  # noqa: F821
     xlet_mode: XLetsMode,  # noqa: F821, RUF100
-) -> Optional[Dict[str, List[OMEntity]]]:  # noqa: UP006, UP045
+) -> dict[str, list[OMEntity]] | None:
     """
     Given an Airflow DAG Task, obtain the tables
     set in inlets or outlets.
@@ -397,15 +397,15 @@ def get_xlets_from_operator(
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
-        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")  # noqa: G004
 
     else:
-        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
+        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")  # noqa: G004
 
     return xlet_data
 
 
-def get_xlets_from_dag(dag: "DAG") -> List[XLets]:  # noqa: F821, UP006
+def get_xlets_from_dag(dag: "DAG") -> list[XLets]:  # noqa: F821
     """
     Fill the inlets and outlets of the Pipeline by iterating
     over all its tasks

@@ -13,10 +13,10 @@
 import json
 import secrets
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -101,12 +101,12 @@ class S3Source(StorageServiceSource):
         self.cloudwatch_client = self.connection.cloudwatch_client
         self.session = getattr(self.connection, "session", None)
 
-        self._bucket_cache: Dict[str, Container] = {}  # noqa: UP006
-        self._unstructured_container_cache: Dict[str, Tuple[str, str]] = {}  # noqa: UP006
+        self._bucket_cache: dict[str, Container] = {}
+        self._unstructured_container_cache: dict[str, tuple[str, str]] = {}
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: S3Connection = config.serviceConnection.root.config
         if not isinstance(connection, S3Connection):
@@ -195,7 +195,7 @@ class S3Source(StorageServiceSource):
                 bucket_name = parts[0]
         return bucket_name
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
         """
         Pick up the tags registered in the context
         searching by entity FQN
@@ -213,7 +213,7 @@ class S3Source(StorageServiceSource):
                         tag_labels.append(tag_label)
             return tag_labels or None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Failed to ingest tags due to: {exc}")
+            logger.debug(f"Failed to ingest tags due to: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return None
@@ -236,7 +236,7 @@ class S3Source(StorageServiceSource):
                         classification_description="S3 TAG KEY",
                     )
         except Exception as exc:
-            logger.debug(f"Failed to ingest tags due to: {exc}")
+            logger.debug(f"Failed to ingest tags due to: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
     def _fetch_s3_tags(self, container_details: S3ContainerDetails) -> list[S3Tag]:
@@ -272,7 +272,7 @@ class S3Source(StorageServiceSource):
         yield Either(right=container_request)
         self.register_record(container_request=container_request)
 
-    def get_size(self, bucket_name: str, file_path: str) -> Optional[float]:  # noqa: UP045
+    def get_size(self, bucket_name: str, file_path: str) -> float | None:
         """
         Method to get the size of the file
         """
@@ -280,7 +280,7 @@ class S3Source(StorageServiceSource):
             file_obj = self.s3_client.head_object(Bucket=bucket_name, Key=file_path)
             return file_obj["ContentLength"]
         except Exception as exc:
-            logger.debug(f"Failed to get size of file due to {exc}")
+            logger.debug(f"Failed to get size of file due to {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
         return None
 
@@ -354,7 +354,7 @@ class S3Source(StorageServiceSource):
         )
         archive_entity = self.metadata.get_by_name(entity=Container, fqn=archive_fqn)
         if archive_entity is None:
-            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
+            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")  # noqa: G004
             return
         archive_ref = EntityReference(id=archive_entity.id.root, type="container")  # pyright: ignore[reportCallIssue]
 
@@ -375,8 +375,8 @@ class S3Source(StorageServiceSource):
         self,
         bucket_response: S3BucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
-    ) -> Optional[S3ContainerDetails]:  # noqa: UP045
+        parent: EntityReference | None = None,
+    ) -> S3ContainerDetails | None:
         bucket_name = bucket_response.name
 
         if not metadata_entry.structureFormat:
@@ -426,7 +426,7 @@ class S3Source(StorageServiceSource):
         self,
         bucket_response: S3BucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        parent: EntityReference | None = None,
     ) -> Iterable[S3ContainerDetails]:
         try:
             prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
@@ -446,7 +446,7 @@ class S3Source(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[S3ContainerDetails] = self._generate_container_details(  # noqa: UP045
+                    structured_container: S3ContainerDetails | None = self._generate_container_details(
                         bucket_response=bucket_response,
                         metadata_entry=metadata_entry_copy,
                         parent=parent,
@@ -455,19 +455,19 @@ class S3Source(StorageServiceSource):
                         yield structured_container
         except Exception as err:
             logger.warning(
-                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
+                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"  # noqa: G004
             )
             logger.debug(traceback.format_exc())
 
     def _generate_structured_containers(
         self,
         bucket_response: S3BucketResponse,
-        entries: List[MetadataEntry],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        entries: list[MetadataEntry],
+        parent: EntityReference | None = None,
     ) -> Iterable[S3ContainerDetails]:
         for metadata_entry in entries:
             logger.info(
-                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
+                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "  # noqa: G004
                 f"and generating structured container"
             )
             if is_archive_format(metadata_entry.structureFormat):
@@ -478,15 +478,16 @@ class S3Source(StorageServiceSource):
                         parent=parent,
                     )
                 except (ValueError, OSError) as exc:
-                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")
+                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")  # noqa: G004
                     logger.debug(traceback.format_exc())
                 except Exception as exc:
                     logger.error(
-                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}", exc_info=True
+                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}",  # noqa: G004
+                        exc_info=True,
                     )
                 continue
             if metadata_entry.depth == 0:
-                structured_container: Optional[S3ContainerDetails] = self._generate_container_details(  # noqa: UP045
+                structured_container: S3ContainerDetails | None = self._generate_container_details(
                     bucket_response=bucket_response,
                     metadata_entry=metadata_entry,
                     parent=parent,
@@ -500,7 +501,7 @@ class S3Source(StorageServiceSource):
                     parent=parent,
                 )
 
-    def is_valid_unstructured_file(self, accepted_extensions: List, key: str) -> bool:  # noqa: UP006
+    def is_valid_unstructured_file(self, accepted_extensions: list, key: str) -> bool:
         # Split the string into a list of values
         if WILD_CARD in accepted_extensions:
             return True
@@ -514,8 +515,8 @@ class S3Source(StorageServiceSource):
     def _yield_parents_of_unstructured_container(
         self,
         bucket_name: str,
-        list_of_parent: List[str],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        list_of_parent: list[str],
+        parent: EntityReference | None = None,
     ):
         full_path = self._get_full_path(bucket_name)
         sub_parent = parent
@@ -554,7 +555,7 @@ class S3Source(StorageServiceSource):
         self,
         bucket_response: S3BucketResponse,
         metadata_entry: MetadataEntry,
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        parent: EntityReference | None = None,
     ):
         bucket_name = bucket_response.name
         kwargs = {"Bucket": bucket_name, "Prefix": metadata_entry.dataPath}
@@ -571,7 +572,7 @@ class S3Source(StorageServiceSource):
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
                 logger.info(
-                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} and generating unstructured container"
+                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} and generating unstructured container"  # noqa: G004
                 )
                 list_of_parent = key.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
                 yield from self._yield_parents_of_unstructured_container(bucket_name, list_of_parent, parent)
@@ -609,8 +610,8 @@ class S3Source(StorageServiceSource):
     def _generate_unstructured_containers(
         self,
         bucket_response: S3BucketResponse,
-        entries: List[MetadataEntry],  # noqa: UP006
-        parent: Optional[EntityReference] = None,  # noqa: UP045
+        entries: list[MetadataEntry],
+        parent: EntityReference | None = None,
     ) -> Iterable[S3ContainerDetails]:
         bucket_name = bucket_response.name
         for metadata_entry in entries:
@@ -624,7 +625,7 @@ class S3Source(StorageServiceSource):
                 )
             else:
                 logger.info(
-                    f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
+                    f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "  # noqa: G004
                     f"and generating unstructured container"
                 )
                 prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
@@ -645,7 +646,7 @@ class S3Source(StorageServiceSource):
                     ),
                 )
 
-    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:  # noqa: UP006
+    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[tuple[str, int]]:
         """List (key, size_bytes) for all files under prefix.
 
         Filters out directories, cold storage objects, and Spark/Delta
@@ -663,8 +664,8 @@ class S3Source(StorageServiceSource):
                 continue
             yield key, obj.get("Size", 0)
 
-    def fetch_buckets(self) -> List[S3BucketResponse]:  # noqa: UP006
-        results: List[S3BucketResponse] = []  # noqa: UP006
+    def fetch_buckets(self) -> list[S3BucketResponse]:
+        results: list[S3BucketResponse] = []
         try:
             if self.service_connection.bucketNames:
                 return [S3BucketResponse(Name=bucket_name) for bucket_name in self.service_connection.bucketNames]
@@ -679,7 +680,7 @@ class S3Source(StorageServiceSource):
                     results.append(S3BucketResponse.model_validate(bucket))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch buckets list - {err}")
+            logger.error(f"Failed to fetch buckets list - {err}")  # noqa: G004
         return results
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
@@ -722,7 +723,7 @@ class S3Source(StorageServiceSource):
                     return int(first_metric["Values"][0])
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket_name}, returning 0")
+            logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket_name}, returning 0")  # noqa: G004
         return 0
 
     def _generate_unstructured_container(self, bucket_response: S3BucketResponse) -> S3ContainerDetails:
@@ -745,7 +746,7 @@ class S3Source(StorageServiceSource):
     def _clean_path(self, path: str) -> str:
         return path.strip(KEY_SEPARATOR)
 
-    def _get_full_path(self, bucket_name: str, prefix: str = None) -> Optional[str]:  # noqa: RUF013, UP045
+    def _get_full_path(self, bucket_name: str, prefix: str = None) -> str | None:  # noqa: RUF013
         """
         Method to get the full path of the file
         """
@@ -759,7 +760,7 @@ class S3Source(StorageServiceSource):
 
         return full_path
 
-    def _get_sample_file_path(self, bucket_name: str, metadata_entry: MetadataEntry) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_path(self, bucket_name: str, metadata_entry: MetadataEntry) -> str | None:
         """
         Given a bucket and a metadata entry, returns the full path key to a
         file which can then be used to infer schema, or None if no suitable
@@ -804,13 +805,13 @@ class S3Source(StorageServiceSource):
 
             if candidate_keys:
                 result_key = secrets.choice(candidate_keys)
-                logger.info(f"File {result_key} was picked to infer data structure from.")
+                logger.info(f"File {result_key} was picked to infer data structure from.")  # noqa: G004
                 return result_key
-            logger.warning(f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension")
+            logger.warning(f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension")  # noqa: G004
             return None  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}")
+            logger.warning(f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}")  # noqa: G004
             return None
 
     def get_aws_bucket_region(self, bucket_name: str) -> str:
@@ -823,10 +824,10 @@ class S3Source(StorageServiceSource):
             region = region_resp.get("LocationConstraint")
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get the region for bucket: {bucket_name}")
+            logger.error(f"Unable to get the region for bucket: {bucket_name}")  # noqa: G004
         return region or self.service_connection.awsConfig.awsRegion
 
-    def _get_bucket_source_url(self, bucket_name: str) -> Optional[str]:  # noqa: UP045
+    def _get_bucket_source_url(self, bucket_name: str) -> str | None:
         """
         Method to get the source url of s3 bucket
         """
@@ -847,10 +848,10 @@ class S3Source(StorageServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
+            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
         return None
 
-    def _get_object_source_url(self, bucket_name: str, prefix: str) -> Optional[str]:  # noqa: UP045
+    def _get_object_source_url(self, bucket_name: str, prefix: str) -> str | None:
         """
         Method to get the source url of s3 bucket
         """
@@ -875,10 +876,10 @@ class S3Source(StorageServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
+            logger.error(f"Unable to get source url: {exc}")  # noqa: G004
         return None
 
-    def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:  # noqa: UP045
+    def _load_metadata_file(self, bucket_name: str) -> StorageContainerConfig | None:
         """
         Load the metadata template file from the root of the bucket, if it exists.
 
@@ -896,7 +897,7 @@ class S3Source(StorageServiceSource):
         """
         manifest_uri = f"s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}"
         try:
-            logger.info(f"Looking for metadata template file at - {manifest_uri}")
+            logger.info(f"Looking for metadata template file at - {manifest_uri}")  # noqa: G004
             response_object = self.s3_reader.read(
                 path=OPENMETADATA_TEMPLATE_FILE_NAME,
                 bucket_name=bucket_name,
@@ -904,7 +905,7 @@ class S3Source(StorageServiceSource):
             )
         except ReadException:
             logger.info(
-                f"No manifest file found at {manifest_uri} — falling back to "
+                f"No manifest file found at {manifest_uri} — falling back to "  # noqa: G004
                 f"defaultManifest / global manifest if configured."
             )
             return None
@@ -941,5 +942,5 @@ class S3Source(StorageServiceSource):
             self.status.warning(bucket_name, msg)
             return None
 
-        logger.info(f"Loaded bucket-level manifest from {manifest_uri}")
+        logger.info(f"Loaded bucket-level manifest from {manifest_uri}")  # noqa: G004
         return metadata_config

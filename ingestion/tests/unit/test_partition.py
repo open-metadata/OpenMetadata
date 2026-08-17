@@ -11,8 +11,6 @@
 
 """Partition utility tests"""
 
-from typing import Optional
-
 import pytest
 from pydantic import BaseModel
 
@@ -31,8 +29,8 @@ from metadata.sampler.partition import get_partition_details
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig] = None  # noqa: N815, UP045
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
 
     class Config:
@@ -40,8 +38,8 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig] = None  # noqa: N815, UP045
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
 
     class Config:
@@ -49,8 +47,8 @@ class MockRedshiftTable(BaseModel):
 
 
 class MockAthenaTable(BaseModel):
-    tablePartition: Optional[TablePartition] = None  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig] = None  # noqa: N815, UP045
+    tablePartition: TablePartition | None = None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Athena  # noqa: N815
 
     class Config:

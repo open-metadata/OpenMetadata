@@ -135,7 +135,7 @@ class NullMissingCount(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(f"Error while computing 'Null Missing Count' for column '{self.col.name}': {err}")
+                logger.debug(f"Error while computing 'Null Missing Count' for column '{self.col.name}': {err}")  # noqa: G004
                 return None
         return computation.aggregate_accumulator(accumulator)
 

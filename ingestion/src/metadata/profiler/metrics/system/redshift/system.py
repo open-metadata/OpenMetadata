@@ -2,8 +2,6 @@
 Implemetation for the redshift system metrics source
 """
 
-from typing import List  # noqa: UP035
-
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 
@@ -47,7 +45,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
 
         self.redshift_instance_type = get_redshift_instance_type(self.engine)
 
-    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_inserts(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{DatabaseDMLOperations.INSERT.value}",
             self._get_insert_queries,
@@ -56,7 +54,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_deletes(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{DatabaseDMLOperations.DELETE.value}",
             self._get_delete_queries,
@@ -65,7 +63,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_updates(self) -> list[SystemProfile]:
         queries = self.get_or_update_cache(
             f"{self.database}.{self.schema}.{DatabaseDMLOperations.UPDATE.value}",
             self._get_update_queries,
@@ -74,7 +72,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
         return get_metric_result(queries, self.table)
 
-    def _get_insert_queries(self, database: str, schema: str) -> List[QueryResult]:  # noqa: UP006
+    def _get_insert_queries(self, database: str, schema: str) -> list[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
             insert_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="si",
@@ -97,7 +95,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             DatabaseDMLOperations.INSERT.value,
         )
 
-    def _get_delete_queries(self, database: str, schema: str) -> List[QueryResult]:  # noqa: UP006
+    def _get_delete_queries(self, database: str, schema: str) -> list[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
             delete_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="sd",
@@ -120,7 +118,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             DatabaseDMLOperations.DELETE.value,
         )
 
-    def _get_update_queries(self, database: str, schema: str) -> List[QueryResult]:  # noqa: UP006
+    def _get_update_queries(self, database: str, schema: str) -> list[QueryResult]:
         if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
             update_query = REDSHIFT_SYSTEM_METRICS_QUERY_MAP[RedshiftInstanceType.PROVISIONED].format(
                 alias="si",
@@ -144,7 +142,7 @@ class RedshiftSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         )
 
 
-def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:  # noqa: UP006
+def get_metric_result(ddls: list[QueryResult], table_name: str) -> list[SystemProfile]:
     """Given query results, return the metric result
 
     Args:
@@ -154,7 +152,7 @@ def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemPr
     Returns:
         List:
     """
-    return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
+    return TypeAdapter(list[SystemProfile]).validate_python(
         [
             {
                 "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),

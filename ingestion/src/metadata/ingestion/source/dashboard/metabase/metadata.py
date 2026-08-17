@@ -12,7 +12,8 @@
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -77,7 +78,7 @@ class MetabaseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: MetabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, MetabaseConnection):
@@ -90,19 +91,19 @@ class MetabaseSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.collections: List[MetabaseCollection] = []  # noqa: UP006
-        self.dashboards_list: List[MetabaseDashboard] = []  # noqa: UP006
-        self.charts_dict: Dict[str] = {}  # noqa: UP006
-        self.orphan_charts_id: List[str] = []  # noqa: UP006
+        self.collections: list[MetabaseCollection] = []
+        self.dashboards_list: list[MetabaseDashboard] = []
+        self.charts_dict: dict[str] = {}
+        self.orphan_charts_id: list[str] = []
         self._default_dashboard_added = False
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
         self.charts_dict = self.client.get_charts_dict()
-        logger.debug(f"Total chart IDs fetched: {list(self.charts_dict.keys())}")
+        logger.debug(f"Total chart IDs fetched: {list(self.charts_dict.keys())}")  # noqa: G004
         return super().prepare()
 
-    def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[MetabaseDashboard] | None:
         """
         Get List of all dashboards
         """
@@ -117,7 +118,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: MetabaseDashboard) -> Optional[MetabaseDashboardDetails]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: MetabaseDashboard) -> MetabaseDashboardDetails | None:
         """
         Get Dashboard Details
         """
@@ -138,7 +139,7 @@ class MetabaseSource(DashboardServiceSource):
                 self._default_dashboard_added = True
         return retrieved_dashboards
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: Any) -> str | None:
         """
         Method to get the project name by searching the dataset using id in the workspace dict
         """
@@ -158,10 +159,10 @@ class MetabaseSource(DashboardServiceSource):
                 return collection_name  # noqa: RET504
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}")
+            logger.warning(f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}")  # noqa: G004
         return None
 
-    def get_owner_ref(self, dashboard_details: MetabaseDashboardDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: MetabaseDashboardDetails) -> EntityReferenceList | None:
         """
         Get dashboard owner from email
         """
@@ -174,7 +175,7 @@ class MetabaseSource(DashboardServiceSource):
                     return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")
+            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
         return None
 
     def yield_dashboard(self, dashboard_details: MetabaseDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -274,7 +275,7 @@ class MetabaseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MetabaseDashboardDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
@@ -293,7 +294,7 @@ class MetabaseSource(DashboardServiceSource):
 
                 if chart_details.dataset_query is None or chart_details.dataset_query.type is None:
                     logger.debug(
-                        f"Skipping lineage for Chart(name={chart_details.name}, id={chart_details.id}) "
+                        f"Skipping lineage for Chart(name={chart_details.name}, id={chart_details.id}) "  # noqa: G004
                         f"because dataset_query or dataset_query.type is None. "
                         f"dataset_query = {chart_details.dataset_query}"
                     )
@@ -331,7 +332,7 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_database_service(self, db_service_name: Optional[str]):  # noqa: UP045
+    def _get_database_service(self, db_service_name: str | None):
         if not db_service_name:
             return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
@@ -354,7 +355,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_query(
         self,
         chart_details: MetabaseChart,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
         dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
@@ -389,7 +390,7 @@ class MetabaseSource(DashboardServiceSource):
         query_hash = lineage_parser.query_hash
 
         if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-            logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")
+            logger.debug(f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
             return
 
         to_fqn = fqn.build(
@@ -413,7 +414,7 @@ class MetabaseSource(DashboardServiceSource):
             database_schema_name = self.check_database_schema_name(database_schema_name)
 
             if prefix_table_name and table and prefix_table_name.lower() != table.lower():
-                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")
+                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")  # noqa: G004
                 continue
 
             if (
@@ -421,7 +422,7 @@ class MetabaseSource(DashboardServiceSource):
                 and database_schema_name
                 and prefix_schema_name.lower() != database_schema_name.lower()
             ):
-                logger.debug(f"Schema {database_schema_name} does not match prefix {prefix_schema_name}")
+                logger.debug(f"Schema {database_schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
                 continue
 
             fqn_search_string = build_es_fqn_search_string(
@@ -453,7 +454,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_api(
         self,
         chart_details: MetabaseChart,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
         dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
@@ -472,15 +473,15 @@ class MetabaseSource(DashboardServiceSource):
         database_name = table.db.details.db if table.db and table.db.details else None
 
         if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-            logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
+            logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
             return
 
         if prefix_schema_name and table.table_schema and prefix_schema_name.lower() != table.table_schema.lower():
-            logger.debug(f"Schema {table.table_schema} does not match prefix {prefix_schema_name}")
+            logger.debug(f"Schema {table.table_schema} does not match prefix {prefix_schema_name}")  # noqa: G004
             return
 
         if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-            logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+            logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
             return
 
         fqn_search_string = build_es_fqn_search_string(

@@ -13,7 +13,8 @@ Elasticsearch source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from elasticsearch8 import Elasticsearch  # noqa: TC002
 
@@ -58,7 +59,7 @@ class ElasticsearchSource(SearchServiceSource):
         self.client: Elasticsearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ElasticsearchConnection = config.serviceConnection.root.config
         if not isinstance(connection, ElasticsearchConnection):
@@ -76,17 +77,17 @@ class ElasticsearchSource(SearchServiceSource):
                     yield self.client.indices.get(index=str(index))
                 except Exception as exc:
                     logger.warning(
-                        f"Failed to retrieve metadata for index '{index}': {exc}. "
+                        f"Failed to retrieve metadata for index '{index}': {exc}. "  # noqa: G004
                         "Skipping this index. This may indicate a corrupted or inaccessible index."
                     )
         except Exception as exc:
             logger.error(
-                f"Failed to retrieve index list from Elasticsearch: {exc}. "
+                f"Failed to retrieve index list from Elasticsearch: {exc}. "  # noqa: G004
                 "Please check your Elasticsearch connection and cluster health."
             )
             raise exc  # noqa: TRY201
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_name(self, search_index_details: dict) -> str | None:
         """
         Get Search Index Name
         """
@@ -135,7 +136,7 @@ class ElasticsearchSource(SearchServiceSource):
 
                 if not search_index_entity:
                     logger.error(
-                        f"Could not find search index entity with FQN: {search_index_fqn}. "
+                        f"Could not find search index entity with FQN: {search_index_fqn}. "  # noqa: G004
                         "This may indicate a broken or missing index. "
                         "Please verify the index exists and is properly configured in Elasticsearch."
                     )
@@ -152,7 +153,7 @@ class ElasticsearchSource(SearchServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Failed to retrieve sample data from Elasticsearch index "
+                    f"Failed to retrieve sample data from Elasticsearch index "  # noqa: G004
                     f"'{self.context.get().search_index}': {exc}. "
                     "This may indicate a broken or corrupted index. "
                     "Consider recreating the index or checking Elasticsearch cluster health. "
@@ -166,7 +167,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
+    def get_search_index_template_name(self, search_index_template_details: dict) -> str | None:
         """
         Get Search Index Template Name
         """
@@ -196,4 +197,4 @@ class ElasticsearchSource(SearchServiceSource):
                     self.register_record(search_index_request=search_index_template_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not include index templates due to {exc}")
+            logger.error(f"Could not include index templates due to {exc}")  # noqa: G004

@@ -15,8 +15,9 @@ Deltalake PySpark Client
 
 import re
 import traceback
+from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import Any
 
 from pyspark.sql.utils import AnalysisException, ParseException
 
@@ -148,7 +149,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
         """Returns the Tables name and type, based on the underlying client."""
         for table in self._spark.catalog.listTables(dbName=schema_name):
             if table.tableType == SparkTableType.TEMPORARY.value:
-                logger.debug(f"Skipping temporary table {table.name}")
+                logger.debug(f"Skipping temporary table {table.name}")  # noqa: G004
                 continue
 
             yield TableInfo(
@@ -214,12 +215,12 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             )
         return column
 
-    def fetch_view_schema(self, view_name: str) -> Optional[Dict]:  # noqa: UP006, UP045
+    def fetch_view_schema(self, view_name: str) -> dict | None:
         try:
             describe_output = self._spark.sql(f"describe extended {view_name}").collect()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to fetch view schema [{view_name}]: {exc}")
+            logger.warning(f"Unexpected exception to fetch view schema [{view_name}]: {exc}")  # noqa: G004
             return None
 
         view_detail = {}
@@ -233,8 +234,8 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 col_details = True
         return view_detail.get("View Text")
 
-    def get_columns(self, schema: str, table: str) -> List[Column]:  # noqa: UP006
-        field_dict: Dict[str, Any] = {}  # noqa: UP006
+    def get_columns(self, schema: str, table: str) -> list[Column]:
+        field_dict: dict[str, Any] = {}
         table_name = f"{schema}.{table}"
 
         try:
@@ -243,10 +244,10 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 field_dict[field.name] = field
         except (AnalysisException, ParseException) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")
+            logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")  # noqa: G004
             return []
 
-        parsed_columns: List[Column] = []  # noqa: UP006
+        parsed_columns: list[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]

@@ -118,8 +118,8 @@ class AIGovernanceSampleData:
         try:
             return cls(fixture_folder, metadata)
         except AIGovernanceSampleDataError as exc:
-            logger.warning(f"AI Governance sample data not ingested: {exc}")
-            logger.debug(f"Traceback: {traceback.format_exc()}")
+            logger.warning(f"AI Governance sample data not ingested: {exc}")  # noqa: G004
+            logger.debug(f"Traceback: {traceback.format_exc()}")  # noqa: G004
             return None
 
     def _read_json(self, filename: str) -> Any:

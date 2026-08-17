@@ -17,7 +17,6 @@ from the LineageRunner to avoid duplicate parsing and improve performance.
 
 import time
 import traceback
-from typing import Optional
 
 from cachetools import LRUCache
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
@@ -40,7 +39,7 @@ SEQUENCE_FUNCTIONS = frozenset({"NEXTVAL", "CURRVAL", "SETVAL", "LASTVAL"})
 masked_query_cache = LRUCache(maxsize=128)
 
 
-def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: Optional[str] = None):  # noqa: C901, UP045
+def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: str | None = None):  # noqa: C901
     """
     Mask literals in a query using SqlParse.
     """
@@ -123,13 +122,13 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner, query_hash: O
         return str(parsed)
     except Exception as exc:
         hash_prefix = f"[{query_hash}] " if query_hash else ""
-        logger.debug(f"{hash_prefix}Failed to mask query with SqlParse: {exc}")
+        logger.debug(f"{hash_prefix}Failed to mask query with SqlParse: {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
 
     return query
 
 
-def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: Optional[str] = None) -> str:  # noqa: C901, UP045
+def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: str | None = None) -> str:  # noqa: C901
     """
     Mask literals in a query using SqlFluff.
     """
@@ -141,7 +140,7 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: O
 
         if parsed is None:
             hash_prefix = f"[{query_hash}] " if query_hash else ""
-            logger.debug(f"{hash_prefix}Skipping SqlFluff query masking as parsed result is None")
+            logger.debug(f"{hash_prefix}Skipping SqlFluff query masking as parsed result is None")  # noqa: G004
             return query
 
         def _is_ordinal_context(segment) -> bool:
@@ -192,7 +191,7 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner, query_hash: O
         return masked_query  # noqa: RET504, TRY300
     except Exception as exc:
         hash_prefix = f"[{query_hash}] " if query_hash else ""
-        logger.debug(f"{hash_prefix}Failed to mask query with SqlFluff: {exc}")
+        logger.debug(f"{hash_prefix}Failed to mask query with SqlFluff: {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
 
     return query
@@ -213,10 +212,10 @@ def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
 def mask_query(
     query: str,
     dialect: str = Dialect.ANSI.value,
-    parser: Optional[LineageRunner] = None,  # noqa: UP045
+    parser: LineageRunner | None = None,
     parser_required: bool = False,
-    query_hash: Optional[str] = None,  # noqa: UP045
-) -> Optional[str]:  # noqa: UP045
+    query_hash: str | None = None,
+) -> str | None:
     """Evaluate and return the best available parser for the query."""
     hash_prefix = f"[{query_hash}] " if query_hash else ""
 
@@ -225,7 +224,7 @@ def mask_query(
     elapsed = time.time() - start_time
 
     elapsed_str = pretty_print_time_duration(elapsed)
-    logger.debug(f"{hash_prefix}Query masking completed in {elapsed_str}")
+    logger.debug(f"{hash_prefix}Query masking completed in {elapsed_str}")  # noqa: G004
 
     return masked_query
 
@@ -233,10 +232,10 @@ def mask_query(
 def mask_query_impl(
     query: str,
     dialect: str = Dialect.ANSI.value,
-    parser: Optional[LineageRunner] = None,  # noqa: UP045
+    parser: LineageRunner | None = None,
     parser_required: bool = False,
-    query_hash: Optional[str] = None,  # noqa: UP045
-) -> Optional[str]:  # noqa: UP045
+    query_hash: str | None = None,
+) -> str | None:
     """
     Mask a query using SqlParse or SqlFluff.
     Only these two analyzers support literal masking (SqlGlot is excluded).
@@ -247,7 +246,7 @@ def mask_query_impl(
         if masked_query_cache.get((query, dialect)):
             return masked_query_cache.get((query, dialect))
         if parser_required and not parser:
-            logger.debug(f"{hash_prefix}Query masking skipped as no parser available.")
+            logger.debug(f"{hash_prefix}Query masking skipped as no parser available.")  # noqa: G004
             return None
 
         masking_parser = None
@@ -264,7 +263,7 @@ def mask_query_impl(
                 masking_parser = get_sqlfluff_lineage_runner(query, dialect=dialect)
 
         logger.debug(
-            f"{hash_prefix}Query masking started using [{masking_parser._analyzer.__class__.__name__}]"
+            f"{hash_prefix}Query masking started using [{masking_parser._analyzer.__class__.__name__}]"  # noqa: G004
             f" for parser [{parser and parser._analyzer.__class__.__name__}]"
         )
 
@@ -275,7 +274,7 @@ def mask_query_impl(
             masked_query = mask_literals_with_sqlparse(query, masking_parser, query_hash)
         else:
             logger.debug(
-                f"{hash_prefix}Query masking skipped as no supported analyzer available."
+                f"{hash_prefix}Query masking skipped as no supported analyzer available."  # noqa: G004
                 f" Analyzer: {masking_parser._analyzer}"
             )
             return None
@@ -283,6 +282,6 @@ def mask_query_impl(
         masked_query_cache[(query, dialect)] = masked_query
         return masked_query  # noqa: TRY300
     except Exception as exc:
-        logger.debug(f"{hash_prefix}Failed to mask query: {exc}")
+        logger.debug(f"{hash_prefix}Failed to mask query: {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
     return None

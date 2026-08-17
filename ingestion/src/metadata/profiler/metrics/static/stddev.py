@@ -152,12 +152,12 @@ class StdDev(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
                 logger.error(
-                    f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."
+                    f"Unable to compute 'Standard Deviation' for {self.col.name} due to memory constraints."  # noqa: G004
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
             except Exception as err:
-                logger.debug(f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}")
+                logger.debug(f"Error while computing 'Standard Deviation' for column {self.col.name}: {err}")  # noqa: G004
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -167,7 +167,7 @@ class StdDev(StaticMetric):
         Returns:
             PandasComputation: Computation protocol with create/update/aggregate methods
         """
-        return PandasComputation[SumSumSquaresCount, Optional[float]](  # noqa: UP045
+        return PandasComputation[SumSumSquaresCount, float | None](
             create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
             update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
@@ -226,7 +226,7 @@ class StdDev(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_sum_squares_count: SumSumSquaresCount,
-    ) -> Optional[float]:  # noqa: UP045
+    ) -> float | None:
         """Compute final stddev from running sum, sum of squares, and count
 
         Uses the computational formula for variance:
@@ -252,7 +252,7 @@ class StdDev(StaticMetric):
             if abs(variance) < 1e-10:  # Close to zero due to floating point
                 variance = 0
             else:
-                logger.warning(f"Negative variance ({variance}) encountered, returning None")
+                logger.warning(f"Negative variance ({variance}) encountered, returning None")  # noqa: G004
                 return None
 
         return math.sqrt(variance)

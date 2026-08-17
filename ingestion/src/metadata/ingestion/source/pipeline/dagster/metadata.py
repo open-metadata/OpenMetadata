@@ -13,7 +13,7 @@ Dagster source to extract metadata from OM UI
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -82,7 +82,7 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DagsterConnection = config.serviceConnection.root.config
         if not isinstance(connection, DagsterConnection):
@@ -93,7 +93,7 @@ class DagsterSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.strip_asset_key_prefix_length = self.service_connection.stripAssetKeyPrefixLength or 0
 
-    def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _get_downstream_tasks(self, job: SolidHandle) -> list[str] | None:
         """Method to get downstream tasks"""
         down_stream_tasks = []
         if job.solid:
@@ -103,14 +103,14 @@ class DagsterSource(PipelineServiceSource):
                         down_stream_tasks.append(task.solid.name)  # noqa: PERF401
         return down_stream_tasks or None
 
-    def _get_task_list(self, pipeline_name: str) -> Optional[List[Task]]:  # noqa: UP006, UP045
+    def _get_task_list(self, pipeline_name: str) -> list[Task] | None:
         """Method to collect all the tasks from dagster and return it in a task list"""
         jobs = self.client.get_jobs(
             pipeline_name=pipeline_name,
             repository_name=self.context.get().repository_name,
             repository_location=self.context.get().repository_location,
         )
-        task_list: List[Task] = []  # noqa: UP006
+        task_list: list[Task] = []
         if jobs:
             for job in jobs.solidHandles or []:
                 try:
@@ -123,7 +123,7 @@ class DagsterSource(PipelineServiceSource):
                     task_list.append(task)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error to fetch tasks for {pipeline_name}:{job}: {exc}")
+                    logger.warning(f"Error to fetch tasks for {pipeline_name}:{job}: {exc}")  # noqa: G004
 
         return task_list or None
 
@@ -244,7 +244,7 @@ class DagsterSource(PipelineServiceSource):
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
             if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")  # noqa: G004
                 return
 
             assets = self.client.get_assets(
@@ -271,7 +271,7 @@ class DagsterSource(PipelineServiceSource):
                 if not to_result.is_resolved:
                     normalized_key = asset.assetKey.normalize(self.strip_asset_key_prefix_length).to_string()
                     logger.debug(
-                        f"Could not resolve table for asset: {asset.assetKey.to_string()} "
+                        f"Could not resolve table for asset: {asset.assetKey.to_string()} "  # noqa: G004
                         f"(normalized: {normalized_key})"
                     )
                     continue
@@ -337,7 +337,7 @@ class DagsterSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unable to get pipelines list\n"
+                f"Unable to get pipelines list\n"  # noqa: G004
                 f"Please check if dagster is running correctly and is in good state: {exc}"
             )
             raise WorkflowFatalError("Unable to get pipeline list")  # noqa: B904
@@ -345,7 +345,7 @@ class DagsterSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         return pipeline_details.name
 
-    def get_source_url(self, pipeline_name: str, task_name: Optional[str]) -> Optional[SourceUrl]:  # noqa: UP045
+    def get_source_url(self, pipeline_name: str, task_name: str | None) -> SourceUrl | None:
         """
         Method to get source url for pipelines and tasks for dagster
         """
@@ -359,7 +359,7 @@ class DagsterSource(PipelineServiceSource):
             return SourceUrl(url)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to get pipeline url: {exc}")
+            logger.warning(f"Error to get pipeline url: {exc}")  # noqa: G004
         return None
 
     def _is_asset_in_pipeline(self, asset: DagsterAssetNode, pipeline_name: str) -> bool:
@@ -368,7 +368,7 @@ class DagsterSource(PipelineServiceSource):
             return False
         return any(job.name == pipeline_name for job in asset.jobs)
 
-    def _resolve_asset_to_table(self, asset: DagsterAssetNode, db_services: List[str]) -> TableResolutionResult:  # noqa: UP006
+    def _resolve_asset_to_table(self, asset: DagsterAssetNode, db_services: list[str]) -> TableResolutionResult:
         """
         Resolve Dagster asset to OpenMetadata Table entity.
         Tries multiple strategies to parse asset key into database/schema/table.
@@ -390,7 +390,7 @@ class DagsterSource(PipelineServiceSource):
             table = parts[0]
         else:
             logger.debug(
-                f"Unexpected asset key format after normalization: {asset_key_str} "
+                f"Unexpected asset key format after normalization: {asset_key_str} "  # noqa: G004
                 f"(original: {asset.assetKey.to_string()}, stripped {self.strip_asset_key_prefix_length} segments)"
             )
             return TableResolutionResult()
@@ -418,11 +418,11 @@ class DagsterSource(PipelineServiceSource):
                     return TableResolutionResult(table_fqn=table_fqn, table_entity=table_entity)
 
             except Exception as exc:
-                logger.debug(f"Failed to resolve for service {service_name}: {exc}")
+                logger.debug(f"Failed to resolve for service {service_name}: {exc}")  # noqa: G004
 
         return TableResolutionResult()
 
-    def _parse_asset_from_materialization(self, asset: DagsterAssetNode) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
+    def _parse_asset_from_materialization(self, asset: DagsterAssetNode) -> dict[str, str] | None:
         """
         Extract table info from asset materialization metadata.
         """

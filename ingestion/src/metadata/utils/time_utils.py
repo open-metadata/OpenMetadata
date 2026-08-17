@@ -16,7 +16,6 @@ Time utility functions
 from datetime import datetime, time, timedelta
 from datetime import timezone as dt_timezone
 from math import floor
-from typing import Optional, Union
 
 from pytz import timezone
 
@@ -75,7 +74,7 @@ def get_beginning_of_day_timestamp_mill(
     hours=0,
     weeks=0,
     timezone_str: str = "UTC",
-) -> Optional[int]:  # noqa: UP045
+) -> int | None:
     """Get the beginning of day timestamp
 
     Args:
@@ -116,7 +115,7 @@ def get_end_of_day_timestamp_mill(
     hours=0,
     weeks=0,
     timezone_str: str = "UTC",
-) -> Optional[int]:  # noqa: UP045
+) -> int | None:
     """Get the end of day timestamp
 
     Args:
@@ -148,7 +147,7 @@ def get_end_of_day_timestamp_mill(
     return datetime_to_ts(tz.localize(datetime_value))
 
 
-def convert_timestamp(timestamp: str) -> Union[int, float]:  # noqa: UP007
+def convert_timestamp(timestamp: str) -> int | float:
     """convert timestamp to int
     Args:
         timestamp (str):
@@ -160,7 +159,7 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:  # noqa: UP007
     return float(timestamp) / 1000
 
 
-def utc_from_timestamp(ts: Union[int, float]) -> datetime:  # noqa: UP007
+def utc_from_timestamp(ts: int | float) -> datetime:
     """Convert a Unix timestamp to a naive UTC datetime.
 
     Returns a timezone-naive datetime in UTC. This is safe across
@@ -172,7 +171,7 @@ def utc_from_timestamp(ts: Union[int, float]) -> datetime:  # noqa: UP007
 
 
 @deprecated("Use `datetime_to_timestamp` instead", "1.7.0")
-def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:  # noqa: UP007
+def convert_timestamp_to_milliseconds(timestamp: int | float) -> int:
     """convert timestamp to milliseconds
     Args:
         timestamp (int):

@@ -13,7 +13,7 @@ Delete the DAG in Airflow's db, as well as the python file
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response
 from werkzeug.utils import secure_filename
@@ -69,7 +69,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to delete dag [{dag_id}] [secured: {secure_dag_id}]: {exc}")
+            logger.error(f"Failed to delete dag [{dag_id}] [secured: {secure_dag_id}]: {exc}")  # noqa: G004
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to delete [{dag_id}] [secured: {secure_dag_id}] due to [{exc}] ",

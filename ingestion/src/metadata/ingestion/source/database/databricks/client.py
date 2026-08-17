@@ -16,8 +16,8 @@ import base64
 import json
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import requests
 from sqlalchemy import text
@@ -76,8 +76,8 @@ class DatabricksClient:
 
     def __init__(
         self,
-        config: Union[DatabricksConnection, DatabricksPipelineConnection, UnityCatalogConnection],  # noqa: UP007
-        engine: Optional[Engine] = None,  # noqa: UP045
+        config: DatabricksConnection | DatabricksPipelineConnection | UnityCatalogConnection,
+        engine: Engine | None = None,
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
@@ -90,7 +90,7 @@ class DatabricksClient:
         self._entity_table_lineage_executed: bool = False
         self.entity_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
         self._entity_column_lineage_executed: bool = False
-        self.entity_column_lineage: dict[str, dict[Tuple[str, str], list[Tuple[str, str]]]] = defaultdict(  # noqa: UP006
+        self.entity_column_lineage: dict[str, dict[tuple[str, str], list[tuple[str, str]]]] = defaultdict(
             lambda: defaultdict(list)
         )
         self.engine = engine
@@ -194,7 +194,7 @@ class DatabricksClient:
                 column_result = test_column_lineage.fetchone()  # noqa: F841
                 logger.info("Lineage queries executed successfully")
         except Exception as exc:
-            logger.debug(f"Error testing lineage queries: {traceback.format_exc()}")
+            logger.debug(f"Error testing lineage queries: {traceback.format_exc()}")  # noqa: G004
             raise DatabricksClientException(  # noqa: B904
                 f"Failed to test lineage queries. Make sure you have access "
                 f"to the tables table_lineage and column_lineage: {exc}"
@@ -222,7 +222,7 @@ class DatabricksClient:
                 ).json()
                 yield from response.get("res") or []
 
-    def list_query_history(self, start_date=None, end_date=None) -> List[dict]:  # noqa: UP006
+    def list_query_history(self, start_date=None, end_date=None) -> list[dict]:
         """
         Method returns List the history of queries through SQL warehouses
         """
@@ -313,7 +313,7 @@ class DatabricksClient:
             logger.debug(traceback.format_exc())
             logger.error(exc)
 
-    def get_job_runs(self, job_id) -> List[dict]:  # noqa: UP006
+    def get_job_runs(self, job_id) -> list[dict]:
         """
         Method returns List of all runs for a job by the specified job_id
         """
@@ -351,7 +351,7 @@ class DatabricksClient:
             logger.debug(traceback.format_exc())
             logger.error(exc)
 
-    def get_table_lineage(self, entity_id: str) -> List[dict[str, str]]:  # noqa: UP006
+    def get_table_lineage(self, entity_id: str) -> list[dict[str, str]]:
         """
         Method returns table lineage for a job or pipeline by the specified entity_id.
         On first call, eagerly fetches ALL lineage in bulk for optimal performance.
@@ -364,11 +364,11 @@ class DatabricksClient:
             return self.entity_table_lineage.get(str(entity_id), [])
 
         except Exception as exc:
-            logger.debug(f"Error getting table lineage for {entity_id} due to {traceback.format_exc()}")
+            logger.debug(f"Error getting table lineage for {entity_id} due to {traceback.format_exc()}")  # noqa: G004
             logger.error(exc)
         return []
 
-    def get_column_lineage(self, entity_id: str, TableKey: Tuple[str, str]) -> List[Tuple[str, str]]:  # noqa: N803, UP006
+    def get_column_lineage(self, entity_id: str, TableKey: tuple[str, str]) -> list[tuple[str, str]]:  # noqa: N803
         """
         Method returns column lineage for a job or pipeline by the specified entity_id and table key
         """
@@ -380,11 +380,11 @@ class DatabricksClient:
             return self.entity_column_lineage.get(str(entity_id), {}).get(TableKey, [])
 
         except Exception as exc:
-            logger.debug(f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}")
+            logger.debug(f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}")  # noqa: G004
             logger.error(exc)
         return []
 
-    def run_lineage_query(self, query: str) -> List[dict]:  # noqa: UP006
+    def run_lineage_query(self, query: str) -> list[dict]:
         """
         Method runs a lineage query and returns the result
         """
@@ -394,7 +394,7 @@ class DatabricksClient:
                 return result  # noqa: RET504
 
         except Exception as exc:
-            logger.debug(f"Error caching table lineage due to {traceback.format_exc()}")
+            logger.debug(f"Error caching table lineage due to {traceback.format_exc()}")  # noqa: G004
             logger.error(exc)
         return []
 
@@ -403,7 +403,7 @@ class DatabricksClient:
         Method caches table and column lineage for ALL jobs and pipelines.
         """
         lookback_days = getattr(self.config, "lineageLookBackDays", 90)
-        logger.info(f"Caching table lineage (lookback: {lookback_days} days)")
+        logger.info(f"Caching table lineage (lookback: {lookback_days} days)")  # noqa: G004
         table_lineage = self.run_lineage_query(DATABRICKS_GET_TABLE_LINEAGE.format(lookback_days=lookback_days))
         for row in table_lineage or []:
             try:
@@ -414,11 +414,11 @@ class DatabricksClient:
                     }
                 )
             except Exception as exc:  # noqa: F841
-                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")
+                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")  # noqa: G004
                 continue
         self._entity_table_lineage_executed = True
 
-        logger.info(f"Caching column lineage (lookback: {lookback_days} days)")
+        logger.info(f"Caching column lineage (lookback: {lookback_days} days)")  # noqa: G004
         column_lineage = self.run_lineage_query(DATABRICKS_GET_COLUMN_LINEAGE.format(lookback_days=lookback_days))
         for row in column_lineage or []:
             try:
@@ -434,12 +434,12 @@ class DatabricksClient:
                 self.entity_column_lineage[row.entity_id][table_key].append(column_pair)
 
             except Exception as exc:  # noqa: F841
-                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")
+                logger.debug(f"Error parsing row: {row} due to {traceback.format_exc()}")  # noqa: G004
                 continue
         self._entity_column_lineage_executed = True
         logger.debug("Table and column lineage caching completed.")
 
-    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:  # noqa: UP045
+    def get_pipeline_details(self, pipeline_id: str) -> dict | None:
         """
         Get DLT pipeline configuration including libraries and notebooks
         """
@@ -452,10 +452,10 @@ class DatabricksClient:
             )
             if response.status_code == 200:
                 return response.json()
-            logger.warning(f"Failed to get pipeline details for {pipeline_id}: {response.status_code}")
+            logger.warning(f"Failed to get pipeline details for {pipeline_id}: {response.status_code}")  # noqa: G004
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting pipeline details for {pipeline_id}: {exc}")
+            logger.warning(f"Error getting pipeline details for {pipeline_id}: {exc}")  # noqa: G004
         return None
 
     def list_pipelines(self) -> Iterable[dict]:
@@ -477,7 +477,7 @@ class DatabricksClient:
             if response.status_code == 200:
                 data = response.json()
                 pipelines = data.get("statuses", [])
-                logger.info(f"Found {len(pipelines)} DLT pipelines")
+                logger.info(f"Found {len(pipelines)} DLT pipelines")  # noqa: G004
                 yield from pipelines
 
                 # Handle pagination if there's a next_page_token
@@ -495,12 +495,12 @@ class DatabricksClient:
                     else:
                         break
             else:
-                logger.warning(f"Failed to list pipelines: {response.status_code} - {response.text}")
+                logger.warning(f"Failed to list pipelines: {response.status_code} - {response.text}")  # noqa: G004
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error listing DLT pipelines: {exc}")
+            logger.warning(f"Error listing DLT pipelines: {exc}")  # noqa: G004
 
-    def list_workspace_objects(self, path: str) -> List[dict]:  # noqa: UP006
+    def list_workspace_objects(self, path: str) -> list[dict]:
         """
         List objects in a Databricks workspace directory
         """
@@ -518,14 +518,14 @@ class DatabricksClient:
             if response.status_code == 200:
                 return response.json().get("objects", [])
             else:  # noqa: RET505
-                logger.warning(f"Failed to list workspace directory {path}: {response.text}")
+                logger.warning(f"Failed to list workspace directory {path}: {response.text}")  # noqa: G004
                 return []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error listing workspace directory {path}: {exc}")
+            logger.warning(f"Error listing workspace directory {path}: {exc}")  # noqa: G004
             return []
 
-    def export_notebook_source(self, notebook_path: str) -> Optional[str]:  # noqa: UP045
+    def export_notebook_source(self, notebook_path: str) -> str | None:
         """
         Export notebook source code from Databricks workspace
         """
@@ -544,8 +544,8 @@ class DatabricksClient:
                 content = response.json().get("content")
                 if content:
                     return base64.b64decode(content).decode("utf-8")
-            logger.warning(f"Failed to export notebook {notebook_path}: {response.status_code}")
+            logger.warning(f"Failed to export notebook {notebook_path}: {response.status_code}")  # noqa: G004
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error exporting notebook {notebook_path}: {exc}")
+            logger.warning(f"Error exporting notebook {notebook_path}: {exc}")  # noqa: G004
         return None

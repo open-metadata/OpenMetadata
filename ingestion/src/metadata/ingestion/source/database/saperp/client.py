@@ -14,7 +14,7 @@ Client to interact with SAP ERP APIs
 
 import math
 import traceback
-from typing import Any, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
     SapErpConnection,
@@ -95,7 +95,7 @@ class SapErpClient:
 
     def paginate(
         self, api_url: str, params_data: dict, entities_per_page: int, model_class: Any
-    ) -> List[Union[SapErpTable, SapErpColumn]]:  # noqa: UP006, UP007
+    ) -> list[SapErpTable | SapErpColumn]:
         """
         Method to paginate the APIs
         """
@@ -118,10 +118,10 @@ class SapErpClient:
                 entities_list.extend(response.d.results)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error fetching entities for pagination: {exc}")
+                logger.warning(f"Error fetching entities for pagination: {exc}")  # noqa: G004
         return entities_list
 
-    def list_tables(self) -> Optional[List[SapErpTable]]:  # noqa: UP006, UP045
+    def list_tables(self) -> list[SapErpTable] | None:
         """
         List all tables on the SAP ERP instance
         """
@@ -137,12 +137,12 @@ class SapErpClient:
         )
         return table_list or None
 
-    def list_columns(self, table_name: str) -> Optional[List[SapErpColumn]]:  # noqa: UP006, UP045
+    def list_columns(self, table_name: str) -> list[SapErpColumn] | None:
         """
         List all the columns on the SAP ERP instance
         """
         try:
-            logger.debug(f"Fetching columns for table {table_name}")
+            logger.debug(f"Fetching columns for table {table_name}")  # noqa: G004
             params_data = {"$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"}
             table_columns = self.paginate(
                 api_url="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
@@ -153,5 +153,5 @@ class SapErpClient:
             return table_columns or None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching columns for table {table_name}: {exc}")
+            logger.warning(f"Error fetching columns for table {table_name}: {exc}")  # noqa: G004
         return None

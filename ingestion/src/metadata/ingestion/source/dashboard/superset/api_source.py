@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -188,7 +188,7 @@ class SupersetAPISource(SupersetSourceMixin):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to build source table fqn for [{getattr(chart_json, 'table_name', None)}]: {err}")
+            logger.warning(f"Failed to build source table fqn for [{getattr(chart_json, 'table_name', None)}]: {err}")  # noqa: G004
         return None
 
     def yield_dashboard_chart(self, dashboard_details: DashboardResult) -> Iterable[Either[CreateChartRequest]]:
@@ -197,7 +197,7 @@ class SupersetAPISource(SupersetSourceMixin):
             try:
                 chart_json = self.all_charts.get(chart_id)
                 if not chart_json:
-                    logger.warning(f"chart details for id: {chart_id} not found, skipped")
+                    logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
@@ -218,7 +218,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                 )
 
-    def _get_datasource_fqn(self, datasource_id: str, db_service_prefix: Optional[str]) -> Optional[str]:  # noqa: UP045
+    def _get_datasource_fqn(self, datasource_id: str, db_service_prefix: str | None) -> str | None:
         (
             db_service_name,
             prefix_database_name,
@@ -233,7 +233,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     database_name = self._resolve_lineage_database_name(datasource_json, db_service_name)
 
                     if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
                         return None
 
                     if (
@@ -242,7 +242,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         and prefix_schema_name.lower() != datasource_json.result.table_schema.lower()
                     ):
                         logger.debug(
-                            f"Schema {datasource_json.result.table_schema} does not match prefix {prefix_schema_name}"
+                            f"Schema {datasource_json.result.table_schema} does not match prefix {prefix_schema_name}"  # noqa: G004
                         )
                         return None
 
@@ -252,7 +252,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         and prefix_table_name.lower() != datasource_json.result.table_name.lower()
                     ):
                         logger.debug(
-                            f"Table {datasource_json.result.table_name} does not match prefix {prefix_table_name}"
+                            f"Table {datasource_json.result.table_name} does not match prefix {prefix_table_name}"  # noqa: G004
                         )
                         return None
 
@@ -264,7 +264,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch Datasource with id [{datasource_id}]: {err}")
+            logger.warning(f"Failed to fetch Datasource with id [{datasource_id}]: {err}")  # noqa: G004
 
         return None
 
@@ -274,7 +274,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 try:
                     chart_json = self.all_charts.get(chart_id)
                     if not chart_json or not chart_json.datasource_id:
-                        logger.warning(f"chart details for id: {chart_id} not found, skipped")
+                        logger.warning(f"chart details for id: {chart_id} not found, skipped")  # noqa: G004
                         continue
                     datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
                     if filter_by_datamodel(
@@ -311,7 +311,7 @@ class SupersetAPISource(SupersetSourceMixin):
                         )
                     )
 
-    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:  # noqa: UP006
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> list[str]:
         """
         Args:
             chart_json: FetchChart

@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
-from typing import Optional, cast
+from typing import cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -38,7 +38,7 @@ class Base(DeclarativeBase):
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
-def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:  # noqa: UP045
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> bool | None:
     """Check whether column or table name are not uppercase for snowflake table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
 
@@ -53,7 +53,7 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     return None
 
 
-def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:  # noqa: UP045
+def check_if_should_quote_column_name(table_service_type) -> bool | None:
     """Check whether column name should be quoted when passed into the sql command build up.
     This is important when a column name is the same as a reserve word and causes a sql error.
 
@@ -102,8 +102,8 @@ def build_orm_col(idx: int, col: Column, table_service_type, *, _quote=None) -> 
 def ometa_to_sqa_orm(
     table: Table,
     metadata: OpenMetadata,
-    sqa_metadata_obj: Optional[MetaData] = None,  # noqa: UP045
-) -> Optional[type]:  # noqa: UP045
+    sqa_metadata_obj: MetaData | None = None,
+) -> type | None:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy ORM class

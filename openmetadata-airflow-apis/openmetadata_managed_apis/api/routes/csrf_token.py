@@ -12,7 +12,7 @@
 CSRF Token endpoint to provide token for POST/PUT/DELETE requests
 """
 
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, session
 
@@ -91,7 +91,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 )
 
         except Exception as exc:
-            logger.error(f"Failed to get CSRF token: {exc}")
+            logger.error(f"Failed to get CSRF token: {exc}")  # noqa: G004
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to retrieve CSRF token: {exc}",

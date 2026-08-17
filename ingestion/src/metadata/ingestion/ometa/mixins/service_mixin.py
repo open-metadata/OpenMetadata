@@ -12,7 +12,7 @@
 Helper mixin to handle services
 """
 
-from typing import Type, TypeVar  # noqa: UP035
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ class OMetaServiceMixin:
 
     config: OpenMetadataConnection
 
-    def get_create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> C:  # noqa: UP006
+    def get_create_service_from_source(self, entity: type[T], config: WorkflowSource) -> C:
         """
         Prepare a CreateService request from source config
         :param entity: Service Type
@@ -58,7 +58,7 @@ class OMetaServiceMixin:
             connection=config.serviceConnection.root if self.config.storeServiceConnection else None,
         )
 
-    def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:  # noqa: UP006
+    def create_service_from_source(self, entity: type[T], config: WorkflowSource) -> T:
         """
         Create a service of type T.
 
@@ -75,7 +75,7 @@ class OMetaServiceMixin:
         create_service = self.get_create_service_from_source(entity=entity, config=config)
         return self.create_or_update(create_service)
 
-    def get_service_or_create(self, entity: Type[T], config: WorkflowSource) -> T:  # noqa: UP006
+    def get_service_or_create(self, entity: type[T], config: WorkflowSource) -> T:
         """
         Fetches a service by name, or creates
         it using the WorkflowSource config

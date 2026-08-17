@@ -14,7 +14,7 @@ TimescaleDB source module
 """
 
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine import Inspector
@@ -60,7 +60,7 @@ class TimescaleSource(PostgresSource):
         self.timescaledb_installed = False
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TimescaleConnection = config.serviceConnection.root.config
         if not isinstance(connection, TimescaleConnection):
@@ -77,12 +77,12 @@ class TimescaleSource(PostgresSource):
                 result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
             if result:
                 self.timescaledb_installed = result.timescaledb_installed
-                logger.info(f"TimescaleDB extension installed: {self.timescaledb_installed}")
+                logger.info(f"TimescaleDB extension installed: {self.timescaledb_installed}")  # noqa: G004
         except Exception as exc:
-            logger.warning(f"Could not check TimescaleDB extension: {exc}")
+            logger.warning(f"Could not check TimescaleDB extension: {exc}")  # noqa: G004
             self.timescaledb_installed = False
 
-    def yield_table(self, table_name_and_type: Tuple[str, str]) -> Iterable[Either[Table]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[Table]]:
         """
         Override to add TimescaleDB-specific metadata
         """
@@ -92,7 +92,7 @@ class TimescaleSource(PostgresSource):
                     self._add_timescale_metadata(either_table.right)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error adding TimescaleDB metadata for table {either_table.right.name}: {exc}")
+                    logger.warning(f"Error adding TimescaleDB metadata for table {either_table.right.name}: {exc}")  # noqa: G004
             yield either_table
 
     def _add_timescale_metadata(self, table: Table) -> None:
@@ -106,7 +106,7 @@ class TimescaleSource(PostgresSource):
             hypertable = self._get_hypertable_info(table_name, schema_name)
 
             if hypertable:
-                logger.debug(f"Found hypertable: {schema_name}.{table_name}")
+                logger.debug(f"Found hypertable: {schema_name}.{table_name}")  # noqa: G004
 
                 table.compressionEnabled = hypertable.compression_enabled
 
@@ -127,9 +127,9 @@ class TimescaleSource(PostgresSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing TimescaleDB metadata for {table.name}: {exc}")
+            logger.warning(f"Error processing TimescaleDB metadata for {table.name}: {exc}")  # noqa: G004
 
-    def _get_hypertable_info(self, table_name: str, schema_name: str) -> Optional[HypertableInfo]:  # noqa: UP045
+    def _get_hypertable_info(self, table_name: str, schema_name: str) -> HypertableInfo | None:
         """
         Query timescaledb_information.hypertables for metadata
         """
@@ -145,10 +145,10 @@ class TimescaleSource(PostgresSource):
             return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Could not get hypertable info for {schema_name}.{table_name}: {exc}")
+            logger.debug(f"Could not get hypertable info for {schema_name}.{table_name}: {exc}")  # noqa: G004
             return None
 
-    def _get_compression_settings(self, table_name: str, schema_name: str) -> Optional[CompressionSettings]:  # noqa: UP045
+    def _get_compression_settings(self, table_name: str, schema_name: str) -> CompressionSettings | None:
         """
         Query timescaledb_information.compression_settings for compression config
         """
@@ -164,10 +164,10 @@ class TimescaleSource(PostgresSource):
             return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Could not get compression settings for {schema_name}.{table_name}: {exc}")
+            logger.debug(f"Could not get compression settings for {schema_name}.{table_name}: {exc}")  # noqa: G004
             return None
 
-    def _build_hypertable_partition(self, hypertable: HypertableInfo) -> Optional[TablePartition]:  # noqa: UP045
+    def _build_hypertable_partition(self, hypertable: HypertableInfo) -> TablePartition | None:
         """
         Build partition details from hypertable information
         """
@@ -196,7 +196,7 @@ class TimescaleSource(PostgresSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         Override to check for hypertables first, then fall back to PostgreSQL partitioning
         """

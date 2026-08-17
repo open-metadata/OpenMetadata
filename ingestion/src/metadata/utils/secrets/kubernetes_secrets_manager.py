@@ -17,7 +17,6 @@ import base64
 import os
 import traceback
 from abc import ABC
-from typing import Optional
 
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
@@ -63,7 +62,7 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
+def _() -> KubernetesCredentials | None:
     from airflow.configuration import conf
 
     namespace = conf.get(
@@ -82,7 +81,7 @@ def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
+def _() -> KubernetesCredentials | None:
     namespace = os.getenv("KUBERNETES_NAMESPACE", _get_current_namespace())
     in_cluster = os.getenv("KUBERNETES_IN_CLUSTER", "false").lower() == "true"
     kubeconfig_path = os.getenv("KUBERNETES_KUBECONFIG_PATH")
@@ -113,14 +112,14 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             kubeconfig_path = self.credentials.kubeconfigPath
             if kubeconfig_path:
                 config.load_kube_config(config_file=kubeconfig_path)
-                logger.info(f"Using kubeconfig from path: {kubeconfig_path}")
+                logger.info(f"Using kubeconfig from path: {kubeconfig_path}")  # noqa: G004
             else:
                 config.load_kube_config()
                 logger.info("Using default kubeconfig")
 
         self.client = client.CoreV1Api()
         self.namespace = self.credentials.namespace or _get_current_namespace()
-        logger.info(f"Kubernetes SecretsManager initialized with namespace: {self.namespace}")
+        logger.info(f"Kubernetes SecretsManager initialized with namespace: {self.namespace}")  # noqa: G004
 
     def get_string_value(self, secret_id: str) -> str:
         """
@@ -134,24 +133,24 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             # Kubernetes stores secret data as base64 encoded
             if secret.data and "value" in secret.data:
                 secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
-                logger.debug(f"Got value for secret {secret_id}")
+                logger.debug(f"Got value for secret {secret_id}")  # noqa: G004
                 return secret_value
-            logger.warning(f"Secret {secret_id} exists but has no 'value' key")
+            logger.warning(f"Secret {secret_id} exists but has no 'value' key")  # noqa: G004
             return None  # noqa: TRY300
 
         except ApiException as exc:
             if exc.status == 404:
-                logger.debug(f"Secret {secret_id} not found")
+                logger.debug(f"Secret {secret_id} not found")  # noqa: G004
                 return None
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: G004
             raise exc  # noqa: TRY201
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
+            logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")  # noqa: G004
             raise exc  # noqa: TRY201
 
-    def load_credentials(self) -> Optional[dict]:  # noqa: UP045
+    def load_credentials(self) -> dict | None:
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)

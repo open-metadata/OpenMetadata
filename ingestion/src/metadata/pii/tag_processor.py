@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Optional, Sequence  # noqa: UP035
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column
@@ -29,7 +30,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-ScoreTagsForColumn = Callable[[Column, Sequence[Any], List[Tag]], List[ScoredTag]]  # noqa: UP006
+ScoreTagsForColumn = Callable[[Column, Sequence[Any], list[Tag]], list[ScoredTag]]
 
 
 class TagProcessor(AutoClassificationProcessor):
@@ -44,9 +45,9 @@ class TagProcessor(AutoClassificationProcessor):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        classification_manager: Optional[ClassificationManagerInterface] = None,  # noqa: UP045
-        score_tags_for_column: Optional[ScoreTagsForColumn] = None,  # noqa: UP045
-        classification_filter: Optional[List[str]] = None,  # noqa: UP006, UP045
+        classification_manager: ClassificationManagerInterface | None = None,
+        score_tags_for_column: ScoreTagsForColumn | None = None,
+        classification_filter: list[str] | None = None,
         max_tags_per_column: int = 10,
     ) -> None:
         super().__init__(config, metadata)
@@ -81,7 +82,7 @@ class TagProcessor(AutoClassificationProcessor):
         self.score_tags_for_column = score_tags_for_column
 
         logger.info(
-            f"TagProcessor initialized with {len(self.enabled_classifications)} "
+            f"TagProcessor initialized with {len(self.enabled_classifications)} "  # noqa: G004
             f"classifications and {len(self.candidate_tags)} candidate tags "
             f"using language '{self.classification_language.value}'"
         )
@@ -104,7 +105,7 @@ class TagProcessor(AutoClassificationProcessor):
 
         return tag_label  # noqa: RET504
 
-    def filter_tags_to_analyze(self, column: Column, candidate_tags: List[Tag]) -> List[Tag]:  # noqa: UP006
+    def filter_tags_to_analyze(self, column: Column, candidate_tags: list[Tag]) -> list[Tag]:
         """
         Filter candidate tags based on already-applied tags and mutually exclusive
         classification constraints.
@@ -142,7 +143,7 @@ class TagProcessor(AutoClassificationProcessor):
             # that already has a tag applied
             if tag_classification_fqn in mutually_exclusive_classifications_with_tags:
                 logger.debug(
-                    f"Skipping tag {tag_fqn} - mutually exclusive "
+                    f"Skipping tag {tag_fqn} - mutually exclusive "  # noqa: G004
                     f"classification {tag_classification_fqn} already has a tag applied"
                 )
                 continue
@@ -167,23 +168,23 @@ class TagProcessor(AutoClassificationProcessor):
 
         if not tags_to_analyze:
             logger.debug(
-                f"No new tags to analyze for column {column.name.root} "
+                f"No new tags to analyze for column {column.name.root} "  # noqa: G004
                 f"(all {len(self.candidate_tags)} candidates already applied)"
             )
             return []
 
-        logger.debug(f"Analyzing {len(tags_to_analyze)} tags for column {column.name.root}")
+        logger.debug(f"Analyzing {len(tags_to_analyze)} tags for column {column.name.root}")  # noqa: G004
 
         # Run analyzers
         scored_tags = self.score_tags_for_column(column, sample_data, tags_to_analyze)
         scored_tags = [scored_tag for scored_tag in scored_tags if scored_tag.score >= self.confidence_threshold]
 
         if not scored_tags:
-            logger.debug(f"No tags scored above threshold for column {column.name.root}")
+            logger.debug(f"No tags scored above threshold for column {column.name.root}")  # noqa: G004
             return []
 
         logger.debug(
-            f"Scored {len(scored_tags)} tags for column {column.name.root}, "
+            f"Scored {len(scored_tags)} tags for column {column.name.root}, "  # noqa: G004
             f"top score: {max(t.score for t in scored_tags):.3f}"
         )
 
@@ -196,12 +197,12 @@ class TagProcessor(AutoClassificationProcessor):
         # Limit total tags per column
         if len(resolved_tags) > self.max_tags_per_column:
             logger.warning(
-                f"Column {column.name.root} has {len(resolved_tags)} tags, limiting to {self.max_tags_per_column}"
+                f"Column {column.name.root} has {len(resolved_tags)} tags, limiting to {self.max_tags_per_column}"  # noqa: G004
             )
             resolved_tags = sorted(resolved_tags, key=lambda t: t.score, reverse=True)[: self.max_tags_per_column]
 
         logger.debug(
-            f"Applied {len(resolved_tags)} tags to column {column.name.root}: "
+            f"Applied {len(resolved_tags)} tags to column {column.name.root}: "  # noqa: G004
             f"{[t.tag.fullyQualifiedName for t in resolved_tags]}"
         )
 

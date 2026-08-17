@@ -14,7 +14,8 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -98,7 +99,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDatabaseConnection = config.serviceConnection.root.config
@@ -138,7 +139,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
@@ -173,16 +174,16 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owners(self, owner: Owner) -> EntityReferenceList | None:
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
                 return self.metadata.get_reference_by_email(owner_details.email)
         except Exception as exc:
-            logger.warning(f"Error while getting details of user {owner.name} - {exc}")
+            logger.warning(f"Error while getting details of user {owner.name} - {exc}")  # noqa: G004
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
@@ -237,7 +238,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 return Schema(columns=schema_columns)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while fetching columns from federated dataset {table_name} - {exc}")
+            logger.warning(f"Error while fetching columns from federated dataset {table_name} - {exc}")  # noqa: G004
         return None
 
     def get_columns(self, table_object: OutputDataset):
@@ -264,7 +265,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 row_order += 1
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error while fetching details of column {column} - {exc}")
+                logger.warning(f"Error while fetching details of column {column} - {exc}")  # noqa: G004
         return columns
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -281,8 +282,8 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for domodatabase
         """
@@ -290,7 +291,7 @@ class DomodatabaseSource(DatabaseServiceSource):
             return f"{clean_uri(self.service_connection.instanceDomain)}/datasources/{table_name}/details/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get source url for {table_name}: {exc}")
+            logger.warning(f"Unable to get source url for {table_name}: {exc}")  # noqa: G004
         return None
 
     def standardize_table_name(  # pylint: disable=unused-argument

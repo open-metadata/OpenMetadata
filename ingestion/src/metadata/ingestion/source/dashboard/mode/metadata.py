@@ -11,7 +11,7 @@
 """Mode source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -67,14 +67,14 @@ class ModeSource(DashboardServiceSource):
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
             raise InvalidSourceException(f"Expected ModeConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         """
         Get List of all dashboards
         """
@@ -130,7 +130,7 @@ class ModeSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (
@@ -160,7 +160,7 @@ class ModeSource(DashboardServiceSource):
                     and database_name
                     and prefix_database_name.lower() != str(database_name).lower()
                 ):
-                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
                     continue
 
                 lineage_parser = LineageParser(
@@ -173,7 +173,7 @@ class ModeSource(DashboardServiceSource):
                     database_schema_name = self.check_database_schema_name(database_schema_name)
 
                     if prefix_table_name and table and prefix_table_name.lower() != str(table).lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
+                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")  # noqa: G004
                         continue
 
                     if (
@@ -182,7 +182,7 @@ class ModeSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != str(database_schema_name).lower()
                     ):
                         logger.debug(
-                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"  # noqa: G004
                         )
                         continue
 

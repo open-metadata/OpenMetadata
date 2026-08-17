@@ -14,7 +14,7 @@ for the profiler
 """
 
 import hashlib
-from typing import List, Optional, Union, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
@@ -269,7 +269,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:  # noqa: UP007
+    def get_dataset(self, column=None, **__) -> type | AliasedClass:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -295,7 +295,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         return self.get_sample_query(static, column=column)  # type: ignore
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -326,7 +326,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if self._handle_array_column(col):
                     slice_expression = self._get_slice_expression(col)
                     select_columns.append(slice_expression)
-                    logger.debug(f"Limiting array column {col.name} to {max_elements} elements to prevent OOM")
+                    logger.debug(f"Limiting array column {col.name} to {max_elements} elements to prevent OOM")  # noqa: G004
                     has_array_columns = True
                 else:
                     select_columns.append(col)
@@ -412,7 +412,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         try:
             self.connection.pool.dispose()
         except Exception as e:
-            logger.warning(f"Error disposing connection pool: {e}")
+            logger.warning(f"Error disposing connection pool: {e}")  # noqa: G004
 
     def __del__(self):
         """Destructor to ensure cleanup when object is garbage collected"""

@@ -14,7 +14,7 @@ REST Auth & Client for Mode
 
 import traceback
 from base64 import b64encode
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
 
@@ -74,7 +74,7 @@ class ModeApiClient:
         )
         self.client = TrackedREST(client_config, source_name="mode")
 
-    def fetch_all_reports(self, workspace_name: str, filter: Optional[str] = "all") -> Optional[list]:  # noqa: UP045
+    def fetch_all_reports(self, workspace_name: str, filter: str | None = "all") -> list | None:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
@@ -100,7 +100,7 @@ class ModeApiClient:
                 all_reports.extend(reports)
         return all_reports
 
-    def get_all_reports_for_collection(self, workspace_name: str, collection_token: str) -> Optional[dict]:  # noqa: UP045
+    def get_all_reports_for_collection(self, workspace_name: str, collection_token: str) -> dict | None:
         """Method to fetch all reports for a collection
         Args:
             workspace_name:
@@ -113,11 +113,11 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching charts: {exc}")
+            logger.warning(f"Error fetching charts: {exc}")  # noqa: G004
 
         return None
 
-    def get_all_queries(self, workspace_name: str, report_token: str) -> Optional[dict]:  # noqa: UP045
+    def get_all_queries(self, workspace_name: str, report_token: str) -> dict | None:
         """Method to fetch all queries
         Args:
             workspace_name:
@@ -130,11 +130,11 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all queries: {exc}")
+            logger.warning(f"Error fetching all queries: {exc}")  # noqa: G004
 
         return None
 
-    def get_all_charts(self, workspace_name: str, report_token: str, query_token: str) -> Optional[dict]:  # noqa: UP045
+    def get_all_charts(self, workspace_name: str, report_token: str, query_token: str) -> dict | None:
         """Method to fetch all charts
         Args:
             workspace_name:
@@ -148,11 +148,11 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all charts: {exc}")
+            logger.warning(f"Error fetching all charts: {exc}")  # noqa: G004
 
         return None
 
-    def get_all_data_sources(self, workspace_name: str) -> Optional[dict]:  # noqa: UP045
+    def get_all_data_sources(self, workspace_name: str) -> dict | None:
         """Method to get all data sources
         Args:
             workspace_name:
@@ -175,11 +175,11 @@ class ModeApiClient:
             return all_data_sources  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching all data sources: {exc}")
+            logger.warning(f"Error fetching all data sources: {exc}")  # noqa: G004
 
         return None
 
-    def get_workspace(self, workspace_name: str) -> Optional[dict]:  # noqa: UP045
+    def get_workspace(self, workspace_name: str) -> dict | None:
         """Method to get info about a workspace
         Args:
             workspace_name:
@@ -191,5 +191,5 @@ class ModeApiClient:
             return response  # noqa: RET504, TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error testing workspace connection: {exc}")
+            logger.warning(f"Error testing workspace connection: {exc}")  # noqa: G004
             raise exc  # noqa: TRY201

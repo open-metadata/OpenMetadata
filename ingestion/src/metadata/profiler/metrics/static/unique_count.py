@@ -52,7 +52,7 @@ class UniqueCount(QueryMetric):
     def metric_type(self):
         return int
 
-    def query(self, sample: Optional[type], session: Optional[Session] = None):  # noqa: UP045
+    def query(self, sample: type | None, session: Session | None = None):
         """
         Build the Unique Count metric
         """
@@ -89,7 +89,7 @@ class UniqueCount(QueryMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             return computation.aggregate_accumulator(accumulator)
         except Exception as err:
-            logger.debug(f"Don't know how to process type {self.col.type} when computing Unique Count.\n Error: {err}")
+            logger.debug(f"Don't know how to process type {self.col.type} when computing Unique Count.\n Error: {err}")  # noqa: G004
             return 0
 
     def get_pandas_computation(self):

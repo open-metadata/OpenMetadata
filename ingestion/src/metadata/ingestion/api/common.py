@@ -12,7 +12,7 @@
 Common definitions for configuration management
 """
 
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -33,7 +33,7 @@ class ConfigModel(BaseModel):
 
 class DynamicTypedConfig(ConfigModel):
     type: str
-    config: Optional[Any] = None  # noqa: UP045
+    config: Any | None = None
 
 
 class WorkflowExecutionError(Exception):

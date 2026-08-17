@@ -14,7 +14,8 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable, Iterator
+from typing import cast
 
 from pydantic import BaseModel
 
@@ -63,15 +64,15 @@ class RegexFilter(BaseModel):
     mode: str
 
 
-def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
+def _combine_patterns(patterns: list[str]) -> str:
     if len(patterns) == 1:
         return patterns[0]
     return "|".join(f"({p})" for p in patterns)
 
 
 def _build_regex_from_filter(
-    filter_pattern: Optional[FilterPattern],  # noqa: UP045
-) -> Optional[RegexFilter]:  # noqa: UP045
+    filter_pattern: FilterPattern | None,
+) -> RegexFilter | None:
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
     When both includes and excludes are set, includes take precedence.
@@ -95,7 +96,7 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -145,7 +146,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -155,8 +156,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
         self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
+    def _build_database_params(self) -> dict[str, str]:
+        params: dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
         db_filter = self.database_filter_pattern
         if db_filter:
             params["databaseRegex"] = db_filter.regex
@@ -201,8 +202,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {  # noqa: UP006
+    def _build_table_params(self, database: Database) -> dict[str, str]:
+        params: dict[str, str] = {
             "service": self.config.source.serviceName,  # type: ignore
             "database": database.fullyQualifiedName.root,  # type: ignore
         }
@@ -214,7 +215,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
-        regex_mode: Optional[str] = None  # noqa: UP045
+        regex_mode: str | None = None
         if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
             params["databaseSchemaRegex"] = schema_filter.regex
             regex_mode = schema_filter.mode
@@ -296,7 +297,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         try:
             total = self.metadata.list_entities(entity=Table, params=self._build_table_params(database), limit=1).total
         except Exception as exc:
-            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")
+            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")  # noqa: G004
             total = None
         if total is not None:
             self.progress.seed_scope_total(Table.__name__, db_fqn, total)
@@ -348,7 +349,7 @@ class StorageFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:
@@ -481,7 +482,7 @@ class MessagingFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ) -> None:

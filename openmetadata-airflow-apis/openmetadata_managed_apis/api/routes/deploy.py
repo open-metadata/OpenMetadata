@@ -13,7 +13,7 @@ Deploy the DAG and scan it with the scheduler
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, jsonify, make_response, request
 from pydantic import ValidationError
@@ -77,7 +77,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"
+                f"Request Validation Error parsing payload [{json_request}]. IngestionPipeline expected: {err}"  # noqa: G004
             )
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
@@ -86,7 +86,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")
+            logger.error(f"Internal error deploying [{json_request}] due to [{exc}] ")  # noqa: G004
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Internal error while deploying due to [{exc}] ",

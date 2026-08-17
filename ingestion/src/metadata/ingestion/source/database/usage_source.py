@@ -16,8 +16,8 @@ import csv
 import os
 import traceback
 from abc import ABC
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -80,7 +80,7 @@ class UsageSource(QueryParserSource, ABC):
                 yield TableQueries(queries=query_list)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to read queries form log file due to: {err}")
+            logger.warning(f"Failed to read queries form log file due to: {err}")  # noqa: G004
 
     def get_table_query(self) -> Iterable[TableQuery]:
         """
@@ -103,7 +103,7 @@ class UsageSource(QueryParserSource, ABC):
         daydiff = self.end - self.start
         for days in range(daydiff.days):
             logger.info(
-                f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "
+                f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "  # noqa: G004
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
             query = None
@@ -113,7 +113,7 @@ class UsageSource(QueryParserSource, ABC):
                         start_time=self.start + timedelta(days=days),
                         end_time=self.start + timedelta(days=days + 1),
                     )
-                    logger.debug(f"Executing usage query: {query}")
+                    logger.debug(f"Executing usage query: {query}")  # noqa: G004
                     with engine.connect() as conn:
                         rows = conn.execute(text(query))
                         queries = []
@@ -123,7 +123,7 @@ class UsageSource(QueryParserSource, ABC):
                             row = row._asdict()  # noqa: PLW2901
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
-                                logger.debug(f"Processing row: {row}")
+                                logger.debug(f"Processing row: {row}")  # noqa: G004
                                 query_type = row.get("query_type")
                                 query_text = self.format_query(row["query_text"])
                                 queries.append(
@@ -148,20 +148,20 @@ class UsageSource(QueryParserSource, ABC):
                                 )
                             except Exception as exc:
                                 logger.debug(traceback.format_exc())
-                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
-                    logger.info(f"Processed {row_count} query log entries for usage")
+                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")  # noqa: G004
+                    logger.info(f"Processed {row_count} query log entries for usage")  # noqa: G004
                     self.warn_if_query_log_truncated(row_count, "usage")
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:
                     logger.debug(
                         (  # noqa: UP034
-                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"  # noqa: G004
                             "\n##########################"
                         )
                     )
                 logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")
+                logger.error(f"Source usage processing error: {exc}")  # noqa: G004
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
         days = max(1, (self.end - self.start).days)

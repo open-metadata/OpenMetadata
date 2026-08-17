@@ -19,7 +19,7 @@ import json
 import random
 import traceback
 from collections import Counter
-from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Any, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -53,7 +53,7 @@ _TYPE_PRECEDENCE = (
 )
 
 
-def _resolve_col_type(type_list: List[str]) -> str:  # noqa: UP006
+def _resolve_col_type(type_list: list[str]) -> str:
     """Pick the dominant type from type_list.
 
     Frequency-first: the most common type in the sample wins.
@@ -78,7 +78,7 @@ class _ArrayOfStruct:
 
     __slots__ = ("struct",)
 
-    def __init__(self, struct: Dict):  # noqa: UP006
+    def __init__(self, struct: dict):
         self.struct = struct
 
 
@@ -88,7 +88,7 @@ def fetch_dataframe_generator(
     file_fqn: DatalakeTableSchemaWrapper,
     session=None,
     **kwargs,
-) -> Optional[DatalakeColumnWrapper]:  # noqa: UP045
+) -> DatalakeColumnWrapper | None:
     """Return the datafgrame generator
 
     Args:
@@ -105,7 +105,7 @@ def fetch_dataframe_generator(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(  # noqa: UP045
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -126,14 +126,14 @@ def fetch_dataframe_generator(
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error fetching file [{bucket_name}/{key}] using "
+                    f"Error fetching file [{bucket_name}/{key}] using "  # noqa: G004
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
                 raise err  # noqa: TRY201
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(
-            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
+            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"  # noqa: G004
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err  # noqa: TRY201
@@ -154,7 +154,7 @@ def fetch_dataframe_first_chunk(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(  # noqa: UP045
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -182,13 +182,13 @@ def fetch_dataframe_first_chunk(
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "  # noqa: G004
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(
-            f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+            f"Error fetching first chunk of file [{bucket_name}/{key}] using "  # noqa: G004
             f"[{config_source.__class__.__name__}] due to: [{err}]"
         )
         raise err  # noqa: TRY201
@@ -229,7 +229,7 @@ class DataFrameColumnParser:
     def create(
         cls,
         data_frame: "DataFrame",  # noqa: F821
-        file_type: Optional[SupportedTypes] = None,  # noqa: UP045
+        file_type: SupportedTypes | None = None,
         sample: bool = True,
         shuffle: bool = False,
         raw_data: Any = None,
@@ -265,7 +265,7 @@ class DataFrameColumnParser:
 
     @staticmethod
     def _get_data_frame(
-        data_frame: Union[List["DataFrame"], "DataFrame"],  # noqa: F821, UP006
+        data_frame: Union[list["DataFrame"], "DataFrame"],  # noqa: F821
         sample: bool,
         shuffle: bool,  # noqa: F821, RUF100
     ):
@@ -357,7 +357,7 @@ class GenericDataFrameColumnParser:
                     cols.append(Column(**parsed_string))
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+                    logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")  # noqa: G004
         return cols
 
     @classmethod
@@ -410,7 +410,7 @@ class GenericDataFrameColumnParser:
                                 parsed_object_datatype_list.append("str")
                         except Exception as err:
                             logger.debug(
-                                f"Failed to parse datatype for column {column_name}, exc: {err},Falling back to string."
+                                f"Failed to parse datatype for column {column_name}, exc: {err},Falling back to string."  # noqa: G004
                             )
                             parsed_object_datatype_list.append("str")
 
@@ -419,7 +419,7 @@ class GenericDataFrameColumnParser:
                 except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
                     logger.debug(
-                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
+                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "  # noqa: G004
                         f"Falling back to string."
                     )
                     data_type = "str"
@@ -428,17 +428,17 @@ class GenericDataFrameColumnParser:
                 data_type or col_series.dtypes.name,
             )
             if not data_type:
-                logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")
+                logger.debug(f"unknown data type {data_frame[column_name].dtypes.name}. resolving to string.")  # noqa: G004
             data_type = data_type or DataType.STRING
         except Exception as err:
             logger.warning(
-                f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+                f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"  # noqa: G004
             )
             logger.debug(traceback.format_exc())
         return data_type or DataType.STRING
 
     @classmethod
-    def unique_json_structure(cls, dicts: List[Dict]) -> Dict:  # noqa: UP006
+    def unique_json_structure(cls, dicts: list[dict]) -> dict:
         """Given a sample of `n` json objects, return a json object that represents the unique
         structure of all `n` objects. Note that the type of the key will be that of
         the last object seen in the sample.
@@ -466,7 +466,7 @@ class GenericDataFrameColumnParser:
         return result
 
     @classmethod
-    def construct_json_column_children(cls, json_column: Dict) -> List[Dict]:  # noqa: UP006
+    def construct_json_column_children(cls, json_column: dict) -> list[dict]:
         """Construt a dict representation of a Column object
 
         Args:
@@ -493,7 +493,7 @@ class GenericDataFrameColumnParser:
         return children
 
     @classmethod
-    def get_children(cls, json_column) -> List[Dict]:  # noqa: UP006
+    def get_children(cls, json_column) -> list[dict]:
         """Get children of json column.
 
         Args:
@@ -515,14 +515,14 @@ class GenericDataFrameColumnParser:
                         dict_values.append(parsed)
                     else:
                         logger.debug(
-                            "Skipping non-object JSON value while extracting column children: "
+                            "Skipping non-object JSON value while extracting column children: "  # noqa: G004
                             f"parsed type is {type(parsed).__name__}"
                         )
                 except (TypeError, json.JSONDecodeError) as exc:
-                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")  # noqa: G004
             else:
                 logger.debug(
-                    "Skipping non-string, non-dict value while extracting column children: "
+                    "Skipping non-string, non-dict value while extracting column children: "  # noqa: G004
                     f"type is {type(value).__name__}"
                 )
 
@@ -533,7 +533,7 @@ class GenericDataFrameColumnParser:
         return cls.construct_json_column_children(json_structure)
 
     @classmethod
-    def _get_array_struct_children(cls, array_column: Any) -> List[Dict]:  # noqa: UP006
+    def _get_array_struct_children(cls, array_column: Any) -> list[dict]:
         """For an ARRAY column whose elements are dicts, infer the merged struct shape and
         return it as children. Returns an empty list when elements are not dicts.
         """
@@ -600,7 +600,7 @@ class ParquetDataFrameColumnParser:
         """
         import pyarrow as pa  # noqa: TC002
 
-        schema: List[pa.Field] = self._arrow_table.schema  # noqa: UP006
+        schema: list[pa.Field] = self._arrow_table.schema
         columns = []
         for column in schema:
             parsed_column = {
@@ -617,7 +617,7 @@ class ParquetDataFrameColumnParser:
                 except AttributeError as exc:
                     # if the value field is not specified, we will set it to UNKNOWN
                     logger.debug(
-                        f"Could not extract array item type for column '{column.name}': {exc}. "
+                        f"Could not extract array item type for column '{column.name}': {exc}. "  # noqa: G004
                         f"Setting arrayDataType to UNKNOWN."
                     )
                     parsed_column["arrayDataType"] = DataType.UNKNOWN
@@ -714,7 +714,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 # Otherwise, try to parse as standard JSON Schema
                 return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
-                logger.warning(f"Unable to parse the json schema: {exc}")
+                logger.warning(f"Unable to parse the json schema: {exc}")  # noqa: G004
                 logger.debug(traceback.format_exc())
         return self._get_columns(self.data_frame)
 
@@ -731,7 +731,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             and isinstance(data["schema"]["fields"], list)
         )
 
-    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:  # noqa: UP006
+    def _parse_iceberg_delta_schema(self, data: dict) -> list[Column]:
         """
         Parse Iceberg/Delta Lake metadata file schema to extract columns.
         """
@@ -755,7 +755,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 except (ValueError, AttributeError) as exc:
                     # If the type is not recognized, default to STRING
                     logger.debug(
-                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. Defaulting to STRING."
+                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. Defaulting to STRING."  # noqa: G004
                     )
                     data_type = DataType.STRING
 
@@ -773,12 +773,12 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
                 columns.append(column)
             except Exception as exc:
-                logger.warning(f"Unable to parse field {field}: {exc}")
+                logger.warning(f"Unable to parse field {field}: {exc}")  # noqa: G004
                 logger.debug(traceback.format_exc())
 
         return columns
 
-    def _parse_struct_fields(self, fields: list) -> List[dict]:  # noqa: UP006
+    def _parse_struct_fields(self, fields: list) -> list[dict]:
         """
         Parse nested struct fields in Iceberg/Delta Lake metadata.
         """
@@ -798,7 +798,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     data_type = DataType(type_str.upper()) if isinstance(type_str, str) else DataType.STRING
                 except (ValueError, AttributeError) as exc:
                     logger.debug(
-                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "
+                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "  # noqa: G004
                         f"Defaulting to STRING."
                     )
                     data_type = DataType.STRING
@@ -816,7 +816,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
                 children.append(child)
             except Exception as exc:
-                logger.warning(f"Unable to parse nested field {field}: {exc}")
+                logger.warning(f"Unable to parse nested field {field}: {exc}")  # noqa: G004
                 logger.debug(traceback.format_exc())
 
         return children

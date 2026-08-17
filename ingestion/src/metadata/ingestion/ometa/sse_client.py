@@ -13,9 +13,10 @@ Python SSE Client wrapper and helpers
 """
 
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
-from typing import Any, Generator  # noqa: UP035
+from typing import Any
 
 import requests
 
@@ -82,7 +83,7 @@ class SSEClient:
             headers["User-Agent"] = user_agent
         elif self.config.user_agent:
             self.logger.debug(
-                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"
+                f"Ignoring User-Agent {self.config.user_agent!r}: no header-safe characters remained after sanitization"  # noqa: G004
             )
         opts = {
             "headers": headers,
@@ -140,7 +141,7 @@ class SSEClient:
 
                                 if self.stream_completed:
                                     self.logger.info(
-                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
+                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"  # noqa: G004
                                     )
                                     return
                         else:  # noqa: PLR5501
@@ -148,11 +149,11 @@ class SSEClient:
                                 event_buffer.append(line)
 
             except requests.exceptions.HTTPError as e:
-                self.logger.error(f"HTTP error: {e.response.status_code}")
+                self.logger.error(f"HTTP error: {e.response.status_code}")  # noqa: G004
                 raise
             except Exception as e:
                 retries += 1
-                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")
+                self.logger.error(f"Connection error (retry {retries}/{self.max_retries}): {e}")  # noqa: G004
 
                 if retries >= self.max_retries:
                     raise

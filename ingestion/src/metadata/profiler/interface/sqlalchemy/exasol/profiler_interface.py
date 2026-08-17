@@ -2,7 +2,8 @@
 Interfaces with Exasol database for profiler support.
 """
 
-from typing import Callable, List, Type, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -21,16 +22,16 @@ class ExasolProfilerInterface(SQAProfilerInterface):
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],  # noqa: UP006
+        metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
+    ) -> list[SystemProfile]:
         if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
-            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")
+            logger.debug(f"Skipping {metrics.name()} metric for view {runner.table_name}")  # noqa: G004
             return []
 
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")  # noqa: G004
         exasol_system_metrics_constructor = cast(
             Callable[[Session, QueryRunner], ExasolSystemMetricsComputer],  # noqa: TC006
             self.system_metrics_class,

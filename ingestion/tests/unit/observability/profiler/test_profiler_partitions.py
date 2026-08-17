@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, cast
+from typing import cast
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -86,8 +86,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition]  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig]  # noqa: N815, UP045
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
 
     class Config:
@@ -95,8 +95,8 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition]  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig]  # noqa: N815, UP045
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
 
     class Config:

@@ -14,10 +14,9 @@ Status output utilities
 
 import pprint
 import time
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -32,7 +31,7 @@ MAX_STACK_TRACE_LENGTH = 1_000_000
 # Max items per list rendered in as_string() to bound memory usage
 MAX_STATUS_DISPLAY_ITEMS = 1_000
 
-TruncatedStr = Annotated[Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]  # noqa: UP045
+TruncatedStr = Annotated[str | None, AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]
 
 
 class TruncatedStackTraceError(StackTraceError):
@@ -54,12 +53,12 @@ class Status(BaseModel):
         default_factory=lambda: time.time()  # pylint: disable=unnecessary-lambda  # noqa: PLW0108
     )
 
-    records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
+    records: Annotated[list[Any], Field(default_factory=list)]
     record_count: int = Field(default=0)
-    updated_records: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
-    warnings: Annotated[List[Any], Field(default_factory=list)]  # noqa: UP006
-    filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]  # noqa: UP006
-    failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]  # noqa: UP006
+    updated_records: Annotated[list[Any], Field(default_factory=list)]
+    warnings: Annotated[list[Any], Field(default_factory=list)]
+    filtered: Annotated[list[dict[str, str]], Field(default_factory=list)]
+    failures: Annotated[list[TruncatedStackTraceError], Field(default_factory=list)]
 
     def scanned(self, record: Any) -> None:
         """
@@ -137,7 +136,7 @@ class Status(BaseModel):
             )
         )
 
-    def fail_all(self, failures: List[StackTraceError]) -> None:  # noqa: UP006
+    def fail_all(self, failures: list[StackTraceError]) -> None:
         """
         Add a list of failures
         Args:

@@ -12,8 +12,8 @@
 Airbyte source to extract metadata
 """
 
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Iterable, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -100,7 +100,7 @@ class AirbyteSource(PipelineServiceSource):
             self.source_url_prefix = clean_uri(self.service_connection.hostPort)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
@@ -224,14 +224,14 @@ class AirbyteSource(PipelineServiceSource):
                     start_dt = datetime.fromisoformat(job.startTime.replace("Z", "+00:00"))
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.error(f"Failed to parse startTime: {exc}")
+                    logger.error(f"Failed to parse startTime: {exc}")  # noqa: G004
 
             if job.lastUpdatedAt:
                 try:
                     end_dt = datetime.fromisoformat(job.lastUpdatedAt.replace("Z", "+00:00"))
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")
+                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")  # noqa: G004
 
             task_status = [
                 TaskStatus(
@@ -263,7 +263,7 @@ class AirbyteSource(PipelineServiceSource):
                 )
             )
 
-    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:  # noqa: UP045
+    def _get_table_fqn(self, table_details: TableDetails) -> str | None:
         """
         Get the FQN of the table
         """
@@ -294,15 +294,15 @@ class AirbyteSource(PipelineServiceSource):
         pipeline_name = pipeline_details.connection.name
 
         logger.debug(
-            f"Processing lineage for pipeline: {pipeline_name}, "
+            f"Processing lineage for pipeline: {pipeline_name}, "  # noqa: G004
             f"connection_id: {pipeline_details.connection.connectionId}, "
             f"workspace_id: {pipeline_details.workspace.workspaceId}"
         )
-        logger.debug(f"Pipeline connection details: {pipeline_details.connection}")
+        logger.debug(f"Pipeline connection details: {pipeline_details.connection}")  # noqa: G004
 
         if not pipeline_details.connection.sourceId or not pipeline_details.connection.destinationId:
             logger.warning(
-                f"Skipping lineage for connection"
+                f"Skipping lineage for connection"  # noqa: G004
                 f" [{pipeline_details.connection.connectionId}]"
                 f" — missing sourceId or destinationId"
             )
@@ -311,8 +311,8 @@ class AirbyteSource(PipelineServiceSource):
         source_connection = self.client.get_source(pipeline_details.connection.sourceId)
         destination_connection = self.client.get_destination(pipeline_details.connection.destinationId)
 
-        logger.debug(f"Source connection response: {source_connection}")
-        logger.debug(f"Destination connection response: {destination_connection}")
+        logger.debug(f"Source connection response: {source_connection}")  # noqa: G004
+        logger.debug(f"Destination connection response: {destination_connection}")  # noqa: G004
 
         source_name = source_connection.sourceName
         destination_name = destination_connection.destinationName
@@ -339,7 +339,7 @@ class AirbyteSource(PipelineServiceSource):
 
             if not from_fqn:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
+                    f"While extracting lineage: [{pipeline_name}],"  # noqa: G004
                     f" source table: [{source_table_details.database or '*'}]"
                     f".[{source_table_details.schema}].[{source_table_details.name}]"
                     f" (type: {source_name}) not found in openmetadata"
@@ -347,7 +347,7 @@ class AirbyteSource(PipelineServiceSource):
                 continue
             if not to_fqn:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
+                    f"While extracting lineage: [{pipeline_name}],"  # noqa: G004
                     f" destination table: [{destination_table_details.database or '*'}]"
                     f".[{destination_table_details.schema}].[{destination_table_details.name}]"
                     f" (type: {destination_name}) not found in openmetadata"
@@ -359,14 +359,14 @@ class AirbyteSource(PipelineServiceSource):
 
             if not from_entity:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
+                    f"While extracting lineage: [{pipeline_name}],"  # noqa: G004
                     f" source table (fqn: [{from_fqn}], type: {source_name}) not found"
                     " in openmetadata"
                 )
                 continue
             if not to_entity:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
+                    f"While extracting lineage: [{pipeline_name}],"  # noqa: G004
                     f" destination table (fqn: [{to_fqn}], type: {destination_name}) not found"
                     " in openmetadata"
                 )

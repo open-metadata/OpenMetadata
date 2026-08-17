@@ -13,7 +13,8 @@
 Table Count Metric definition
 """
 
-from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import func
 
@@ -72,7 +73,7 @@ class RowCount(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             return computation.aggregate_accumulator(accumulator)
         except Exception as err:
-            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")
+            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")  # noqa: G004
             return 0
 
     def get_pandas_computation(self) -> PandasComputation:

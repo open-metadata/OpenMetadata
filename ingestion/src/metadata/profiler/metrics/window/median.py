@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING, List, NamedTuple, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
 
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class MedianAccumulator(NamedTuple):
     """Accumulator holding chunked NumPy arrays for fast median computation."""
 
-    arrays: List["np.ndarray"]  # noqa: UP006
+    arrays: list["np.ndarray"]
     count_value: int
 
 
@@ -93,7 +93,7 @@ class Median(StaticMetric, PercentilMixin):
                 dimension_col,
             )
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing Median")
+        logger.debug(f"Don't know how to process type {self.col.type} when computing Median")  # noqa: G004
         return None
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
@@ -107,22 +107,22 @@ class Median(StaticMetric, PercentilMixin):
                 accumulator = computation.update_accumulator(accumulator, df)
             except MemoryError:
                 logger.error(
-                    f"Unable to compute Median for {self.col.name} due to memory constraints."
+                    f"Unable to compute Median for {self.col.name} due to memory constraints."  # noqa: G004
                     f"We recommend using a smaller sample size or partitioning."
                 )
                 return None
             except Exception as err:
-                logger.debug(f"Error while computing Median for column {self.col.name}: {err}")
+                logger.debug(f"Error while computing Median for column {self.col.name}: {err}")  # noqa: G004
                 return None
         median = computation.aggregate_accumulator(accumulator)
 
         if median is None:
-            logger.warning(f"Don't know how to process type {self.col.type} when computing MEDIAN")
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEDIAN")  # noqa: G004
             return None
         return median
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[MedianAccumulator, Optional[float]](  # noqa: UP045
+        return PandasComputation[MedianAccumulator, float | None](
             create_accumulator=lambda: MedianAccumulator([], 0),
             update_accumulator=lambda acc, df: Median.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Median.aggregate_accumulator,
@@ -137,7 +137,7 @@ class Median(StaticMetric, PercentilMixin):
         if series.empty:
             return acc
 
-        arr: Optional["np.ndarray"] = None  # noqa: UP037, UP045
+        arr: "np.ndarray" | None = None  # noqa: UP037
 
         if is_quantifiable(column.type):
             try:
@@ -145,7 +145,7 @@ class Median(StaticMetric, PercentilMixin):
             except Exception:  # noqa: BLE001, RUF100
                 arr = series.astype(float).to_numpy(copy=False)
         else:
-            logger.debug(f"Don't know how to process type {column.type} when computing Median")
+            logger.debug(f"Don't know how to process type {column.type} when computing Median")  # noqa: G004
 
         if arr is None or arr.size == 0:
             return acc
@@ -154,7 +154,7 @@ class Median(StaticMetric, PercentilMixin):
         return MedianAccumulator(acc.arrays, acc.count_value + int(arr.size))
 
     @staticmethod
-    def aggregate_accumulator(acc: MedianAccumulator) -> Optional[float]:  # noqa: UP045
+    def aggregate_accumulator(acc: MedianAccumulator) -> float | None:
         import numpy as np  # pylint: disable=import-outside-toplevel
 
         if acc.count_value == 0:

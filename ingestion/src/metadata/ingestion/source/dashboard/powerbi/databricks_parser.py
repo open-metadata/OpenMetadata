@@ -1,5 +1,4 @@
 import re
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -50,7 +49,7 @@ def parse_databricks_native_query_source(
     source_expression: str,
     dataset: Dataset,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[List[dict]]:  # noqa: UP006, UP045
+) -> list[dict] | None:
     # cleanup new lines and excessive spaces
     source_expression = source_expression.replace("\n", " ")
     source_expression = re.sub(r"\s+", " ", source_expression).strip()
@@ -66,7 +65,7 @@ def parse_databricks_native_query_source(
             catalog_info = re.sub(r"\s+", " ", catalog_info).strip()
             catalog_info_match = re.search(r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info)
         if not catalog_info_match:
-            logger.error(f"Could not find catalog in info: {catalog_info}")
+            logger.error(f"Could not find catalog in info: {catalog_info}")  # noqa: G004
             catalog = None
         else:
             catalog_groups = catalog_info_match.groupdict()
@@ -79,10 +78,10 @@ def parse_databricks_native_query_source(
         if database_match:
             database = database_match.groupdict().get("database", None)
         else:
-            logger.error(f"Could not find database in parameters: {catalog_parameters}")
+            logger.error(f"Could not find database in parameters: {catalog_parameters}")  # noqa: G004
             database = catalog
         if not (database or catalog):
-            logger.error(f"Could not find database in {source_expression}")
+            logger.error(f"Could not find database in {source_expression}")  # noqa: G004
             return None
 
         database = resolve_database(database, dataset)
@@ -99,7 +98,7 @@ def parse_databricks_native_query_source(
         # 4. Clean up excessive whitespace
         parser_query = re.sub(r"\s+", " ", parser_query).strip()
 
-        logger.debug(f"Attempting LineageParser with cleaned query: {parser_query[:200]}")
+        logger.debug(f"Attempting LineageParser with cleaned query: {parser_query[:200]}")  # noqa: G004
         if re.match(
             "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",  # noqa: W605
             parser_query,
@@ -122,7 +121,7 @@ def parse_databricks_native_query_source(
         except Exception as parser_exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
             logger.error(
-                f"{hash_prefix}LineageParser failed parsing query with error {parser_query[:200]} ",
+                f"{hash_prefix}LineageParser failed parsing query with error {parser_query[:200]} ",  # noqa: G004
                 exc_info=parser_exc,
             )
             return None
@@ -140,6 +139,6 @@ def parse_databricks_native_query_source(
 
     else:  # noqa: RET505
         logger.error(
-            f"Invalid Databricks Native Query Syntax: {source_expression} in dataset {dataset.name}[{dataset.id}]"
+            f"Invalid Databricks Native Query Syntax: {source_expression} in dataset {dataset.name}[{dataset.id}]"  # noqa: G004
         )
         return None

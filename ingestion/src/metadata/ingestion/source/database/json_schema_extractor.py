@@ -14,7 +14,7 @@ Utility module to extract JSON schema from sampled JSON data.
 
 import json
 import traceback
-from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -49,8 +49,8 @@ _PYTHON_TYPE_TO_JSON_SCHEMA = {
 
 
 def infer_json_schema_from_sample(
-    json_values: List[Any],  # noqa: UP006
-) -> Tuple[Optional[str], Optional[List[Column]]]:  # noqa: UP006, UP045
+    json_values: list[Any],
+) -> tuple[str | None, list[Column] | None]:
     """
     Infer JSON schema from a list of JSON values (sampled from a column).
 
@@ -79,11 +79,11 @@ def infer_json_schema_from_sample(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Failed to infer JSON schema from sample data: {exc}")
+        logger.warning(f"Failed to infer JSON schema from sample data: {exc}")  # noqa: G004
         return None, None
 
 
-def _parse_json_values(json_values: List[Any]) -> List[Dict]:  # noqa: UP006
+def _parse_json_values(json_values: list[Any]) -> list[dict]:
     """
     Parse JSON values into Python dicts.
     Handles both string JSON and already-parsed dicts.
@@ -97,7 +97,7 @@ def _parse_json_values(json_values: List[Any]) -> List[Dict]:  # noqa: UP006
         try:
             if isinstance(value, str):
                 if len(value) > MAX_JSON_VALUE_SIZE:
-                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")
+                    logger.debug(f"Skipping JSON value exceeding size limit: {len(value)} bytes")  # noqa: G004
                     continue
                 parsed_value = json.loads(value)
             elif isinstance(value, dict):
@@ -113,7 +113,7 @@ def _parse_json_values(json_values: List[Any]) -> List[Dict]:  # noqa: UP006
     return parsed
 
 
-def _merge_json_structures(dicts: List[Dict]) -> Dict:  # noqa: UP006
+def _merge_json_structures(dicts: list[dict]) -> dict:
     """
     Merge multiple JSON objects to create a unified structure
     that captures all unique keys and their types.
@@ -130,7 +130,7 @@ def _merge_json_structures(dicts: List[Dict]) -> Dict:  # noqa: UP006
     return result
 
 
-def _merge_single_dict(result: Dict, source: Dict) -> None:  # noqa: UP006
+def _merge_single_dict(result: dict, source: dict) -> None:
     """Merge a single dict into the result structure."""
     for key, value in source.items():
         if value is None:
@@ -158,7 +158,7 @@ def _merge_single_dict(result: Dict, source: Dict) -> None:  # noqa: UP006
                 result[key] = value
 
 
-def _merge_array_items(existing_items: List, new_items: List) -> List:  # noqa: UP006
+def _merge_array_items(existing_items: list, new_items: list) -> list:
     """
     Merge array items to capture the unified structure of array elements.
     Returns a list with a single representative item that captures all seen types.
@@ -179,7 +179,7 @@ def _merge_array_items(existing_items: List, new_items: List) -> List:  # noqa: 
     return []
 
 
-def _build_json_schema(structure: Union[Dict, Any]) -> Dict:  # noqa: UP006, UP007
+def _build_json_schema(structure: dict | Any) -> dict:
     """
     Build a JSON Schema representation from the merged structure.
     """
@@ -208,7 +208,7 @@ def _build_json_schema(structure: Union[Dict, Any]) -> Dict:  # noqa: UP006, UP0
         return {"type": json_type}
 
 
-def _build_column_children(structure: Dict, parent_name: Optional[str] = None) -> Optional[List[Column]]:  # noqa: UP006, UP045
+def _build_column_children(structure: dict, parent_name: str | None = None) -> list[Column] | None:
     """
     Build Column children from the merged JSON structure.
     This creates a hierarchical representation suitable for the UI.
@@ -225,7 +225,7 @@ def _build_column_children(structure: Dict, parent_name: Optional[str] = None) -
     return children if children else None
 
 
-def _create_child_column(key: str, value: Any) -> Optional[Column]:  # noqa: UP045
+def _create_child_column(key: str, value: Any) -> Column | None:
     """Create a Column object for a JSON field."""
     try:
         type_name = type(value).__name__
@@ -263,5 +263,5 @@ def _create_child_column(key: str, value: Any) -> Optional[Column]:  # noqa: UP0
         return Column(**column_dict)
 
     except Exception as exc:
-        logger.debug(f"Failed to create child column for key '{key}': {exc}")
+        logger.debug(f"Failed to create child column for key '{key}': {exc}")  # noqa: G004
         return None

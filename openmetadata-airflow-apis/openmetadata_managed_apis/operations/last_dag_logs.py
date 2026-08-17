@@ -17,7 +17,6 @@ import json
 import os
 from functools import lru_cache, partial
 from io import StringIO
-from typing import List, Optional, Tuple  # noqa: UP035
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
@@ -36,7 +35,7 @@ DOT_STR = "_DOT_"
 
 
 @lru_cache(maxsize=10)
-def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:  # noqa: UP006
+def get_log_file_info(log_file_path: str, mtime: int) -> tuple[int, int]:
     """
     Get total size and number of chunks for a log file.
     :param log_file_path: Path to log file
@@ -71,7 +70,7 @@ def format_json_log_line(line: str) -> str:
         return line if line.endswith("\n") else line + "\n"
 
 
-def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> Optional[str]:  # noqa: UP045
+def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> str | None:
     """
     Read a specific chunk from a log file without loading entire file.
     Optionally formats JSON logs to readable text.
@@ -95,11 +94,11 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool
 
         return chunk  # noqa: TRY300
     except Exception as exc:
-        logger.warning(f"Failed to read log chunk from {file_path}: {exc}")
+        logger.warning(f"Failed to read log chunk from {file_path}: {exc}")  # noqa: G004
         return None
 
 
-def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:  # noqa: UP045
+def last_dag_logs(dag_id: str, task_id: str, after: int | None = None) -> Response:
     """
     Validate that the DAG is registered by Airflow and have at least one Run.
     If exists, returns all logs for each task instance of the last DAG run.
@@ -126,7 +125,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for {dag_id}.")
 
-    task_instances: List[TaskInstance] = last_dag_run.get_task_instances()  # noqa: UP006
+    task_instances: list[TaskInstance] = last_dag_run.get_task_instances()
 
     if not task_instances:
         return ApiResponse.not_found(f"Cannot find any task instance for the last DagRun of {dag_id}.")
@@ -171,7 +170,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         base_log_folder_real = os.path.realpath(base_log_folder)
 
         if not log_file_path_real.startswith(base_log_folder_real + os.sep):
-            logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")
+            logger.warning(f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}")  # noqa: G004
             return ApiResponse.bad_request(f"Invalid log path for DAG {dag_id} and Task {task_id}.")
 
         if os.path.exists(log_file_path_real):  # noqa: PTH110
@@ -198,7 +197,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
                     }
                 )
     except Exception as exc:
-        logger.debug(f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}")
+        logger.debug(f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}")  # noqa: G004
 
     # Fallback to TaskLogReader if streaming fails
     return _last_dag_logs_fallback(dag_id, task_id, after, target_task_instance, task_log_reader, try_number)
@@ -207,7 +206,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 def _last_dag_logs_fallback(
     dag_id: str,
     task_id: str,
-    after: Optional[int],  # noqa: UP045
+    after: int | None,
     task_instance: TaskInstance,
     task_log_reader: TaskLogReader,
     try_number: int,

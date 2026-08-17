@@ -22,7 +22,6 @@ import json
 import os
 import socket
 import time
-from typing import Optional, Union
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
@@ -50,7 +49,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         compress: bool = False,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> bool:
         """
         Send logs to S3 storage via OpenMetadata server endpoint.
@@ -94,13 +93,13 @@ class OMetaLogsMixin:
 
             # The REST client returns None for successful requests with empty response body (HTTP 200/201/204)
             # If we reach this point without an exception, the request was successful
-            logger.debug(f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}")
+            logger.debug(f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}")  # noqa: G004
             return True  # noqa: TRY300
 
         except Exception as e:
             line_count = log_content.count("\n") + 1
             logger.error(
-                f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}. "
+                f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}. "  # noqa: G004
                 f"Log batch size: {len(log_content)} chars, "
                 f"Lines: {line_count}, "
                 f"Compressed: {log_batch.get('compressed', False)}"
@@ -114,7 +113,7 @@ class OMetaLogsMixin:
         log_content: str,
         enable_compression: bool = False,
         max_retries: int = 3,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> dict:
         """
         Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
@@ -151,34 +150,34 @@ class OMetaLogsMixin:
                     metrics["bytes_sent"] = len(log_content)
 
                     if attempt > 0:
-                        logger.info(f"Successfully shipped {line_count} log lines to server on attempt {attempt + 1}")
+                        logger.info(f"Successfully shipped {line_count} log lines to server on attempt {attempt + 1}")  # noqa: G004
                     else:
-                        logger.debug(f"Successfully shipped {line_count} log lines to server")
+                        logger.debug(f"Successfully shipped {line_count} log lines to server")  # noqa: G004
                     return metrics
                 else:  # noqa: PLR5501, RET505
                     if attempt < max_retries:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(
-                            f"Failed to send logs for pipeline {pipeline_fqn}, "
+                            f"Failed to send logs for pipeline {pipeline_fqn}, "  # noqa: G004
                             f"attempt {attempt + 1}/{max_retries + 1}. Retrying in {wait_time}s..."
                         )
                         time.sleep(wait_time)
                     else:
                         logger.error(
-                            f"Failed to send logs for pipeline {pipeline_fqn} after {max_retries + 1} attempts"
+                            f"Failed to send logs for pipeline {pipeline_fqn} after {max_retries + 1} attempts"  # noqa: G004
                         )
 
             except Exception as e:
                 if attempt < max_retries:
                     wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(
-                        f"Error sending logs batch for pipeline {pipeline_fqn}: {e}. "
+                        f"Error sending logs batch for pipeline {pipeline_fqn}: {e}. "  # noqa: G004
                         f"Attempt {attempt + 1}/{max_retries + 1}. Retrying in {wait_time}s..."
                     )
                     time.sleep(wait_time)
                 else:
                     logger.error(
-                        f"Failed to send logs batch for pipeline {pipeline_fqn} after {max_retries + 1} attempts: {e}"
+                        f"Failed to send logs batch for pipeline {pipeline_fqn} after {max_retries + 1} attempts: {e}"  # noqa: G004
                     )
 
         return metrics
@@ -188,8 +187,8 @@ class OMetaLogsMixin:
         pipeline_fqn: str,
         run_id: UUID,
         log_content: str,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
@@ -214,8 +213,8 @@ class OMetaLogsMixin:
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
         try:
@@ -262,7 +261,7 @@ class OMetaLogsMixin:
             )
 
         except Exception as e:
-            logger.warning(f"Failed to initialize log stream for pipeline {pipeline_fqn}: {e}")
+            logger.warning(f"Failed to initialize log stream for pipeline {pipeline_fqn}: {e}")  # noqa: G004
 
     def close_log_stream(
         self,
@@ -295,12 +294,12 @@ class OMetaLogsMixin:
                 data=json.dumps(close_data),
             )
 
-            logger.debug(f"Successfully closed log stream for pipeline {pipeline_fqn}")
+            logger.debug(f"Successfully closed log stream for pipeline {pipeline_fqn}")  # noqa: G004
 
             return True  # noqa: TRY300
 
         except Exception as e:
-            logger.warning(f"Failed to close log stream for pipeline {pipeline_fqn}: {e}")
+            logger.warning(f"Failed to close log stream for pipeline {pipeline_fqn}: {e}")  # noqa: G004
             return False
 
     def get_logs_from_s3(
@@ -309,7 +308,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Retrieve logs from S3 storage for a pipeline run.
 
@@ -341,7 +340,7 @@ class OMetaLogsMixin:
                         decoded = base64.b64decode(log_data)
                         log_data = gzip.decompress(decoded).decode(UTF_8)
                     except Exception as e:
-                        logger.error(f"Failed to decompress logs: {e}")
+                        logger.error(f"Failed to decompress logs: {e}")  # noqa: G004
                         return None
 
                 return log_data
@@ -349,5 +348,5 @@ class OMetaLogsMixin:
             return None  # noqa: TRY300
 
         except Exception as e:
-            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")
+            logger.error(f"Failed to retrieve logs from S3 for pipeline {pipeline_fqn}: {e}")  # noqa: G004
             return None

@@ -17,7 +17,7 @@ to the OM API.
 import json
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -158,14 +158,14 @@ DUPLICATE_QUERY_CONSTRAINTS = (
 )
 
 
-def is_duplicate_query_conflict(message: Optional[str]) -> bool:  # noqa: UP045
+def is_duplicate_query_conflict(message: str | None) -> bool:
     """Whether a failed bulk-query response is an already-present (duplicate) query."""
     lowered = (message or "").lower()
     return any(constraint in lowered for constraint in DUPLICATE_QUERY_CONSTRAINTS)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: Optional[str] = None  # noqa: UP045
+    api_endpoint: str | None = None
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
@@ -209,7 +209,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -220,7 +220,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @singledispatchmethod
     def _run_dispatch(self, record: Entity) -> Either[Any]:
-        logger.debug(f"Processing Create request {type(record)}")
+        logger.debug(f"Processing Create request {type(record)}")  # noqa: G004
         return self.write_create_request(record)
 
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
@@ -283,7 +283,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         ):
             if self._is_duplicate_in_buffer(entity_request):
                 logger.debug(
-                    f"Skipping duplicate {type(entity_request).__name__} with name: {entity_request.name.root}"
+                    f"Skipping duplicate {type(entity_request).__name__} with name: {entity_request.name.root}"  # noqa: G004
                 )
                 return Either(right=None)
 
@@ -373,7 +373,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 override_metadata=self.config.override_metadata,
             )
         except Exception as exc:
-            logger.error(f"Failed to flush entities to bulk API: {exc}")
+            logger.error(f"Failed to flush entities to bulk API: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return Either(
                 left=StackTraceError(
@@ -423,7 +423,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         checksum = get_query_checksum(model_str(record.query))
         result = Either(right=None)  # pyright: ignore[reportCallIssue]
         if checksum in self.buffered_query_checksums:
-            logger.debug(f"Skipping duplicate query with checksum {checksum}")
+            logger.debug(f"Skipping duplicate query with checksum {checksum}")  # noqa: G004
         else:
             self.buffered_query_checksums.add(checksum)
             self.query_buffer.append(record)
@@ -443,7 +443,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 override_metadata=self.config.override_metadata,
             )
         except Exception as exc:
-            logger.error(f"Failed to flush queries to bulk API: {exc}")
+            logger.error(f"Failed to flush queries to bulk API: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
@@ -458,7 +458,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return self._record_query_flush_result(result)
 
-    def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
+    def _record_query_flush_result(self, result: BulkOperationResult | None) -> Either[Entity]:
         """Record a query bulk response. Already-present queries are reported as warnings
         (not failures) so a lineage run is not marked failed over queries that lost no
         metadata. Any other failure is still recorded as a failure."""
@@ -550,7 +550,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             record.tag_request.name.root if hasattr(record.tag_request.name, "root") else str(record.tag_request.name)
         )
         if not tag_name or not tag_name.strip():
-            logger.warning(f"Skipping tag with empty name for classification '{record.classification_request.name}'")
+            logger.warning(f"Skipping tag with empty name for classification '{record.classification_request.name}'")  # noqa: G004
             return Either(right=None)
 
         self.metadata.create_or_update(record.classification_request)
@@ -611,7 +611,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
             return
         logger.warning(
-            f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "
+            f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "  # noqa: G004
             "has neither id nor fullyQualifiedName"
         )
 
@@ -688,7 +688,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 result = query_result
         return result  # pyright: ignore[reportCallIssue]
 
-    def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
+    def _create_role(self, create_role: CreateRoleRequest) -> Role | None:
         """
         Internal helper method for write_user
         """
@@ -698,11 +698,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return role  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error creating role [{create_role}]: {exc}")
+            logger.error(f"Unexpected error creating role [{create_role}]: {exc}")  # noqa: G004
 
         return None
 
-    def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:  # noqa: UP045
+    def _create_team(self, create_team: CreateTeamRequest) -> Team | None:
         """
         Internal helper method for write_user
         """
@@ -725,7 +725,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unexpected error creating team [{create_team}]: {exc}")
+            logger.error(f"Unexpected error creating team [{create_team}]: {exc}")  # noqa: G004
 
         return None
 
@@ -766,7 +766,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     team_ids.append(team_entity.id.root)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected error writing team [{team}]: {exc}")
+                    logger.warning(f"Unexpected error writing team [{team}]: {exc}")  # noqa: G004
         else:
             team_ids = None
 
@@ -895,7 +895,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             test_results=record.testCaseResult,
             test_case_fqn=record.testCase.fullyQualifiedName.root,
         )
-        logger.debug(f"Successfully ingested test case results for test case {record.testCase.name.root}")
+        logger.debug(f"Successfully ingested test case results for test case {record.testCase.name.root}")  # noqa: G004
         self._ingest_failed_rows_sample(record)
         return Either(right=res)
 
@@ -908,10 +908,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     record.failedRowsSample,
                     validate=record.validateColumns,
                 )
-                logger.debug(f"Successfully ingested failed rows sample for {record.testCase.name.root}")
+                logger.debug(f"Successfully ingested failed rows sample for {record.testCase.name.root}")  # noqa: G004
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to ingest failed rows sample for {record.testCase.name.root}")
+                logger.error(f"Failed to ingest failed rows sample for {record.testCase.name.root}")  # noqa: G004
 
         if record.inspectionQuery is not None:
             try:
@@ -919,10 +919,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     record.testCase,
                     record.inspectionQuery,
                 )
-                logger.debug(f"Successfully ingested inspection query for {record.testCase.name.root}")
+                logger.debug(f"Successfully ingested inspection query for {record.testCase.name.root}")  # noqa: G004
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to ingest inspection query for {record.testCase.name.root}")
+                logger.error(f"Failed to ingest inspection query for {record.testCase.name.root}")  # noqa: G004
 
     @_run_dispatch.register
     def write_test_case_resolution_status(self, record: OMetaTestCaseResolutionStatus) -> TestCaseResolutionStatus:
@@ -950,7 +950,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(left=None, right=record)
 
     @_run_dispatch.register
-    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[Union[TopicSampleData, Topic]]:  # noqa: UP007
+    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[TopicSampleData | Topic]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -961,13 +961,13 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
             return Either(right=sample_data)
 
-        logger.debug(f"No sample data to PUT for {get_log_name(record.topic)}")
+        logger.debug(f"No sample data to PUT for {get_log_name(record.topic)}")  # noqa: G004
         return Either(right=record.topic)
 
     @_run_dispatch.register
     def write_search_index_sample_data(
         self, record: OMetaIndexSampleData
-    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:  # noqa: UP007
+    ) -> Either[SearchIndexSampleData | SearchIndex]:
         """
         Ingest Search Index Sample Data
         """
@@ -978,7 +978,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
             return Either(right=sample_data)
 
-        logger.debug(f"No sample data to PUT for {get_log_name(record.entity)}")
+        logger.debug(f"No sample data to PUT for {get_log_name(record.entity)}")  # noqa: G004
         return Either(right=record.entity)
 
     @_run_dispatch.register
@@ -1012,7 +1012,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """Table-specific sample data ingestion implementation"""
         table_data = self.metadata.ingest_table_sample_data(table=entity, sample_data=sample_data)
         if table_data:
-            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")  # noqa: G004
             return True
         return False
 
@@ -1021,7 +1021,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """Container-specific sample data ingestion implementation"""
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
-            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")  # noqa: G004
             return True
         return False
 
@@ -1052,7 +1052,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
         if result:
             fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else str(entity)
-            logger.debug(f"Successfully ingested sample data for {fqn}")
+            logger.debug(f"Successfully ingested sample data for {fqn}")  # noqa: G004
             return True
         return False
 
@@ -1102,7 +1102,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             table=record.table,
             profile_request=record.profile,
         )
-        logger.debug(f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.root}")
+        logger.debug(f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.root}")  # noqa: G004
         return Either(right=table)
 
     @_run_dispatch.register
@@ -1185,7 +1185,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         try:
             if not record.observability_data:
-                logger.debug(f"No pipeline observability data for {record.table.fullyQualifiedName.root}")
+                logger.debug(f"No pipeline observability data for {record.table.fullyQualifiedName.root}")  # noqa: G004
                 return Either(right=record.table)
 
             updated_table = self.metadata.add_pipeline_observability(
@@ -1195,7 +1195,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
             if updated_table:
                 logger.debug(
-                    f"Successfully added {len(record.observability_data)} pipeline "
+                    f"Successfully added {len(record.observability_data)} pipeline "  # noqa: G004
                     f"observability records for {record.table.fullyQualifiedName.root}"
                 )
                 return Either(right=updated_table)
@@ -1231,7 +1231,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if not self.deferred_lifecycle_records:
             return
 
-        logger.info(f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records")
+        logger.info(f"Processing {len(self.deferred_lifecycle_records)} deferred lifecycle records")  # noqa: G004
 
         success_count = 0
         error_count = 0
@@ -1243,7 +1243,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     self.metadata.patch_life_cycle(entity=entity, life_cycle=record.life_cycle)
                     success_count += 1
                 else:
-                    logger.warning(f"Table {record.entity_fqn} not found even after bulk processing")
+                    logger.warning(f"Table {record.entity_fqn} not found even after bulk processing")  # noqa: G004
                     error_count += 1
                     self.status.failed(
                         StackTraceError(
@@ -1253,7 +1253,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                         )
                     )
             except Exception as exc:
-                logger.error(f"Error processing lifecycle for {record.entity_fqn}: {exc}")
+                logger.error(f"Error processing lifecycle for {record.entity_fqn}: {exc}")  # noqa: G004
                 logger.debug(traceback.format_exc())
                 error_count += 1
                 self.status.failed(
@@ -1264,7 +1264,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     )
                 )
 
-        logger.info(f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed")
+        logger.info(f"Deferred lifecycle processing complete: {success_count} successful, {error_count} failed")  # noqa: G004
 
         self.deferred_lifecycle_processed = True
 
@@ -1274,11 +1274,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         # Flush all thread-local buffers
         if self.buffer:
-            logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
+            logger.info(f"Flushing {len(self.buffer)} remaining entities on close")  # noqa: G004
             self._flush_buffer()
 
         if self.query_buffer:
-            logger.info(f"Flushing {len(self.query_buffer)} remaining queries on close")
+            logger.info(f"Flushing {len(self.query_buffer)} remaining queries on close")  # noqa: G004
             self._flush_query_buffer()
 
         # Process deferred lifecycle data now that all tables exist

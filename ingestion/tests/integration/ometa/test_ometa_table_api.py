@@ -15,7 +15,6 @@ OpenMetadata high-level API Table test
 
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import List  # noqa: UP035
 from unittest.mock import patch
 
 import pytest
@@ -509,7 +508,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])  # noqa: UP006
+        table_with_query: list[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 1
         assert table_with_query[0].query == query_no_user.query
@@ -524,7 +523,7 @@ class TestOMetaTableAPI:
         )
 
         metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
-        table_with_query: List[Query] = metadata.get_entity_queries(res.id, fields=["*"])  # noqa: UP006
+        table_with_query: list[Query] = metadata.get_entity_queries(res.id, fields=["*"])
 
         assert len(table_with_query) == 2
         query_with_owner = next(

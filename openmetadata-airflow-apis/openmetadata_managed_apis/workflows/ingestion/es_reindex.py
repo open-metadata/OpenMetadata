@@ -12,13 +12,7 @@
 ElasticSearch reindex DAG function builder
 """
 
-from airflow import DAG  # noqa: I001
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    ClientInitializationError,
-    GetServiceException,
-    build_dag,
-    metadata_ingestion_workflow,
-)
+from airflow import DAG
 
 from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
     MetadataESConnection,
@@ -34,12 +28,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
     Sink,
+    WorkflowConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    ClientInitializationError,
+    GetServiceException,
+    build_dag,
+    metadata_ingestion_workflow,
+)
 
 
 def build_es_reindex_workflow_config(

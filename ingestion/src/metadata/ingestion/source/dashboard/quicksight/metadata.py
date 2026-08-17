@@ -12,7 +12,7 @@
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from pydantic import ValidationError
 
@@ -98,14 +98,14 @@ class QuicksightSource(DashboardServiceSource):
         }
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(f"Expected QuickSightConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _check_pagination(self, listing_method, entity_key) -> Optional[List]:  # noqa: UP006, UP045
+    def _check_pagination(self, listing_method, entity_key) -> list | None:
         entity_summary_list = []
         entity_response = listing_method(self.default_args)
         entity_summary_list.extend(entity_response[entity_key])
@@ -116,12 +116,12 @@ class QuicksightSource(DashboardServiceSource):
                 entity_response = listing_method(copied_def_args)
                 entity_summary_list.extend(entity_response[entity_key])
             except Exception as err:
-                logger.error(f"Pagination Failed with error: {err}")
+                logger.error(f"Pagination Failed with error: {err}")  # noqa: G004
                 logger.debug(traceback.format_exc())
                 break
         return entity_summary_list
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         """
         Get List of all dashboards
         """
@@ -230,7 +230,7 @@ class QuicksightSource(DashboardServiceSource):
             physical_tables = list(dataset.get("PhysicalTableMap", {}).values())
             return dataset_name, physical_tables  # noqa: TRY300
         except Exception as err:
-            logger.info(f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}")
+            logger.info(f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}")  # noqa: G004
             return dataset_id, []
 
     def _yield_lineage_from_query(
@@ -238,7 +238,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
@@ -258,7 +258,7 @@ class QuicksightSource(DashboardServiceSource):
                 for db in data_source_dict.keys() or []:
                     source_database_names.append(data_source_dict[db].get("Database"))  # noqa: PERF401
         except Exception as err:
-            logger.info(f"Error to parse database names from source:{err}")
+            logger.info(f"Error to parse database names from source:{err}")  # noqa: G004
             return None
 
         try:
@@ -275,7 +275,7 @@ class QuicksightSource(DashboardServiceSource):
             lineage_details = LineageDetails(source=LineageSource.DashboardLineage, sqlQuery=sql_query)
             for db_name in source_database_names:
                 if prefix_database_name and db_name and prefix_database_name.lower() != str(db_name).lower():
-                    logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")
+                    logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")  # noqa: G004
                     continue
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
@@ -287,12 +287,12 @@ class QuicksightSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != database_schema_name.lower()
                     ):
                         logger.debug(
-                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"  # noqa: G004
                         )
                         continue
 
                     if prefix_table_name and table and prefix_table_name.lower() != table.lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
+                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")  # noqa: G004
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -381,7 +381,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
@@ -395,11 +395,11 @@ class QuicksightSource(DashboardServiceSource):
             table_name = data_source_resp.data_source_resp.table_name
 
             if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
+                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
                 return
 
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
+                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
                 return
 
             if data_source_resp and data_source_resp.DataSourceParameters:
@@ -407,7 +407,7 @@ class QuicksightSource(DashboardServiceSource):
                 for db in data_source_dict.keys() or []:
                     database_name = data_source_dict[db].get("Database")
                     if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                        logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
@@ -454,7 +454,7 @@ class QuicksightSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -509,7 +509,7 @@ class QuicksightSource(DashboardServiceSource):
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")
+                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
         return datasource_columns
 
     def _get_dashboard_datamodels(self, dashboard_details: DashboardDetail) -> list:
@@ -531,7 +531,7 @@ class QuicksightSource(DashboardServiceSource):
             }
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while processing datamodels for dashboard: {dashboard_details.Name}: {exc}")
+            logger.warning(f"Error while processing datamodels for dashboard: {dashboard_details.Name}: {exc}")  # noqa: G004
 
         for dataset_id in dataset_ids or []:
             dataset_name, data_source_list = self._describe_data_sets(dataset_id, dashboard_details)
@@ -547,7 +547,7 @@ class QuicksightSource(DashboardServiceSource):
                         raise KeyError(f"We currently don't support data sources: {list(data_source.keys())}")  # noqa: TRY301
                 except (KeyError, ValidationError) as err:
                     data_source_resp = None
-                    logger.info(f"Error while processing datamodels for dashboard {dashboard_details.Name}: {err}")
+                    logger.info(f"Error while processing datamodels for dashboard {dashboard_details.Name}: {err}")  # noqa: G004
                     continue
                 if data_source_resp:
                     try:
@@ -576,7 +576,7 @@ class QuicksightSource(DashboardServiceSource):
                             data_models.append(desribed_source)
                     except Exception as err:
                         logger.info(
-                            f"Error while processing data sources for dashboard {dashboard_details.Name}: {err}"
+                            f"Error while processing data sources for dashboard {dashboard_details.Name}: {err}"  # noqa: G004
                         )
         return data_models
 
@@ -586,8 +586,8 @@ class QuicksightSource(DashboardServiceSource):
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)  # noqa: UP006
-        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)  # noqa: UP006
+        self.data_models: list[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)
+        dataset_groups: dict[str, list[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
             key = data_model.dataset_id if data_model.dataset_id is not None else data_model.DataSource.DataSourceId
             dataset_groups[key].append(data_model)

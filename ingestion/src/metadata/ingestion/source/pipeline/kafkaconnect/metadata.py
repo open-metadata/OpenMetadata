@@ -14,8 +14,9 @@ KafkaConnect source to extract metadata from OM UI
 
 import re
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable, List, Optional, Pattern  # noqa: UP035
+from re import Pattern
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -113,7 +114,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self._topics_cache = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: KafkaConnectConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnectConnection):
@@ -121,19 +122,19 @@ class KafkaconnectSource(PipelineServiceSource):
         return cls(config, metadata)
 
     @property
-    def database_services(self) -> List[DatabaseService]:  # noqa: UP006
+    def database_services(self) -> list[DatabaseService]:
         """Lazily load and cache database services for hostname matching"""
         if self._database_services_cache is None:
             self._database_services_cache = list(self.metadata.list_all_entities(entity=DatabaseService, limit=100))
-            logger.debug(f"Cached {len(self._database_services_cache)} database services for hostname matching")
+            logger.debug(f"Cached {len(self._database_services_cache)} database services for hostname matching")  # noqa: G004
         return self._database_services_cache
 
     @property
-    def messaging_services(self) -> List[MessagingService]:  # noqa: UP006
+    def messaging_services(self) -> list[MessagingService]:
         """Lazily load and cache messaging services for broker matching"""
         if self._messaging_services_cache is None:
             self._messaging_services_cache = list(self.metadata.list_all_entities(entity=MessagingService, limit=100))
-            logger.debug(f"Cached {len(self._messaging_services_cache)} messaging services for broker matching")
+            logger.debug(f"Cached {len(self._messaging_services_cache)} messaging services for broker matching")  # noqa: G004
         return self._messaging_services_cache
 
     def _extract_hostname(self, host_string: str) -> str:
@@ -159,7 +160,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return host_string.strip()
 
-    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:  # noqa: UP045
+    def find_database_service_by_hostname(self, service_type: str, hostname: str) -> str | None:
         """
         Find database service by matching serviceType and hostname.
 
@@ -180,7 +181,7 @@ class KafkaconnectSource(PipelineServiceSource):
             ]
 
             logger.debug(
-                f"Found {len(filtered_services)} services with serviceType={service_type} "
+                f"Found {len(filtered_services)} services with serviceType={service_type} "  # noqa: G004
                 f"out of {len(all_services)} total database services"
             )
 
@@ -209,19 +210,19 @@ class KafkaconnectSource(PipelineServiceSource):
                     # Match hostname (case-insensitive)
                     if service_host == connector_host:
                         logger.info(
-                            f"Matched database service: {service.name} (type={service_type}, hostname={connector_host})"
+                            f"Matched database service: {service.name} (type={service_type}, hostname={connector_host})"  # noqa: G004
                         )
                         return model_str(service.name)
 
-            logger.debug(f"No database service found matching serviceType={service_type}, hostname={connector_host}")
+            logger.debug(f"No database service found matching serviceType={service_type}, hostname={connector_host}")  # noqa: G004
             return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to find database service by hostname: {exc}")
+            logger.error(f"Unable to find database service by hostname: {exc}")  # noqa: G004
             return None
 
-    def find_messaging_service_by_brokers(self, brokers: str) -> Optional[str]:  # noqa: UP045
+    def find_messaging_service_by_brokers(self, brokers: str) -> str | None:
         """
         Find messaging service by matching broker endpoints.
 
@@ -236,7 +237,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # Use cached messaging services
             all_services = self.messaging_services
 
-            logger.debug(f"Searching for messaging service matching brokers: {brokers}")
+            logger.debug(f"Searching for messaging service matching brokers: {brokers}")  # noqa: G004
 
             # Parse connector brokers into a set of hostnames (no protocol, no port)
             connector_brokers = set(self._extract_hostname(broker.strip()).lower() for broker in brokers.split(","))  # noqa: C401
@@ -260,16 +261,16 @@ class KafkaconnectSource(PipelineServiceSource):
                     matched_brokers = connector_brokers & service_brokers  # Set intersection
                     if matched_brokers:
                         logger.info(
-                            f"Matched messaging service: {service.name} (matched broker hostnames: {matched_brokers})"
+                            f"Matched messaging service: {service.name} (matched broker hostnames: {matched_brokers})"  # noqa: G004
                         )
                         return model_str(service.name)
 
-            logger.debug(f"No messaging service found matching broker hostnames: {connector_brokers}")
+            logger.debug(f"No messaging service found matching broker hostnames: {connector_brokers}")  # noqa: G004
             return None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to find messaging service by brokers: {exc}")
+            logger.error(f"Unable to find messaging service by brokers: {exc}")  # noqa: G004
             return None
 
     def get_service_from_connector_config(
@@ -310,7 +311,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         hostname = pipeline_details.config.get(key)
                         if hostname:
                             logger.debug(
-                                f"Found hostname '{hostname}' for service type '{service_type}' from config key '{key}'"
+                                f"Found hostname '{hostname}' for service type '{service_type}' from config key '{key}'"  # noqa: G004
                             )
                             # Match database service
                             db_service_name = self.find_database_service_by_hostname(
@@ -323,7 +324,7 @@ class KafkaconnectSource(PipelineServiceSource):
             for key in MESSAGING_ENDPOINT_KEYS:
                 brokers = pipeline_details.config.get(key)
                 if brokers:
-                    logger.debug(f"Found brokers '{brokers}' from config key '{key}'")
+                    logger.debug(f"Found brokers '{brokers}' from config key '{key}'")  # noqa: G004
                     messaging_service_name = self.find_messaging_service_by_brokers(brokers=brokers)
                     if messaging_service_name:
                         break
@@ -335,10 +336,10 @@ class KafkaconnectSource(PipelineServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to extract service names from connector config: {exc}")
+            logger.warning(f"Unable to extract service names from connector config: {exc}")  # noqa: G004
             return ServiceResolutionResult(database_service_name=None, messaging_service_name=None)
 
-    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:  # noqa: UP045
+    def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> str | None:
         """
         Resolve messaging service name from connector config or service connection.
         """
@@ -352,7 +353,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         if effective_messaging_service:
             logger.info(
-                f"Using messaging service '{effective_messaging_service}' "
+                f"Using messaging service '{effective_messaging_service}' "  # noqa: G004
                 f"({'matched from config' if result.messaging_service_name else 'from configuration'})"
             )
         else:
@@ -363,8 +364,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _parse_and_resolve_topics(
         self,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str],  # noqa: UP045
-        effective_messaging_service: Optional[str],  # noqa: UP045
+        database_server_name: str | None,
+        effective_messaging_service: str | None,
         is_storage_sink: bool,
     ) -> TopicResolutionResult:
         """
@@ -385,7 +386,7 @@ class KafkaconnectSource(PipelineServiceSource):
         if not topics_to_process and is_storage_sink and pipeline_details.config:
             topics_regex = pipeline_details.config.get("topics.regex")
             if topics_regex:
-                logger.info(f"Storage sink using topics.regex: {topics_regex}")
+                logger.info(f"Storage sink using topics.regex: {topics_regex}")  # noqa: G004
                 topics_to_process = self._search_topics_by_regex(
                     topics_regex=topics_regex,
                     messaging_service_name=effective_messaging_service,
@@ -395,15 +396,15 @@ class KafkaconnectSource(PipelineServiceSource):
         for topic in topics_to_process:
             topic_entity = None
 
-            logger.info(f"Processing topic: {topic.name}")
+            logger.info(f"Processing topic: {topic.name}")  # noqa: G004
 
             if topic.fqn:
-                logger.debug(f"Searching for topic using pre-built FQN: {topic.fqn}")
+                logger.debug(f"Searching for topic using pre-built FQN: {topic.fqn}")  # noqa: G004
                 topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic.fqn)
                 if topic_entity:
-                    logger.debug(f"✓ Found topic using stored FQN: {topic.fqn}")
+                    logger.debug(f"✓ Found topic using stored FQN: {topic.fqn}")  # noqa: G004
                 else:
-                    logger.debug(f"✗ Topic NOT found using FQN: {topic.fqn}")
+                    logger.debug(f"✗ Topic NOT found using FQN: {topic.fqn}")  # noqa: G004
             elif effective_messaging_service:
                 topic_fqn = fqn.build(
                     metadata=self.metadata,
@@ -412,37 +413,37 @@ class KafkaconnectSource(PipelineServiceSource):
                     topic_name=str(topic.name),
                 )
                 logger.debug(
-                    f"Built topic FQN: {topic_fqn} (service={effective_messaging_service}, topic_name={topic.name})"
+                    f"Built topic FQN: {topic_fqn} (service={effective_messaging_service}, topic_name={topic.name})"  # noqa: G004
                 )
                 topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
                 if topic_entity:
-                    logger.debug(f"✓ Found topic using built FQN: {topic_fqn}")
+                    logger.debug(f"✓ Found topic using built FQN: {topic_fqn}")  # noqa: G004
                 else:
                     logger.debug(
-                        f"✗ Topic NOT found using FQN: {topic_fqn} "
+                        f"✗ Topic NOT found using FQN: {topic_fqn} "  # noqa: G004
                         f"(service={effective_messaging_service}, topic_name={topic.name})"
                     )
             else:
                 search_string = f"*.{fqn.quote_name(str(topic.name))}"
-                logger.debug(f"Searching for topic across all services using pattern: {search_string}")
+                logger.debug(f"Searching for topic across all services using pattern: {search_string}")  # noqa: G004
                 topic_entity = self.metadata.search_in_any_service(
                     entity_type=Topic,
                     fqn_search_string=search_string,
                 )
                 if topic_entity:
                     logger.debug(
-                        f"✓ Found topic via search: {topic.name} in service "
+                        f"✓ Found topic via search: {topic.name} in service "  # noqa: G004
                         f"{topic_entity.service.name if topic_entity.service else 'unknown'}"
                     )
                 else:
-                    logger.debug(f"✗ Topic NOT found via search: {search_string}")
+                    logger.debug(f"✗ Topic NOT found via search: {search_string}")  # noqa: G004
 
             topic_entities_map[topic.name] = topic_entity
 
             if topic_entity is None:
-                logger.warning(f"Topic {topic.name} not found in OpenMetadata")
+                logger.warning(f"Topic {topic.name} not found in OpenMetadata")  # noqa: G004
             else:
-                logger.info(f"✓ Successfully found topic entity: {topic.name}")
+                logger.info(f"✓ Successfully found topic entity: {topic.name}")  # noqa: G004
 
         return TopicResolutionResult(topics=topics_to_process, topic_entity_map=topic_entities_map)
 
@@ -476,7 +477,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
             )
 
-    def _service_supports_database(self, service_name: str) -> Optional[bool]:  # noqa: UP045
+    def _service_supports_database(self, service_name: str) -> bool | None:
         """
         Return whether the service models a real database level in its table FQN:
         True for multi-database, False for single-database, None when the service is
@@ -509,8 +510,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _table_fqn_candidates(
         self,
         dataset_details: KafkaConnectDatasetDetails,
-        supports_database: Optional[bool],  # noqa: UP045
-    ) -> List[tuple]:  # noqa: UP006
+        supports_database: bool | None,
+    ) -> list[tuple]:
         """
         Build the ``(database_name, schema_name)`` pairs to try when resolving a table,
         most specific first.
@@ -537,8 +538,8 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         dataset_details: KafkaConnectDatasetDetails,
         service_name: str,
-        supports_database: Optional[bool],  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        supports_database: bool | None,
+    ) -> Table | None:
         """Resolve a table in one service, trying each FQN shape the service class allows."""
         for database_name, schema_name in self._table_fqn_candidates(dataset_details, supports_database):
             table_fqn = fqn.build(
@@ -560,7 +561,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         Resolve the table a connector reads from or writes to, in order of confidence:
         the service matched from the connector config, then any configured
@@ -576,7 +577,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 else ("multi-database" if supports_database else "single-database")
             )
             logger.info(
-                f"Using matched database service '{result.database_service_name}' from connector config "
+                f"Using matched database service '{result.database_service_name}' from connector config "  # noqa: G004
                 f"({service_class} service)"
             )
             dataset_entity = self._lookup_table_in_service(
@@ -597,7 +598,7 @@ class KafkaconnectSource(PipelineServiceSource):
         # Schema first: it is the level Debezium reliably reports, whereas "database"
         # may be a topic.prefix that matches no FQN at all.
         if dataset_details.table:
-            logger.info(f"No service match found - searching all database services for table {dataset_details.table}")
+            logger.info(f"No service match found - searching all database services for table {dataset_details.table}")  # noqa: G004
             quoted_table = fqn.quote_name(dataset_details.table)
             qualifiers = list(dict.fromkeys(q for q in (dataset_details.schema, dataset_details.database) if q))
             search_strings = [f"{fqn.quote_name(q)}.{quoted_table}" for q in qualifiers] or [quoted_table]
@@ -612,7 +613,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 dataset_entity = found
                 if dataset_entity:
                     logger.debug(
-                        f"Found table {dataset_details.table} via search in service "
+                        f"Found table {dataset_details.table} via search in service "  # noqa: G004
                         f"{dataset_entity.service.name if dataset_entity.service else 'unknown'}"
                     )
                     return dataset_entity
@@ -623,7 +624,7 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[T]:  # noqa: UP045
+    ) -> T | None:
         """
         Get lineage dataset entity for a specific dataset configuration.
         """
@@ -658,7 +659,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     # Example: StorageServiceName.BucketName.Directory/TopicName.extension
                     if storage_entity is None and dataset_details.container_name:
                         logger.debug(
-                            f"Exact container match failed, trying prefix search for "
+                            f"Exact container match failed, trying prefix search for "  # noqa: G004
                             f"container '{dataset_details.container_name}*' "
                             f"under parent '{dataset_details.parent_container}'"
                         )
@@ -673,16 +674,16 @@ class KafkaconnectSource(PipelineServiceSource):
 
                             if storage_entity:
                                 container_fqn = model_str(storage_entity.fullyQualifiedName)
-                                logger.info(f"Found container via wildcard search: {container_fqn}")
+                                logger.info(f"Found container via wildcard search: {container_fqn}")  # noqa: G004
                                 return storage_entity
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get dataset entity {exc}")
+            logger.error(f"Unable to get dataset entity {exc}")  # noqa: G004
 
         return None
 
-    def _get_entity_column_fqn(self, entity: T, column_name: str) -> Optional[str]:  # noqa: UP045
+    def _get_entity_column_fqn(self, entity: T, column_name: str) -> str | None:
         """
         Get column FQN for any supported entity type.
         Dispatch based on entity type.
@@ -699,10 +700,10 @@ class KafkaconnectSource(PipelineServiceSource):
         elif isinstance(entity, Table):  # noqa: RET505
             return get_column_fqn(table_entity=entity, column=column_name)
         else:
-            logger.warning(f"Unsupported entity type for column FQN: {type(entity).__name__}")
+            logger.warning(f"Unsupported entity type for column FQN: {type(entity).__name__}")  # noqa: G004
             return None
 
-    def _parse_cdc_schema_columns(self, schema_text: str) -> List[str]:  # noqa: UP006
+    def _parse_cdc_schema_columns(self, schema_text: str) -> list[str]:
         """
         Parse Debezium CDC schema JSON to extract table column names.
 
@@ -734,15 +735,15 @@ class KafkaconnectSource(PipelineServiceSource):
                 for option in field_def["oneOf"]:
                     if isinstance(option, dict) and option.get("type") == "object":
                         columns = list(option.get("properties", {}).keys())
-                        logger.debug(f"Parsed {len(columns)} columns from CDC '{field_name}' field")
+                        logger.debug(f"Parsed {len(columns)} columns from CDC '{field_name}' field")  # noqa: G004
                         return columns
 
         except Exception as exc:
-            logger.debug(f"Unable to parse CDC schema text: {exc}")
+            logger.debug(f"Unable to parse CDC schema text: {exc}")  # noqa: G004
 
         return []
 
-    def _extract_columns_from_entity(self, entity: T) -> List[str]:  # noqa: C901, UP006
+    def _extract_columns_from_entity(self, entity: T) -> list[str]:  # noqa: C901
         """
         Extract column/field names from Table or Topic entity.
 
@@ -779,7 +780,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     pass
 
             logger.debug(
-                f"Topic {model_str(entity.name) if hasattr(entity, 'name') else 'unknown'}: field_names={field_names}, is_debezium_cdc={is_debezium_cdc}"
+                f"Topic {model_str(entity.name) if hasattr(entity, 'name') else 'unknown'}: field_names={field_names}, is_debezium_cdc={is_debezium_cdc}"  # noqa: G004
             )
 
             # Check for nested Debezium CDC structure (single Envelope field with CDC children)
@@ -789,7 +790,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     envelope_child_names = {model_str(c.name) for c in envelope_field.children}
                     is_debezium_cdc = CDC_ENVELOPE_FIELDS.issubset(envelope_child_names)
                     if is_debezium_cdc:
-                        logger.debug(f"Nested Debezium CDC envelope detected: {model_str(envelope_field.name)}")
+                        logger.debug(f"Nested Debezium CDC envelope detected: {model_str(envelope_field.name)}")  # noqa: G004
                         schema_fields = envelope_field.children  # Use envelope children as schema fields
 
             if is_debezium_cdc:
@@ -800,7 +801,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     # Prefer 'after' for source connectors (contains new/updated record state)
                     if field_name_str == "after" and field.children:
                         columns = [model_str(child.name) for child in field.children]
-                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from 'after' field")
+                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from 'after' field")  # noqa: G004
                         return columns
 
                 # Fallback to 'before' if 'after' has no children
@@ -808,14 +809,14 @@ class KafkaconnectSource(PipelineServiceSource):
                     field_name_str = model_str(field.name)
                     if field_name_str == "before" and field.children:
                         columns = [model_str(child.name) for child in field.children]
-                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from 'before' field")
+                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from 'before' field")  # noqa: G004
                         return columns
 
                 # Final fallback: Parse schemaText if after/before don't have children
                 if entity.messageSchema.schemaText:
                     columns = self._parse_cdc_schema_columns(entity.messageSchema.schemaText)
                     if columns:
-                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from schemaText")
+                        logger.debug(f"Debezium CDC: extracted {len(columns)} columns from schemaText")  # noqa: G004
                         return columns
 
                 logger.debug("Debezium CDC detected but unable to extract columns from after/before fields")
@@ -832,7 +833,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: UP045
+    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> str | None:
         return get_topic_field_fqn(topic_entity, field_name)
 
     def build_column_lineage(
@@ -842,7 +843,7 @@ class KafkaconnectSource(PipelineServiceSource):
         topic_entity: Topic,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
-    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
+    ) -> list[ColumnLineage] | None:
         """
         Build column-level lineage between source table, topic, and target table.
         For source connectors: Table columns -> Topic schema fields
@@ -884,12 +885,12 @@ class KafkaconnectSource(PipelineServiceSource):
                 target_columns = self._extract_columns_from_entity(target_entity)
 
                 logger.debug(
-                    f"Column matching for {pipeline_details.name}: "
+                    f"Column matching for {pipeline_details.name}: "  # noqa: G004
                     f"source={len(source_columns)} cols from {source_entity.__class__.__name__}, "
                     f"target={len(target_columns)} cols from {target_entity.__class__.__name__}"
                 )
-                logger.debug(f"Source columns: {source_columns[:5]}")  # First 5
-                logger.debug(f"Target columns: {target_columns}")
+                logger.debug(f"Source columns: {source_columns[:5]}")  # First 5  # noqa: G004
+                logger.debug(f"Target columns: {target_columns}")  # noqa: G004
 
                 # Create lookup dictionary for O(n) performance instead of O(n²)
                 target_cols_map = {str(col).lower(): col for col in target_columns}
@@ -899,13 +900,13 @@ class KafkaconnectSource(PipelineServiceSource):
                     source_key = str(source_col_name).lower()
                     if source_key in target_cols_map:
                         target_col_name = target_cols_map[source_key]
-                        logger.debug(f"Matched column: {source_col_name} -> {target_col_name}")
+                        logger.debug(f"Matched column: {source_col_name} -> {target_col_name}")  # noqa: G004
                         try:
                             # Get fully qualified names for source and target columns
                             from_col = self._get_entity_column_fqn(source_entity, source_col_name)
                             to_col = self._get_entity_column_fqn(target_entity, target_col_name)
 
-                            logger.debug(f"FQNs: from_col={from_col}, to_col={to_col}")
+                            logger.debug(f"FQNs: from_col={from_col}, to_col={to_col}")  # noqa: G004
 
                             if from_col and to_col:
                                 column_lineages.append(
@@ -915,27 +916,27 @@ class KafkaconnectSource(PipelineServiceSource):
                                         function=None,
                                     )
                                 )
-                                logger.debug(f"Added column lineage: {from_col} -> {to_col}")
+                                logger.debug(f"Added column lineage: {from_col} -> {to_col}")  # noqa: G004
                         except (KeyError, AttributeError) as exc:
                             logger.debug(
-                                f"Error creating column lineage for {source_col_name} -> {target_col_name}: {exc}"
+                                f"Error creating column lineage for {source_col_name} -> {target_col_name}: {exc}"  # noqa: G004
                             )
 
             if column_lineages:
-                logger.debug(f"Created {len(column_lineages)} column lineages for {pipeline_details.name}")
+                logger.debug(f"Created {len(column_lineages)} column lineages for {pipeline_details.name}")  # noqa: G004
             return column_lineages if column_lineages else None  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to build column lineage: {exc}")
+            logger.error(f"Unable to build column lineage: {exc}")  # noqa: G004
 
         return None
 
     def _search_topics_by_prefix(
         self,
         database_server_name: str,
-        messaging_service_name: Optional[str] = None,  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        messaging_service_name: str | None = None,
+    ) -> list[KafkaConnectTopics]:
         """
         Search for topics in the messaging service that match the database.server.name prefix.
 
@@ -955,7 +956,7 @@ class KafkaconnectSource(PipelineServiceSource):
             if not database_server_name:
                 return topics_found
 
-            logger.info(f"Searching messaging service for topics with prefix: {database_server_name}")
+            logger.info(f"Searching messaging service for topics with prefix: {database_server_name}")  # noqa: G004
 
             # Search for topics matching the prefix
             # Use wildcard pattern: <service>."<prefix>.*"
@@ -964,7 +965,7 @@ class KafkaconnectSource(PipelineServiceSource):
             if messaging_service_name:
                 # Search in specific messaging service
                 search_fqn = f"{fqn.quote_name(messaging_service_name)}.{fqn.quote_name(search_pattern)}"
-                logger.debug(f"Searching for topics with FQN pattern: {search_fqn}")
+                logger.debug(f"Searching for topics with FQN pattern: {search_fqn}")  # noqa: G004
 
                 # Get all topics from the messaging service (with caching)
 
@@ -976,10 +977,10 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
                     )
                     self._topics_cache[messaging_service_name] = topics
-                    logger.debug(f"Cached {len(topics)} topics for messaging service: {messaging_service_name}")
+                    logger.debug(f"Cached {len(topics)} topics for messaging service: {messaging_service_name}")  # noqa: G004
                 else:
                     topics = self._topics_cache[messaging_service_name]
-                    logger.debug(f"Using cached topics for messaging service: {messaging_service_name}")
+                    logger.debug(f"Using cached topics for messaging service: {messaging_service_name}")  # noqa: G004
 
                 # Filter topics that start with the database_server_name prefix
                 for topic in topics:
@@ -988,29 +989,29 @@ class KafkaconnectSource(PipelineServiceSource):
                         # Build full FQN for this topic
                         topic_fqn = model_str(topic.fullyQualifiedName)
                         topics_found.append(KafkaConnectTopics(name=topic_name, fqn=topic_fqn))
-                        logger.debug(f"Found matching topic: {topic_name} (FQN: {topic_fqn})")
+                        logger.debug(f"Found matching topic: {topic_name} (FQN: {topic_fqn})")  # noqa: G004
 
             if topics_found:
                 logger.info(
-                    f"Found {len(topics_found)} topics matching prefix '{database_server_name}' in messaging service"
+                    f"Found {len(topics_found)} topics matching prefix '{database_server_name}' in messaging service"  # noqa: G004
                 )
             else:
                 logger.warning(
-                    f"No topics found matching prefix '{database_server_name}'. "
+                    f"No topics found matching prefix '{database_server_name}'. "  # noqa: G004
                     f"Ensure the messaging service has ingested topics before running Kafka Connect ingestion."
                 )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by prefix: {exc}")
+            logger.error(f"Unable to search topics by prefix: {exc}")  # noqa: G004
 
         return topics_found
 
     def _search_topics_by_regex(
         self,
         topics_regex: str,
-        messaging_service_name: Optional[str] = None,  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        messaging_service_name: str | None = None,
+    ) -> list[KafkaConnectTopics]:
         """
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
@@ -1034,32 +1035,32 @@ class KafkaconnectSource(PipelineServiceSource):
                     )
                 )
                 self._topics_cache[messaging_service_name] = topics
-                logger.debug(f"Cached {len(topics)} topics for messaging service: {messaging_service_name}")
+                logger.debug(f"Cached {len(topics)} topics for messaging service: {messaging_service_name}")  # noqa: G004
             else:
                 topics = self._topics_cache[messaging_service_name]
-                logger.debug(f"Using cached topics for messaging service: {messaging_service_name}")
+                logger.debug(f"Using cached topics for messaging service: {messaging_service_name}")  # noqa: G004
 
             for topic in topics:
                 topic_name = model_str(topic.name)
                 if pattern.match(topic_name):
                     topic_fqn = model_str(topic.fullyQualifiedName)
                     topics_found.append(KafkaConnectTopics(name=topic_name, fqn=topic_fqn))
-                    logger.debug(f"Regex matched topic: {topic_name}")
+                    logger.debug(f"Regex matched topic: {topic_name}")  # noqa: G004
 
             if topics_found:
-                logger.info(f"Found {len(topics_found)} topics matching regex '{topics_regex}'")
+                logger.info(f"Found {len(topics_found)} topics matching regex '{topics_regex}'")  # noqa: G004
             else:
-                logger.warning(f"No topics found matching regex '{topics_regex}'")
+                logger.warning(f"No topics found matching regex '{topics_regex}'")  # noqa: G004
 
         except re.error as exc:
-            logger.warning(f"Invalid regex pattern '{topics_regex}': {exc}")
+            logger.warning(f"Invalid regex pattern '{topics_regex}': {exc}")  # noqa: G004
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by regex: {exc}")
+            logger.error(f"Unable to search topics by regex: {exc}")  # noqa: G004
 
         return topics_found
 
-    def _parse_datasets_from_config(self, connector_config: dict) -> List[KafkaConnectDatasetDetails]:  # noqa: C901, UP006
+    def _parse_datasets_from_config(self, connector_config: dict) -> list[KafkaConnectDatasetDetails]:  # noqa: C901
         """
         Parse dataset information from connector config.
         Handles single values, comma-separated lists, and mapping configs.
@@ -1073,7 +1074,7 @@ class KafkaconnectSource(PipelineServiceSource):
             for key in key_categories.get("single", []):
                 if key in connector_config:
                     found_values[dataset_type] = [connector_config[key]]
-                    logger.debug(f"Found single value for {dataset_type} from key '{key}'")
+                    logger.debug(f"Found single value for {dataset_type} from key '{key}'")  # noqa: G004
                     break
 
             if dataset_type not in found_values:
@@ -1082,7 +1083,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         value = connector_config[key]
                         found_values[dataset_type] = [v.strip() for v in value.split(",") if v.strip()]
                         logger.debug(
-                            f"Found list values for {dataset_type} from key '{key}': "
+                            f"Found list values for {dataset_type} from key '{key}': "  # noqa: G004
                             f"{len(found_values[dataset_type])} items"
                         )
                         break
@@ -1094,7 +1095,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         mappings = [m.strip() for m in value.split(",")]
                         found_values[dataset_type] = [m.split(":")[-1].strip() for m in mappings if ":" in m]
                         logger.debug(
-                            f"Found mapping values for {dataset_type} from key '{key}': "
+                            f"Found mapping values for {dataset_type} from key '{key}': "  # noqa: G004
                             f"{len(found_values[dataset_type])} items"
                         )
                         break
@@ -1116,7 +1117,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     if len(parts) == 2:
                         result["schema"] = parts[0]
                         result["table"] = parts[1]
-                        logger.debug(f"Parsed schema-qualified table: schema='{parts[0]}', table='{parts[1]}'")
+                        logger.debug(f"Parsed schema-qualified table: schema='{parts[0]}', table='{parts[1]}'")  # noqa: G004
                         continue
 
                 result[dataset_type] = value
@@ -1131,8 +1132,8 @@ class KafkaconnectSource(PipelineServiceSource):
         dataset_details: KafkaConnectDatasetDetails,
         topic_entities_map: dict,
         pipeline_details: KafkaConnectPipelineDetails,
-        database_server_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Topic]:  # noqa: UP045
+        database_server_name: str | None = None,
+    ) -> Topic | None:
         """
         Match a dataset to its corresponding topic entity.
 
@@ -1147,7 +1148,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 # Try exact match first
                 if dataset_details.table in topic_entities_map:
                     logger.info(
-                        f"Matched sink dataset table '{dataset_details.table}' to topic '{dataset_details.table}' (exact match)"
+                        f"Matched sink dataset table '{dataset_details.table}' to topic '{dataset_details.table}' (exact match)"  # noqa: G004
                     )
                     return topic_entities_map[dataset_details.table]
 
@@ -1159,7 +1160,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 for key in format_keys:
                     if key in pipeline_details.config:
                         pattern = pipeline_details.config[key]
-                        logger.debug(f"Found naming format using key '{key}': {pattern}")
+                        logger.debug(f"Found naming format using key '{key}': {pattern}")  # noqa: G004
                         break
 
                 # 3. Fallback logic: if neither key is present, default to just the topic name
@@ -1175,22 +1176,22 @@ class KafkaconnectSource(PipelineServiceSource):
                     resolved_table = pattern.replace("${topic}", sanitized_topic).lower()
                     if resolved_table == dataset_details.table.lower():
                         logger.info(
-                            f"Matched sink dataset table '{dataset_details.table}' to topic '{topic_name}' (case-insensitive)"
+                            f"Matched sink dataset table '{dataset_details.table}' to topic '{topic_name}' (case-insensitive)"  # noqa: G004
                         )
                         return topic_entity
 
-                logger.warning(f"No matching topic found for sink dataset table '{dataset_details.table}'")
+                logger.warning(f"No matching topic found for sink dataset table '{dataset_details.table}'")  # noqa: G004
 
         # For CDC Source connectors: match by parsing topic names
         elif pipeline_details.conn_type == ConnectorType.SOURCE.value and database_server_name:
             expected_topic = self._expected_source_topic_name(dataset_details, database_server_name, pipeline_details)
             for topic_name, topic_entity in topic_entities_map.items():
                 if self._source_topic_matches(str(topic_name), expected_topic, dataset_details, database_server_name):
-                    logger.info(f"Matched CDC dataset table '{dataset_details.table}' to topic '{topic_name}'")
+                    logger.info(f"Matched CDC dataset table '{dataset_details.table}' to topic '{topic_name}'")  # noqa: G004
                     matched_topic = topic_entity
                     break
             else:
-                logger.warning(f"No matching CDC topic found for dataset table '{dataset_details.table}'")
+                logger.warning(f"No matching CDC topic found for dataset table '{dataset_details.table}'")  # noqa: G004
 
         return matched_topic
 
@@ -1199,7 +1200,7 @@ class KafkaconnectSource(PipelineServiceSource):
         dataset_details: KafkaConnectDatasetDetails,
         database_server_name: str,
         pipeline_details: KafkaConnectPipelineDetails,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Build the post-transform topic name a CDC source table is expected to
         produce, so a RegexRouter-renamed topic can be matched by going forward
@@ -1217,7 +1218,7 @@ class KafkaconnectSource(PipelineServiceSource):
     def _source_topic_matches(
         self,
         topic_name: str,
-        expected_topic: Optional[str],  # noqa: UP045
+        expected_topic: str | None,
         dataset_details: KafkaConnectDatasetDetails,
         database_server_name: str,
     ) -> bool:
@@ -1232,7 +1233,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
     def _parse_cdc_topics_from_config(
         self, pipeline_details: KafkaConnectPipelineDetails, database_server_name: str
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+    ) -> list[KafkaConnectTopics]:
         """
         Parse CDC topic names from connector config using table.include.list.
 
@@ -1257,12 +1258,12 @@ class KafkaconnectSource(PipelineServiceSource):
             for key in ["table.include.list", "table.whitelist"]:
                 if pipeline_details.config.get(key):
                     table_include_list = pipeline_details.config.get(key)
-                    logger.debug(f"Found table list from config key '{key}': {table_include_list}")
+                    logger.debug(f"Found table list from config key '{key}': {table_include_list}")  # noqa: G004
                     break
 
             if not table_include_list:
                 logger.warning(
-                    f"⚠️  CDC connector '{pipeline_details.name}' is missing table.include.list or table.whitelist.\n"
+                    f"⚠️  CDC connector '{pipeline_details.name}' is missing table.include.list or table.whitelist.\n"  # noqa: G004
                     f"   Without this configuration, lineage cannot be created automatically.\n"
                     f'   Add to connector config: "table.include.list": "schema1.table1,schema2.table2"\n'
                 )
@@ -1283,13 +1284,13 @@ class KafkaconnectSource(PipelineServiceSource):
                 topic_name = apply_topic_routing_transforms(topic_name, pipeline_details.config)
 
                 topics_found.append(KafkaConnectTopics(name=topic_name))
-                logger.debug(f"Parsed CDC topic from config: {topic_name}")
+                logger.debug(f"Parsed CDC topic from config: {topic_name}")  # noqa: G004
 
-            logger.info(f"Parsed {len(topics_found)} CDC topics from table.include.list")
+            logger.info(f"Parsed {len(topics_found)} CDC topics from table.include.list")  # noqa: G004
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse CDC topics from connector config: {exc}")
+            logger.warning(f"Unable to parse CDC topics from connector config: {exc}")  # noqa: G004
 
         return topics_found
 
@@ -1297,8 +1298,8 @@ class KafkaconnectSource(PipelineServiceSource):
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         database_server_name: str,
-        effective_messaging_service: Optional[str],  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        effective_messaging_service: str | None,
+    ) -> list[KafkaConnectTopics]:
         """
         Resolve topics for a source connector, trying in order: Debezium outbox
         EventRouter pattern matching, CDC topic names from config, then a prefix
@@ -1318,7 +1319,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # "{prefix}.{schema}.{table}" name provably names no real topic. Falling back
             # to it only produced misleading "topic not found" warnings.
             logger.warning(
-                f"Outbox EventRouter topics could not be resolved for '{pipeline_details.name}'. "
+                f"Outbox EventRouter topics could not be resolved for '{pipeline_details.name}'. "  # noqa: G004
                 "The routed topic name is derived from row data and is not derivable from the "
                 "connector config; set an explicit static prefix in route.topic.replacement, or "
                 "ensure the routed topics are ingested in the messaging service."
@@ -1331,7 +1332,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         if not topics_to_process and effective_messaging_service:
             logger.info(
-                f"Falling back to searching topics by prefix in messaging service '{effective_messaging_service}'"
+                f"Falling back to searching topics by prefix in messaging service '{effective_messaging_service}'"  # noqa: G004
             )
             topics_to_process = self._search_topics_by_prefix(
                 database_server_name=database_server_name,
@@ -1340,7 +1341,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_to_process
 
-    def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:  # noqa: UP045
+    def _has_outbox_event_router(self, connector_config: dict | None) -> bool:
         """Return True if the connector uses a Debezium outbox EventRouter SMT."""
         has_event_router = False
         if connector_config:
@@ -1352,7 +1353,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     break
         return has_event_router
 
-    def _build_outbox_topic_pattern(self, connector_config: dict) -> Optional[Pattern]:  # noqa: UP045
+    def _build_outbox_topic_pattern(self, connector_config: dict) -> Pattern | None:
         """
         Build a regex matching topics produced by a Debezium outbox EventRouter.
 
@@ -1375,7 +1376,7 @@ class KafkaconnectSource(PipelineServiceSource):
             static_text = re.sub(r"[^A-Za-z0-9]", "", templated.replace(routed_value_token, ""))
             if not static_text:
                 logger.warning(
-                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "
+                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "  # noqa: G004
                     "near-catch-all pattern that would link the outbox table to unrelated topics."
                 )
             else:
@@ -1383,11 +1384,11 @@ class KafkaconnectSource(PipelineServiceSource):
                 try:
                     pattern = re.compile(f"^{escaped}$")
                 except re.error as exc:
-                    logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
+                    logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")  # noqa: G004
 
         return pattern
 
-    def _event_router_transform(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+    def _event_router_transform(self, connector_config: dict) -> str | None:
         """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
         transform_name = None
         transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
@@ -1400,8 +1401,8 @@ class KafkaconnectSource(PipelineServiceSource):
     def _resolve_outbox_topics(
         self,
         connector_config: dict,
-        messaging_service_name: Optional[str],  # noqa: UP045
-    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        messaging_service_name: str | None,
+    ) -> list[KafkaConnectTopics]:
         """
         Resolve Debezium outbox topics by matching the EventRouter routing pattern
         against topics already ingested in the messaging service.
@@ -1421,12 +1422,12 @@ class KafkaconnectSource(PipelineServiceSource):
                 topic_name = model_str(topic.name)
                 if pattern.match(topic_name):
                     topics_found.append(KafkaConnectTopics(name=topic_name, fqn=model_str(topic.fullyQualifiedName)))
-                    logger.debug(f"Matched outbox topic: {topic_name}")
-            logger.info(f"Resolved {len(topics_found)} outbox topic(s) via EventRouter pattern '{pattern.pattern}'")
+                    logger.debug(f"Matched outbox topic: {topic_name}")  # noqa: G004
+            logger.info(f"Resolved {len(topics_found)} outbox topic(s) via EventRouter pattern '{pattern.pattern}'")  # noqa: G004
 
         return topics_found
 
-    def _get_service_topics(self, messaging_service_name: str) -> List[Topic]:  # noqa: UP006
+    def _get_service_topics(self, messaging_service_name: str) -> list[Topic]:
         """Return all topics for a messaging service, caching per service name."""
         if messaging_service_name not in self._topics_cache:
             self._topics_cache[messaging_service_name] = list(
@@ -1436,7 +1437,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
             )
             logger.debug(
-                f"Cached {len(self._topics_cache[messaging_service_name])} topics "
+                f"Cached {len(self._topics_cache[messaging_service_name])} topics "  # noqa: G004
                 f"for messaging service: {messaging_service_name}"
             )
         return self._topics_cache[messaging_service_name]
@@ -1513,7 +1514,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         "reason": "Table → Topic (outbox EventRouter)",
                     }
                 )
-                logger.info(f"Created outbox lineage: {model_str(dataset_entity.fullyQualifiedName)} → {topic_name}")
+                logger.info(f"Created outbox lineage: {model_str(dataset_entity.fullyQualifiedName)} → {topic_name}")  # noqa: G004
                 yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._build_lineage_request(dataset_entity, topic_entity, pipeline_entity, column_lineage)
                 )
@@ -1530,7 +1531,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 dataset_details=dataset_details,
             )
         except Exception as exc:
-            logger.warning(f"Failed to build column-level lineage for {pipeline_details.name}: {exc}")
+            logger.warning(f"Failed to build column-level lineage for {pipeline_details.name}: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
         return column_lineage
 
@@ -1580,7 +1581,7 @@ class KafkaconnectSource(PipelineServiceSource):
             if pipeline_details.config:
                 datasets_to_process = self._parse_datasets_from_config(pipeline_details.config)
                 if datasets_to_process:
-                    logger.info(f"Parsed {len(datasets_to_process)} dataset(s) from connector config")
+                    logger.info(f"Parsed {len(datasets_to_process)} dataset(s) from connector config")  # noqa: G004
 
             # Fallback to datasets field if available (for backward compatibility)
             if not datasets_to_process and pipeline_details.datasets:
@@ -1605,7 +1606,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     pattern in class_name for pattern in ["S3Sink", "GcsSink", "AzureBlobSink"]
                 )
                 if is_storage_sink:
-                    logger.info(f"Detected storage sink connector: {class_name}")
+                    logger.info(f"Detected storage sink connector: {class_name}")  # noqa: G004
 
             # Parse and resolve topics
             topic_result = self._parse_and_resolve_topics(
@@ -1619,7 +1620,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # Now process each dataset and create lineage with matching topics
             for dataset_details in datasets_to_process:
                 logger.info(
-                    f"Processing dataset: table={dataset_details.table}, "
+                    f"Processing dataset: table={dataset_details.table}, "  # noqa: G004
                     f"database={dataset_details.database}, schema={dataset_details.schema}, "
                     f"container={dataset_details.container_name}, parent_container={dataset_details.parent_container}"
                 )
@@ -1631,7 +1632,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 if current_dataset_entity:
                     logger.info(
-                        f"Found dataset entity from config: {model_str(current_dataset_entity.fullyQualifiedName)}"
+                        f"Found dataset entity from config: {model_str(current_dataset_entity.fullyQualifiedName)}"  # noqa: G004
                     )
 
                 # Check if this is a container dataset (storage sink)
@@ -1643,13 +1644,13 @@ class KafkaconnectSource(PipelineServiceSource):
                     # Storage sink: Create lineage for ALL topics → this container
                     # Multiple topics write to the same container (many-to-one relationship)
                     logger.info(
-                        f"Detected storage sink container dataset: container={dataset_details.container_name}, "
+                        f"Detected storage sink container dataset: container={dataset_details.container_name}, "  # noqa: G004
                         f"parent={dataset_details.parent_container}"
                     )
 
                     if current_dataset_entity is None:
                         logger.warning(
-                            f"Container entity not found for dataset: {dataset_details.container_name or dataset_details.parent_container}"
+                            f"Container entity not found for dataset: {dataset_details.container_name or dataset_details.parent_container}"  # noqa: G004
                         )
                         self.lineage_results.append(
                             {
@@ -1664,7 +1665,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
                     # Check if we have any topics to process
                     if not topic_entities_map:
-                        logger.warning(f"No topics found for storage sink connector: {pipeline_details.name}")
+                        logger.warning(f"No topics found for storage sink connector: {pipeline_details.name}")  # noqa: G004
                         self.lineage_results.append(
                             {
                                 "connector": pipeline_details.name,
@@ -1680,12 +1681,12 @@ class KafkaconnectSource(PipelineServiceSource):
                     topics_processed = 0
                     for topic_name, topic_entity in topic_entities_map.items():
                         if topic_entity is None:
-                            logger.debug(f"Skipping topic {topic_name} - entity not found in OpenMetadata")
+                            logger.debug(f"Skipping topic {topic_name} - entity not found in OpenMetadata")  # noqa: G004
                             continue
 
                         # Create lineage: topic → container
                         logger.info(
-                            f"Creating storage sink lineage: {model_str(topic_entity.fullyQualifiedName)} "
+                            f"Creating storage sink lineage: {model_str(topic_entity.fullyQualifiedName)} "  # noqa: G004
                             f"→ {model_str(current_dataset_entity.fullyQualifiedName)}"
                         )
 
@@ -1701,7 +1702,7 @@ class KafkaconnectSource(PipelineServiceSource):
                             )
                         except Exception as exc:
                             logger.warning(
-                                f"Failed to build column-level lineage for {pipeline_details.name} "
+                                f"Failed to build column-level lineage for {pipeline_details.name} "  # noqa: G004
                                 f"(topic: {topic_name}): {exc}. Entity-level lineage will still be created."
                             )
                             logger.debug(traceback.format_exc())
@@ -1740,7 +1741,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         yield Either(right=lineage_request)
 
                     logger.info(
-                        f"✓ Created {topics_processed} lineage edges for storage sink: "
+                        f"✓ Created {topics_processed} lineage edges for storage sink: "  # noqa: G004
                         f"{topics_processed} topics → 1 container"
                     )
                     continue
@@ -1827,12 +1828,12 @@ class KafkaconnectSource(PipelineServiceSource):
                         }
                     )
                     logger.warning("=" * 80)
-                    logger.warning(f"⚠️  SKIPPING LINEAGE for connector: {pipeline_details.name}")
+                    logger.warning(f"⚠️  SKIPPING LINEAGE for connector: {pipeline_details.name}")  # noqa: G004
                     logger.warning("=" * 80)
 
                     # Log details about what was missing
                     logger.warning(
-                        f"   • Connector: {pipeline_details.name}\n"
+                        f"   • Connector: {pipeline_details.name}\n"  # noqa: G004
                         f"   • Connector type: {pipeline_details.conn_type}\n"
                         f"   • Dataset: table={dataset_details.table}, schema={dataset_details.schema}, database={dataset_details.database}\n"
                         f"   • Reason: {failure_reason}\n"
@@ -1843,7 +1844,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 # We have both dataset and topic - create lineage between them
                 dataset_type_name = type(current_dataset_entity).__name__
-                logger.info(f"✓ Found both {dataset_type_name} and topic entities for lineage")
+                logger.info(f"✓ Found both {dataset_type_name} and topic entities for lineage")  # noqa: G004
 
                 # Determine lineage direction based on connector type
                 if pipeline_details.conn_type == ConnectorType.SINK.value:
@@ -1854,7 +1855,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     )
                     lineage_type = "STORAGE SINK" if is_storage_sink else "SINK"
                     logger.info(
-                        f"Creating {lineage_type} lineage: {matched_topic_entity.fullyQualifiedName.root if hasattr(matched_topic_entity.fullyQualifiedName, 'root') else matched_topic_entity.fullyQualifiedName} "
+                        f"Creating {lineage_type} lineage: {matched_topic_entity.fullyQualifiedName.root if hasattr(matched_topic_entity.fullyQualifiedName, 'root') else matched_topic_entity.fullyQualifiedName} "  # noqa: G004
                         f"→ {current_dataset_entity.fullyQualifiedName.root if hasattr(current_dataset_entity.fullyQualifiedName, 'root') else current_dataset_entity.fullyQualifiedName}"
                     )
                 else:
@@ -1864,7 +1865,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         matched_topic_entity,
                     )
                     logger.info(
-                        f"Creating SOURCE lineage: {current_dataset_entity.fullyQualifiedName.root if hasattr(current_dataset_entity.fullyQualifiedName, 'root') else current_dataset_entity.fullyQualifiedName} "
+                        f"Creating SOURCE lineage: {current_dataset_entity.fullyQualifiedName.root if hasattr(current_dataset_entity.fullyQualifiedName, 'root') else current_dataset_entity.fullyQualifiedName} "  # noqa: G004
                         f"→ {matched_topic_entity.fullyQualifiedName.root if hasattr(matched_topic_entity.fullyQualifiedName, 'root') else matched_topic_entity.fullyQualifiedName}"
                     )
 
@@ -1880,7 +1881,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     )
                 except Exception as exc:
                     logger.warning(
-                        f"Failed to build column-level lineage for {pipeline_details.name}: {exc}. "
+                        f"Failed to build column-level lineage for {pipeline_details.name}: {exc}. "  # noqa: G004
                         "Entity-level lineage will still be created."
                     )
                     logger.debug(traceback.format_exc())
@@ -1894,7 +1895,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 to_entity_fqn = model_str(to_entity.fullyQualifiedName)
 
                 logger.info(
-                    f"Creating lineage edge:\n"
+                    f"Creating lineage edge:\n"  # noqa: G004
                     f"  FROM: {from_entity_type} | ID={from_entity_id} | FQN={from_entity_fqn}\n"
                     f"  TO:   {to_entity_type} | ID={to_entity_id} | FQN={to_entity_fqn}"
                 )
@@ -1934,7 +1935,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 # Log successful lineage creation (debug level - details in summary table)
                 logger.debug("=" * 80)
-                logger.debug(f"✅ LINEAGE CREATED SUCCESSFULLY for connector: {pipeline_details.name}")
+                logger.debug(f"✅ LINEAGE CREATED SUCCESSFULLY for connector: {pipeline_details.name}")  # noqa: G004
                 logger.debug("=" * 80)
 
                 # Extract service names for logging
@@ -1946,7 +1947,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     to_service = model_str(to_entity.service.name)
 
                 logger.debug(
-                    f"📊 LINEAGE DETAILS:\n"
+                    f"📊 LINEAGE DETAILS:\n"  # noqa: G004
                     f"   • FROM: {from_entity_type}\n"
                     f"      - FQN: {from_entity_fqn}\n"
                     f"      - Service: {from_service}\n"
@@ -1978,7 +1979,7 @@ class KafkaconnectSource(PipelineServiceSource):
             yield from self.client.get_connector_list()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")
+            logger.error(f"Failed to get pipeline list due to : {exc}")  # noqa: G004
 
     def get_pipeline_name(self, pipeline_details: KafkaConnectPipelineDetails) -> str:
         """
@@ -1988,7 +1989,7 @@ class KafkaconnectSource(PipelineServiceSource):
             return pipeline_details.name
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline name to : {exc}")
+            logger.error(f"Failed to get pipeline name to : {exc}")  # noqa: G004
 
         return None
 
@@ -2053,14 +2054,14 @@ class KafkaconnectSource(PipelineServiceSource):
         failures = [r for r in self.lineage_results if r["status"] == "FAILED"]
 
         # Print header
-        logger.info(f"{'Connector':<35} | {'Table FQN':<50} | {'Topic FQN':<50} | {'Status':<10} | {'Details':<20}")
+        logger.info(f"{'Connector':<35} | {'Table FQN':<50} | {'Topic FQN':<50} | {'Status':<10} | {'Details':<20}")  # noqa: G004
         logger.info("-" * 180)
 
         # Print all results
         for result in self.lineage_results:
             status_icon = "✅" if result["status"] == "SUCCESS" else "❌"
             logger.info(
-                f"{result['connector']:<35} | "
+                f"{result['connector']:<35} | "  # noqa: G004
                 f"{result['table_fqn']:<50} | "
                 f"{result['topic_fqn']:<50} | "
                 f"{status_icon} {result['status']:<8} | "
@@ -2074,7 +2075,7 @@ class KafkaconnectSource(PipelineServiceSource):
         failure_count = len(failures)
         success_pct = (success_count / total * 100) if total > 0 else 0
 
-        logger.info(f"Total: {total} | Success: {success_count} ({success_pct:.1f}%) | Failed: {failure_count}")
+        logger.info(f"Total: {total} | Success: {success_count} ({success_pct:.1f}%) | Failed: {failure_count}")  # noqa: G004
         logger.info("=" * 180 + "\n")
 
     def close(self):

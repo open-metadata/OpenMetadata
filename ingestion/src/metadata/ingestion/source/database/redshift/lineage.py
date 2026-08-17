@@ -31,7 +31,7 @@ workflowConfig:
 """
 
 import traceback
-from typing import Iterator  # noqa: UP035
+from collections.abc import Iterator
 
 from sqlalchemy import text
 
@@ -119,7 +119,7 @@ class RedshiftLineageSource(RedshiftQueryParserSource, StoredProcedureLineageMix
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")  # noqa: G004
 
     def get_stored_procedure_sql_statement(self) -> str:
         """

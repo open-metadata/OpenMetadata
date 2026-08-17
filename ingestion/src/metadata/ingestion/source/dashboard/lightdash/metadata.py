@@ -11,7 +11,8 @@
 """Lightdash source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -58,7 +59,7 @@ class LightdashSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: LightdashConnection = config.serviceConnection.root.config
         if not isinstance(connection, LightdashConnection):
@@ -71,18 +72,18 @@ class LightdashSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.spaces: List[LightdashSpace] = []  # noqa: UP006
-        self.charts: List[LightdashChart] = []  # noqa: UP006
+        self.spaces: list[LightdashSpace] = []
+        self.charts: list[LightdashChart] = []
 
     def prepare(self):
         self.spaces = self.client.get_spaces()
         self.charts = self.client.get_charts_list()
         return super().prepare()
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: Any) -> str | None:
         return self.client.get_project_name(dashboard_details.projectUuid)
 
-    def get_dashboards_list(self) -> Optional[List[LightdashDashboard]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[LightdashDashboard] | None:
         """
         Get List of all dashboards
         """
@@ -135,7 +136,7 @@ class LightdashSource(DashboardServiceSource):
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating dashboard [{dashboard_details.name}]: {exc}")
+            logger.warning(f"Error creating dashboard [{dashboard_details.name}]: {exc}")  # noqa: G004
 
     def yield_dashboard_chart(self, dashboard_details: LightdashDashboard) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
@@ -146,7 +147,7 @@ class LightdashSource(DashboardServiceSource):
             Iterable[CreateChartRequest]
         """
         # charts = self.charts
-        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")
+        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")  # noqa: G004
         for chart in dashboard_details.charts:
             try:
                 chart_url = (
@@ -171,14 +172,14 @@ class LightdashSource(DashboardServiceSource):
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
+                logger.warning(f"Error creating chart [{chart}]: {exc}")  # noqa: G004
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LightdashDashboard,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-        _: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Iterable[AddLineageRequest]]:  # noqa: UP045
+        db_service_prefix: str | None = None,
+        _: str | None = None,
+    ) -> Iterable[AddLineageRequest] | None:
         """Get lineage method
 
         Args:

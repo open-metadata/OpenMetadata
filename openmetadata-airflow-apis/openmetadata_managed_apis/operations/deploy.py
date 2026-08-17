@@ -12,7 +12,6 @@ import json
 import pkgutil
 import traceback
 from pathlib import Path
-from typing import Dict  # noqa: UP035
 
 import airflow
 from airflow import DAG, settings
@@ -80,7 +79,7 @@ class DagDeployer:
     """
 
     def __init__(self, ingestion_pipeline: IngestionPipeline):
-        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")
+        logger.info(f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}")  # noqa: G004
         # we need to instantiate the secret manager in case secrets are passed
         SecretsManagerFactory(
             ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
@@ -89,7 +88,7 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
-    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> Dict[str, str]:  # noqa: UP006
+    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> dict[str, str]:
         """
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
@@ -97,13 +96,13 @@ class DagDeployer:
         # Create directory if it doesn't exist
         dag_config_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Saving file to {dag_config_file_path}")
+        logger.info(f"Saving file to {dag_config_file_path}")  # noqa: G004
         with open(dag_config_file_path, "w") as outfile:  # noqa: PTH123
             outfile.write(dump_with_safe_jwt(self.ingestion_pipeline))
 
         return {"workflow_config_file": str(dag_config_file_path)}
 
-    def store_and_validate_dag_file(self, dag_runner_config: Dict[str, str]) -> str:  # noqa: UP006
+    def store_and_validate_dag_file(self, dag_runner_config: dict[str, str]) -> str:
         """
         Stores the Python file generating the DAG and returns
         the rendered strings
@@ -128,7 +127,7 @@ class DagDeployer:
             dag_file = import_path(str(dag_py_file))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")
+            logger.error(f"Failed to import dag_file [{dag_py_file}]: {exc}")  # noqa: G004
             raise exc  # noqa: TRY201
 
         if dag_file is None:
@@ -178,7 +177,7 @@ class DagDeployer:
         Run all methods to deploy the DAG
         """
         dag_config_file_path = Path(DAG_GENERATED_CONFIGS) / f"{self.dag_id}.json"
-        logger.info(f"Config file under {dag_config_file_path}")
+        logger.info(f"Config file under {dag_config_file_path}")  # noqa: G004
 
         dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)

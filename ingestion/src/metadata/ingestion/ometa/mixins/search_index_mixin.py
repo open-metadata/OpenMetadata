@@ -15,7 +15,6 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.data.searchIndex import (
@@ -39,7 +38,7 @@ class OMetaSearchIndexMixin:
 
     def ingest_search_index_sample_data(
         self, search_index: SearchIndex, sample_data: SearchIndexSampleData
-    ) -> Optional[SearchIndexSampleData]:  # noqa: UP045
+    ) -> SearchIndexSampleData | None:
         """
         PUT sample data for a search index
 
@@ -54,7 +53,7 @@ class OMetaSearchIndexMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT sample data for {search_index.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to PUT sample data for {search_index.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -62,12 +61,12 @@ class OMetaSearchIndexMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {search_index.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {search_index.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data resultsfrom {search_index.fullyQualifiedName.root}: {exc}"
+                    f"Error trying to parse sample data resultsfrom {search_index.fullyQualifiedName.root}: {exc}"  # noqa: G004
                 )
 
         return None
@@ -77,7 +76,7 @@ class OMetaSearchIndexMixin:
             self.client.post(f"{self.get_suffix(App)}/trigger/SearchIndexingApplication")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to reindex the search index: {exc}")
+            logger.error(f"Error trying to reindex the search index: {exc}")  # noqa: G004
             raise exc  # noqa: TRY201
 
     def is_reindex_app_running(self) -> bool:

@@ -15,7 +15,7 @@ Helpers module for db sources
 
 import time
 import traceback
-from typing import Iterable, List, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -55,7 +55,7 @@ def get_host_from_host_port(uri: str) -> str:
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    service_names: str | list[str],
     connection_type: str,
     timeout_seconds: int,
     parser_type: QueryParserType,
@@ -85,14 +85,14 @@ def get_view_lineage(
     )
 
     if not view_definition:
-        logger.warning(f"View definition for view {table_fqn} not available")
+        logger.warning(f"View definition for view {table_fqn} not available")  # noqa: G004
         return
 
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         start_time = time.time()
-        logger.debug(f"Processing view lineage for: {table_fqn}")
+        logger.debug(f"Processing view lineage for: {table_fqn}")  # noqa: G004
         lineage_parser = LineageParser(
             view_definition,
             dialect,
@@ -116,7 +116,7 @@ def get_view_lineage(
 
         end_time = time.time()
         logger.debug(
-            f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
+            f"[{query_hash}] Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"  # noqa: G004
         )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from (
@@ -154,4 +154,4 @@ def get_view_lineage(
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")
+        logger.warning(f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}")  # noqa: G004

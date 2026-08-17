@@ -22,7 +22,7 @@ import json
 import math
 import traceback
 import uuid
-from typing import Dict, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import TypeVar
 
 from pydantic import BaseModel, validate_call
 
@@ -168,7 +168,7 @@ class OMetaTableMixin:
 
     client: REST
 
-    def ingest_table_sample_data(self, table: Table, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
+    def ingest_table_sample_data(self, table: Table, sample_data: TableData) -> TableData | None:
         """
         PUT sample data for a table
 
@@ -193,7 +193,7 @@ class OMetaTableMixin:
             except Exception as _:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error serializing sample data for {table.fullyQualifiedName.root}"
+                    f"Error serializing sample data for {table.fullyQualifiedName.root}"  # noqa: G004
                     " please check if the data is valid"
                 )
                 return None
@@ -205,7 +205,7 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to PUT sample data for {table.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -213,15 +213,15 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")
+                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         return None
 
-    def get_sample_data(self, table: Table) -> Optional[Table]:  # noqa: UP045
+    def get_sample_data(self, table: Table) -> Table | None:
         """
         GET call for the /sampleData endpoint for a given Table
 
@@ -234,7 +234,7 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to GET sample data for {table.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -242,11 +242,11 @@ class OMetaTableMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")
+                logger.warning(f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         return None
 
@@ -260,13 +260,13 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to DELETE sample data for {table.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to DELETE sample data for {table.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
     def add_pipeline_observability(
         self,
         table_id: Uuid,
-        pipeline_observability: List[PipelineObservability],  # noqa: UP006
-    ) -> Optional[Table]:  # noqa: UP045
+        pipeline_observability: list[PipelineObservability],
+    ) -> Table | None:
         """
         PUT pipeline observability data for a table (bulk method)
 
@@ -281,7 +281,7 @@ class OMetaTableMixin:
                 data = json.dumps(data_list)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error serializing pipeline observability data for table {table_id.root}: {exc}")
+                logger.warning(f"Error serializing pipeline observability data for table {table_id.root}: {exc}")  # noqa: G004
                 return None
 
             resp = self.client.put(
@@ -290,20 +290,20 @@ class OMetaTableMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}")
+            logger.warning(f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
                 return Table(**resp)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}")
+                logger.warning(f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}")  # noqa: G004
 
         return None
 
     def add_single_pipeline_observability(
         self, table_id: Uuid, pipeline_observability: PipelineObservability
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         PUT single pipeline observability data for a table (individual method for append/update logic)
 
@@ -322,7 +322,7 @@ class OMetaTableMixin:
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Error serializing single pipeline observability data for table {table_id.root}: {exc}"
+                        f"Error serializing single pipeline observability data for table {table_id.root}: {exc}"  # noqa: G004
                     )
                     return None
 
@@ -331,11 +331,11 @@ class OMetaTableMixin:
                     data=data,
                 )
             else:
-                logger.warning(f"Pipeline FQN missing in observability data for table {table_id.root}")
+                logger.warning(f"Pipeline FQN missing in observability data for table {table_id.root}")  # noqa: G004
                 return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}")
+            logger.warning(f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -343,7 +343,7 @@ class OMetaTableMixin:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse single pipeline observability results for table {table_id.root}: {exc}"
+                    f"Error trying to parse single pipeline observability results for table {table_id.root}: {exc}"  # noqa: G004
                 )
 
         return None
@@ -422,7 +422,7 @@ class OMetaTableMixin:
 
     def create_or_update_table_profiler_config(
         self, fqn: str, table_profiler_config: TableProfilerConfig
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         Update the profileSample property of a Table, given
         its FQN.
@@ -448,7 +448,7 @@ class OMetaTableMixin:
         end_ts: int,
         limit=100,
         after=None,
-        profile_type: Type[T] = TableProfile,  # noqa: UP006
+        profile_type: type[T] = TableProfile,
     ) -> EntityList[T]:
         """Get profile data
 
@@ -476,12 +476,12 @@ class OMetaTableMixin:
         )
 
         if profile_type in (TableProfile, SystemProfile):
-            data: List[T] = [profile_type(**datum) for datum in resp["data"]]  # type: ignore  # noqa: UP006
+            data: list[T] = [profile_type(**datum) for datum in resp["data"]]  # type: ignore
         elif profile_type is ColumnProfile:
             split_fqn = fqn.split(".")
             if len(split_fqn) < 5:
                 raise ValueError(f"{fqn} is not a column fqn")
-            data: List[T] = [ColumnProfile(**datum) for datum in resp["data"]]  # type: ignore  # noqa: UP006
+            data: list[T] = [ColumnProfile(**datum) for datum in resp["data"]]  # type: ignore
         else:
             raise TypeError(f"{profile_type} is not an accepeted type.Type must be `TableProfile` or `ColumnProfile`")
         total = resp["paging"]["total"]
@@ -489,7 +489,7 @@ class OMetaTableMixin:
 
         return EntityList(entities=data, total=total, after=after)
 
-    def get_latest_table_profile(self, fqn: FullyQualifiedEntityName) -> Optional[Table]:  # noqa: UP045
+    def get_latest_table_profile(self, fqn: FullyQualifiedEntityName) -> Table | None:
         """Get the latest profile data for a table
 
         Args:
@@ -543,9 +543,9 @@ class OMetaTableMixin:
     def get_table_columns(
         self,
         table_fqn: str,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
-    ) -> List[Column]:  # noqa: UP006
+        fields: list[str] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> list[Column]:
         uri = self.get_suffix(Table) + "/name/" + quote(table_fqn) + "/columns"
 
         url_fields = f"?fields={','.join(fields)}" if fields else ""

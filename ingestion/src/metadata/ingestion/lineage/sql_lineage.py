@@ -16,8 +16,9 @@ import functools
 import itertools
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
+from typing import Any, cast
 
 import networkx as nx
 from collate_sqllineage.core.holders import SQLLineageHolder
@@ -70,10 +71,10 @@ NODE_PROCESSING_TIMEOUT = 30  # seconds
 def get_column_fqn(
     table_entity: Table,
     column: str,
-    table: Optional[str] = None,  # noqa: UP045
-    schema: Optional[str] = None,  # noqa: UP045
-    database: Optional[str] = None,  # noqa: UP045
-) -> Optional[str]:  # noqa: UP045
+    table: str | None = None,
+    schema: str | None = None,
+    database: str | None = None,
+) -> str | None:
     """
     Get fqn of column if exist in table entity
     """
@@ -92,7 +93,7 @@ def get_column_fqn(
         except Exception as e:
             logger.debug(traceback.format_exc())
             logger.debug(
-                f"Error getting column FQN for column [{column}] in"
+                f"Error getting column FQN for column [{column}] in"  # noqa: G004
                 f"table [{table_entity.fullyQualifiedName}] for column [{tbl_column}]: {e}"
             )
 
@@ -103,7 +104,7 @@ search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
 
 
-def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Optional[str]:  # noqa: UP045
+def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
     """
     Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
 
@@ -124,7 +125,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Opti
             fqn_search_string=service_name,
         )
 
-        service: Optional[DatabaseService] = None  # noqa: UP045
+        service: DatabaseService | None = None
         if es_result_entities:
             service = es_result_entities[0] if es_result_entities else None
 
@@ -134,7 +135,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Opti
 
         if service:
             service_type = service.connection.config.type.value.lower()
-            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")
+            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")  # noqa: G004
 
             # cache the result
             database_service_type_cache.put(service_name, service_type)
@@ -142,7 +143,7 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Opti
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")
+        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")  # noqa: G004
 
     return None
 
@@ -150,9 +151,9 @@ def get_database_service_type(metadata: OpenMetadata, service_name: str) -> Opti
 def normalize_table_params_by_service(
     metadata: OpenMetadata,
     service_name: str,
-    database: Optional[str],  # noqa: UP045
-    database_schema: Optional[str],  # noqa: UP045
-) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+    database: str | None,
+    database_schema: str | None,
+) -> tuple[str | None, str | None]:
     """
     Normalize database and schema parameters based on service type.
 
@@ -179,11 +180,11 @@ def normalize_table_params_by_service(
 
 def search_table_entities(
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
-    database: Optional[str],  # noqa: UP045
-    database_schema: Optional[str],  # noqa: UP045
+    service_names: str | list[str],
+    database: str | None,
+    database_schema: str | None,
     table: str,
-) -> Optional[List[Table]]:  # noqa: UP006, UP045
+) -> list[Table] | None:
     """
     Method to get table entity from database, database_schema & table name.
     Now supports searching across multiple services (cross-database lineage).
@@ -200,7 +201,7 @@ def search_table_entities(
     """
     if not table:
         logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
+            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"  # noqa: G004
         )
         return None
 
@@ -220,7 +221,7 @@ def search_table_entities(
                 return result
 
         try:
-            table_entities: Optional[List[Table]] = []  # noqa: UP006, UP045
+            table_entities: list[Table] | None = []
 
             # search on ES first
             fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
@@ -254,14 +255,14 @@ def search_table_entities(
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
+            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")  # noqa: G004
 
     return None
 
 
 def get_table_fqn_from_query_name(
     table_name: str,
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
+) -> tuple[str | None, str | None, str | None]:
     """
     Method to extract database, schema and table name
     from raw table name used in query
@@ -274,7 +275,7 @@ def get_table_fqn_from_query_name(
     """
 
     split_table = fqn.split_raw_name(table_name)
-    empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat  # noqa: UP006
+    empty_list: list[Any] = [None]  # Otherwise, there's a typing error in the concat
 
     if len(split_table) > 3:
         # In case of bigquery, it is possible that tables within information schema when
@@ -289,7 +290,7 @@ def get_table_fqn_from_query_name(
         database_query, schema_query, table = (empty_list * (3 - len(split_table))) + split_table
 
         logger.debug(
-            f"[UsageSink] Extracted components before cleanup -> "
+            f"[UsageSink] Extracted components before cleanup -> "  # noqa: G004
             f"database: {database_query}, schema: {schema_query}, table: {table}"
         )
 
@@ -340,7 +341,7 @@ def __process_column_mappings(mappings: dict, result: dict, source_table: str, i
 
 def handle_udf_column_lineage(
     column_lineage_original: dict,
-    column_lineage_generated: List[Tuple[Column, Column]],  # noqa: UP006
+    column_lineage_generated: list[tuple[Column, Column]],
 ):
     """
     Handle UDF column lineage
@@ -354,7 +355,7 @@ def handle_udf_column_lineage(
         column_lineage_original.update(result)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error handling UDF column lineage: {exc}")
+        logger.error(f"Error handling UDF column lineage: {exc}")  # noqa: G004
 
 
 @functools.lru_cache(maxsize=1000)
@@ -363,7 +364,7 @@ def _get_udf_parser(
     dialect: Dialect,
     timeout_seconds: int,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[LineageParser]:  # noqa: UP045
+) -> LineageParser | None:
     if code:
         return LineageParser(
             f"create table dummy_table_name as {code}",
@@ -410,21 +411,21 @@ def _replace_target_table(parser: LineageParser, expected_table_name: str) -> Li
         parser.parser._sql_holder = SQLLineageHolder.of(*parser.parser._stmt_holders)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.debug(f"Error replacing target table: {exc}")
+        logger.debug(f"Error replacing target table: {exc}")  # noqa: G004
 
 
 # pylint: disable=too-many-arguments
 def __process_udf_es_results(
     metadata: OpenMetadata,
     dialect: Dialect,
-    source_table: Union[DataFunction, LineageTable],  # noqa: UP007
-    database_name: Optional[str],  # noqa: UP045
-    schema_name: Optional[str],  # noqa: UP045
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    source_table: DataFunction | LineageTable,
+    database_name: str | None,
+    schema_name: str | None,
+    service_names: str | list[str],
     timeout_seconds: int,
     column_lineage: dict,
-    es_result_entities: List[StoredProcedure],  # noqa: UP006
-    procedure: Optional[StoredProcedure] = None,  # noqa: UP045
+    es_result_entities: list[StoredProcedure],
+    procedure: StoredProcedure | None = None,
 ):
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -459,13 +460,13 @@ def __process_udf_es_results(
 def __process_udf_table_names(
     metadata: OpenMetadata,
     dialect: Dialect,
-    source_table: Union[DataFunction, LineageTable],  # noqa: UP007
-    database_name: Optional[str],  # noqa: UP045
-    schema_name: Optional[str],  # noqa: UP045
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    source_table: DataFunction | LineageTable,
+    database_name: str | None,
+    schema_name: str | None,
+    service_names: str | list[str],
     timeout_seconds: int,
     column_lineage: dict,
-    procedure: Optional[StoredProcedure] = None,  # noqa: UP045
+    procedure: StoredProcedure | None = None,
 ):
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -477,7 +478,7 @@ def __process_udf_table_names(
         service_name=service_names[0],  # Use first service for table entity lookup
         table_name=table,
     )
-    es_result_entities: Optional[List[StoredProcedure]] = metadata.es_search_from_fqn(  # noqa: UP006, UP045
+    es_result_entities: list[StoredProcedure] | None = metadata.es_search_from_fqn(
         entity_type=StoredProcedure,
         fqn_search_string=function_fqn_string,
     )
@@ -499,14 +500,14 @@ def __process_udf_table_names(
 def get_source_table_names(
     metadata: OpenMetadata,
     dialect: Dialect,
-    source_table: Union[DataFunction, LineageTable],  # noqa: UP007
-    database_name: Optional[str],  # noqa: UP045
-    schema_name: Optional[str],  # noqa: UP045
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    source_table: DataFunction | LineageTable,
+    database_name: str | None,
+    schema_name: str | None,
+    service_names: str | list[str],
     timeout_seconds: int,
     column_lineage: dict,
-    procedure: Optional[StoredProcedure] = None,  # noqa: UP045
-) -> Iterable[Tuple[Optional[EntityReference], str]]:  # noqa: UP006, UP045
+    procedure: StoredProcedure | None = None,
+) -> Iterable[tuple[EntityReference | None, str]]:
     """
     Get source table names from DataFunction
     """
@@ -534,17 +535,17 @@ def get_source_table_names(
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")
+        logger.error(f"Error getting source table names for table [{source_table}]: {exc}")  # noqa: G004
 
 
 def get_table_entities_from_query(
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    service_names: str | list[str],
     database_name: str,
     database_schema: str,
     table_name: str,
     schema_fallback: bool = False,
-) -> Optional[List[Table]]:  # noqa: UP006, UP045
+) -> list[Table] | None:
     """
     Fetch data from API and ES with a fallback strategy.
 
@@ -593,7 +594,7 @@ def get_column_lineage(
     to_table_raw_name: str,
     from_table_raw_name: str,
     column_lineage_map: dict,
-) -> List[ColumnLineage]:  # noqa: UP006
+) -> list[ColumnLineage]:
     """Get column lineage
 
     Args:
@@ -632,8 +633,8 @@ def _build_table_lineage(
     masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    procedure: Optional[EntityReference] = None,  # noqa: UP045
-    temp_lineage_tables: Optional[List] = None,  # noqa: UP006, UP045
+    procedure: EntityReference | None = None,
+    temp_lineage_tables: list | None = None,
 ) -> Either[LineageRequest]:
     """
     Prepare the lineage request generator
@@ -702,14 +703,14 @@ def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
     to_table: str,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
-    database_name: Optional[str],  # noqa: UP045
-    schema_name: Optional[str],  # noqa: UP045
+    service_names: str | list[str],
+    database_name: str | None,
+    schema_name: str | None,
     masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    procedure: Optional[EntityReference] = None,  # noqa: UP045
-    graph: Optional[DiGraph] = None,  # noqa: UP045
+    procedure: EntityReference | None = None,
+    graph: DiGraph | None = None,
     schema_fallback: bool = False,
 ) -> Iterable[Either[LineageRequest]]:
     """
@@ -742,7 +743,7 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                logger.debug(f"WARNING: Table entity [{table_name}] not found in OpenMetadata")
+                logger.debug(f"WARNING: Table entity [{table_name}] not found in OpenMetadata")  # noqa: G004
         if graph is not None and (not from_table_entities or not to_table_entities):
             # Add nodes and edges with minimal data
             graph.add_node(
@@ -811,17 +812,17 @@ def populate_column_lineage_map(raw_column_lineage):
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
-    database_name: Optional[str],  # noqa: UP045
-    schema_name: Optional[str],  # noqa: UP045
+    service_names: str | list[str],
+    database_name: str | None,
+    schema_name: str | None,
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    graph: Optional[DiGraph] = None,  # noqa: UP045
-    lineage_parser: Optional[LineageParser] = None,  # noqa: UP045
+    graph: DiGraph | None = None,
+    lineage_parser: LineageParser | None = None,
     schema_fallback: bool = False,
-    service_name: Optional[str] = None,  # backward compatibility for python sdk  # noqa: UP045
+    service_name: str | None = None,  # backward compatibility for python sdk
     parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[LineageRequest]]:
     """
@@ -842,7 +843,7 @@ def get_lineage_by_query(
             lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
-        logger.debug(f"[{query_hash}] Running lineage with query: {masked_query or query}")
+        logger.debug(f"[{query_hash}] Running lineage with query: {masked_query or query}")  # noqa: G004
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -929,13 +930,13 @@ def get_lineage_via_table_entity(
     table_entity: Table,
     database_name: str,
     schema_name: str,
-    service_names: Union[str, List[str]],  # noqa: UP006, UP007
+    service_names: str | list[str],
     query: str,
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-    graph: Optional[DiGraph] = None,  # noqa: UP045
-    lineage_parser: Optional[LineageParser] = None,  # noqa: UP045
+    graph: DiGraph | None = None,
+    lineage_parser: LineageParser | None = None,
     schema_fallback: bool = False,
     parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[LineageRequest]]:
@@ -949,7 +950,7 @@ def get_lineage_via_table_entity(
             lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
         masked_query = lineage_parser.masked_query
         query_hash = lineage_parser.query_hash
-        logger.debug(f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}")
+        logger.debug(f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}")  # noqa: G004
         to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
@@ -994,10 +995,10 @@ def get_lineage_via_table_entity(
 
 
 def _build_temp_table_lineage(
-    table_chain: List[str],  # noqa: UP006
+    table_chain: list[str],
     from_fqn: str,
     to_fqn: str,
-) -> List:  # noqa: UP006
+) -> list:
     """
     Build a list of lineage hops through temporary/intermediate tables.
 
@@ -1025,10 +1026,10 @@ def _get_lineage_for_path(
     to_fqn: str,
     from_node: Any,
     current_node: Any,
-    table_chain: List[str],  # noqa: UP006
+    table_chain: list[str],
     metadata: OpenMetadata,
-    merged_hops: Optional[List] = None,  # noqa: UP006, UP045
-) -> Optional[Either[LineageRequest]]:  # noqa: UP045
+    merged_hops: list | None = None,
+) -> Either[LineageRequest] | None:
     """
     Get lineage for a pair of FQNs in the path.
     If merged_hops is provided, uses those instead of computing from table_chain.
@@ -1065,16 +1066,16 @@ def _get_lineage_for_path(
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")
+        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")  # noqa: G004
     return None
 
 
 def _process_sequence(
-    sequence: List[Any],  # noqa: UP006
+    sequence: list[Any],
     graph: DiGraph,
     metadata: OpenMetadata,
-    hops_map: Optional[Dict[tuple, List]] = None,  # noqa: UP006, UP045
-    seen_pairs: Optional[set] = None,  # noqa: UP045
+    hops_map: dict[tuple, list] | None = None,
+    seen_pairs: set | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     Process a sequence of nodes to generate lineage information.
@@ -1116,10 +1117,10 @@ def _process_sequence(
                 table_chain = [str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", "")]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error creating lineage for node [{node}]: {exc}")
+            logger.error(f"Error creating lineage for node [{node}]: {exc}")  # noqa: G004
 
 
-def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:  # noqa: UP006
+def _get_paths_from_subtree(subtree: DiGraph) -> list[list[Any]]:
     """
     Get all paths from root nodes to leaf nodes in a subtree
     """
@@ -1142,7 +1143,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:  # noqa: UP006
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
     def process_root_node(root, leaf_nodes):
         """Process a single root node and return all paths to leaf nodes."""
-        logger.debug(f"Processing root node {root}")
+        logger.debug(f"Processing root node {root}")  # noqa: G004
         node_paths = []
         for leaf in leaf_nodes:
             node_paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
@@ -1154,20 +1155,20 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:  # noqa: UP006
             root_paths = process_root_node(root, leaf_set)
             paths.extend(root_paths)
         except TimeoutError:
-            logger.warning(f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds")
+            logger.warning(f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds")  # noqa: G004
     return paths
 
 
-def _collect_temp_lineage_hops(paths: List[List[Any]], graph: DiGraph) -> Dict[tuple, List]:  # noqa: UP006
+def _collect_temp_lineage_hops(paths: list[list[Any]], graph: DiGraph) -> dict[tuple, list]:
     """
     Pre-compute all temp lineage hops per (from_fqn, to_fqn) pair from paths.
     This walks through each path without making any ES calls, collecting only
     the lightweight TempLineageTable objects grouped by endpoint FQN pair.
     """
-    hops_map: Dict[tuple, List] = {}  # noqa: UP006
+    hops_map: dict[tuple, list] = {}
     for sequence in paths:
         from_node = None
-        table_chain: List[str] = []  # noqa: UP006
+        table_chain: list[str] = []
         for node in sequence:
             current_node = graph.nodes[node]
             current_fqns = current_node.get("fqns", [])
@@ -1189,7 +1190,7 @@ def _collect_temp_lineage_hops(paths: List[List[Any]], graph: DiGraph) -> Dict[t
 
 
 def get_lineage_by_graph(
-    graph: Optional[DiGraph],  # noqa: UP045
+    graph: DiGraph | None,
     metadata: OpenMetadata,
 ) -> Iterable[Either[LineageRequest]]:
     """
@@ -1206,7 +1207,7 @@ def get_lineage_by_graph(
     if graph is None:
         return
 
-    logger.info(f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")
+    logger.info(f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")  # noqa: G004
     # Get all weakly connected components
     components = list(nx.weakly_connected_components(graph))
 
@@ -1221,7 +1222,7 @@ def get_lineage_by_graph(
 
 
 def get_lineage_by_procedure_graph(
-    procedure_graph_map: Optional[Dict],  # noqa: UP006, UP045
+    procedure_graph_map: dict | None,
     metadata: OpenMetadata,
 ) -> Iterable[Either[LineageRequest]]:
     """

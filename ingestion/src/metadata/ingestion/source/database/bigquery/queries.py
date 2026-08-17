@@ -14,7 +14,6 @@ SQL Queries used during ingestion
 
 import textwrap
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import text
@@ -256,9 +255,9 @@ class BigQueryQueryResult(BaseModel):
     project_id: str
     dataset_id: str
     table_name: str
-    inserted_row_count: Optional[int] = None  # noqa: UP045
-    deleted_row_count: Optional[int] = None  # noqa: UP045
-    updated_row_count: Optional[int] = None  # noqa: UP045
+    inserted_row_count: int | None = None
+    deleted_row_count: int | None = None
+    updated_row_count: int | None = None
     start_time: datetime
     statement_type: str
 
@@ -268,7 +267,7 @@ class BigQueryQueryResult(BaseModel):
         usage_location: str,
         dataset_id: str,
         project_id: str,
-        billing_project_id: Optional[str] = None,  # noqa: UP045
+        billing_project_id: str | None = None,
     ):
         # Use billing project for the INFORMATION_SCHEMA query if provided
         query_project_id = billing_project_id or project_id
@@ -288,7 +287,7 @@ class BigQueryQueryResult(BaseModel):
             )
         )
 
-        return TypeAdapter(List[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])  # noqa: UP006
+        return TypeAdapter(list[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])
 
 
 JOBS = """

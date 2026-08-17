@@ -13,7 +13,7 @@ Google Cloud Pub/Sub source ingestion
 """
 
 import traceback
-from typing import Iterable, List, Optional, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from google.api_core.exceptions import GoogleAPIError
 from google.protobuf.duration_pb2 import Duration
@@ -82,7 +82,7 @@ class PubsubSource(MessagingServiceSource):
         self.project_id = self.pubsub.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PubSubConnection = config.serviceConnection.root.config
         if not isinstance(connection, PubSubConnection):
@@ -103,7 +103,7 @@ class PubsubSource(MessagingServiceSource):
                     dead_letter_topics.add(sub.dead_letter_policy.dead_letter_topic)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to list subscriptions for dead letter detection: {err}")
+            logger.warning(f"Failed to list subscriptions for dead letter detection: {err}")  # noqa: G004
         return dead_letter_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
@@ -119,7 +119,7 @@ class PubsubSource(MessagingServiceSource):
             topics = self.pubsub.publisher.list_topics(request={"project": project_path})
             for topic in topics:
                 if topic.name in dead_letter_topics:
-                    logger.debug(f"Skipping dead letter topic: {topic.name}")
+                    logger.debug(f"Skipping dead letter topic: {topic.name}")  # noqa: G004
                     continue
                 topic_name = topic.name.split("/")[-1]
                 try:
@@ -130,10 +130,10 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to get metadata for topic {topic_name}: {err}")
+                    logger.warning(f"Failed to get metadata for topic {topic_name}: {err}")  # noqa: G004
         except GoogleAPIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list topics from Pub/Sub: {err}")
+            logger.error(f"Failed to list topics from Pub/Sub: {err}")  # noqa: G004
 
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
@@ -168,7 +168,7 @@ class PubsubSource(MessagingServiceSource):
             kms_key_name=topic.kms_key_name if topic.kms_key_name else None,
         )
 
-    def _get_topic_subscriptions(self, topic_name: str) -> List[PubSubSubscription]:  # noqa: UP006
+    def _get_topic_subscriptions(self, topic_name: str) -> list[PubSubSubscription]:
         """
         Get all subscriptions for a topic
         """
@@ -204,13 +204,13 @@ class PubsubSource(MessagingServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to get subscription {sub_path}: {err}")
+                    logger.error(f"Failed to get subscription {sub_path}: {err}")  # noqa: G004
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")
+            logger.error(f"Failed to list subscriptions for {topic_name}: {err}")  # noqa: G004
         return subscriptions
 
-    def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:  # noqa: UP045
+    def _get_schema_info(self, schema_name: str) -> PubSubSchemaInfo | None:
         """
         Get schema information from Pub/Sub Schema Registry
         """
@@ -227,7 +227,7 @@ class PubsubSource(MessagingServiceSource):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get schema {schema_name}: {err}")
+            logger.error(f"Failed to get schema {schema_name}: {err}")  # noqa: G004
         return None
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
@@ -235,7 +235,7 @@ class PubsubSource(MessagingServiceSource):
         Method to yield the create topic request
         """
         try:
-            logger.info(f"Fetching topic details {topic_details.topic_name}")
+            logger.info(f"Fetching topic details {topic_details.topic_name}")  # noqa: G004
 
             metadata: PubSubTopicMetadata = topic_details.topic_metadata
 
@@ -289,7 +289,7 @@ class PubsubSource(MessagingServiceSource):
                 )
             )
 
-    def _parse_retention(self, duration: Optional[Union[Duration, str]]) -> float:  # noqa: UP007, UP045
+    def _parse_retention(self, duration: Duration | str | None) -> float:
         """
         Parse retention duration to milliseconds.
 
@@ -314,7 +314,7 @@ class PubsubSource(MessagingServiceSource):
             if duration_str.endswith("s"):
                 return float(duration_str[:-1]) * 1000
         except (ValueError, IndexError, AttributeError):
-            logger.debug(f"Failed to parse duration: {duration}")
+            logger.debug(f"Failed to parse duration: {duration}")  # noqa: G004
         return 0.0
 
     def _map_schema_type(self, pubsub_type: str) -> SchemaType:
@@ -327,7 +327,7 @@ class PubsubSource(MessagingServiceSource):
         }
         return mapping.get(pubsub_type, SchemaType.Other)
 
-    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> Optional[List]:  # noqa: UP006, UP045
+    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> list | None:
         """
         Parse schema text using the schema parser registry.
 
@@ -345,7 +345,7 @@ class PubsubSource(MessagingServiceSource):
                 return load_parser_fn(topic_name, schema_text)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to parse schema for {topic_name}: {exc}")
+            logger.error(f"Failed to parse schema for {topic_name}: {exc}")  # noqa: G004
         return None
 
     def yield_topic_sample_data(self, topic_details: BrokerTopicDetails) -> Iterable[Either[OMetaTopicSampleData]]:
@@ -365,7 +365,7 @@ class PubsubSource(MessagingServiceSource):
             return
 
         logger.info(
-            f"Sample data extraction for Pub/Sub topic {topic_details.topic_name} "
+            f"Sample data extraction for Pub/Sub topic {topic_details.topic_name} "  # noqa: G004
             "requires subscription-based message pulling, which is not "
             "implemented in this version."
         )
@@ -388,14 +388,14 @@ class PubsubSource(MessagingServiceSource):
                 parts = bq_table_ref.split(".")
                 if len(parts) < 3:
                     logger.debug(
-                        f"BigQuery table reference '{bq_table_ref}' does not match "
+                        f"BigQuery table reference '{bq_table_ref}' does not match "  # noqa: G004
                         f"expected 'project.dataset.table' format"
                     )
                     continue
 
                 if len(parts) > 3:
                     logger.warning(
-                        f"BigQuery table reference '{bq_table_ref}' has "
+                        f"BigQuery table reference '{bq_table_ref}' has "  # noqa: G004
                         f"{len(parts)} dot-separated segments, expected 3 "
                         f"('project.dataset.table'). Using first 3 segments."
                     )
@@ -414,7 +414,7 @@ class PubsubSource(MessagingServiceSource):
                 )
                 if not table_entity:
                     logger.debug(
-                        f"BigQuery table {bq_table_ref} not found for lineage from topic {topic_details.topic_name}"
+                        f"BigQuery table {bq_table_ref} not found for lineage from topic {topic_details.topic_name}"  # noqa: G004
                     )
                     continue
 
@@ -451,4 +451,4 @@ class PubsubSource(MessagingServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to create lineage for subscription {subscription.name}: {exc}")
+                logger.warning(f"Failed to create lineage for subscription {subscription.name}: {exc}")  # noqa: G004

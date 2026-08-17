@@ -14,7 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Callable, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -149,7 +150,7 @@ class PandasInterfaceMixin:
                     for df in dfs():
                         yield df.sample(frac=percentage / 100)
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")
+                    logger.error(f"Error sampling dataframes based on percentage {static.profileSample}: {exc}")  # noqa: G004
             elif static and static.profileSampleType == ProfileSampleType.ROWS:
                 try:
                     rows = static.profileSample or 0
@@ -163,7 +164,7 @@ class PandasInterfaceMixin:
                         if streamed_rows >= rows:
                             break
                 except Exception as exc:
-                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")
+                    logger.error(f"Error sampling dataframes based on rows {static.profileSample}: {exc}")  # noqa: G004
             else:
                 logger.warning("Sample type not recognized. Returning un-sampled dataframes.")
                 yield from dfs()
