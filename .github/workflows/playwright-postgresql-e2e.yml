@@ -76,7 +76,7 @@ concurrency:
   # the other does the real work; sharing a group would let the "skip" event
   # cancel an in-flight real run.
   group: playwright-ci-postgresql-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   # Fork-vs-same-repo PR arbitration. GitHub fires BOTH pull_request and
