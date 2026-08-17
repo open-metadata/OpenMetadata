@@ -11,12 +11,24 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import {
+  Actions,
+  Config,
+  FieldOrGroup,
+  JsonTree,
+} from '@react-awesome-query-builder/antd';
 import { Plus } from '@untitledui/icons';
-import { useCallback, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
+import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
+import {
+  getTreeConfig,
+  processEntityTypeFields,
+} from '../../../../../utils/AdvancedSearchUtils';
 import { getRuleFilterTree } from '../../../../../utils/PersonaAIContextUtils';
+import searchClassBase from '../../../../../utils/SearchClassBase';
 import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider';
 import QueryBuilderWidgetV1 from '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -40,6 +52,52 @@ export const RuleQueryBuilderField = ({
 }: RuleQueryBuilderFieldProps) => {
   const { t } = useTranslation();
   const [queryActions, setQueryActions] = useState<Actions>();
+  const [enrichedFields, setEnrichedFields] = useState<
+    Config['fields'] | undefined
+  >();
+  const cancelRef = useRef(0);
+
+  useEffect(() => {
+    const requestId = ++cancelRef.current;
+
+    const loadCustomProperties = async () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      try {
+        const res = await getAllCustomProperties();
+        Object.entries(res).forEach(([resEntityType, fields]) => {
+          processEntityTypeFields(
+            resEntityType,
+            fields,
+            subfields,
+            entityType,
+            SearchOutputType.ElasticSearch
+          );
+        });
+      } catch {
+        // non-critical — custom properties unavailable, fall back to empty subfields
+      }
+
+      if (requestId !== cancelRef.current) {
+        return;
+      }
+
+      const searchIndex =
+        searchClassBase.getEntityTypeSearchIndexMapping()[entityType];
+      const baseConfig = getTreeConfig({
+        searchIndex,
+        searchOutputType: SearchOutputType.ElasticSearch,
+        isExplorePage: false,
+      });
+      const nextFields = { ...baseConfig.fields };
+      if (!isEmpty(subfields) && 'subfields' in nextFields.extension) {
+        nextFields.extension = { ...nextFields.extension, subfields };
+      }
+      setEnrichedFields(nextFields);
+    };
+
+    loadCustomProperties();
+  }, [entityType]);
+
   const tree = useMemo(
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
@@ -57,6 +115,7 @@ export const RuleQueryBuilderField = ({
     <DrawerPopupContainerProvider>
       <QueryBuilderWidgetV1
         entityType={entityType as EntityType}
+        fields={enrichedFields}
         getQueryActions={setQueryActions}
         outputType={SearchOutputType.ElasticSearch}
         readonly={readonly}
