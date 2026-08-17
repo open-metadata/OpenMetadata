@@ -45,6 +45,7 @@ SSL modes (in order of precedence):
 
 from __future__ import annotations
 
+# ruff: noqa: T201  -- CLI tool, print is intentional
 import argparse
 import json
 import os
@@ -92,7 +93,7 @@ def _lenient_validate_versions(self) -> None:
     try:
         _original_validate_versions(self)
     except Exception as exc:
-        print(  # noqa: T201
+        print(
             f"[warn] Version check skipped ({type(exc).__name__}: {exc})",
             file=sys.stderr,
         )
@@ -198,7 +199,7 @@ def _build_column(column_name: str) -> Column:
 
 def _print_results(tag_labels, verbose: bool) -> None:
     if not tag_labels:
-        print("No tags assigned.")  # noqa: T201
+        print("No tags assigned.")
         return
 
     for label in tag_labels:
@@ -210,7 +211,7 @@ def _print_results(tag_labels, verbose: bool) -> None:
             rec = label.metadata.recognizer
             if hasattr(rec, "score"):
                 line += f"  [score={rec.score:.3f}]"
-        print(line)  # noqa: T201
+        print(line)
 
 
 # ---------------------------------------------------------------------------
@@ -284,15 +285,15 @@ def main() -> None:
     values = _read_values(args.values_file, args.values)
 
     ssl_label = "no-ssl" if args.no_ssl_verify else ("validate" if args.ca_cert else "ignore")
-    print(f"Host          : {host}", file=sys.stderr)  # noqa: T201
-    print(f"SSL mode      : {ssl_label}", file=sys.stderr)  # noqa: T201
-    print(f"Column name   : {args.column_name}", file=sys.stderr)  # noqa: T201
-    print(f"Values        : {len(values)} item(s)", file=sys.stderr)  # noqa: T201
-    print(f"Confidence    : {args.confidence}", file=sys.stderr)  # noqa: T201
-    print(f"Language      : {args.language}", file=sys.stderr)  # noqa: T201
+    print(f"Host          : {host}", file=sys.stderr)
+    print(f"SSL mode      : {ssl_label}", file=sys.stderr)
+    print(f"Column name   : {args.column_name}", file=sys.stderr)
+    print(f"Values        : {len(values)} item(s)", file=sys.stderr)
+    print(f"Confidence    : {args.confidence}", file=sys.stderr)
+    print(f"Language      : {args.language}", file=sys.stderr)
     if args.classifications:
-        print(f"Classifications: {', '.join(args.classifications)}", file=sys.stderr)  # noqa: T201
-    print("", file=sys.stderr)  # noqa: T201
+        print(f"Classifications: {', '.join(args.classifications)}", file=sys.stderr)
+    print("", file=sys.stderr)
 
     ometa_conn = _build_ometa_connection(host, jwt_token, args.no_ssl_verify, args.ca_cert)
     metadata = OpenMetadata(ometa_conn)
@@ -307,7 +308,7 @@ def main() -> None:
     )
     workflow_config = parse_workflow_config_gracefully(workflow_config_dict)
 
-    print("Initializing TagProcessor (fetching classifications from server)...", file=sys.stderr)  # noqa: T201
+    print("Initializing TagProcessor (fetching classifications from server)...", file=sys.stderr)
     processor = TagProcessor(
         config=workflow_config,
         metadata=metadata,
@@ -316,7 +317,7 @@ def main() -> None:
 
     column = _build_column(args.column_name)
 
-    print("Running classification...", file=sys.stderr)  # noqa: T201
+    print("Running classification...", file=sys.stderr)
     tag_labels = processor.create_column_tag_labels(column=column, sample_data=values)
 
     if args.output_json:
@@ -329,14 +330,14 @@ def main() -> None:
             }
             for label in tag_labels
         ]
-        print(json.dumps(output, indent=2))  # noqa: T201
+        print(json.dumps(output, indent=2))
     else:
-        print(f"\nResults for column '{args.column_name}' ({len(values)} values):")  # noqa: T201
+        print(f"\nResults for column '{args.column_name}' ({len(values)} values):")
         if tag_labels:
-            print(f"  Tags assigned ({len(tag_labels)}):")  # noqa: T201
+            print(f"  Tags assigned ({len(tag_labels)}):")
             _print_results(tag_labels, args.verbose)
         else:
-            print("  No tags assigned.")  # noqa: T201
+            print("  No tags assigned.")
 
 
 if __name__ == "__main__":
