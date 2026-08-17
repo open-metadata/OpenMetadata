@@ -65,9 +65,10 @@ const SCROLL_MOVED_THRESHOLD_PX = 4;
  * report through `onScroll` indistinguishably from a real scroll: a jump to the
  * tail (the virtualised list lands approximately on a long jump, then corrects)
  * and a wrap/full-screen relayout (re-measuring every row moves both the content
- * height and the offset while the viewer re-pins the tail). Any user gesture —
- * wheel, scroll key, or pointer press — closes the window early, so the user is
- * never fought for the full duration.
+ * height and the offset while the viewer re-pins the tail). A wheel or scroll key
+ * closes the window immediately, and anything that keeps pulling away from the
+ * tail outruns it (see `UPWARD_MOVES_TO_TAKE_CONTROL`), so the user is never
+ * fought for the full duration.
  */
 const VIEWER_SCROLL_GRACE_MS = 1000;
 
@@ -78,6 +79,16 @@ const VIEWER_SCROLL_GRACE_MS = 1000;
  * the user scrolling back down and silently resume following.
  */
 const USER_PAUSE_GRACE_MS = 1000;
+
+/**
+ * How many scrolls in a row moving away from the tail take the log back from the
+ * viewer's catch-up. This is what covers a scrollbar drag, which reports no wheel
+ * and no key — and it needs no pointer event, which native scrollbars do not
+ * deliver in every browser and which a plain click would otherwise fake. Two,
+ * because a relayout's first report can also move the offset up before the viewer
+ * re-pins the tail — after which it only ever moves back down.
+ */
+const UPWARD_MOVES_TO_TAKE_CONTROL = 2;
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -123,6 +134,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const viewerScrollAtRef = useRef(0);
   const userPausedAtRef = useRef(0);
   const lastScrollTopRef = useRef(-1);
+  const upwardMovesRef = useRef(0);
   // Mirrors `followTail` for the scroll handler. The viewer scrolls itself in the
   // same tick as it resumes following, so the scroll event that comes back would
   // otherwise be read by a closure that still says "paused".
@@ -142,6 +154,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   // A run going live, or the modal being reopened, re-pins the view to the tail.
   useEffect(() => {
     lastScrollTopRef.current = -1;
+    upwardMovesRef.current = 0;
     setFollow(isLive || follow);
   }, [open, isLive, follow, setFollow]);
 
@@ -213,6 +226,22 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
       const userMovedTheView =
         previousScrollTop < 0 ||
         Math.abs(scrollTop - previousScrollTop) > SCROLL_MOVED_THRESHOLD_PX;
+
+      const movedAwayFromTail =
+        previousScrollTop >= 0 &&
+        previousScrollTop - scrollTop > SCROLL_MOVED_THRESHOLD_PX;
+
+      upwardMovesRef.current = movedAwayFromTail
+        ? upwardMovesRef.current + 1
+        : 0;
+
+      // Something is pulling away from the tail against the catch-up, which the
+      // catch-up itself never does — it only ever moves back down. Whatever it is
+      // outranks the viewer's claim, so no pointer event is needed to notice it.
+      if (upwardMovesRef.current >= UPWARD_MOVES_TO_TAKE_CONTROL) {
+        viewerScrollAtRef.current = 0;
+      }
+
       // A jump to the tail or a relayout moves the offset too, but the viewer
       // moved it — not the user.
       const isViewerScroll =
@@ -252,6 +281,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
 
   const resumeFollowingTail = useCallback(() => {
     userPausedAtRef.current = 0;
+    upwardMovesRef.current = 0;
     viewerScrollAtRef.current = Date.now();
     setFollow(true);
     scrollToEnd();
@@ -317,20 +347,12 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
       }
     };
 
-    const handlePointerDown = () => {
-      // Not a pause on its own — a click in the log is not a scroll — but it does
-      // end the viewer's claim, so a drag that follows is read as the user's.
-      viewerScrollAtRef.current = 0;
-    };
-
     body.addEventListener('wheel', handleWheel, { passive: true });
     body.addEventListener('keydown', handleKeyDown);
-    body.addEventListener('pointerdown', handlePointerDown, { passive: true });
 
     return () => {
       body.removeEventListener('wheel', handleWheel);
       body.removeEventListener('keydown', handleKeyDown);
-      body.removeEventListener('pointerdown', handlePointerDown);
     };
   }, [open, isLive, resolvedLoading, showEmptyState, setFollow, t]);
 

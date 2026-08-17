@@ -113,6 +113,39 @@ export const focusLogViewerScroller = async (page: Page): Promise<boolean> =>
   });
 
 /**
+ * Drags the log away from the tail without any pointer, wheel or key event —
+ * setting `scrollTop` directly is the closest stand-in for a native scrollbar
+ * drag in a browser that does not dispatch `pointerdown` for its scrollbar.
+ */
+export const dragLogViewerUpWithoutGesture = async (
+  page: Page,
+  steps = 3,
+  stepPx = 400
+): Promise<void> => {
+  for (let step = 0; step < steps; step++) {
+    await page.getByTestId('log-viewer-body').evaluate(
+      (body, delta) => {
+        const scroller = Array.from(
+          body.querySelectorAll<HTMLElement>('*')
+        ).find((element) => {
+          const { overflowY } = window.getComputedStyle(element);
+
+          return (
+            element.scrollHeight > element.clientHeight + 1 &&
+            (overflowY === 'auto' || overflowY === 'scroll')
+          );
+        });
+
+        if (scroller) {
+          scroller.scrollTop = Math.max(0, scroller.scrollTop - delta);
+        }
+      },
+      stepPx
+    );
+  }
+};
+
+/**
  * Whether the log viewer is parked at the tail of the log.
  */
 export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {

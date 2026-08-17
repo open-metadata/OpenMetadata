@@ -20,6 +20,7 @@ import {
   assertLogViewerShowsLogs,
   buildLogStreamFrames,
   buildMarkerLogText,
+  dragLogViewerUpWithoutGesture,
   focusLogViewerScroller,
   getLogViewerScrollState,
   isLogViewerAtTail,
@@ -337,6 +338,20 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
       ).toBe(true);
 
       await page.getByTestId('log-viewer-wrap').click();
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    await test.step('A drag with no pointer event still takes the log back', async () => {
+      // Stands in for a native scrollbar drag in a browser that does not dispatch
+      // pointerdown for its scrollbar: no wheel, no key, no pointer — only the
+      // scroll offsets pulling away from the tail, which the catch-up never does.
+      await page.getByTestId('log-viewer-wrap').click();
+      await dragLogViewerUpWithoutGesture(page);
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(() => isLogViewerAtTail(page)).toBe(false);
+
+      await followToggle.click();
       await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
     });
 

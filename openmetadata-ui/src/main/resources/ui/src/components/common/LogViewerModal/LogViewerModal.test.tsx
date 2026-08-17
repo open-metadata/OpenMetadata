@@ -676,37 +676,43 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
-  it('hands control back to a drag that starts during a relayout', () => {
+  it('takes the log back from a drag that reports no pointer event at all', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
-    const body = screen.getByTestId('log-viewer-body');
 
     act(() => mockLazyLog.onScroll?.(atTail));
 
-    // A scrollbar drag reports no wheel and no key, only the pointer press that
-    // starts it — which has to be enough to stop the relayout catch-up from
-    // reversing the drag.
     fireEvent.click(screen.getByTestId('log-viewer-wrap'));
-    mockLazyLog.scrollToIndex.mockClear();
-    fireEvent.pointerDown(body);
-    act(() => mockLazyLog.onScroll?.({ ...tailMovedAway, scrollTop: 120 }));
+
+    // No wheel, no key, no pointerdown — a native scrollbar drag in a browser
+    // that does not dispatch one. Pulling away from the tail twice in a row is
+    // something the catch-up never does, so it has to hand control over.
+    act(() => mockLazyLog.onScroll?.({ ...atTail, scrollTop: 400 }));
+    act(() => mockLazyLog.onScroll?.({ ...atTail, scrollTop: 200 }));
 
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
       'aria-pressed',
       'false'
     );
-    expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
   });
 
-  it('does not pause on a pointer press alone — a click in the log is not a scroll', () => {
+  it('keeps following through a click in the log during a relayout', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
     act(() => mockLazyLog.onScroll?.(atTail));
+
+    // Clicking a log line is not scrolling. It must not hand control over, or an
+    // intermediate report from the relayout that follows would read as the user
+    // having scrolled away.
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
     fireEvent.pointerDown(screen.getByTestId('log-viewer-body'));
+    mockLazyLog.scrollToIndex.mockClear();
+    act(() => mockLazyLog.onScroll?.({ ...tailMovedAway, scrollTop: 120 }));
 
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
       'aria-pressed',
       'true'
     );
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
   });
 
   it('lets a gesture win over the catch-up instead of being fought by it', () => {
