@@ -253,7 +253,7 @@ public class IndexMappingVersionTracker {
     JsonNode result = null;
     try {
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
-      String[] languages = {"en", "jp", "ru", "zh"};
+      String[] languages = {"en", "jp", "ko", "ru", "zh"};
       for (String lang : languages) {
         String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
