@@ -751,6 +751,14 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument();
   });
 
+  it('keeps the breadcrumb event boundary free of presentational semantics', () => {
+    renderCard({});
+
+    expect(screen.getByTestId('breadcrumbs').parentElement).not.toHaveAttribute(
+      'role'
+    );
+  });
+
   it('auto-collapses breadcrumbs so the trail stays within the card width', () => {
     renderCard({});
 
