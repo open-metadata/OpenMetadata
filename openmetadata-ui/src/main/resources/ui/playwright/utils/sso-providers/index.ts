@@ -12,7 +12,6 @@
  */
 import { Page } from '@playwright/test';
 import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
-import { keycloakOidcPublicProviderHelper } from './keycloak-oidc-public';
 import { keycloakAzureSamlProviderHelper } from './keycloak-saml';
 import { oktaProviderHelper } from './okta';
 
@@ -40,15 +39,10 @@ export const getProviderHelper = (providerType: string): ProviderHelper => {
       return oktaProviderHelper;
     case 'keycloak-azure-saml':
       return keycloakAzureSamlProviderHelper;
-    // Public OIDC client — the only registered provider that logs in through the
-    // front-channel oidc-client UserManager, so it guards the #29597 fix that the
-    // server-configured responseType ('code') reaches the authorize request.
-    case 'keycloak-oidc-public':
-      return keycloakOidcPublicProviderHelper;
     default:
       throw new Error(
         `No SSO provider helper registered for "${providerType}". ` +
-          `Supported providers: okta, keycloak-azure-saml, keycloak-azure-saml-crosssite, keycloak-oidc-public`
+          `Supported providers: okta, keycloak-azure-saml`
       );
   }
 };
