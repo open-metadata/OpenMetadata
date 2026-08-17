@@ -263,6 +263,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/GlossaryTermRelation/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Settings/GlossaryTermRelation/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/**",
+        "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
@@ -273,6 +285,18 @@
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
         "playwright/e2e/Features/DomainIsolation/**/*.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/DomainsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/useAssetSelectionState.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/domainAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/domainQuery.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts"
       ]
     },
     {
@@ -552,6 +576,19 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
+      ]
+    },
+    {
+      "_comment": "PersonaAIContextRules.spec.ts covers the AI Context rule builder on the Persona settings page. Without this entry, changes to the PersonaAIContext component tree or PersonaAPI are not caught before merge.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Persona/PersonaAIContext/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/PersonaAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
       ]
     }
   ]

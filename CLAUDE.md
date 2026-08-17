@@ -35,6 +35,9 @@ and Docker infrastructure.
   In a Claude Code **worktree** the venv is NOT copied — create one
   (`python3.11 -m venv env && source env/bin/activate && cd ingestion && make install_dev`) or
   symlink the main repo's (`ln -s /path/to/main-repo/env env`).
+- **One-call setup (macOS + Linux)**: `make dev_setup` (or `./scripts/dev_setup.sh`) does everything
+  below — toolchain, venv, generation, UI deps, pre-commit — and is idempotent. `make dev_check`
+  diagnoses an existing checkout without changing it. See the `dev-setup` skill.
 - **First-time bootstrap** (from the **repo root** — `make generate` is a root-only target; it does
   not exist under `ingestion/`):
   ```bash
@@ -141,6 +144,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 | Skill | Reach for it when… |
 |---|---|
+| `dev-setup` | setting up / repairing a dev environment, a fresh clone, or a new worktree |
 | `planning` | starting any non-trivial, multi-file feature or refactor |
 | `tdd` | implementing a feature or bug fix (RED→GREEN→REFACTOR) |
 | `systematic-debugging` | a failing test/build/runtime issue whose cause isn't obvious |

@@ -239,6 +239,11 @@ describe('TokenService', () => {
     it('should return null and clear the flag when no renewer is configured', async () => {
       jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
+      // Short-circuit the renewer-wait so the "no renewer" case
+      // doesn't stall for the full 10s awaitRenewerReady window.
+      jest
+        .spyOn(tokenService, 'awaitRenewerReady')
+        .mockResolvedValue(undefined);
 
       const result = await tokenService.refreshToken();
 
@@ -290,11 +295,62 @@ describe('TokenService', () => {
   });
 
   describe('fetchNewToken', () => {
-    it('should return null if renewToken is not a function', async () => {
+    it('should return null if renewToken is not a function (after the awaitRenewerReady timeout)', async () => {
       tokenService.renewToken = null;
+      // Short-circuit the 10s renewer-wait timeout for this test path.
+      jest
+        .spyOn(tokenService, 'awaitRenewerReady')
+        .mockResolvedValue(undefined);
       const result = await tokenService.fetchNewToken();
 
       expect(result).toBeNull();
+    });
+
+    it('should wait briefly for the lazy authenticator to register the renewer before failing (cold-load race)', async () => {
+      // Regression: without the wait, the very first refresh on cold-load
+      // returned null before the lazy authenticator's mount effect had a
+      // chance to call updateRenewToken() — which triggered
+      // resetUserDetails(true) in AuthProvider and destroyed valid refresh
+      // credentials on merely-slow lazy-load.
+      tokenService.renewToken = null;
+      const spy = jest
+        .spyOn(tokenService, 'awaitRenewerReady')
+        .mockImplementation(async () => {
+          // Simulate the lazy authenticator finishing its mount effect
+          // during the wait window and registering the renewer.
+          tokenService.updateRenewToken(
+            jest.fn().mockResolvedValue('renewer-arrived-late-token')
+          );
+        });
+
+      const result = await tokenService.fetchNewToken();
+
+      expect(spy).toHaveBeenCalled();
+      expect(result).toBe('renewer-arrived-late-token');
+    });
+
+    it('awaitRenewerReady resolves immediately when the renewer is already a function (no waste on the hot path)', async () => {
+      jest.useRealTimers();
+      tokenService.updateRenewToken(jest.fn());
+      const start = Date.now();
+      await tokenService.awaitRenewerReady(1000, 50);
+
+      // No polling should occur when the renewer is already ready.
+      expect(Date.now() - start).toBeLessThan(50);
+
+      jest.useFakeTimers();
+    });
+
+    it('awaitRenewerReady returns after the configured timeout when the renewer is never registered', async () => {
+      jest.useRealTimers();
+      tokenService.renewToken = null;
+      const start = Date.now();
+      await tokenService.awaitRenewerReady(120, 30);
+
+      expect(Date.now() - start).toBeGreaterThanOrEqual(100);
+      expect(typeof tokenService.renewToken).not.toBe('function');
+
+      jest.useFakeTimers();
     });
 
     it('should call renewToken and return result', async () => {

@@ -104,6 +104,8 @@ const ContextCenterArticlesPage = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [debouncedArticleSearchQuery, setDebouncedArticleSearchQuery] =
+    useState('');
   const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
   const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
 
@@ -125,6 +127,15 @@ const ContextCenterArticlesPage = () => {
       showErrorToast(error as AxiosError);
     }
   }, []);
+
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedArticleSearchQuery(articleSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [articleSearchQuery]);
 
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
@@ -354,7 +365,7 @@ const ContextCenterArticlesPage = () => {
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
-        searchQuery={articleSearchQuery}
+        searchQuery={debouncedArticleSearchQuery}
         onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
@@ -365,7 +376,7 @@ const ContextCenterArticlesPage = () => {
     isRightPanelOpen,
     permissions,
     isPermissionsLoading,
-    articleSearchQuery,
+    debouncedArticleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,

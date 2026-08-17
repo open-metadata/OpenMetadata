@@ -81,6 +81,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<ContextFile>();
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -203,6 +204,15 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders]
   );
 
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedSearchQuery(documentSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [documentSearchQuery]);
+
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -218,12 +228,21 @@ const ContextCenterDocumentsPage: FC = () => {
         setIsDocumentsLoading(true);
       }
       try {
-        if (documentSearchQuery) {
+        if (debouncedSearchQuery) {
           const results = await fetchSearchResults({
-            query: documentSearchQuery,
+            query: debouncedSearchQuery,
             searchIndex: SearchIndex.DRIVE_FILE,
             sortField: 'updatedAt',
             sortOrder: 'desc',
+            ...(selectedFolderId && {
+              queryFilter: {
+                query: {
+                  bool: {
+                    filter: { term: { 'folder.id': selectedFolderId } },
+                  },
+                },
+              },
+            }),
           });
           if (generation !== fetchGenerationRef.current) {
             return;
@@ -266,7 +285,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
       }
     },
-    [documentSearchQuery, pageSize, handlePagingChange, selectedFolderId]
+    [debouncedSearchQuery, pageSize, handlePagingChange, selectedFolderId]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -274,12 +293,12 @@ const ContextCenterDocumentsPage: FC = () => {
       paging.after &&
       !isDocumentsLoading &&
       !isLoadingMoreRef.current &&
-      !documentSearchQuery
+      !debouncedSearchQuery
     ) {
       isLoadingMoreRef.current = true;
       fetchDocuments(paging.after);
     }
-  }, [paging.after, isDocumentsLoading, documentSearchQuery, fetchDocuments]);
+  }, [paging.after, isDocumentsLoading, debouncedSearchQuery, fetchDocuments]);
 
   useEffect(() => {
     fetchDocuments();
