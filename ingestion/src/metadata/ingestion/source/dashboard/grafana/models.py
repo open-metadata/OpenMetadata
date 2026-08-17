@@ -82,6 +82,12 @@ class GrafanaPanel(BaseModel):
     fieldConfig: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
     transparent: Optional[bool] = None  # noqa: UP045
     pluginVersion: Optional[str] = None  # noqa: N815, UP045
+    # Row-panel fields: when a row is collapsed Grafana nests child panels here
+    collapsed: Optional[bool] = None  # noqa: UP045
+    panels: Optional[List["GrafanaPanel"]] = Field(default_factory=list)  # noqa: UP006, UP045
+
+
+GrafanaPanel.model_rebuild()
 
 
 class GrafanaDashboard(BaseModel):
