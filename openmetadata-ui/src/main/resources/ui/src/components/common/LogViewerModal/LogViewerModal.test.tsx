@@ -575,6 +575,13 @@ describe('LogViewerModal — auto-follow', () => {
     scrollHeight: 2000,
     clientHeight: 400,
   };
+  // At the tail again, but at a different offset — an unchanged offset is not the
+  // user moving anywhere, so it would not exercise the resume path at all.
+  const scrolledBackToTail = {
+    scrollTop: 700,
+    scrollHeight: 1100,
+    clientHeight: 400,
+  };
 
   beforeEach(() => {
     mockLazyLog.scrollToIndex.mockClear();
@@ -781,13 +788,57 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
-  it('does not resume when the viewer snaps back to the tail right after a pause', () => {
+  it('resumes when the user scrolls back down to the tail', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
-    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
-    // The library restores its own recorded offset when the text changes, which
-    // can land back at the tail without the user scrolling there.
     act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    // Scrolling back down is a run of off-tail reports before the one that
+    // actually reaches the tail. None of them may cancel the resume at the end.
+    for (const scrollTop of [200, 300, 400, 500]) {
+      fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+      act(() =>
+        mockLazyLog.onScroll?.({
+          scrollTop,
+          scrollHeight: 1000,
+          clientHeight: 400,
+        })
+      );
+    }
+
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('does not resume when the viewer snaps back to the tail on an append', () => {
+    const { rerender } = render(
+      <LogViewerModal {...defaultProps} mode="stream" />
+    );
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+
+    // The library restores its own recorded offset when the text changes, which
+    // can land back at the tail without the user having scrolled there.
+    rerender(
+      <LogViewerModal
+        {...defaultProps}
+        logs={`${defaultProps.logs}\ndelta INFO four`}
+        mode="stream"
+      />
+    );
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
 
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
       'aria-pressed',
@@ -795,28 +846,32 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
-  it('resumes once the user scrolls back to the tail under their own steam', () => {
-    jest.useFakeTimers();
+  it('resumes only when the user asked to be at the tail, not when the viewer lands there', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
 
-    try {
-      render(<LogViewerModal {...defaultProps} mode="stream" />);
+    act(() => mockLazyLog.onScroll?.(atTail));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
 
-      fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
-      // Past the window that protects a fresh pause from an automatic snap-back.
-      act(() => jest.advanceTimersByTime(5000));
-      act(() => mockLazyLog.onScroll?.(atTail));
+    // The library restores its own offset on a text change and can land at the
+    // tail on its own. With no gesture behind it, that is not a request to follow.
+    act(() => mockLazyLog.onScroll?.(scrolledBackToTail));
 
-      expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
-        'aria-pressed',
-        'true'
-      );
-    } finally {
-      jest.useRealTimers();
-    }
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    // The same landing, this time with the user having asked for it.
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   it('pauses following when the user scrolls away from the tail and resumes at the tail', () => {
-    jest.useFakeTimers();
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
     act(() => mockLazyLog.onScroll?.(scrolledUp));
@@ -830,8 +885,7 @@ describe('LogViewerModal — auto-follow', () => {
       'false'
     );
 
-    // Past the window that protects a fresh pause from an automatic snap-back.
-    act(() => jest.advanceTimersByTime(5000));
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: 120 });
     act(() => mockLazyLog.onScroll?.(atTail));
 
     expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
@@ -842,8 +896,6 @@ describe('LogViewerModal — auto-follow', () => {
       'data-follow',
       'true'
     );
-
-    jest.useRealTimers();
   });
 
   it('keeps following while the content does not fill the viewport', () => {

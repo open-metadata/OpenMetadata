@@ -22,12 +22,14 @@ import {
   buildMarkerLogText,
   dragLogViewerUpWithoutGesture,
   focusLogViewerScroller,
+  getLogViewerLineCount,
   getLogViewerScrollState,
   isLogViewerAtTail,
   LogStreamFrame,
   LOG_STREAM_RESPONSE_HEADERS,
   LOG_VIEWER_MARKER,
   scrollLogViewerAwayFromTail,
+  scrollLogViewerToTail,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
@@ -68,6 +70,13 @@ const SCROLLABLE_LOG_LINE_COUNT = 400;
  */
 const WRAPPABLE_LOG_LINE_LENGTH = 400;
 
+/**
+ * What each reconnect appends after the first. Small on purpose: a run that adds
+ * hundreds of lines every couple of seconds moves the tail further per push than a
+ * user can travel, so returning to it by hand would be impossible to test.
+ */
+const TRICKLE_LOG_LINE_COUNT = 3;
+
 const pipelineName = `pw-log-handover-${uuid()}`;
 let pipelineFqn = '';
 let pipelineId = '';
@@ -92,7 +101,18 @@ const mockLogEndpoints = async (
     terminal,
     lineCount,
     lineLength,
-  }: { terminal: boolean; lineCount?: number; lineLength?: number }
+    followUpLineCount,
+  }: {
+    terminal: boolean;
+    lineCount?: number;
+    lineLength?: number;
+    /**
+     * Lines served on every connection after the first. Defaults to `lineCount`;
+     * a small value models a real run — a history to read, then a trickle — and
+     * keeps the tail reachable by hand.
+     */
+    followUpLineCount?: number;
+  }
 ): Promise<StreamMocks> => {
   const streamRequests: string[] = [];
   let paginatedLogCalls = 0;
@@ -124,6 +144,7 @@ const mockLogEndpoints = async (
   await page.route(
     '**/api/v1/services/ingestionPipelines/logs/*/stream/*',
     (route) => {
+      const isFirstConnection = streamRequests.length === 0;
       streamRequests.push(route.request().url());
 
       const frames: LogStreamFrame[] = [
@@ -132,7 +153,7 @@ const mockLogEndpoints = async (
           runId: RUN_ID,
           logs: `${buildMarkerLogText(
             LOG_VIEWER_MARKER,
-            lineCount,
+            isFirstConnection ? lineCount : followUpLineCount ?? lineCount,
             lineLength
           )}\n`,
           after: STREAM_CURSOR,
@@ -228,7 +249,12 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
 
   const openAgentLogs = async (
     page: Page,
-    options: { terminal: boolean; lineCount?: number; lineLength?: number }
+    options: {
+      terminal: boolean;
+      lineCount?: number;
+      lineLength?: number;
+      followUpLineCount?: number;
+    }
   ): Promise<StreamMocks> => {
     const mocks = await mockLogEndpoints(page, options);
 
@@ -306,6 +332,7 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
       terminal: false,
       lineCount: SCROLLABLE_LOG_LINE_COUNT,
       lineLength: WRAPPABLE_LOG_LINE_LENGTH,
+      followUpLineCount: TRICKLE_LOG_LINE_COUNT,
     });
 
     const followToggle = page.getByTestId('log-viewer-follow');
@@ -386,10 +413,33 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
       ).toBe(false);
     });
 
-    await test.step('The keyboard can pause a followed log too', async () => {
-      await followToggle.click();
+    await test.step('Scrolling back down to the tail resumes following on its own', async () => {
+      // The toolbar toggle is not the only way back: reaching the tail by hand is
+      // what a terminal does, and it has to work while the log keeps growing.
+      await scrollLogViewerToTail(page);
+
       await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
-      await expect.poll(() => isLogViewerAtTail(page)).toBe(true);
+
+      // And it stays followed as more lines arrive, rather than resuming for a
+      // moment and dropping out again. Line count rather than scroll height: the
+      // virtualised list re-estimates its height as rows are measured, so at a few
+      // lines per push the height is not monotonic.
+      const resumedAtLines = await getLogViewerLineCount(page);
+
+      await expect
+        .poll(() => getLogViewerLineCount(page), { timeout: 60_000 })
+        .toBeGreaterThan(resumedAtLines);
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        await isLogViewerAtTail(page),
+        'a resumed log must keep tracking the tail'
+      ).toBe(true);
+    });
+
+    await test.step('The keyboard can pause a followed log too', async () => {
+      // The step above left the log following again, by hand — no need to resume.
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
 
       // Real focus and a real key press, not a synthetic event: the scrolling
       // element has to carry a tab stop for the keyboard to reach the log at all.

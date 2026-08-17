@@ -50,85 +50,7 @@ import {
 } from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
 import LogViewerToolbarToggle from './LogViewerToolbarToggle.component';
-
-const SCROLL_BOTTOM_THRESHOLD_PX = 40;
-
-/** Keys that move the view back through the log rather than along with it. */
-const SCROLL_BACK_KEYS = new Set(['ArrowUp', 'PageUp', 'Home']);
-
-/**
- * Movement below this is jitter, not the user going anywhere. Used to tell a
- * scroll the user performed (the offset moves) from the tail moving away from a
- * standing offset — which is what an append or a wrap relayout does.
- */
-const SCROLL_MOVED_THRESHOLD_PX = 4;
-
-/**
- * How long the viewer's own scrolling stops counting as the user's. Two cases
- * report through `onScroll` indistinguishably from a real scroll: a jump to the
- * tail (the virtualised list lands approximately on a long jump, then corrects)
- * and a wrap/full-screen relayout (re-measuring every row moves both the content
- * height and the offset while the viewer re-pins the tail). A wheel or scroll key
- * closes the window immediately, and anything that keeps pulling away from the
- * tail outruns it (see `UPWARD_MOVES_TO_TAKE_CONTROL`), so the user is never
- * fought for the full duration.
- */
-const VIEWER_SCROLL_GRACE_MS = 1000;
-
-/**
- * How long a user's pause is protected from the resume-at-the-tail rule. The
- * viewer library restores its own recorded offset when the text changes, which
- * can put the view back at the tail on its own; without this, that would read as
- * the user scrolling back down and silently resume following.
- */
-const USER_PAUSE_GRACE_MS = 1000;
-
-/**
- * How many scrolls in a row moving away from the tail take the log back from the
- * viewer's catch-up. This is what covers a scrollbar drag, which reports no wheel
- * and no key — and it needs no pointer event, which native scrollbars do not
- * deliver in every browser and which a plain click would otherwise fake. Two,
- * because a relayout's first report can leave the tail once before the viewer
- * re-pins it.
- */
-const UPWARD_MOVES_TO_TAKE_CONTROL = 2;
-
-interface ScrollFacts {
-  isBottom: boolean;
-  fillsViewport: boolean;
-  userMovedTheView: boolean;
-  movedAwayFromTail: boolean;
-}
-
-/**
- * What a single scroll report says, before any decision is taken on it.
- *
- * `userMovedTheView` is false when the offset stands still: the tail moved away
- * from the view rather than the other way round, which is what an append or a
- * wrap/full-screen relayout does. `movedAwayFromTail` is the stricter case of the
- * view also leaving the tail — a relayout emits long runs of offset corrections
- * (12 in a row on one measured wrap toggle) that track the tail as the content
- * shrinks, and those are the viewer keeping up, not the user leaving.
- */
-const readScrollFacts = (
-  { scrollTop, scrollHeight, clientHeight }: LogViewerScrollValues,
-  previousScrollTop: number
-): ScrollFacts => {
-  const isBottom =
-    Math.abs(clientHeight + scrollTop - scrollHeight) <
-    SCROLL_BOTTOM_THRESHOLD_PX;
-  const isFirstReport = previousScrollTop < 0;
-  const movedBy = isFirstReport ? 0 : previousScrollTop - scrollTop;
-
-  return {
-    isBottom,
-    fillsViewport: scrollHeight > clientHeight,
-    userMovedTheView:
-      isFirstReport || Math.abs(movedBy) > SCROLL_MOVED_THRESHOLD_PX,
-    movedAwayFromTail:
-      !isBottom && !isFirstReport && movedBy > SCROLL_MOVED_THRESHOLD_PX,
-  };
-};
+import { useLogAutoFollow } from './useLogAutoFollow';
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -168,23 +90,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const [searchText, setSearchText] = useState('');
   const [wrap, setWrap] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [followTail, setFollowTail] = useState(isLive || follow);
   const lazyLogRef = useRef<LazyLog>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const viewerScrollAtRef = useRef(0);
-  const userPausedAtRef = useRef(0);
-  const lastScrollTopRef = useRef(-1);
-  const upwardMovesRef = useRef(0);
-  const caughtUpRef = useRef(false);
-  // Mirrors `followTail` for the scroll handler. The viewer scrolls itself in the
-  // same tick as it resumes following, so the scroll event that comes back would
-  // otherwise be read by a closure that still says "paused".
-  const followTailRef = useRef(followTail);
-
-  const setFollow = useCallback((next: boolean) => {
-    followTailRef.current = next;
-    setFollowTail(next);
-  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -192,18 +99,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     }
   }, [open]);
 
-  // A run going live, or the modal being reopened, re-pins the view to the tail.
-  useEffect(() => {
-    lastScrollTopRef.current = -1;
-    upwardMovesRef.current = 0;
-    setFollow(isLive || follow);
-  }, [open, isLive, follow, setFollow]);
-
   const resolvedLogs = logs;
   const resolvedLoading = loading;
-  // Following the tail only means anything while the content grows, so it is a
-  // live-run concept — a static run keeps honouring the prop as before.
-  const resolvedFollow = isLive ? followTail : follow;
   const resolvedTotalLines = totalLines;
 
   const hasFooter = Boolean(
@@ -246,103 +143,36 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     }
   }, []);
 
-  /**
-   * Whether this scroll still belongs to the viewer rather than the user. A jump
-   * to the tail or a relayout moves the offset too, so both claim a short window —
-   * but anything that keeps pulling away from the tail outranks the claim, which
-   * the catch-up itself never does: it only ever moves back down.
-   */
-  const isViewerScroll = useCallback((facts: ScrollFacts) => {
-    // The catch-up lands back at the tail between a slow drag's steps. Counting
-    // that as "not pulling away" would reset the run every time and a drag the
-    // catch-up keeps beating could never outrun the claim.
-    const catchUpLanded = facts.isBottom && caughtUpRef.current;
-    caughtUpRef.current = false;
+  const {
+    followTail,
+    trackScroll,
+    resumeFollowingTail,
+    toggleFollow,
+    markViewerScroll,
+  } = useLogAutoFollow({
+    bodyRef,
+    follow,
+    isLive,
+    logs,
+    open,
+    scrollerLabel: t('label.log-plural'),
+    scrollToEnd,
+  });
 
-    if (facts.movedAwayFromTail) {
-      upwardMovesRef.current += 1;
-    } else if (!catchUpLanded) {
-      upwardMovesRef.current = 0;
-    }
-
-    if (upwardMovesRef.current >= UPWARD_MOVES_TO_TAKE_CONTROL) {
-      viewerScrollAtRef.current = 0;
-    }
-
-    return Date.now() - viewerScrollAtRef.current < VIEWER_SCROLL_GRACE_MS;
-  }, []);
-
-  /**
-   * Scrolling away from the tail hands control back to the user; scrolling back to
-   * it resumes following.
-   */
-  const applyUserScrollIntent = useCallback(
-    (isBottom: boolean) => {
-      const justPausedByUser =
-        Date.now() - userPausedAtRef.current < USER_PAUSE_GRACE_MS;
-
-      // A landing at the tail just after the user paused is the library restoring
-      // its own offset, not the user scrolling back down.
-      if (isBottom && justPausedByUser) {
-        return;
-      }
-
-      if (!isBottom) {
-        userPausedAtRef.current = Date.now();
-      }
-
-      setFollow(isBottom);
-    },
-    [setFollow]
-  );
+  // Following the tail only means anything while the content grows, so it is a
+  // live-run concept — a static run keeps honouring the prop as before.
+  const resolvedFollow = isLive ? followTail : follow;
 
   const handleScroll = useCallback(
     (scrollValues: LogViewerScrollValues) => {
-      const facts = readScrollFacts(scrollValues, lastScrollTopRef.current);
-      lastScrollTopRef.current = scrollValues.scrollTop;
+      const { isBottom } = trackScroll(scrollValues);
 
-      const viewerOwnsThisScroll = isViewerScroll(facts);
-
-      if (
-        followTailRef.current &&
-        !facts.isBottom &&
-        (!facts.userMovedTheView || viewerOwnsThisScroll)
-      ) {
-        caughtUpRef.current = true;
-        scrollToEnd();
-      } else if (
-        isLive &&
-        facts.fillsViewport &&
-        facts.userMovedTheView &&
-        !viewerOwnsThisScroll
-      ) {
-        applyUserScrollIntent(facts.isBottom);
-      }
-
-      if (facts.isBottom && hasMore && !loadingMore && !query && onLoadMore) {
+      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
         onLoadMore();
       }
     },
-    [
-      isLive,
-      hasMore,
-      loadingMore,
-      query,
-      onLoadMore,
-      scrollToEnd,
-      isViewerScroll,
-      applyUserScrollIntent,
-    ]
+    [trackScroll, hasMore, loadingMore, query, onLoadMore]
   );
-
-  const resumeFollowingTail = useCallback(() => {
-    userPausedAtRef.current = 0;
-    upwardMovesRef.current = 0;
-    caughtUpRef.current = false;
-    viewerScrollAtRef.current = Date.now();
-    setFollow(true);
-    scrollToEnd();
-  }, [scrollToEnd, setFollow]);
 
   const handleJumpToEnd = useCallback(() => {
     if (isLive) {
@@ -354,74 +184,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     scrollToEnd();
   }, [isLive, resumeFollowingTail, scrollToEnd]);
 
-  // Scroll position alone cannot tell the user apart from the viewer: while a
-  // stream appends, the viewer's own follow scroll can undo a wheel before the
-  // browser reports the new position, so the resulting `onScroll` still reads as
-  // "at the tail" and following would never pause. The gesture itself is the
-  // only reliable signal, and pausing on it lands before the next append.
-  useEffect(() => {
-    const body = bodyRef.current;
-
-    if (!open || !isLive || !body) {
-      return;
-    }
-
-    // The element that actually scrolls is created by the log viewer library, so
-    // it has no tab stop of its own: without one the log is pointer-only and the
-    // keys below never reach a focused element. Done here rather than in JSX
-    // because the scroller is not ours to render.
-    const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
-      (element) => {
-        const { overflowY } = window.getComputedStyle(element);
-
-        return overflowY === 'auto' || overflowY === 'scroll';
-      }
-    );
-
-    if (scroller && !scroller.hasAttribute('tabindex')) {
-      scroller.tabIndex = 0;
-      scroller.setAttribute('role', 'region');
-      scroller.setAttribute('aria-label', t('label.log-plural'));
-    }
-
-    const pauseFollow = () => {
-      // A real gesture ends the jump grace, so the catch-up in `handleScroll`
-      // cannot re-assert the tail on top of the user.
-      viewerScrollAtRef.current = 0;
-      userPausedAtRef.current = Date.now();
-      setFollow(false);
-    };
-
-    const handleWheel = (event: globalThis.WheelEvent) => {
-      if (event.deltaY < 0) {
-        pauseFollow();
-      }
-    };
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (SCROLL_BACK_KEYS.has(event.key)) {
-        pauseFollow();
-      }
-    };
-
-    body.addEventListener('wheel', handleWheel, { passive: true });
-    body.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      body.removeEventListener('wheel', handleWheel);
-      body.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open, isLive, resolvedLoading, showEmptyState, setFollow, t]);
-
-  // Wrapping and full-screen re-measure every row, so the tail moves out from
-  // under the current offset. A followed log re-pins itself instead of letting
-  // that read as the user taking over.
-  const markViewerScroll = useCallback(() => {
-    if (followTailRef.current) {
-      viewerScrollAtRef.current = Date.now();
-    }
-  }, []);
-
   const handleToggleWrap = useCallback(() => {
     markViewerScroll();
     setWrap((value) => !value);
@@ -431,18 +193,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     markViewerScroll();
     setIsFullScreen((value) => !value);
   }, [markViewerScroll]);
-
-  const handleToggleFollow = useCallback(() => {
-    if (followTail) {
-      viewerScrollAtRef.current = 0;
-      userPausedAtRef.current = Date.now();
-      setFollow(false);
-
-      return;
-    }
-
-    resumeFollowingTail();
-  }, [followTail, resumeFollowingTail, setFollow]);
 
   const isFullScreenClass = isFullScreen ? 'lvm-fullscreen' : '';
 
@@ -551,7 +301,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                     isActive={followTail}
                     label={t('label.live-auto-scroll')}
                     testId="log-viewer-follow"
-                    onToggle={handleToggleFollow}
+                    onToggle={toggleFollow}
                   />
                 )}
                 <Tooltip

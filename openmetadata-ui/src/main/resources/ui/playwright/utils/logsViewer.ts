@@ -175,6 +175,34 @@ export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
 };
 
 /**
+ * Sends the user back down to the tail by hand, with real wheel events.
+ *
+ * A live log keeps growing underneath, so the tail is chased rather than reached in
+ * one movement — which is why the fixture serving this must trickle rather than
+ * append hundreds of lines per push. `End` does not work here: the virtualised list
+ * does not move its container for it.
+ */
+export const scrollLogViewerToTail = async (
+  page: Page,
+  deltaY = 2000,
+  maxWheels = 30
+): Promise<void> => {
+  await page.getByTestId('log-viewer-body').hover();
+
+  for (let wheel = 0; wheel < maxWheels; wheel++) {
+    if (await isLogViewerAtTail(page)) {
+      return;
+    }
+
+    await page.mouse.wheel(0, deltaY);
+  }
+
+  throw new Error(
+    `The log viewer did not reach the tail after ${maxWheels} wheel events`
+  );
+};
+
+/**
  * Scrolls the log viewer away from the tail the way a user would — a real wheel
  * event over the log body — and waits for the view to leave the tail.
  */
