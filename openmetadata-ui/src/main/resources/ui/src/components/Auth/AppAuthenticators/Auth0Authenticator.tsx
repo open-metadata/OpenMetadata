@@ -17,9 +17,10 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
 } from 'react';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -92,8 +93,15 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
 
         return idToken;
       },
-      getRenewer,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

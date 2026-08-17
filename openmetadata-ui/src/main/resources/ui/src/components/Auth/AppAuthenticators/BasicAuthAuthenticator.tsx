@@ -16,6 +16,7 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,7 @@ import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   setOidcToken,
@@ -81,8 +82,19 @@ const BasicAuthenticator = forwardRef(
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
-      getRenewer,
     }));
+
+    // Register this authenticator's renewer with the AuthCoordinator as soon
+    // as the wrapper mounts (which is after the async config fetch + lazy
+    // chunk load). Doing it here — instead of via a parent-side effect that
+    // reads authenticatorRef.current?.getRenewer — avoids a race: a ref
+    // change does not schedule a re-render, so a parent-side dep on it can
+    // register late (or never, on some render paths).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     /**
      * isApplicationLoading is true when the application is loading in AuthProvider

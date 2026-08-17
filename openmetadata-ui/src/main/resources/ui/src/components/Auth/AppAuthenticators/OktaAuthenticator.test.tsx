@@ -34,6 +34,14 @@ jest.mock('../../../utils/OktaCustomStorage', () => ({
   })),
 }));
 
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
+
 const mockHandleSuccessfulLogout = jest.fn();
 
 jest.mock('../AuthProviders/AuthProvider', () => ({
@@ -295,7 +303,7 @@ describe('OktaAuthenticator', () => {
         />
       );
 
-      const renewer = authenticatorRef?.getRenewer?.();
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
       expect(renewer).toBeDefined();
 
@@ -321,7 +329,7 @@ describe('OktaAuthenticator', () => {
         />
       );
 
-      const renewer = authenticatorRef?.getRenewer?.();
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
       await expect(renewer?.()).rejects.toThrow(
         'Okta renewal returned no idToken'

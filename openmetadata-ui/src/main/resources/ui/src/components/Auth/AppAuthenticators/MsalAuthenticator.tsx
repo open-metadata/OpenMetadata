@@ -24,7 +24,7 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import {
   msalLoginRequest,
   parseMSALResponse,
@@ -156,8 +156,15 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewIdToken,
-      getRenewer,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     // Need to capture redirect and parse ID token
     // Call login success callback

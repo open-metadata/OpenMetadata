@@ -22,6 +22,13 @@ const handleSuccessfulLogout = jest.fn();
 const logoutUser = jest.fn().mockResolvedValue(undefined);
 const renewToken = jest.fn();
 const setOidcToken = jest.fn();
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ setIsAuthenticated, setIsSigningUp }),
@@ -132,26 +139,25 @@ describe('GenericAuthenticator', () => {
     expect(result).toEqual(mockResp);
   });
 
-  it('should expose a getRenewer that resolves {idToken, expiresAt} from renewToken', async () => {
+  it('registers a renewer with AuthCoordinator that resolves {idToken, expiresAt} from renewToken', async () => {
     const expSeconds = Math.floor(Date.now() / 1000) + 3600;
     const accessToken = buildFakeJwt(expSeconds);
     renewToken.mockResolvedValueOnce({ accessToken });
-    const ref = createRef<AuthenticatorRef>();
     render(
       <MemoryRouter>
-        <GenericAuthenticator ref={ref}>
+        <GenericAuthenticator ref={null}>
           <div>Child</div>
         </GenericAuthenticator>
       </MemoryRouter>
     );
 
-    const renewer = ref.current?.getRenewer?.();
-
-    expect(renewer).toBeDefined();
+    expect(registerRenewer).toHaveBeenCalled();
+    const registered = registerRenewer.mock.calls[0][0];
+    expect(typeof registered).toBe('function');
 
     let result: { idToken: string; expiresAt: number } | undefined;
     await act(async () => {
-      result = await renewer?.();
+      result = await registered();
     });
 
     expect(renewToken).toHaveBeenCalled();
@@ -162,21 +168,31 @@ describe('GenericAuthenticator', () => {
     expect(result?.expiresAt).toBeGreaterThan(Date.now());
   });
 
-  it('should throw from the renewer when renewToken returns no accessToken', async () => {
+  it('registered renewer throws when renewToken returns no accessToken', async () => {
     renewToken.mockResolvedValueOnce({});
-    const ref = createRef<AuthenticatorRef>();
     render(
       <MemoryRouter>
-        <GenericAuthenticator ref={ref}>
+        <GenericAuthenticator ref={null}>
           <div>Child</div>
         </GenericAuthenticator>
       </MemoryRouter>
     );
 
-    const renewer = ref.current?.getRenewer?.();
-
-    await expect(renewer?.()).rejects.toThrow(
+    const registered = registerRenewer.mock.calls[0][0];
+    await expect(registered()).rejects.toThrow(
       'Renew endpoint returned no accessToken'
     );
+  });
+
+  it('unregisters the renewer on unmount', () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+    unmount();
+    expect(registerRenewer).toHaveBeenCalledWith(null);
   });
 });

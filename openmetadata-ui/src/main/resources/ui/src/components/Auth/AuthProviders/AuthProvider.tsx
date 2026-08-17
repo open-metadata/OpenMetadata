@@ -473,53 +473,15 @@ export const AuthProvider = ({
     }
   };
 
-  // Renewer registration for the AuthCoordinator (auth-coordinator-refactor
-  // Task 7 + Task 8 + Task 9 + Task 10 + Task 11). Basic/LDAP use
-  // BasicAuthAuthenticator; SAML and any confidential-client provider (e.g.
-  // Okta/Auth0 configured as confidential) use GenericAuthenticator;
-  // Google/CustomOidc/AwsCognito use OidcAuthenticator; Azure (as a public
-  // client) uses MsalAuthenticator; Okta/Auth0 (as public clients) use their
-  // own SDK-specific authenticators — mirroring the exact conditions
-  // `getProtectedApp` uses below to decide which authenticator to mount.
-  // Confidential-configured Azure/Okta/Auth0 already mount GenericAuthenticator
-  // via Task 8.
-  useEffect(() => {
-    const isBasicOrLdap =
-      authConfig?.provider === AuthProviderEnum.Basic ||
-      authConfig?.provider === AuthProviderEnum.LDAP;
-    const usesGenericAuthenticator =
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml;
-    // Every other migrated authenticator (Oidc/Msal/Okta/Auth0) only applies
-    // to a public client — a confidential-configured instance of any of
-    // these providers already matched usesGenericAuthenticator above.
-    const usesPublicClientAuthenticator =
-      clientType !== ClientType.Confidential &&
-      [
-        AuthProviderEnum.Google,
-        AuthProviderEnum.CustomOidc,
-        AuthProviderEnum.AwsCognito,
-        AuthProviderEnum.Azure,
-        AuthProviderEnum.Okta,
-        AuthProviderEnum.Auth0,
-      ].includes(authConfig?.provider as AuthProviderEnum);
-
-    if (
-      !isBasicOrLdap &&
-      !usesGenericAuthenticator &&
-      !usesPublicClientAuthenticator
-    ) {
-      return;
-    }
-
-    const renewer = authenticatorRef.current?.getRenewer?.();
-
-    if (renewer) {
-      authCoordinator.registerRenewer(renewer);
-    }
-
-    return () => authCoordinator.registerRenewer(null);
-  }, [authConfig?.provider, clientType, authenticatorRef.current?.getRenewer]);
+  // Renewer registration for the AuthCoordinator lives in each authenticator's
+  // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
+  // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
+  // Auth0Authenticator). Doing it there — instead of via a parent-side effect
+  // that reads authenticatorRef.current?.getRenewer — avoids a race: ref
+  // changes don't schedule a re-render, so a parent-side effect keyed on the
+  // ref can register late (or never, on some render paths). Each authenticator
+  // knows exactly when its useImperativeHandle has run and owns the register/
+  // unregister lifecycle for its own renewer.
 
   // Installs the coordinator's axios response interceptor and mirrors its
   // outcome into React state (auth-coordinator-refactor Task 12 — Bug 2 fix).

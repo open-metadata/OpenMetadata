@@ -37,6 +37,14 @@ jest.mock('../../../utils/AuthProvider.util', () => ({
   })),
 }));
 
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
+
 const mockInstance = {
   loginPopup: jest.fn(),
   loginRedirect: jest.fn(),
@@ -226,7 +234,7 @@ describe('MsalAuthenticator', () => {
       />
     );
 
-    const renewer = authenticatorRef?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     expect(renewer).toBeDefined();
 
@@ -260,7 +268,7 @@ describe('MsalAuthenticator', () => {
       />
     );
 
-    const renewer = authenticatorRef?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
     const result = await renewer?.();
 
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
@@ -286,7 +294,7 @@ describe('MsalAuthenticator', () => {
       />
     );
 
-    const renewer = authenticatorRef?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     await expect(renewer?.()).rejects.toThrow('popup_failed');
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
@@ -306,7 +314,7 @@ describe('MsalAuthenticator', () => {
       />
     );
 
-    const renewer = authenticatorRef?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     await expect(renewer?.()).rejects.toThrow(
       'MSAL renewal returned no idToken or expiresOn'

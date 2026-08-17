@@ -16,7 +16,6 @@ import { AuthenticationConfiguration } from '../../../generated/configuration/au
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AccessTokenResponse } from '../../../rest/auth-API';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 
 export type UserProfile = {
   email: string;
@@ -34,14 +33,14 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => Promise<void>;
+  // Legacy renewer method — kept on the ref for existing callers that
+  // still fire it manually. Silent-refresh no longer goes through this;
+  // it flows via AuthCoordinator, which each authenticator registers with
+  // from its own mount effect.
   renewIdToken: () =>
     | Promise<string>
     | Promise<AccessTokenResponse>
     | Promise<void>;
-  // Temporary bridge to the AuthCoordinator's Renewer contract — kept
-  // optional until every authenticator is migrated (auth-coordinator-refactor
-  // Task 13), then `renewIdToken` is removed and this becomes required.
-  getRenewer?: () => Renewer;
 }
 
 export interface IAuthContext {

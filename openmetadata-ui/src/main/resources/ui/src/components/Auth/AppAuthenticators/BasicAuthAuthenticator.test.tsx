@@ -21,6 +21,13 @@ const getAccessTokenOnExpiry = jest.fn();
 const getRefreshToken = jest.fn();
 const setOidcToken = jest.fn();
 const setRefreshToken = jest.fn();
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
 
 jest.mock('../AuthProviders/BasicAuthProvider', () => ({
   useBasicAuth: () => ({ handleLogout }),
@@ -172,7 +179,7 @@ describe('BasicAuthenticator', () => {
     expect(result).toEqual(response);
   });
 
-  it('should expose a getRenewer that resolves {idToken, expiresAt} from getAccessTokenOnExpiry', async () => {
+  it('registers a renewer with AuthCoordinator on mount that resolves {idToken, expiresAt} from getAccessTokenOnExpiry', async () => {
     (useApplicationStore as unknown as jest.Mock).mockReturnValue({
       isApplicationLoading: false,
       authConfig: { provider: AuthProvider.Basic },
@@ -187,20 +194,21 @@ describe('BasicAuthenticator', () => {
       email: 'test@example.com',
     };
     getAccessTokenOnExpiry.mockResolvedValue(response);
-    const ref = createRef<AuthenticatorRef>();
     render(
-      <BasicAuthenticator ref={ref}>
+      <BasicAuthenticator ref={null}>
         <div>Child</div>
       </BasicAuthenticator>
     );
 
-    const renewer = ref.current?.getRenewer?.();
-
-    expect(renewer).toBeDefined();
+    // The authenticator's mount effect must have registered a Renewer
+    // function (not undefined, not null) with the coordinator.
+    expect(registerRenewer).toHaveBeenCalled();
+    const registered = registerRenewer.mock.calls[0][0];
+    expect(typeof registered).toBe('function');
 
     let result: { idToken: string; expiresAt: number } | undefined;
     await act(async () => {
-      result = await renewer?.();
+      result = await registered();
     });
 
     expect(getAccessTokenOnExpiry).toHaveBeenCalled();
@@ -209,5 +217,24 @@ describe('BasicAuthenticator', () => {
       expiresAt: expSeconds * 1000,
     });
     expect(result?.expiresAt).toBeGreaterThan(Date.now());
+  });
+
+  it('unregisters the renewer on unmount', () => {
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      isApplicationLoading: false,
+      authConfig: { provider: AuthProvider.Basic },
+    });
+    const { unmount } = render(
+      <BasicAuthenticator ref={null}>
+        <div>Child</div>
+      </BasicAuthenticator>
+    );
+
+    unmount();
+
+    // The cleanup path calls registerRenewer(null) so a later authenticator
+    // (or the coordinator's own "no renewer" state) is not shadowed by a
+    // stale one after this component is torn down.
+    expect(registerRenewer).toHaveBeenCalledWith(null);
   });
 });

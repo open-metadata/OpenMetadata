@@ -15,12 +15,13 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
 } from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
@@ -76,8 +77,15 @@ export const GenericAuthenticator = forwardRef(
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
       invokeLogin: handleLogin,
-      getRenewer,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

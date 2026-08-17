@@ -47,6 +47,14 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
+
 describe('Auth0Authenticator', () => {
   it('should render children', () => {
     const { getByText } = render(
@@ -153,7 +161,7 @@ describe('Auth0Authenticator', () => {
         </Auth0Authenticator>
       );
 
-      const renewer = ref.current?.getRenewer?.();
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
       expect(renewer).toBeDefined();
 
@@ -178,7 +186,7 @@ describe('Auth0Authenticator', () => {
         </Auth0Authenticator>
       );
 
-      const renewer = ref.current?.getRenewer?.();
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
       await expect(renewer?.()).rejects.toThrow(
         'Auth0 renewal returned no idToken'
