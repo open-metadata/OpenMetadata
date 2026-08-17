@@ -20,25 +20,22 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.NotificationSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
   private final WebsocketNotificationHandler websocketNotificationHandler =
       new WebsocketNotificationHandler();
-  private boolean enableQueryChangeEvents = false;
 
-  public void init(OpenMetadataApplicationConfig config) {
-    if (config.getEventHandlerConfiguration() != null) {
-      enableQueryChangeEvents =
-          Boolean.TRUE.equals(config.getEventHandlerConfiguration().getEnableQueryChangeEvents());
-    }
-  }
+  public void init(OpenMetadataApplicationConfig config) {}
 
   @SneakyThrows
   public Void process(
@@ -59,13 +56,7 @@ public class ChangeEventHandler implements EventHandler {
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
       if (optionalChangeEvent.isPresent()) {
         ChangeEvent changeEvent = optionalChangeEvent.get();
-        // Test Connection workflows shouldn't produce changeEvents (Entity.WORKFLOW)
-        if (changeEvent.getEntityType().equals(Entity.WORKFLOW)) {
-          return null;
-        }
-        // Queries are often ingested in large bulk batches, so producing a changeEvent for each
-        // one is opt-in via eventHandlerConfiguration.enableQueryChangeEvents
-        if (changeEvent.getEntityType().equals(Entity.QUERY) && !enableQueryChangeEvents) {
+        if (isChangeEventSuppressed(changeEvent.getEntityType())) {
           return null;
         }
         // Always set the Change Event Username as context Principal, the one creating the CE
@@ -95,6 +86,27 @@ public class ChangeEventHandler implements EventHandler {
           e);
     }
     return null;
+  }
+
+  /**
+   * Entity types that don't get recorded in the change event table. Test Connection workflows
+   * (Entity.WORKFLOW) never produce changeEvents. Queries are usually ingested in large bulk
+   * batches, so they are opt-in through Settings -> Preferences -> Notifications.
+   */
+  static boolean isChangeEventSuppressed(String entityType) {
+    if (Entity.WORKFLOW.equals(entityType)) {
+      return true;
+    }
+    return Entity.QUERY.equals(entityType) && !queryChangeEventsEnabled();
+  }
+
+  private static boolean queryChangeEventsEnabled() {
+    NotificationSettings notificationSettings =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.NOTIFICATION_SETTINGS,
+            new NotificationSettings(),
+            NotificationSettings.class);
+    return Boolean.TRUE.equals(notificationSettings.getEnableQueryChangeEvents());
   }
 
   public static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {

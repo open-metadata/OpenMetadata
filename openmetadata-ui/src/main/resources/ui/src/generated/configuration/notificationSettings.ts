@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 /**
- * This schema defines the Event Handler Configuration.
+ * Notification preferences that control which entity changes OpenMetadata records as Change
+ * Events.
  */
-export interface EventHandlerConfiguration {
+export interface NotificationSettings {
     /**
-     * Event Handler Class Names
+     * Produce Change Events for Query entity create, update, and delete operations. Disabled by
+     * default since queries are often ingested in large bulk batches.
      */
-    eventHandlerClassNames: string[];
+    enableQueryChangeEvents?: boolean;
 }

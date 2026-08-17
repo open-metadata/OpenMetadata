@@ -24,6 +24,7 @@ import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATI
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.NOTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.NotificationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -350,6 +352,17 @@ public class SettingsCache {
                       .withEnabled(true)
                       .withAutoCreateEntities(true)
                       .withDefaultPipelineService("openlineage"));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize Notification Settings - Change Events for Query are opt-in
+    Settings notificationSettings =
+        Entity.getSystemRepository().getConfigWithKey(NOTIFICATION_SETTINGS.toString());
+    if (notificationSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(NOTIFICATION_SETTINGS)
+              .withConfigValue(new NotificationSettings().withEnableQueryChangeEvents(false));
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
