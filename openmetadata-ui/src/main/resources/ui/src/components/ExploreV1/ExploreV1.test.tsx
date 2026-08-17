@@ -578,6 +578,7 @@ describe('ExploreV1', () => {
       'tw:pb-2'
     );
     expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(
+      'tw:capitalize',
       'tw:font-medium'
     );
     expect(

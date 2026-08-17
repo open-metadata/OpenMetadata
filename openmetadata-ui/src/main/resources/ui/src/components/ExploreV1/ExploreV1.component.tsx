@@ -872,7 +872,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
-          titleClassName: 'tw:font-medium',
+          titleClassName: 'tw:capitalize tw:font-medium',
           titleContainerClassName: 'tw:items-center',
           titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
