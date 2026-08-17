@@ -173,7 +173,7 @@ public class BulkOverrideMetadataIT {
   }
 
   @Test
-  void test_botOverwritesColumnDisplayName_withOverride(TestNamespace ns) throws Exception {
+  void test_columnDisplayNamePreserved_evenWithOverride(TestNamespace ns) throws Exception {
     String schemaFqn = setupSchema(ns);
     String botToken = BulkApi.botToken();
     CreateTable original = table(ns, schemaFqn, "ovr_col_dn", "desc", "hash-v1");
@@ -186,9 +186,10 @@ public class BulkOverrideMetadataIT {
     BulkApi.upsert("tables", List.of(changed), true, botToken);
 
     assertEquals(
-        "Connector Column",
+        "Curated Column",
         getTable(fqn).getColumns().getFirst().getDisplayName(),
-        "overrideMetadata=true lets a bot PUT overwrite the column displayName");
+        "overrideMetadata governs column descriptions only; a curated column displayName is "
+            + "always preserved from a bot PUT");
   }
 
   // ===================================================================
