@@ -19,7 +19,7 @@ import {
 } from '@react-awesome-query-builder/antd';
 import { Plus } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
@@ -29,7 +29,7 @@ import {
 } from '../../../../../utils/AdvancedSearchUtils';
 import { getRuleFilterTree } from '../../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider';
+import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import QueryBuilderWidgetV1 from '../../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
 import { SearchOutputType } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -55,48 +55,51 @@ export const RuleQueryBuilderField = ({
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
   >();
-  const cancelRef = useRef(0);
+  // getAllCustomProperties returns data for ALL entity types regardless of
+  // which entityType is currently selected — fetch once on mount and cache it
+  // in state. The second effect rebuilds enriched fields whenever entityType
+  // changes without issuing a redundant network request.
+  const [customProps, setCustomProps] = useState<
+    Awaited<ReturnType<typeof getAllCustomProperties>> | null
+  >(null);
 
   useEffect(() => {
-    const requestId = ++cancelRef.current;
+    getAllCustomProperties()
+      .then(setCustomProps)
+      .catch(() => setCustomProps({}));
+  }, []);
 
-    const loadCustomProperties = async () => {
-      const subfields: Record<string, FieldOrGroup> = {};
-      try {
-        const res = await getAllCustomProperties();
-        Object.entries(res).forEach(([resEntityType, fields]) => {
-          processEntityTypeFields(
-            resEntityType,
-            fields,
-            subfields,
-            entityType,
-            SearchOutputType.ElasticSearch
-          );
-        });
-      } catch {
-        // non-critical — custom properties unavailable, fall back to empty subfields
-      }
+  useEffect(() => {
+    // Skip until the custom-property fetch resolves; the effect re-runs
+    // automatically once customProps transitions from null to the map.
+    if (customProps === null) {
+      return;
+    }
 
-      if (requestId !== cancelRef.current) {
-        return;
-      }
+    const subfields: Record<string, FieldOrGroup> = {};
+    Object.entries(customProps).forEach(([resEntityType, fields]) => {
+      processEntityTypeFields(
+        resEntityType,
+        fields,
+        subfields,
+        entityType,
+        SearchOutputType.ElasticSearch
+      );
+    });
 
-      const searchIndex =
-        searchClassBase.getEntityTypeSearchIndexMapping()[entityType];
-      const baseConfig = getTreeConfig({
-        searchIndex,
-        searchOutputType: SearchOutputType.ElasticSearch,
-        isExplorePage: false,
-      });
-      const nextFields = { ...baseConfig.fields };
-      if (!isEmpty(subfields) && 'subfields' in nextFields.extension) {
-        nextFields.extension = { ...nextFields.extension, subfields };
-      }
-      setEnrichedFields(nextFields);
-    };
-
-    loadCustomProperties();
-  }, [entityType]);
+    const searchIndex =
+      searchClassBase.getEntityTypeSearchIndexMapping()[entityType];
+    const baseConfig = getTreeConfig({
+      searchIndex,
+      searchOutputType: SearchOutputType.ElasticSearch,
+      isExplorePage: false,
+    });
+    const nextFields = { ...baseConfig.fields };
+    if (!isEmpty(subfields) && 'subfields' in nextFields.extension) {
+      nextFields.extension = { ...nextFields.extension, subfields };
+    }
+    setEnrichedFields(nextFields);
+  }, [entityType, customProps]);
 
   const tree = useMemo(
     () => getRuleFilterTree(filterJsonTree, queryFilter),

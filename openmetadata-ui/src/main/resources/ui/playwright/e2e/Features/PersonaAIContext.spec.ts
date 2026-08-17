@@ -1364,6 +1364,24 @@ test.describe.serial('Persona AI Context', () => {
       .locator('.rule--widget .ant-select')
       .first();
     await valueSelect.waitFor({ state: 'visible' });
+
+    // The value dropdown is backed by the Elasticsearch index.  A service
+    // created in beforeAll may not be immediately searchable due to index
+    // refresh latency.  Poll the search API before opening the dropdown so
+    // selectOption does not time out with "No data".
+    await expect
+      .poll(
+        () =>
+          adminPage.request
+            .get(
+              `/api/v1/search/query?q=${encodeURIComponent(dbService.entity.name)}&index=dataAsset&from=0&size=1`
+            )
+            .then((r) => r.json())
+            .then((j) => (j.hits?.hits?.length ?? 0) > 0),
+        { timeout: 30_000 }
+      )
+      .toBe(true);
+
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
 
     const saveRequest = adminPage.waitForRequest(
