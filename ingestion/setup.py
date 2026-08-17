@@ -31,8 +31,9 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs~=2026.3",
-    "great-expectations": "great-expectations~=0.18.0",
-    "great-expectations-1xx": "great-expectations~=1.0",
+    # 1.3 is the floor: GX only gained the validation-action registry there, so on
+    # 1.0-1.2 `Checkpoint.actions` is a closed union that rejects our action outright.
+    "great-expectations": "great-expectations~=1.3",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
@@ -307,7 +308,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
-    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],

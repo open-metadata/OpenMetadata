@@ -30,6 +30,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
     DbtCommonEnum,
+    DbtTestSuccessEnum,
     RawQueriesEnum,
 )
 from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation, UpstreamNode
@@ -844,6 +845,20 @@ def get_dbt_test_primary_table_fqn(dbt_test) -> Optional[str]:  # noqa: UP045
         primary_table_fqn = upstream_list[0]
 
     return primary_table_fqn
+
+
+def is_compiled_only_result(dbt_test_result) -> bool:
+    """
+    Tell a compiled-only run_results entry apart from an executed test result.
+
+    ``dbt run`` and ``dbt docs generate`` list test nodes in run_results.json with
+    the *node* status ``success`` and ``message=null`` even though no test SQL ran.
+    An executed test instead carries a *test* status (``pass``/``fail``/``warn``/
+    ``error``), and dbt leaves ``message`` null for passing tests, so ``message``
+    alone cannot be used as the discriminator (issue #29824). ``failures`` would be
+    the other signal but it is dropped by ``REQUIRED_RESULTS_KEYS`` before parsing.
+    """
+    return not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value
 
 
 def generate_entity_link(dbt_test):

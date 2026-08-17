@@ -37,6 +37,21 @@ const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
+  const switcher = page
+    .locator('.ant-tree-treenode')
+    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
+    .first()
+    .locator('.ant-tree-switcher');
+
+  const isExpanded = async () =>
+    ((await switcher.getAttribute('class')) ?? '').includes(
+      'ant-tree-switcher_open'
+    );
+
+  if (await isExpanded()) {
+    return;
+  }
+
   // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
   // setIsLoading on browse selections, so loader-based waiting is unreliable.
   // Response-based waiting (the same pattern used in expandServiceInExploreTree
@@ -44,19 +59,23 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
   // we interact with them.
   // ServiceType nodes drill down through POST /search/aggregate (service.style
   // top hits for custom icons); every other level still uses GET /search/query.
-  const res = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query?') ||
-      (response.url().endsWith('/api/v1/search/aggregate') &&
-        response.request().method() === 'POST')
-  );
-  await page
-    .locator('.ant-tree-treenode')
-    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
-    .locator('.ant-tree-switcher svg')
-    .first()
-    .click();
+  // A node only fetches its children the first time it opens though, so a caller
+  // re-expanding a node the tree already holds gets no request at all — hence the
+  // bound and the tolerance for it never arriving. Left unbounded this waits the
+  // full 30s default, which is enough to exhaust a caller's whole retry budget.
+  const res = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query?') ||
+        (response.url().endsWith('/api/v1/search/aggregate') &&
+          response.request().method() === 'POST'),
+      { timeout: 15_000 }
+    )
+    .catch(() => undefined);
+
+  await switcher.locator('svg').first().click({ timeout: 10_000 });
   await res;
+  await expect(switcher).toHaveClass(/ant-tree-switcher_open/);
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -279,7 +298,8 @@ test.describe(
           if (!(await serviceTitle.isVisible())) {
             await expandTreeNode(page, 'Databases');
           }
-          await serviceTitle.click();
+          await expect(serviceTitle).toBeVisible({ timeout: 10_000 });
+          await serviceTitle.click({ timeout: 10_000 });
           await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
             {
               timeout: 5000,

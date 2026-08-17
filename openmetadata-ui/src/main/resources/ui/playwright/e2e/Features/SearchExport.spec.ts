@@ -90,6 +90,37 @@ const fetchCompletedExportCsv = async (
   return resultResponse.text();
 };
 
+const getJobsLauncherButton = (page: Page) =>
+  page.getByRole('button', {
+    name: /Background jobs|jobs running/,
+  });
+
+const getJobsTrayPopover = (page: Page) =>
+  page.locator('.csv-jobs-tray-popover');
+
+const openJobsTray = async (page: Page) => {
+  const trayPopover = getJobsTrayPopover(page);
+
+  await expect(getJobsLauncherButton(page).or(trayPopover)).toBeVisible();
+
+  if (!(await trayPopover.isVisible())) {
+    await getJobsLauncherButton(page).click();
+  }
+
+  await expect(trayPopover).toBeVisible();
+};
+
+const refreshJobsTray = async (page: Page) => {
+  const trayPopover = getJobsTrayPopover(page);
+
+  if (await trayPopover.isVisible()) {
+    await trayPopover.locator('.csv-jobs-tray-close').click();
+    await expect(trayPopover).not.toBeVisible();
+  }
+
+  await openJobsTray(page);
+};
+
 test.describe(
   'Search Export',
   { tag: ['@Features', '@Discovery', '@import-export'] },
@@ -460,22 +491,7 @@ test.describe(
         //
         // Fix: wait for whichever surface appears first, then open the tray
         // only if it has not already been auto-opened.
-        const launcherButton = page.getByRole('button', {
-          name: /Background jobs|jobs running/,
-        });
-        const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-        // Block until the launcher (job in progress) or the tray (job
-        // completed and auto-opened by the useEffect) is in the DOM.
-        await expect(launcherButton.or(trayPopover)).toBeVisible();
-
-        // Open the tray only if it has not already been auto-opened.
-        // When the job finished fast, the tray is already visible and the
-        // launcher is gone from the DOM — clicking it would throw.
-        if (!(await trayPopover.isVisible())) {
-          await launcherButton.click();
-        }
-
+        await openJobsTray(page);
         await expect(
           page.getByText(/Exporting|Exported/).first()
         ).toBeVisible();
@@ -495,8 +511,9 @@ test.describe(
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await waitForExportJobCompleted(apiContext, jobId);
         await afterAction();
+        await refreshJobsTray(page);
 
-        const downloadButton = page
+        const downloadButton = getJobsTrayPopover(page)
           .getByRole('button', { name: 'Download' })
           .first();
 
