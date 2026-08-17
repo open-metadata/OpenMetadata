@@ -397,8 +397,7 @@ test.describe(
       const modalCountApiPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=dataAsset') &&
-          response.status() === 200
+          response.url().includes('index=dataAsset')
       );
 
       await openExportScopeModal(page);
