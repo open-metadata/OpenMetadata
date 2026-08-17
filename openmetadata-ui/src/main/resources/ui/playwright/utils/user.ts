@@ -116,44 +116,30 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
-  await page
+
+  const listLoader = page
     .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+    .getByTestId('loader');
+  const userRow = page.getByTestId(userName);
+
+  await listLoader.waitFor({ state: 'detached' });
+
+  // The search box is empty on arrival, so this fill is a real value change and
+  // dispatches the search. Re-typing a term already in the box would not: the
+  // searchbar debounces at 1s and the list refetches only when `searchValue`
+  // changes.
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(userName))
   );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const searchBar = page.getByTestId('searchbar');
+  await page.getByTestId('searchbar').fill(userName);
+  await searchResponse;
+  await listLoader.waitFor({ state: 'detached' });
 
-  await expect
-    .poll(
-      async () => {
-        const searchRequest = page.waitForResponse('/api/v1/search/query*');
-        await searchBar.fill('');
-        await searchBar.fill(userName);
-        await searchRequest;
-        await loaderPromise.catch(() => undefined);
+  await expect(userRow).toBeVisible();
 
-        return await page.getByTestId(userName).count();
-      },
-      {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for user ${userName} to become visible in the user list`,
-      }
-    )
-    .toBeGreaterThan(0);
-
-  await userResponse.catch(() => undefined);
-  await page.getByTestId(userName).click();
+  await userRow.click();
 };
 
 export const softDeleteUserProfilePage = async (
