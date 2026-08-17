@@ -85,8 +85,8 @@ const USER_PAUSE_GRACE_MS = 1000;
  * viewer's catch-up. This is what covers a scrollbar drag, which reports no wheel
  * and no key — and it needs no pointer event, which native scrollbars do not
  * deliver in every browser and which a plain click would otherwise fake. Two,
- * because a relayout's first report can also move the offset up before the viewer
- * re-pins the tail — after which it only ever moves back down.
+ * because a relayout's first report can leave the tail once before the viewer
+ * re-pins it.
  */
 const UPWARD_MOVES_TO_TAKE_CONTROL = 2;
 
@@ -135,6 +135,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const userPausedAtRef = useRef(0);
   const lastScrollTopRef = useRef(-1);
   const upwardMovesRef = useRef(0);
+  const caughtUpRef = useRef(false);
   // Mirrors `followTail` for the scroll handler. The viewer scrolls itself in the
   // same tick as it resumes following, so the scroll event that comes back would
   // otherwise be read by a closure that still says "paused".
@@ -227,13 +228,28 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
         previousScrollTop < 0 ||
         Math.abs(scrollTop - previousScrollTop) > SCROLL_MOVED_THRESHOLD_PX;
 
+      // Only movement that also leaves the tail counts as pulling away from it. A
+      // relayout emits long runs of downward offset corrections as rows are
+      // re-measured — 12 in a row on one measured wrap toggle — but they track the
+      // tail as the content shrinks, so they are the viewer keeping up, not the
+      // user leaving.
       const movedAwayFromTail =
+        !isBottom &&
         previousScrollTop >= 0 &&
         previousScrollTop - scrollTop > SCROLL_MOVED_THRESHOLD_PX;
 
-      upwardMovesRef.current = movedAwayFromTail
-        ? upwardMovesRef.current + 1
-        : 0;
+      // The catch-up lands back at the tail between a slow drag's steps. Counting
+      // that as "not pulling away" would reset the run every time and the drag
+      // could never outrun the claim, so a landing the viewer caused is skipped
+      // rather than treated as the user settling at the tail.
+      const catchUpLanded = isBottom && caughtUpRef.current;
+      caughtUpRef.current = false;
+
+      if (movedAwayFromTail) {
+        upwardMovesRef.current += 1;
+      } else if (!catchUpLanded) {
+        upwardMovesRef.current = 0;
+      }
 
       // Something is pulling away from the tail against the catch-up, which the
       // catch-up itself never does — it only ever moves back down. Whatever it is
@@ -252,6 +268,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
         !isBottom &&
         (!userMovedTheView || isViewerScroll)
       ) {
+        caughtUpRef.current = true;
         scrollToEnd();
       } else if (isLive && scrollHeight > clientHeight && userMovedTheView) {
         const justPausedByUser =
@@ -282,6 +299,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const resumeFollowingTail = useCallback(() => {
     userPausedAtRef.current = 0;
     upwardMovesRef.current = 0;
+    caughtUpRef.current = false;
     viewerScrollAtRef.current = Date.now();
     setFollow(true);
     scrollToEnd();

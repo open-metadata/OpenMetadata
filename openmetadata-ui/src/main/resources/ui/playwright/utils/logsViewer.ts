@@ -119,12 +119,20 @@ export const focusLogViewerScroller = async (page: Page): Promise<boolean> =>
  */
 export const dragLogViewerUpWithoutGesture = async (
   page: Page,
-  steps = 3,
+  steps = 4,
   stepPx = 400
 ): Promise<void> => {
-  for (let step = 0; step < steps; step++) {
-    await page.getByTestId('log-viewer-body').evaluate(
-      (body, delta) => {
+  // Each step yields two frames before the next one. Written back to back the
+  // browser coalesces them into a single scroll event, which is one report — a
+  // drag is a sequence of them, and the sequence is the whole point here.
+  await page.getByTestId('log-viewer-body').evaluate(
+    async (body, { totalSteps, delta }) => {
+      const nextFrame = () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve))
+        );
+
+      for (let step = 0; step < totalSteps; step++) {
         const scroller = Array.from(
           body.querySelectorAll<HTMLElement>('*')
         ).find((element) => {
@@ -136,13 +144,16 @@ export const dragLogViewerUpWithoutGesture = async (
           );
         });
 
-        if (scroller) {
-          scroller.scrollTop = Math.max(0, scroller.scrollTop - delta);
+        if (!scroller) {
+          return;
         }
-      },
-      stepPx
-    );
-  }
+
+        scroller.scrollTop = Math.max(0, scroller.scrollTop - delta);
+        await nextFrame();
+      }
+    },
+    { totalSteps: steps, delta: stepPx }
+  );
 };
 
 /**

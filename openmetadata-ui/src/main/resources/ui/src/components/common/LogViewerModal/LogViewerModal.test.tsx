@@ -695,6 +695,32 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
+  it('keeps following through a relayout that reports a run of offset corrections', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+
+    // Re-measuring rows walks the offset down over many events as the content
+    // shrinks back — 12 in a row on one measured wrap toggle. Each one tracks the
+    // tail, so none of them is the user pulling away from it.
+    for (let offset = 600; offset > 400; offset -= 40) {
+      act(() =>
+        mockLazyLog.onScroll?.({
+          scrollTop: offset,
+          scrollHeight: offset + 400,
+          clientHeight: 400,
+        })
+      );
+    }
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('keeps following through a click in the log during a relayout', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
