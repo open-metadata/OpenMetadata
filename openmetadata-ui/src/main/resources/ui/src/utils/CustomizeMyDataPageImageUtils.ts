@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
-import CuratedAssetsImg from '../assets/img/curated-assets.png';
-import DataAssetsImg from '../assets/img/data-assets-widget.png';
-import DataProductsImg from '../assets/img/data-products-widget.png';
-import DomainsImg from '../assets/img/domains-widget.png';
-import FollowingImg from '../assets/img/following-widget.png';
-import KPISmallImg from '../assets/img/kpi-widget.png';
 import KPIImg from '../assets/img/kpi.png';
-import MyDataImg from '../assets/img/my-data-widget.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
-import TotalAssetsImg from '../assets/img/total-assets-widget.png';
-import KnowledgeCenterWidgetImg from '../assets/img/widgets/knowledge-center-widget.png';
+import ActivityFeedImg from '../assets/img/widgets/activity-feed-widget.png';
+import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
+import CuratedAssetsImg from '../assets/img/widgets/curated-assets.png';
+import DataAssetsImg from '../assets/img/widgets/data-assets-widget.png';
+import DataProductsImg from '../assets/img/widgets/data-products-widget.png';
+import DomainsImg from '../assets/img/widgets/domains-widget.png';
+import FollowingImg from '../assets/img/widgets/following-widget.png';
+import KPISmallImg from '../assets/img/widgets/kpi-widget.png';
+import MyDataImg from '../assets/img/widgets/my-data-widget.png';
+import TotalAssetsImg from '../assets/img/widgets/total-assets-widget.png';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
