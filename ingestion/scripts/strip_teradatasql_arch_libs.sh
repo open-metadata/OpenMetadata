@@ -23,8 +23,9 @@
 # This does not fix those CVEs. teradatasql 20.0.0.65 is the newest release on
 # PyPI and is built with go1.26.5; the fix is go1.26.6 and there is nothing to
 # upgrade to until Teradata rebuilds. What this does is cut the flagged
-# artifacts from ten to two and the package from 337 MB to ~72 MB, so the
-# remaining exposure is the code actually loadable on this image.
+# artifacts from ten to two and the package from 337 MB to 48 MB on arm64 or
+# 70 MB on amd64 -- both measured, the two differ because the x86 libraries are
+# larger -- so the remaining exposure is the code actually loadable on this image.
 #
 # Two files are kept, not one: teradatasql selects the `fips` variant when the
 # host kernel reports /proc/sys/crypto/fips_enabled == 1. That is a property of
