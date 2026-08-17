@@ -1342,14 +1342,15 @@ test.describe.serial('Persona AI Context', () => {
     // aggregation regardless of how long we wait. Mock the endpoint so the
     // dropdown returns immediately with the test service name.
     await adminPage.route('**/api/v1/search/aggregate**', async (route) => {
+      // EntityFields.SERVICE = 'service.displayName.keyword'; the autocomplete
+      // sends field=service.displayName.keyword as a query param.
       const url = new URL(route.request().url());
-      if (url.searchParams.get('field') === 'service') {
+      if (url.searchParams.get('field') === 'service.displayName.keyword') {
         return route.fulfill({
           contentType: 'application/json',
           status: 200,
           body: JSON.stringify({
             aggregations: {
-              // EntityFields.SERVICE = 'service.displayName.keyword'
               'sterms#service.displayName.keyword': {
                 buckets: [{ key: dbService.entity.name, doc_count: 1 }],
               },
