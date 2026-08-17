@@ -89,6 +89,7 @@ export const useLogAutoFollow = ({
   const lastScrollTopRef = useRef(-1);
   const upwardMovesRef = useRef(0);
   const caughtUpRef = useRef(false);
+  const scrollerPreparedRef = useRef(false);
 
   const setFollow = useCallback((next: boolean) => {
     followTailRef.current = next;
@@ -209,22 +210,31 @@ export const useLogAutoFollow = ({
     [isLive, scrollToEnd, isViewerScroll, applyUserScrollIntent]
   );
 
-  // Scroll position alone cannot tell the user apart from the viewer: while a
-  // stream appends, the viewer's own follow scroll can undo a wheel before the
-  // browser reports the new position, so the resulting `onScroll` still reads as
-  // "at the tail" and following would never pause. The gesture itself is the
-  // only reliable signal, and pausing on it lands before the next append.
+  // A closed viewer unmounts the log body, so the next open gets a new element to
+  // prepare.
+  useEffect(() => {
+    if (!open) {
+      scrollerPreparedRef.current = false;
+    }
+  }, [open]);
+
+  // The element that actually scrolls is created by the log viewer library, so it
+  // has no tab stop of its own: without one the log is pointer-only and the keys
+  // below never reach a focused element. Done here rather than in JSX because the
+  // scroller is not ours to render.
+  //
+  // `logs` is a dependency because the scroller does not exist until there is
+  // something to scroll, so a first append is what makes it findable. The guard
+  // keeps that from costing anything afterwards: searching for it means a
+  // `getComputedStyle` on every descendant, which is not something to repeat on
+  // each frame of a live run.
   useEffect(() => {
     const body = bodyRef.current;
 
-    if (!open || !isLive || !body) {
+    if (!open || !isLive || !body || scrollerPreparedRef.current) {
       return;
     }
 
-    // The element that actually scrolls is created by the log viewer library, so
-    // it has no tab stop of its own: without one the log is pointer-only and the
-    // keys below never reach a focused element. Done here rather than in JSX
-    // because the scroller is not ours to render.
     const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
       (element) => {
         const { overflowY } = window.getComputedStyle(element);
@@ -233,10 +243,32 @@ export const useLogAutoFollow = ({
       }
     );
 
-    if (scroller && !scroller.hasAttribute('tabindex')) {
+    if (!scroller) {
+      return;
+    }
+
+    if (!scroller.hasAttribute('tabindex')) {
       scroller.tabIndex = 0;
       scroller.setAttribute('role', 'region');
       scroller.setAttribute('aria-label', scrollerLabel);
+    }
+
+    scrollerPreparedRef.current = true;
+  }, [open, isLive, logs, bodyRef, scrollerLabel]);
+
+  // Scroll position alone cannot tell the user apart from the viewer: while a
+  // stream appends, the viewer's own follow scroll can undo a wheel before the
+  // browser reports the new position, so the resulting `onScroll` still reads as
+  // "at the tail" and following would never pause. The gesture itself is the
+  // only reliable signal, and pausing on it lands before the next append.
+  //
+  // Deliberately independent of `logs`: the listeners sit on the body, which
+  // outlives every append, so there is nothing to rebind when one arrives.
+  useEffect(() => {
+    const body = bodyRef.current;
+
+    if (!open || !isLive || !body) {
+      return;
     }
 
     const pauseFollow = () => {
@@ -273,7 +305,7 @@ export const useLogAutoFollow = ({
       body.removeEventListener('wheel', handleWheel);
       body.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open, isLive, logs, bodyRef, scrollerLabel, setFollow]);
+  }, [open, isLive, bodyRef, setFollow]);
 
   return {
     followTail,

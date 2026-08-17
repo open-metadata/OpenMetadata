@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { Fragment, ReactNode } from 'react';
-import {
-  LogViewerScrollValues,
-  ScrollFacts,
-} from './LogViewerModal.interface';
+import { LogViewerScrollValues, ScrollFacts } from './LogViewerModal.interface';
 
 // Maps a log level token to a severity bucket. The matching colours live in
 // `log-viewer-modal.less` as `.lvm-log-level--<bucket>`, so the same parser
