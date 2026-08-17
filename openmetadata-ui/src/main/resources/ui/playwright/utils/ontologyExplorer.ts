@@ -16,6 +16,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
+import { performAdminLogin } from '../utils/admin';
 import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
@@ -159,23 +160,27 @@ export function buildMalformedRdfGraphJson(
   };
 }
 
+// Creates an admin API context without opening a browser page.
+// A full browser page would establish a WebSocket connection as admin, which
+// means the backend's entity-deleted broadcasts would appear as toasts on every
+// other admin test page running in parallel. Using performAdminLogin (API-only)
+// avoids that extra WS subscriber while still allowing admin CRUD operations.
 export async function createApiContext(browser: Browser) {
-  const page = await browser.newPage({
-    storageState: 'playwright/.auth/admin.json',
-  });
-  await redirectToHomePage(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
+  const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  return { page, apiContext };
+  return { apiContext, afterAction };
 }
 
 export async function disposeApiContext(
-  page: Page,
+  afterActionOrPage: (() => Promise<void>) | Page,
   apiContext: APIRequestContext
 ) {
   await apiContext.dispose();
-  await page.close();
+  if (typeof afterActionOrPage === 'function') {
+    await afterActionOrPage();
+  } else {
+    await afterActionOrPage.close();
+  }
 }
 
 export async function deleteEntities(

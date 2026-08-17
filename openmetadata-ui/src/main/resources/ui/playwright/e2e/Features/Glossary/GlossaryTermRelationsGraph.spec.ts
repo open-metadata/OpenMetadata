@@ -39,7 +39,7 @@ const termInX = new GlossaryTerm(glossaryX);
 const termInY = new GlossaryTerm(glossaryY);
 
 test.beforeAll('Seed test data', async ({ browser }) => {
-  const { page, apiContext } = await createApiContext(browser);
+  const { apiContext, afterAction } = await createApiContext(browser);
 
   await glossary.create(apiContext);
   await termA.create(apiContext);
@@ -55,11 +55,11 @@ test.beforeAll('Seed test data', async ({ browser }) => {
   await termInY.create(apiContext);
   await addTermRelation(apiContext, termInX, termInY, 'relatedTo');
 
-  await disposeApiContext(page, apiContext);
+  await disposeApiContext(afterAction, apiContext);
 });
 
 test.afterAll('Cleanup test data', async ({ browser }) => {
-  const { page, apiContext } = await createApiContext(browser);
+  const { apiContext, afterAction } = await createApiContext(browser);
 
   await deleteEntities(
     apiContext,
@@ -74,7 +74,7 @@ test.afterAll('Cleanup test data', async ({ browser }) => {
   await glossaryX.delete(apiContext);
   await glossaryY.delete(apiContext);
 
-  await disposeApiContext(page, apiContext);
+  await disposeApiContext(afterAction, apiContext);
 });
 
 test.describe('Glossary Term — Relations Graph tab', () => {

@@ -35,6 +35,14 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
 
   const pendingDeleteCallbacks = useRef<Map<string, () => void>>(new Map());
 
+  // Tracks jobIds that this browser session initiated so we can suppress
+  // success toasts for delete WebSocket events started by other sessions
+  // (e.g. parallel Playwright test workers cleaning up their test entities).
+  // The backend broadcasts COMPLETED events to all authenticated clients, so
+  // without this guard every admin page shows a toast for every delete, which
+  // can cover UI elements and break unrelated tests.
+  const ownDeleteJobIds = useRef<Set<string>>(new Set());
+
   const handleOnAsyncEntityDeleteConfirm = async ({
     entityName,
     entityId,
@@ -70,8 +78,11 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
         return;
       }
 
-      if (response.jobId && onDeleteFailure) {
-        pendingDeleteCallbacks.current.set(response.jobId, onDeleteFailure);
+      if (response.jobId) {
+        ownDeleteJobIds.current.add(response.jobId);
+        if (onDeleteFailure) {
+          pendingDeleteCallbacks.current.set(response.jobId, onDeleteFailure);
+        }
       }
 
       setAsyncDeleteJob(response);
@@ -115,11 +126,18 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     }
 
     if (response.status === 'COMPLETED') {
-      showSuccessToast(
-        t('server.entity-deleted-successfully', {
-          entity: response.entityName,
-        })
-      );
+      // Only toast for deletes this session started. The backend broadcasts the
+      // COMPLETED event to every authenticated client, so parallel sessions
+      // (e.g. Playwright cleanup workers) would otherwise show a toast here
+      // that covers UI elements in the running test.
+      if (ownDeleteJobIds.current.has(response.jobId)) {
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: response.entityName,
+          })
+        );
+        ownDeleteJobIds.current.delete(response.jobId);
+      }
     }
 
     pendingDeleteCallbacks.current.delete(response.jobId);
