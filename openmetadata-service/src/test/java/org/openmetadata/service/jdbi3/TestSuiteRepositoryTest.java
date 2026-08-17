@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -61,6 +62,35 @@ class TestSuiteRepositoryTest {
       assertEquals(
           Map.of(firstId, 5L, secondId, 13L),
           TestSuiteRepository.getTestsRelationshipRevisions(List.of(firstId, secondId)));
+    }
+  }
+
+  @Test
+  void readsRevisionsThroughTheCallersDaoRatherThanTheGlobalOne() {
+    // The suite revision is written and read back inside one transaction, so the read has to use
+    // the caller's DAO. Going through the mutable Entity.getCollectionDAO() can pick a different
+    // Jdbi's connection, which under MySQL's REPEATABLE READ snapshot cannot see that write.
+    UUID testSuiteId = UUID.randomUUID();
+    CollectionDAO callerDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(callerDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            List.of(testSuiteId.toString()), TestSuiteRepository.TESTS_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    testSuiteId,
+                    TestSuiteRepository.TESTS_REVISION_EXTENSION,
+                    "{\"revision\":9}")));
+    CollectionDAO globalDAO = mock(CollectionDAO.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(globalDAO);
+
+      assertEquals(
+          Map.of(testSuiteId, 9L),
+          TestSuiteRepository.getTestsRelationshipRevisions(callerDAO, List.of(testSuiteId)));
+      verifyNoInteractions(globalDAO);
     }
   }
 }

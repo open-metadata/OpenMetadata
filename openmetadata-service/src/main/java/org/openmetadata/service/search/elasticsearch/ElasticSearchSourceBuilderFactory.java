@@ -649,6 +649,7 @@ public class ElasticSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
+      case PREFIX -> buildPrefixRankingStageQueryV2(significantQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, assetConfig, getFuzziness(significantQuery));
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
@@ -683,6 +684,27 @@ public class ElasticSearchSourceBuilderFactory
     return ElasticQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
   }
 
+  /**
+   * Prefix stage: {@code match_bool_prefix} treats the last query token as a prefix, so a
+   * partially typed name ranks in its own band above an incidental substring hit. It also covers
+   * queries shorter than {@code om_ngram}'s three-character minimum, which previously matched
+   * nothing at all.
+   */
+  private Query buildPrefixRankingStageQueryV2(String query, RankingStage stage) {
+    ElasticQueryBuilder.BoolQueryBuilder prefixQuery = ElasticQueryBuilder.boolQuery();
+    for (String field : stage.getFields()) {
+      prefixQuery.should(
+          ElasticQueryBuilder.matchBoolPrefixQuery(
+              field,
+              query,
+              SearchRankingHelper.minimumShouldMatch(stage),
+              rankingQueryName(stage, field)));
+    }
+    prefixQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.constantScoreQuery(
+        prefixQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
     ElasticQueryBuilder.BoolQueryBuilder phraseQuery = ElasticQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
@@ -709,7 +731,7 @@ public class ElasticSearchSourceBuilderFactory
               fields,
               TextQueryType.BestFields,
               Operator.And,
-              String.valueOf(DEFAULT_TIE_BREAKER),
+              String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
               "0",
               null,
               null,
@@ -724,17 +746,22 @@ public class ElasticSearchSourceBuilderFactory
   private Query buildTextRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
     Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
-    return ElasticQueryBuilder.multiMatchQuery(
-        query,
-        fields,
-        TextQueryType.BestFields,
-        Operator.Or,
-        String.valueOf(DEFAULT_TIE_BREAKER),
-        fuzziness,
-        SearchRankingHelper.minimumShouldMatch(stage),
-        SearchRankingHelper.stageWeight(stage),
-        rankingQueryName(stage, "text"),
-        SearchRankingHelper.stageSearchAnalyzer(stage));
+    Query textQuery =
+        ElasticQueryBuilder.multiMatchQuery(
+            query,
+            fields,
+            TextQueryType.BestFields,
+            Operator.Or,
+            String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
+            fuzziness,
+            SearchRankingHelper.minimumShouldMatch(stage),
+            null,
+            rankingQueryName(stage, "text"),
+            SearchRankingHelper.stageSearchAnalyzer(stage));
+    return ElasticQueryBuilder.scriptScoreQuery(
+        textQuery,
+        SearchRankingHelper.STAGE_SATURATION_SCRIPT,
+        SearchRankingHelper.stageSaturationParams(stage));
   }
 
   private String rankingQueryName(RankingStage stage, String field) {

@@ -94,6 +94,10 @@ export interface Connection {
      */
     type?: StorageServiceType;
     /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
      * Azure Credentials
      *
      * GCP Credentials
