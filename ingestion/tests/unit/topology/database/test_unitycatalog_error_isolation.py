@@ -24,7 +24,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from databricks.sdk.service.catalog import (
-    CatalogInfo,
     ColumnInfo,
     ColumnTypeName,
     SchemaInfo,
@@ -129,10 +128,12 @@ class TestListingErrorIsolation:
     """SDK listing failures record a status failure and keep prior results."""
 
     def test_catalog_listing_failure_keeps_prior_catalogs(self, uc_source):
-        uc_source.client.catalogs.list.return_value = _raising_listing(
-            [CatalogInfo(name="demo"), CatalogInfo(name="main")],
+        # Catalogs are paged through the raw REST endpoint: the first page lands, the
+        # request for the second one fails.
+        uc_source.client.api_client.do.side_effect = [
+            {"catalogs": [{"name": "demo"}, {"name": "main"}], "next_page_token": "page-2"},
             Exception("429 Too Many Requests"),
-        )
+        ]
 
         names = list(uc_source.get_database_names_raw())
 
@@ -142,7 +143,7 @@ class TestListingErrorIsolation:
         assert "429 Too Many Requests" in uc_source.status.failures[0].error
 
     def test_catalog_listing_immediate_failure_records_status(self, uc_source):
-        uc_source.client.catalogs.list.side_effect = Exception("503 Service Unavailable")
+        uc_source.client.api_client.do.side_effect = Exception("503 Service Unavailable")
 
         names = list(uc_source.get_database_names_raw())
 

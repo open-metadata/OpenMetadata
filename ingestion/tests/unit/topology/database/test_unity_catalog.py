@@ -60,6 +60,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.database.unitycatalog.listing import SERVER_PAGE_SIZE
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
 
 # pylint: disable=line-too-long
@@ -638,15 +639,27 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         # Verify that the get method was called for the table with constraints
         mock_dbx_get_table.assert_called_once()
 
-    @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
-    def test_get_database_names_raw(self, mock_list):
-        mock_list.return_value = MOCK_CATALOG_INFO
+    @patch("databricks.sdk.core.ApiClient.do")
+    def test_get_database_names_raw(self, mock_do):
+        # Catalogs are paged straight off the REST endpoint: the pinned databricks-sdk
+        # gives CatalogsAPI.list no pagination parameters at all.
+        mock_do.side_effect = [
+            {"catalogs": [catalog.as_dict() for catalog in MOCK_CATALOG_INFO[:2]], "next_page_token": "page-2"},
+            {"catalogs": [catalog.as_dict() for catalog in MOCK_CATALOG_INFO[2:]]},
+        ]
+
         assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
+
+        assert mock_do.call_args_list[0].kwargs["query"]["max_results"] == SERVER_PAGE_SIZE
 
     @patch("databricks.sdk.service.catalog.SchemasAPI.list")
     def test_database_schema_names(self, mock_schema_list):
         mock_schema_list.return_value = MOCK_SCHEMA_INFO
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
+
+        # Without max_results Unity Catalog answers a large catalog with #UC-PGRQD
+        # instead of results.
+        assert mock_schema_list.call_args.kwargs["max_results"] == SERVER_PAGE_SIZE
 
     def test_yield_table(self):
         table_list = []

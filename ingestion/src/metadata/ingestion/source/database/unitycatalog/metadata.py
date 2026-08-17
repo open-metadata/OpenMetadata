@@ -84,6 +84,10 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
+from metadata.ingestion.source.database.unitycatalog.listing import (
+    SERVER_PAGE_SIZE,
+    list_catalogs,
+)
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
@@ -206,7 +210,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
+        catalog_listing = partial(list_catalogs, self.client)
+        for catalog in self._iterate_listing(catalog_listing, "catalogs"):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -368,7 +373,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
+        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name, max_results=SERVER_PAGE_SIZE)
         for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name
@@ -478,14 +483,11 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
             table_with_constraints = self._get_tables_with_constraints()
-            # max_results=0 makes the server paginate with its configured page
-            # size; leaving it unset returns every table of the schema in one
-            # response, which OOMs the pod on schemas with many wide tables.
             table_listing = partial(
                 self.client.tables.list,
                 catalog_name=catalog_name,
                 schema_name=schema_name,
-                max_results=0,
+                max_results=SERVER_PAGE_SIZE,
             )
             for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
                 detailed_table = table

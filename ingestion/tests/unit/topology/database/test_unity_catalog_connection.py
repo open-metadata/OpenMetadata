@@ -34,6 +34,7 @@ from metadata.ingestion.source.database.unitycatalog.connection import (
     get_tables,
     get_views,
 )
+from metadata.ingestion.source.database.unitycatalog.listing import SERVER_PAGE_SIZE
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 
 
@@ -77,9 +78,10 @@ def _named_mock(name: str, **attributes) -> MagicMock:
     return mock
 
 
-def _workspace_client(catalogs=None, schemas=None, tables=None) -> MagicMock:
+def _workspace_client(catalog_names=None, schemas=None, tables=None) -> MagicMock:
     client = MagicMock()
-    client.catalogs.list.return_value = iter(catalogs or [])
+    # Catalogs are listed through the raw REST endpoint, not through catalogs.list().
+    client.api_client.do.return_value = {"catalogs": [{"name": name} for name in catalog_names or []]}
     client.schemas.list.return_value = iter(schemas or [])
     client.tables.list.return_value = iter(tables or [])
     return client
@@ -87,7 +89,7 @@ def _workspace_client(catalogs=None, schemas=None, tables=None) -> MagicMock:
 
 class TestGetCatalogs:
     def test_picks_first_non_internal_catalog_when_not_configured(self):
-        client = _workspace_client(catalogs=[_named_mock("__databricks_internal"), _named_mock("main")])
+        client = _workspace_client(catalog_names=["__databricks_internal", "main"])
         table_obj = DatabricksTable()
 
         get_catalogs(client, table_obj)
@@ -102,7 +104,7 @@ class TestGetCatalogs:
         get_catalogs(client, table_obj, catalog_name="configured_catalog")
 
         client.catalogs.get.assert_called_once_with("configured_catalog")
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_not_called()
         assert table_obj.catalog_name == "configured_catalog"
 
     def test_configured_catalog_failure_propagates(self):
@@ -123,7 +125,7 @@ class TestGetSchemas:
 
         get_schemas(client, table_obj)
 
-        client.schemas.list.assert_called_once_with(catalog_name="main")
+        client.schemas.list.assert_called_once_with(catalog_name="main", max_results=SERVER_PAGE_SIZE)
         assert table_obj.schema_name == "bronze"
 
     def test_validates_configured_schema(self):

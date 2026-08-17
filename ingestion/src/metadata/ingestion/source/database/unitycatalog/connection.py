@@ -78,6 +78,10 @@ from metadata.ingestion.source.database.databricks.user_agent import (
     get_databricks_product,
     get_databricks_user_agent,
 )
+from metadata.ingestion.source.database.unitycatalog.listing import (
+    SERVER_PAGE_SIZE,
+    list_catalogs,
+)
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -196,7 +200,7 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
     if catalog_name:
         table_obj.catalog_name = connection.catalogs.get(catalog_name).name
     else:
-        for catalog in connection.catalogs.list():
+        for catalog in list_catalogs(connection):
             if catalog.name != INTERNAL_CATALOG:
                 table_obj.catalog_name = catalog.name
                 break
@@ -215,7 +219,7 @@ def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_
     if schema_name:
         table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
     else:
-        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name, max_results=SERVER_PAGE_SIZE):
             if schema.name:
                 table_obj.schema_name = schema.name
                 break
@@ -390,7 +394,7 @@ class UnityCatalogChecks:
 
     def _list_first_catalog(self) -> None:
         """Prove the workspace answers an authenticated call, without paging every catalog."""
-        next(iter(self._workspace.client.catalogs.list()), None)
+        next(list_catalogs(self._workspace.client), None)
 
     @check(DatabaseStep.GetDatabases)
     def check_databases(self) -> Evidence:

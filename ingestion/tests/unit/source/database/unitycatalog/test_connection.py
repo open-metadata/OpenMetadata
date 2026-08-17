@@ -64,6 +64,14 @@ def _named(name: str, **attributes) -> MagicMock:
     return mock
 
 
+def _catalog_client(*catalog_names: str) -> MagicMock:
+    """A workspace client answering the paginated catalogs endpoint, which is where
+    catalog listing goes: the pinned databricks-sdk cannot paginate ``catalogs.list()``."""
+    client = MagicMock()
+    client.api_client.do.return_value = {"catalogs": [{"name": name} for name in catalog_names]}
+    return client
+
+
 WAREHOUSE = {"httpPath": "/sql/1.0/warehouses/abc123"}
 
 
@@ -185,7 +193,7 @@ class TestHostNormalization:
 
 class TestCheckAccess:
     def test_probes_the_host_before_listing_catalogs(self):
-        client = MagicMock()
+        client = _catalog_client("main")
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             evidence = _checks(client).check_access()
 
@@ -225,11 +233,11 @@ class TestCheckAccess:
             _checks(client).check_access()
 
         assert failure.value.evidence.command == "TCP connect my-workspace.cloud.databricks.com:443"
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
     def test_rejected_credentials_surface_as_a_check_error_with_the_command(self):
         client = MagicMock()
-        client.catalogs.list.side_effect = Unauthenticated("invalid access token")
+        client.api_client.do.side_effect = Unauthenticated("invalid access token")
         with patch("metadata.core.connections.test_connection.network.tcp_probe"), pytest.raises(CheckError) as failure:
             _checks(client).check_access()
 
@@ -239,8 +247,7 @@ class TestCheckAccess:
 
 class TestMetadataSteps:
     def test_get_databases_resolves_the_first_non_internal_catalog(self):
-        client = MagicMock()
-        client.catalogs.list.return_value = iter([_named("__databricks_internal"), _named("main")])
+        client = _catalog_client("__databricks_internal", "main")
         checks = _checks(client)
 
         evidence = checks.check_databases()
@@ -257,7 +264,7 @@ class TestMetadataSteps:
         evidence = checks.check_databases()
 
         client.catalogs.get.assert_called_once_with("my_catalog")
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_not_called()
         assert evidence.command == "catalogs.get('my_catalog')"
 
     def test_get_schemas_validates_the_configured_schema(self):
