@@ -37,6 +37,11 @@ logger = ingestion_logger()
 dlt_parser_registry = enum_register()
 
 
+def _unique(names) -> List[str]:  # noqa: UP006
+    """De-duplicate while preserving the order the parser reported."""
+    return list(dict.fromkeys(names))
+
+
 class DltSourceParser(Protocol):
     """Contract every DLT language parser implements."""
 
@@ -107,9 +112,13 @@ SQL_STREAM_WRAPPER_PATTERN = re.compile(r"\bSTREAM\s*\(\s*([A-Za-z0-9_.`\"]+)\s*
 # namespace, not a schema, so it must be dropped rather than resolved as one.
 SQL_LIVE_PREFIX_PATTERN = re.compile(r"^live\.", re.IGNORECASE)
 
-# Table-valued functions a query parser surfaces as if they were tables. There is
-# no entity behind these, so they are dropped instead of being looked up.
+# Table-valued functions a query parser surfaces as if they were tables. These are
+# only dropped when the statement actually invokes them, so a dataset legitimately
+# named `range` or `stream` still resolves.
 SQL_TABLE_VALUED_FUNCTIONS = frozenset({"stream", "read_files", "cloud_files", "read_kafka", "read_kinesis", "range"})
+
+# An identifier immediately followed by "(" is a call, not a table reference
+SQL_FUNCTION_CALL_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
 
 @dlt_parser_registry.add("sql")
@@ -131,7 +140,7 @@ class SqlDltParser:
         return bool(SQL_DLT_CREATE_PATTERN.search(source_code) or SQL_DLT_APPLY_CHANGES_PATTERN.search(source_code))
 
     @staticmethod
-    def _normalise(table: Any) -> Optional[str]:  # noqa: UP045
+    def _normalise(table: Any, called_functions: frozenset = frozenset()) -> Optional[str]:  # noqa: UP045
         """Turn a parser table reference into a name, or None when it is not a table."""
         from metadata.utils.helpers import (
             get_formatted_entity_name,
@@ -142,9 +151,12 @@ class SqlDltParser:
         if not name or not has_table_name(name):
             return None
         name = SQL_LIVE_PREFIX_PATTERN.sub("", name)
-        if name.lower() in SQL_TABLE_VALUED_FUNCTIONS:
+        if not name:
             return None
-        return name or None
+        lowered = name.lower()
+        if lowered in SQL_TABLE_VALUED_FUNCTIONS and lowered in called_functions:
+            return None
+        return name
 
     @staticmethod
     def extract(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
@@ -168,14 +180,16 @@ class SqlDltParser:
                 parsed_targets: Any = parser.target_tables or []
                 parsed_sources: Any = parser.source_tables or []
 
-                targets = [name for name in map(SqlDltParser._normalise, parsed_targets) if name]
+                called = frozenset(match.group(1).lower() for match in SQL_FUNCTION_CALL_PATTERN.finditer(statement))
+                targets = _unique(name for name in (SqlDltParser._normalise(t, called) for t in parsed_targets) if name)
                 if not targets:
                     logger.debug(f"No dataset parsed from SQL DLT statement: {statement[:120]}")
                     continue
 
-                sources = [name for name in map(SqlDltParser._normalise, parsed_sources) if name]
+                sources = _unique(name for name in (SqlDltParser._normalise(s, called) for s in parsed_sources) if name)
                 # A dataset never depends on itself. APPLY CHANGES INTO in particular
-                # names the same table it writes to.
+                # names the same table it writes to. Stripping the LIVE. prefix can also
+                # collapse two references onto one dataset, hence the de-duplication.
                 depends_on = [name for name in sources if name not in targets]
 
                 for target in targets:
@@ -197,12 +211,6 @@ class SqlDltParser:
 # ---------------------------------------------------------------------------
 # Python
 # ---------------------------------------------------------------------------
-
-# Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...) or @dlt.table(name=func())
-DLT_TABLE_PATTERN = re.compile(
-    r"@dlt\.table\s*\(",
-    re.IGNORECASE,
-)
 
 # Any decorator that declares a dataset. This must stay in step with the function
 # pattern used during extraction, otherwise a source gets recognised but yields

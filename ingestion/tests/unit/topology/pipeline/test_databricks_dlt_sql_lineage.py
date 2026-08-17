@@ -35,6 +35,10 @@ from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
     dlt_parser_registry,
     extract_dlt_table_dependencies,
 )
+from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+    get_pipeline_libraries,
+    glob_base_directory,
+)
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
@@ -395,3 +399,60 @@ class TestQualifyDltTableName:
 
     def test_empty_name_falls_back_to_the_pipeline_target(self):
         assert DatabrickspipelineSource._qualify_dlt_table_name("", "cat", "sch") == ("cat", "sch", "")
+
+    def test_surrounding_whitespace_and_stray_dots_are_stripped(self):
+        for raw in ("  orders  ", "orders.", ".orders"):
+            assert DatabrickspipelineSource._qualify_dlt_table_name(raw, "cat", "sch") == (
+                "cat",
+                "sch",
+                "orders",
+            )
+
+
+class TestGlobNormalisation:
+    """`spec.libraries` glob patterns must reduce to a directory the caller can expand."""
+
+    def test_recursive_and_extension_patterns_reduce_to_a_directory(self):
+        for pattern in ("/tx/**", "/tx/*.sql", "/tx/**/*.sql", "/tx/**/*.py", "/tx/staging*"):
+            assert glob_base_directory(pattern) == "/tx/", pattern
+
+    def test_a_concrete_path_is_left_alone(self):
+        assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
+
+    def test_glob_library_is_returned_as_an_expandable_directory(self):
+        libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]})
+        assert libraries == ["/tx/"]
+        assert libraries[0].endswith("/"), "caller expands only paths ending in /"
+
+    def test_all_library_shapes_are_collected(self):
+        libraries = get_pipeline_libraries(
+            {
+                "libraries": [
+                    {"notebook": {"path": "/repo/nb"}},
+                    {"file": {"path": "/repo/transform.sql"}},
+                    {"glob": {"include": "/repo/tx/**"}},
+                    {"unknown": {"path": "/ignored"}},
+                    "not-a-dict",
+                ]
+            }
+        )
+        assert libraries == ["/repo/nb", "/repo/transform.sql", "/repo/tx/"]
+
+    def test_missing_or_empty_config_is_safe(self):
+        assert get_pipeline_libraries({}) == []
+        assert get_pipeline_libraries({"libraries": None}) == []
+
+
+class TestSqlUpstreamHygiene:
+    """Upstream lists must be de-duplicated and must not drop real datasets."""
+
+    def test_live_prefix_and_bare_name_collapse_to_one_dependency(self):
+        deps = _deps_by_name(
+            "CREATE MATERIALIZED VIEW g AS SELECT * FROM LIVE.silver JOIN silver s ON s.id = LIVE.silver.id"
+        )
+        assert deps["g"].depends_on == ["silver"]
+
+    def test_table_valued_function_dropped_only_when_invoked(self):
+        """A dataset may legitimately be named `range`, so filter on call form."""
+        assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range")["m"].depends_on == ["range"]
+        assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range(1, 10)")["m"].depends_on == []

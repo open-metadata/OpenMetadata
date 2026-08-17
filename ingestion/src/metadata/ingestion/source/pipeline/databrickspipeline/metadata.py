@@ -447,12 +447,13 @@ class DatabrickspipelineSource(PipelineServiceSource):
         describe where the table actually lives, so they take precedence over the
         pipeline's target catalog and schema.
         """
-        parts = [part for part in (table_name or "").split(".") if part]
+        parts = [part.strip() for part in (table_name or "").split(".") if part.strip()]
         if len(parts) >= 3:
             return parts[-3], parts[-2], parts[-1]
         if len(parts) == 2:
             return catalog, parts[0], parts[1]
-        return catalog, schema, table_name
+        # the cleaned token, so stray whitespace or dots never reach the FQN
+        return catalog, schema, parts[0] if parts else ""
 
     def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:  # noqa: UP045
         """

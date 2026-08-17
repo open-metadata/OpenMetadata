@@ -194,15 +194,34 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
     return None
 
 
-def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # noqa: UP006
+def glob_base_directory(include: str) -> str:
+    """
+    Reduce a glob include pattern to the directory the caller should expand.
+
+    Everything from the first wildcard onward is dropped, and the result always
+    ends with `/` so the caller expands it instead of exporting it as a single
+    file. `/tx/**`, `/tx/*.sql` and `/tx/**/*.sql` all reduce to `/tx/`.
+
+    A pattern with no wildcard is already a concrete path and is returned as is.
+    """
+    if "*" not in include:
+        return include
+    base = include.split("*", 1)[0]
+    if not base.endswith("/"):
+        # a partial segment such as "/tx/staging*" leaves "/tx/staging", whose
+        # directory is the widest thing that is certain to contain the matches
+        base = base.rsplit("/", 1)[0] + "/"
+    return base
+
+
+def get_pipeline_libraries(pipeline_config: dict) -> List[str]:  # noqa: UP006
     """
     Collect the source paths a DLT pipeline declares in `spec.libraries`.
 
     A library entry is one of three shapes, and a pipeline may mix them:
       - `{"notebook": {"path": ...}}`  a workspace notebook
       - `{"file": {"path": ...}}`      a file, used by Git folders and Asset Bundles
-      - `{"glob": {"include": ...}}`   a directory tree, returned as a directory path
-        with a trailing slash so the caller knows to expand it
+      - `{"glob": {"include": ...}}`   a tree, reduced to the directory to expand
 
     Malformed entries are skipped rather than failing the whole pipeline.
     """
@@ -228,9 +247,7 @@ def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # 
                 glob_entry = lib.get("glob")
                 include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
                 if include:
-                    # "/path/**" addresses a tree. Normalise to a directory path so the
-                    # caller expands it rather than trying to export it as one file.
-                    base_path = include.replace("/**", "/").replace("**", "")
+                    base_path = glob_base_directory(include)
                     libraries.append(base_path)
                     logger.info(f"   ✓ Found glob pattern, using base path: {base_path}")
         except Exception as exc:
