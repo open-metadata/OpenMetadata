@@ -35,10 +35,13 @@
 # a later install that replaces the teradatasql tree restores all ten files.
 #
 # Unlike the spaCy fixture strip next door, deleting the wrong file here would
-# break the driver at runtime. So nothing is removed until every keeper for this
-# platform has been found on disk and successfully dlopen()ed -- if that cannot
-# be established the directory is left exactly as it is. Every path still exits
-# 0: the cost of skipping is image size and scanner noise, never a failed build.
+# break the driver at runtime. So nothing is removed until the library this
+# platform actually loads has been found on disk and successfully dlopen()ed --
+# if that cannot be established the directory is left exactly as it is. The FIPS
+# variant is kept but never test-loaded; see primary_keeper_is_loadable below for
+# why testing it would risk skipping the strip for no safety gain. Every path
+# still exits 0: the cost of skipping is image size and scanner noise, never a
+# failed build.
 
 set -uo pipefail
 
@@ -123,25 +126,33 @@ def variant_path(pkg_dir, variant):
     return os.path.join(pkg_dir, "teradatasql." + variant)
 
 
-# The safety gate. dlopen is what the driver itself does at connect() time, so a
-# library that loads here is one the driver can use; anything short of that (file
-# absent, wrong ELF arch, missing dependency) means we do not understand this
-# install well enough to delete from it.
-def keepers_are_loadable(pkg_dir, keepers):
-    for variant in keepers:
-        path = variant_path(pkg_dir, variant)
-        if not os.path.isfile(path):
-            sys.stderr.write(
-                f"WARNING: {path} is missing; leaving {pkg_dir} untouched\n"
-            )
-            return False
-        try:
-            ctypes.cdll.LoadLibrary(path)
-        except OSError as exc:
-            sys.stderr.write(
-                f"WARNING: {path} failed to load ({exc}); leaving {pkg_dir} untouched\n"
-            )
-            return False
+# The safety gate, and it deliberately tests only the non-FIPS keeper. dlopen is
+# what the driver itself does at connect() time, so a library that loads here is
+# one the driver can use; anything short of that (file absent, wrong ELF arch,
+# missing dependency) means we do not understand this install well enough to
+# delete from it.
+#
+# The FIPS variant is NOT loaded, for two reasons. It is only ever selected on a
+# host whose kernel reports fips_enabled=1, which a build machine is not, so a
+# load here proves nothing about the environment that will actually use it. And
+# it is a second Go c-shared object: dlopening it alongside the non-FIPS runtime
+# initialises a second Go runtime in the same process, which can fail -- or abort
+# the interpreter -- for reasons that say nothing about whether the file is good.
+# Either way the strip would be skipped, leaving the full 337 MB tree in place
+# with nothing but a stderr warning. It is never deleted regardless, because it is
+# in `keepers` and the delete loop skips those, so not testing it costs no safety.
+def primary_keeper_is_loadable(pkg_dir, primary):
+    path = variant_path(pkg_dir, primary)
+    if not os.path.isfile(path):
+        sys.stderr.write(f"WARNING: {path} is missing; leaving {pkg_dir} untouched\n")
+        return False
+    try:
+        ctypes.cdll.LoadLibrary(path)
+    except OSError as exc:
+        sys.stderr.write(
+            f"WARNING: {path} failed to load ({exc}); leaving {pkg_dir} untouched\n"
+        )
+        return False
     return True
 
 
@@ -159,7 +170,7 @@ print(
 )
 
 for pkg_dir in pkg_dirs:
-    if not keepers_are_loadable(pkg_dir, keepers):
+    if not primary_keeper_is_loadable(pkg_dir, keepers[0]):
         continue
 
     removed, freed = [], 0
