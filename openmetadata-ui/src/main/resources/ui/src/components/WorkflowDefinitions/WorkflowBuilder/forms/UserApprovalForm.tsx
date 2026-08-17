@@ -35,7 +35,8 @@ import {
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface UserApprovalFormProps {
   node: Node;
@@ -63,6 +64,50 @@ const DEFAULT_USER_APPROVAL_TRANSITIONS = [
   },
 ];
 
+interface AssigneesConfigSlice {
+  addReviewers?: boolean;
+  addOwners?: boolean;
+  emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+  candidates?: AssigneeCandidate[];
+}
+
+interface UserApprovalInitialState {
+  displayName: string;
+  description: string;
+  approvalThreshold: number;
+  rejectionThreshold: number;
+  addReviewers: boolean;
+  addOwners: boolean;
+  emptyAssigneeStrategy: 'none' | 'assignAdmins';
+  candidates: EntityReference[];
+}
+
+const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
+  addReviewers: assignees.addReviewers ?? true,
+  addOwners: assignees.addOwners ?? false,
+  emptyAssigneeStrategy: assignees.emptyAssigneeStrategy ?? 'none',
+  candidates: Array.isArray(assignees.candidates) ? assignees.candidates : [],
+});
+
+const buildInitialState = (
+  node: Node | undefined
+): UserApprovalInitialState => {
+  const nodeConfig = (node?.data?.config ?? {}) as {
+    approvalThreshold?: number;
+    rejectionThreshold?: number;
+    assignees?: AssigneesConfigSlice;
+  };
+  const displayName = node?.data?.displayName ?? node?.data?.label ?? '';
+
+  return {
+    displayName,
+    description: node?.data?.description ?? '',
+    approvalThreshold: nodeConfig.approvalThreshold ?? 1,
+    rejectionThreshold: nodeConfig.rejectionThreshold ?? 1,
+    ...buildAssigneesState(nodeConfig.assignees ?? {}),
+  };
+};
+
 export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   node,
   onSave,
@@ -83,25 +128,18 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const { isFormDisabled } = useWorkflowModeContext();
 
   useEffect(() => {
-    if (node?.data) {
-      const nodeConfig = node.data.config || {};
-      const assignees = (nodeConfig.assignees || {}) as {
-        addReviewers?: boolean;
-        addOwners?: boolean;
-        emptyAssigneeStrategy?: 'none' | 'assignAdmins';
-        candidates?: AssigneeCandidate[];
-      };
-      setDisplayName(node.data.displayName || node.data.label || '');
-      setDescription(node.data.description || '');
-      setApprovalThreshold(nodeConfig.approvalThreshold ?? 1);
-      setRejectionThreshold(nodeConfig.rejectionThreshold ?? 1);
-      setAddReviewers(assignees.addReviewers ?? true);
-      setAddOwners(assignees.addOwners ?? false);
-      setEmptyAssigneeStrategy(assignees.emptyAssigneeStrategy ?? 'none');
-      setCandidates(
-        Array.isArray(assignees.candidates) ? assignees.candidates : [],
-      );
+    if (!node?.data) {
+      return;
     }
+    const initial = buildInitialState(node);
+    setDisplayName(initial.displayName);
+    setDescription(initial.description);
+    setApprovalThreshold(initial.approvalThreshold);
+    setRejectionThreshold(initial.rejectionThreshold);
+    setAddReviewers(initial.addReviewers);
+    setAddOwners(initial.addOwners);
+    setEmptyAssigneeStrategy(initial.emptyAssigneeStrategy);
+    setCandidates(initial.candidates);
   }, [node]);
 
   const handleSave = () => {
@@ -159,7 +197,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
 
   const getApproversButtonLabel = (
     list: EntityReference[],
-    translate: (key: string, opts?: { count?: number }) => string,
+    translate: (key: string, opts?: { count?: number }) => string
   ): string => {
     if (list.length === 0) {
       return '';
