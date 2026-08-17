@@ -217,10 +217,9 @@ class MigrationUtilTaskWorkflowTest {
   }
 
   /**
-   * Build a WorkflowDefinition with a single {@code userApprovalTask} node whose config comes from
-   * a JSON literal. Uses {@link org.openmetadata.schema.utils.JsonUtils} rather than the fragile
-   * jsonschema2pojo-generated {@code Config__1} class name so a future userApprovalTask schema
-   * edit that renumbers that class name does not silently break this test.
+   * Build a WorkflowDefinition with a single {@code userApprovalTask} node from a JSON literal —
+   * avoids depending on the jsonschema2pojo-generated numbered config class name, which can
+   * rename on any userApprovalTask schema edit.
    */
   private WorkflowDefinition userApprovalWorkflowFromJson(String name, String configJson) {
     String workflowJson =

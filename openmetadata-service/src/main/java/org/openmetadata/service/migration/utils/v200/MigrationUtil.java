@@ -2172,16 +2172,12 @@ public class MigrationUtil {
     /**
      * Populate a default {@code transitionMetadata} of {@code [approve, reject]} on every
      * {@code userApprovalTask} node whose config is missing the field or carries an empty array.
-     * 1.13 workflow definitions never emitted {@code transitionMetadata} (the field did not exist),
-     * and the pre-fix 2.x UI builder saved userApprovalTask nodes without it as well. Once
-     * {@code TaskResource.validateTransition} requires the resolve {@code transitionId} to match a
-     * declared transition, any task created from those definitions is un-resolvable.
      *
-     * <p>Serialize → mutate → deserialize instead of {@code node.setConfig(...)}: the interface
-     * setter on {@link WorkflowNodeDefinitionInterface} is a default no-op (only concrete typed
-     * subclasses expose a real setter, keyed to the fragile jsonschema2pojo-generated
-     * {@code Config__1} name), so mutating through the interface silently drops the change and
-     * {@code createOrUpdate} then sees {@code entityChanged=false} and skips the persist.
+     * <p>Round-trips the whole definition through JSON instead of calling
+     * {@link WorkflowNodeDefinitionInterface#setConfig(Map)}: that interface method is a default
+     * no-op (only the generated typed subclasses expose a real setter), so mutating through the
+     * interface reference silently drops the change and {@code createOrUpdate} then sees no diff
+     * and skips the persist.
      */
     private WorkflowDefinition backfillUserApprovalTransitionMetadata(
         WorkflowDefinition workflowDefinition) {

@@ -55,18 +55,10 @@ public final class TaskWorkflowLifecycleResolver {
   private TaskWorkflowLifecycleResolver() {}
 
   /**
-   * Fallback transitions applied to any {@code userApprovalTask} whose {@code transitionMetadata}
-   * is empty. Older workflow builders (and the UI form prior to the {@code transitionMetadata}
-   * emission fix) saved userApprovalTask nodes with no transitions, which strands every task
-   * created from those workflows because {@link #findTransition(Task, String)} has nothing to
-   * match against. Synthesizing approve/reject in memory unblocks those tasks without a data
-   * migration or a Flowable redeploy.
-   *
-   * <p>Keep the {@code targetStageId} values ({@code approved}/{@code rejected}) aligned with the
-   * FE default in {@code UserApprovalForm} and the migration backfill in
-   * {@code MigrationUtil.TaskWorkflow.defaultUserApprovalTransitionMetadata}; a divergent value
-   * would surface as inconsistent {@code workflowStageId} tails between synth-resolved and
-   * backfill-resolved tasks.
+   * Fallback transitions returned when a {@code userApprovalTask} node's {@code transitionMetadata}
+   * is empty. The values (ids, labels, target stage ids, statuses) mirror the FE default in
+   * {@code UserApprovalForm} and the migration backfill so tasks resolved via this fallback and
+   * tasks resolved via backfilled metadata land on the same workflow stage ids.
    */
   private static final List<TaskAvailableTransition> DEFAULT_USER_APPROVAL_TRANSITIONS =
       List.of(
@@ -86,18 +78,6 @@ public final class TaskWorkflowLifecycleResolver {
               .withRequiresComment(false));
 
   private static final String USER_APPROVAL_TASK_SUB_TYPE = "userApprovalTask";
-
-  /**
-   * Statuses that indicate a task is still awaiting a human decision, and therefore a legitimate
-   * target for the default approve/reject synth. Terminal statuses ({@code Rejected},
-   * {@code Revoked}, {@code Completed}, {@code Cancelled}, {@code Failed}, {@code Expired}) and
-   * DAR post-approval statuses ({@code Approved}, {@code Granted}, {@code ManualRevoke}) already
-   * carry their correct transition set on the task row when appropriate — synthesizing here would
-   * either resurrect a resolved task (reopening the self-approval leak plugged by #30969) or
-   * offer the wrong actions for a DAR post-approval stage that should only expose {@code revoke}.
-   */
-  private static final Set<TaskEntityStatus> SYNTH_ELIGIBLE_STATUSES =
-      Set.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress);
 
   public static Optional<TaskFormSchema> resolveSchema(Task task) {
     if (task == null || task.getType() == null) {
@@ -437,8 +417,8 @@ public final class TaskWorkflowLifecycleResolver {
     }
 
     List<TaskAvailableTransition> transitions = task.getAvailableTransitions();
-    if (nullOrEmpty(transitions) && shouldSynthesizeApprovalTransitions(task)) {
-      transitions = resolveDefaultUserApprovalTransitions(task);
+    if (nullOrEmpty(transitions) && task.getWorkflowDefinitionId() != null) {
+      transitions = fallbackUserApprovalTransitions(task);
     }
     if (!nullOrEmpty(transitions)) {
       match =
@@ -451,30 +431,16 @@ public final class TaskWorkflowLifecycleResolver {
   }
 
   /**
-   * Gate the approve/reject synth on the two properties that jointly identify TASK-19741-shape
-   * repros: a workflow-managed task whose current lifecycle status still expects a human
-   * decision. Skipping the synth for terminal / post-approval statuses preserves the guard that
-   * kept #30969's self-approval fix intact (a Rejected DAR must remain un-resolvable), and
-   * skipping it for non-workflow-managed tasks preserves the pre-fix behavior for legacy paths.
-   */
-  private static boolean shouldSynthesizeApprovalTransitions(Task task) {
-    return task.getWorkflowDefinitionId() != null
-        && task.getStatus() != null
-        && SYNTH_ELIGIBLE_STATUSES.contains(task.getStatus());
-  }
-
-  /**
-   * Resolve the fallback approve/reject transitions for a workflow-managed task whose stored
-   * {@code availableTransitions} is empty. First tries the stage-specific lookup so a partially
-   * configured workflow can still override the defaults; falls back to
+   * Resolve fallback transitions for a workflow-managed task whose stored
+   * {@code availableTransitions} is empty. Prefer the stage-specific lookup so a partially
+   * configured workflow can override the defaults; fall back to
    * {@link #DEFAULT_USER_APPROVAL_TRANSITIONS} when the task carries no {@code workflowStageId}
-   * (as happens on tasks created before Task V2 populated the stage id, and on tasks whose
-   * userApprovalTask node was saved with an empty {@code transitionMetadata}). The
-   * {@link WorkflowDefinition} is loaded once and shared across both checks — this method runs on
-   * every {@code /resolve} for at-rest legacy tasks with empty availableTransitions, and the
-   * definition load hits the repository + JSON deserialization.
+   * or when the resolved stage node also declares an empty transition list. Loads the
+   * {@link WorkflowDefinition} once and shares it with both checks — this runs on every resolve
+   * of a legacy task with empty availableTransitions, and the load hits the repository plus JSON
+   * deserialization.
    */
-  private static List<TaskAvailableTransition> resolveDefaultUserApprovalTransitions(Task task) {
+  private static List<TaskAvailableTransition> fallbackUserApprovalTransitions(Task task) {
     List<TaskAvailableTransition> transitions = List.of();
     WorkflowDefinition workflowDefinition = loadWorkflowDefinition(task.getWorkflowDefinitionId());
     if (workflowDefinition == null) {

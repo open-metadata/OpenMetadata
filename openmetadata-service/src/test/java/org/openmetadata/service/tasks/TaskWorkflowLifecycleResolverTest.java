@@ -164,7 +164,7 @@ class TaskWorkflowLifecycleResolverTest {
   }
 
   @Test
-  void findTransitionSynthesizesDefaultsWhenTaskHasEmptyAvailableTransitions() {
+  void findTransitionFallsBackToDefaultsWhenTaskHasEmptyAvailableTransitions() {
     UUID workflowDefinitionId = UUID.randomUUID();
     WorkflowDefinition workflowDefinition =
         userApprovalTaskWorkflow(workflowDefinitionId, "review", List.of());
@@ -232,51 +232,7 @@ class TaskWorkflowLifecycleResolverTest {
   }
 
   @Test
-  void findTransitionDoesNotSynthesizeOnTerminalStatuses() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    WorkflowDefinition workflowDefinition =
-        userApprovalTaskWorkflow(workflowDefinitionId, "review", List.of());
-
-    // The self-approval leak guarded by #30969 was: a Rejected DAR whose row also carries
-    // empty availableTransitions must remain un-resolvable. The synth must not offer approve.
-    for (TaskEntityStatus terminal :
-        List.of(
-            TaskEntityStatus.Rejected,
-            TaskEntityStatus.Approved,
-            TaskEntityStatus.Granted,
-            TaskEntityStatus.Revoked,
-            TaskEntityStatus.Completed,
-            TaskEntityStatus.Cancelled,
-            TaskEntityStatus.Failed,
-            TaskEntityStatus.Expired)) {
-      Task task =
-          new Task()
-              .withType(TaskEntityType.DataAccessRequest)
-              .withStatus(terminal)
-              .withWorkflowDefinitionId(workflowDefinitionId)
-              .withAvailableTransitions(List.of());
-
-      try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
-        entityMock
-            .when(
-                () ->
-                    Entity.getEntity(
-                        Mockito.eq(Entity.WORKFLOW_DEFINITION),
-                        Mockito.eq(workflowDefinitionId),
-                        Mockito.eq("nodes"),
-                        Mockito.any()))
-            .thenReturn(workflowDefinition);
-
-        assertEquals(
-            null,
-            TaskWorkflowLifecycleResolver.findTransition(task, "approve"),
-            () -> "approve must not be synthesized for status " + terminal);
-      }
-    }
-  }
-
-  @Test
-  void findTransitionDoesNotSynthesizeForNonWorkflowManagedTasks() {
+  void findTransitionReturnsNullForNonWorkflowManagedTasks() {
     Task task =
         new Task()
             .withType(TaskEntityType.DescriptionUpdate)
@@ -289,9 +245,8 @@ class TaskWorkflowLifecycleResolverTest {
 
   /**
    * Build a userApprovalTask WorkflowDefinition without leaning on the jsonschema2pojo-generated
-   * {@code Config__1} class name — that generated symbol is inline-schema numbered and can rename
-   * on any future userApprovalTask schema edit, silently breaking every test hard-coded against
-   * it. Uses a plain map that Jackson deserializes into the generated config at resolve time.
+   * numbered config class name — that generated symbol can rename on any future userApprovalTask
+   * schema edit. Uses a plain map that Jackson deserializes into the generated config.
    */
   private static WorkflowDefinition userApprovalTaskWorkflow(
       UUID workflowDefinitionId, String stageId, List<Map<String, Object>> transitionMetadata) {

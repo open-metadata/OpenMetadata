@@ -10780,24 +10780,14 @@ public class WorkflowDefinitionResourceIT {
   }
 
   /**
-   * TASK-19741 regression. A userApprovalTask node whose {@code config.transitionMetadata} is
-   * empty (the shape produced by the pre-fix UI builder and by every 1.13-migrated workflow —
-   * the field did not exist in the 1.13 schema) used to strand every task created from it once
-   * {@code TaskResource.validateTransition} (added in #30969) required the resolve
-   * {@code transitionId} to match a declared transition on {@code task.availableTransitions}.
-   *
-   * <p>The fix layers three write-side defaults (FE builder, v200 migration backfill, and the
-   * resolver's stage-scoped {@code resolveTransitionsForStage} fallback) plus a resolve-side
-   * synth (guarded on Open/InProgress status so the #30969 self-approval fix is not reopened
-   * on terminal tasks). This IT covers the end-to-end contract: a workflow with empty
-   * transitionMetadata still resolves — the task's {@code availableTransitions} is projected
-   * with the default approve/reject pair, {@code POST /tasks/{id}/resolve} with
-   * {@code transitionId=approve} succeeds, and Flowable routes the signal (task closes as
-   * Approved rather than staying Open on a dead resolve).
+   * A userApprovalTask node whose {@code config.transitionMetadata} is empty must still resolve.
+   * Verifies the end-to-end contract: task creation projects the default approve/reject pair onto
+   * {@code availableTransitions}, {@code POST /tasks/{id}/resolve} with {@code transitionId=approve}
+   * succeeds, and Flowable routes the signal (task closes as Approved rather than staying Open).
    */
   @Test
   @Order(210)
-  void test_UserApprovalTask_EmptyTransitionMetadata_TaskResolvesViaSynthesizedDefaults(
+  void test_UserApprovalTask_EmptyTransitionMetadata_TaskResolvesWithDefaultTransitions(
       TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ensureWorkflowEventConsumerIsActive(client);
@@ -10816,8 +10806,7 @@ public class WorkflowDefinitionResourceIT {
                     .withDisplayName("Empty Meta Reviewer")
                     .withPassword("password123"));
 
-    // userApprovalTask with NO transitionMetadata — the exact shape produced by the pre-fix
-    // builder and by 1.13-migrated workflows. branches ["true","false"] mirrors legacy BPMN
+    // userApprovalTask with NO transitionMetadata. branches ["true","false"] mirrors legacy BPMN
     // edge conditions (v200 migration rewrites those to approve/reject on redeploy).
     String workflowJson =
         """
@@ -10921,22 +10910,21 @@ public class WorkflowDefinitionResourceIT {
             .orElseThrow(
                 () -> new AssertionError("Task with expected reviewer assignee not found"));
 
-    // Empty here would repro TASK-19741 exactly — the row is un-resolvable at
-    // TaskResource.validateTransition. Synth in CreateTask → resolveTransitionsForStage returns
-    // DEFAULT_USER_APPROVAL_TRANSITIONS, projected into the row as availableTransitions.
+    // Empty transitionMetadata triggers the resolver's stage-scoped fallback which projects the
+    // default approve/reject pair into the row's availableTransitions at CreateTask time.
     assertEquals(
         2,
         task.getAvailableTransitions().size(),
         "userApprovalTask with empty transitionMetadata must project approve/reject");
     assertTrue(
         task.getAvailableTransitions().stream().anyMatch(t -> "approve".equals(t.getId())),
-        "availableTransitions must contain synthesized 'approve'");
+        "availableTransitions must contain default 'approve'");
     assertTrue(
         task.getAvailableTransitions().stream().anyMatch(t -> "reject".equals(t.getId())),
-        "availableTransitions must contain synthesized 'reject'");
+        "availableTransitions must contain default 'reject'");
 
-    // Load-bearing regression: /resolve on transitionId=approve returns 200 and Flowable routes
-    // the signal (redeployed BPMN's approve/reject edge conditions match the projected id).
+    // /resolve on transitionId=approve returns 200 and Flowable routes the signal (the redeployed
+    // BPMN's approve/reject edge conditions match the projected id).
     OpenMetadataClient reviewerClient =
         SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
     org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
