@@ -535,6 +535,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -566,6 +567,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (existingDraft) {
         setDraft(currentKnowledgePage.id, { version: response.version });
       }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
