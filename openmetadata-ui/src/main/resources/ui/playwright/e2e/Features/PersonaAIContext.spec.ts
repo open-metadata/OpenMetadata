@@ -1349,7 +1349,8 @@ test.describe.serial('Persona AI Context', () => {
           status: 200,
           body: JSON.stringify({
             aggregations: {
-              'sterms#service': {
+              // EntityFields.SERVICE = 'service.displayName.keyword'
+              'sterms#service.displayName.keyword': {
                 buckets: [{ key: dbService.entity.name, doc_count: 1 }],
               },
             },
