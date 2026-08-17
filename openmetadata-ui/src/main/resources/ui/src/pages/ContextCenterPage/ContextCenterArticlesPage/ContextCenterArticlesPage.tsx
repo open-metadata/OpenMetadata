@@ -117,6 +117,31 @@ const ContextCenterArticlesPage = () => {
     []
   );
 
+  // Refresh the left-tree when the open article is edited so it reflects the
+  // default updatedAt-desc order (the edited page moves to the top of its
+  // branch) without a manual reload. Guarded to the same article's updatedAt
+  // increasing, so navigating between pages only records a baseline.
+  const lastViewedArticleRef = useRef<{ id?: string; updatedAt?: number }>({});
+
+  useEffect(() => {
+    const id = page.data?.id;
+    const updatedAt = page.data?.updatedAt;
+    const previous = lastViewedArticleRef.current;
+    const isSameArticleEdited =
+      id === previous.id &&
+      previous.updatedAt !== undefined &&
+      updatedAt !== undefined &&
+      updatedAt > previous.updatedAt;
+
+    if (isSameArticleEdited) {
+      handleFetchKnowledgePageHierarchy(true);
+    }
+
+    if (id && updatedAt) {
+      lastViewedArticleRef.current = { id, updatedAt };
+    }
+  }, [page.data?.id, page.data?.updatedAt, handleFetchKnowledgePageHierarchy]);
+
   const handleQuickLinkClick = useCallback(async (fqn: string) => {
     try {
       const quickLinkPage = await getKnowledgePageByFqn(fqn, {
