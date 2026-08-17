@@ -49,7 +49,11 @@ import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
-const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
+const DomainListPage = ({
+  renderFilterEmptyState,
+  renderListEmptyState,
+  renderPageHeader,
+}: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
@@ -174,7 +178,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
-        return (
+        return renderFilterEmptyState ? (
+          <>{renderFilterEmptyState()}</>
+        ) : (
           <ErrorPlaceHolder
             className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
@@ -182,7 +188,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         );
       }
 
-      return (
+      return renderListEmptyState ? (
+        <>{renderListEmptyState()}</>
+      ) : (
         <ErrorPlaceHolder
           buttonId="domain-add-button"
           buttonTitle={t('label.add-entity', {
@@ -252,6 +260,8 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.totalPages,
     domainListing.handlePageChange,
     isSearchOrFilterActive,
+    renderFilterEmptyState,
+    renderListEmptyState,
     view,
     renderDomainCell,
     renderDomainCard,

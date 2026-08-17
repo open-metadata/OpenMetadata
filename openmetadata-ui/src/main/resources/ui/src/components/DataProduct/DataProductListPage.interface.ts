@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
+
 import type { PageHeaderRenderer } from '../common/atoms/navigation/PageHeaderRenderer.interface';
 
 export interface DataProductListPageProps {
   pageTitle: string;
+  renderFilterEmptyState?: () => ReactNode;
+  renderListEmptyState?: () => ReactNode;
   renderPageHeader?: PageHeaderRenderer;
 }
