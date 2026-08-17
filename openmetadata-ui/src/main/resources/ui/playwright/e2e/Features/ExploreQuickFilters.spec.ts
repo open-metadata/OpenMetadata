@@ -16,6 +16,7 @@ import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
@@ -39,6 +40,7 @@ const tier = new TagClass({
 const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
+const user = new UserClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -49,6 +51,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tier.create(apiContext);
   // Create second tier but do NOT assign it to any asset
   await tierWithoutAsset.create(apiContext);
+  await user.create(apiContext);
 
   await table.patch({
     apiContext,
@@ -77,8 +80,19 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
           displayName: domain.responseData.displayName,
         },
       },
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: { id: user.responseData.id, type: 'user' },
+      },
     ],
   });
+  await afterAction();
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await user.delete(apiContext);
   await afterAction();
 });
 
@@ -517,6 +531,67 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
 
       await expect(optionEl).toBeVisible();
       await expect(optionEl).toContainText(tagFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('owner filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const ownerName = user.responseData.displayName as string;
+
+    await test.step('Open Owners filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.click('[data-testid="search-dropdown-Owners"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.fill('[data-testid="search-input"]', ownerName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(ownerName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(ownerName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('service filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const serviceName = (table.serviceResponseData.displayName ??
+      table.serviceResponseData.name) as string;
+
+    await test.step('Open Service filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Service"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', serviceName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(serviceName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(serviceName);
     });
 
     await clickOutside(page);
