@@ -38,9 +38,9 @@ import {
 import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import {
-  DOMAIN_WIDGET_STALE_TIME,
   domainAssetsCountQueryKey,
   domainWidgetSearchQueryKey,
+  DOMAIN_WIDGET_STALE_TIME,
 } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';

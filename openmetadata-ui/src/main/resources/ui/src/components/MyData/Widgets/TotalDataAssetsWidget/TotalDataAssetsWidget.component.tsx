@@ -29,8 +29,8 @@ import {
   Cell,
   Pie,
   PieChart,
-  Tooltip as RechartsTooltip,
   ResponsiveContainer,
+  Tooltip as RechartsTooltip,
 } from 'recharts';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
