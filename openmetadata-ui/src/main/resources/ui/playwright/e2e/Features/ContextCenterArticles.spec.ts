@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLE_DESCRIPTION,
   ARTICLES_URL,
+  ARTICLE_DESCRIPTION,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
