@@ -145,6 +145,11 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortValueChange = (sortVal: string) => {
     navigate({
+      // Explicit pathname: an object with only `search` is a *relative*
+      // navigation resolved against the router's current route-match
+      // context, which can lag a pushState fired moments earlier by a
+      // different component and land this update on the wrong page.
+      pathname: location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -155,6 +160,7 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortOrderChange = (sortOrderVal: string) => {
     navigate({
+      pathname: location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -226,13 +232,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleQuickFilterChange = useCallback(
     (quickFilter?: QueryFilterInterface) => {
       navigate({
+        pathname: location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
         }),
       });
     },
-    [parsedSearch]
+    [parsedSearch, location.pathname]
   );
 
   // A tree click may update the browse location AND the Type quick filter
@@ -248,6 +255,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setAdvancedSearchQuickFilters(quickFilter);
       }
       navigate({
+        pathname: location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           browsePath: isEmpty(updatedBrowseFields)
@@ -257,13 +265,14 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
-    [parsedSearch]
+    [parsedSearch, location.pathname]
   );
 
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
     navigate({
+      pathname: location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
