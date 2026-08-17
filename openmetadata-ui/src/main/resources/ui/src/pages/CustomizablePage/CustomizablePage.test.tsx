@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { useParams } from 'react-router-dom';
@@ -25,7 +26,6 @@ import {
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { CustomizablePage } from './CustomizablePage';
-import { WidgetConfig } from './CustomizablePage.interface';
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -126,13 +126,37 @@ jest.mock('../SettingsNavigationPage/SettingsNavigationPage', () => ({
   )),
 }));
 
+let queryClient: QueryClient;
+
+const renderCustomizablePage = () =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <CustomizablePage />
+    </QueryClientProvider>
+  );
+
 describe('CustomizablePage component', () => {
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
   it('CustomizablePage should show ErrorPlaceholder if the API to fetch the persona details fails', async () => {
     (getPersonaByName as jest.Mock).mockImplementationOnce(() =>
       Promise.reject(new Error('API failure'))
     );
+
     await act(async () => {
-      render(<CustomizablePage />);
+      renderCustomizablePage();
     });
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
@@ -140,7 +164,7 @@ describe('CustomizablePage component', () => {
   });
 
   it('CustomizablePage should show Loader while the layout is being fetched', async () => {
-    render(<CustomizablePage />);
+    renderCustomizablePage();
 
     expect(await screen.findByText('Loader')).toBeInTheDocument();
     expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
@@ -149,7 +173,7 @@ describe('CustomizablePage component', () => {
 
   it('CustomizablePage should pass the correct page layout data for the persona', async () => {
     await act(async () => {
-      render(<CustomizablePage />);
+      renderCustomizablePage();
     });
 
     expect(screen.getByText('CustomizeMyData')).toBeInTheDocument();
@@ -165,7 +189,7 @@ describe('CustomizablePage component', () => {
       })
     );
     await act(async () => {
-      render(<CustomizablePage />);
+      renderCustomizablePage();
     });
 
     expect(screen.queryByText('CustomizeMyData')).toBeInTheDocument();
@@ -179,7 +203,7 @@ describe('CustomizablePage component', () => {
     }));
 
     await act(async () => {
-      render(<CustomizablePage />);
+      renderCustomizablePage();
     });
 
     expect(screen.queryByText('ErrorPlaceHolder')).toBeInTheDocument();
@@ -194,10 +218,13 @@ describe('CustomizablePage component', () => {
     }));
 
     await act(async () => {
-      render(<CustomizablePage />);
+      renderCustomizablePage();
     });
 
-    expect(screen.getByTestId('settings-navigation-page')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('settings-navigation-page')
+    ).toBeInTheDocument();
+
     expect(
       screen.getByTestId('settings-navigation-persona-name')
     ).toHaveTextContent(mockPersonaName);
