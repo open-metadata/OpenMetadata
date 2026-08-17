@@ -200,6 +200,12 @@ def search_table_entities(
     Returns:
         A list of Table entities from the first service where found, otherwise None
     """
+    if not table:
+        logger.debug(
+            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
+        )
+        return None
+
     if isinstance(service_names, str):
         service_names = [service_names]
 

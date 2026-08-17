@@ -27,6 +27,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_lineage,
     get_table_fqn_from_query_name,
     populate_column_lineage_map,
+    search_table_entities,
 )
 from metadata.utils.logger import Loggers
 
@@ -228,6 +229,27 @@ class SqlLineageTest(TestCase):
         self.assertEqual(
             get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
         )
+
+    def test_search_table_entities_without_table_name(self):
+        """
+        References such as `db.schema.` carry no table to look up. They should be skipped
+        instead of failing the FQN building once per searched service.
+        """
+        database, database_schema, table = get_table_fqn_from_query_name("db.schema.")
+        self.assertEqual((database, database_schema, table), ("db", "schema", ""))
+
+        with self.assertLogs(Loggers.UTILS.value, level="DEBUG") as logger:
+            self.assertIsNone(
+                search_table_entities(
+                    metadata=None,
+                    service_names=["service_1", "service_2"],
+                    database=database,
+                    database_schema=database_schema,
+                    table=table,
+                )
+            )
+
+        self.assertFalse([log for log in logger.output if log.startswith("ERROR")])
 
     def test_replace_target_table(self):
         """
