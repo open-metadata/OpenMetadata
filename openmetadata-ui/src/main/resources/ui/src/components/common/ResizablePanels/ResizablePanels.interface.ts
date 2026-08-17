@@ -38,6 +38,7 @@ export interface PanelProps {
   title?: string;
   titleClassName?: string;
   titleContainerClassName?: string;
+  titleStrong?: boolean;
   wrapInCard?: boolean;
   allowScroll?: boolean;
 }

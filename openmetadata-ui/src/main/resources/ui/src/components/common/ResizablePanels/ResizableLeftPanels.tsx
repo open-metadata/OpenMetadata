@@ -59,7 +59,10 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           }}>
           {!hideFirstPanel && (
             <Card
-              className="reflex-card card-padding-0"
+              className={classNames(
+                'reflex-card card-padding-0',
+                firstPanel.cardClassName
+              )}
               title={
                 firstPanel.title && (
                   <div
@@ -68,11 +71,11 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
                       firstPanel.titleContainerClassName
                     )}>
                     <Typography.Text
-                      strong
                       className={classNames(
                         'm-b-0 text-sm',
                         firstPanel.titleClassName
-                      )}>
+                      )}
+                      strong={firstPanel.titleStrong ?? true}>
                       {firstPanel.title}
                     </Typography.Text>
                     {showLearningIcon && (
