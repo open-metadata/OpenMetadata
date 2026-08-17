@@ -31,8 +31,14 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class ChangeEventHandler implements EventHandler {
   private final WebsocketNotificationHandler websocketNotificationHandler =
       new WebsocketNotificationHandler();
+  private boolean enableQueryChangeEvents = false;
 
-  public void init(OpenMetadataApplicationConfig config) {}
+  public void init(OpenMetadataApplicationConfig config) {
+    if (config.getEventHandlerConfiguration() != null) {
+      enableQueryChangeEvents =
+          Boolean.TRUE.equals(config.getEventHandlerConfiguration().getEnableQueryChangeEvents());
+    }
+  }
 
   @SneakyThrows
   public Void process(
@@ -55,6 +61,11 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEvent changeEvent = optionalChangeEvent.get();
         // Test Connection workflows shouldn't produce changeEvents (Entity.WORKFLOW)
         if (changeEvent.getEntityType().equals(Entity.WORKFLOW)) {
+          return null;
+        }
+        // Queries are often ingested in large bulk batches, so producing a changeEvent for each
+        // one is opt-in via eventHandlerConfiguration.enableQueryChangeEvents
+        if (changeEvent.getEntityType().equals(Entity.QUERY) && !enableQueryChangeEvents) {
           return null;
         }
         // Always set the Change Event Username as context Principal, the one creating the CE

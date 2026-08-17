@@ -666,6 +666,7 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+  enableQueryChangeEvents: ${ENABLE_QUERY_CHANGE_EVENTS:-false}
 
 pipelineServiceClientConfiguration:
   enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
