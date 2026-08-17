@@ -394,12 +394,6 @@ test.describe(
         page.locator('[data-testid^="table-data-card_"]').first()
       ).toBeVisible();
 
-      // Opening the export modal triggers a background count fetch
-      // (handleOpenExportScopeModal → searchQuery) that keeps the Export button
-      // disabled via isCountLoading until it resolves.  Set up the promise
-      // *before* clicking so we don't miss the fast-path case, then await it
-      // after the modal is open — this is the same pattern the search-mode
-      // tests use, applied here for browse mode.
       const modalCountApiPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
