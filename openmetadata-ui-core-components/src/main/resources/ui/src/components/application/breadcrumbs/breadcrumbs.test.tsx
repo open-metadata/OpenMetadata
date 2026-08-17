@@ -47,4 +47,24 @@ describe('Breadcrumbs', () => {
       screen.getByText('Schema').closest('[aria-current]')
     ).toHaveAttribute('aria-current', 'page');
   });
+
+  it('keeps the last item current when onAction handles earlier items', () => {
+    render(
+      <Breadcrumbs
+        items={[
+          { id: 'service', label: 'Service' },
+          { id: 'current', label: 'Current' },
+        ]}
+        onAction={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'Service' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Current' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Current').closest('[aria-current]')
+    ).toHaveAttribute('aria-current', 'page');
+  });
 });

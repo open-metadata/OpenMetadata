@@ -339,7 +339,7 @@ export const Breadcrumbs = ({
                   type={type}
                   onAction={onAction}
                 />
-              ) : item.href || onAction ? (
+              ) : item.href || (onAction && !isCurrent) ? (
                 // React Aria disables the physical last crumb, so clear its
                 // context when href marks that crumb as a destination.
                 <LinkContext.Provider value={{}}>
