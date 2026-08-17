@@ -434,6 +434,13 @@ export const createGlossary = async (
     }
   }
 
+  // A toast from a prior test's teardown sits at z-[1000] and can intercept the save click.
+  // Only stall if one is actually visible right now.
+  const alertBar = page.locator('[data-testid="alert-bar"]').first();
+  if (await alertBar.isVisible()) {
+    await alertBar.waitFor({ state: 'hidden', timeout: 15_000 });
+  }
+
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
   await page.click('[data-testid="save-glossary"]');
   await glossaryResponse;
