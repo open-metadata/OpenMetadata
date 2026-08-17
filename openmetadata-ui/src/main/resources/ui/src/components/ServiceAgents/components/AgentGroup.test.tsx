@@ -21,6 +21,10 @@ jest.mock('./AgentCard.component', () =>
   jest.fn().mockImplementation(() => <p>AgentCard</p>)
 );
 
+jest.mock('./AgentCardSkeleton.component', () =>
+  jest.fn().mockImplementation(() => <p>AgentCardSkeleton</p>)
+);
+
 const mockOnAction = jest.fn();
 const mockOnLogs = jest.fn();
 const mockOnRun = jest.fn();
@@ -146,5 +150,35 @@ describe('AgentGroup', () => {
     );
 
     expect(slotFollowsRefresh).toBe(true);
+  });
+
+  it('should render skeleton cards instead of the empty placeholder while loading', () => {
+    renderGroup([], <p>no agents</p>, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    expect(screen.getAllByText('AgentCardSkeleton')).toHaveLength(3);
+    expect(
+      screen.queryByTestId('agent-group-empty-placeholder')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('no agents')).not.toBeInTheDocument();
+  });
+
+  it('should keep the group header rendered while loading', () => {
+    renderGroup([], <p>no agents</p>, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group')).toBeInTheDocument();
+  });
+
+  it('should honour skeletonCount', () => {
+    renderGroup([], undefined, { isLoading: true, skeletonCount: 5 });
+
+    expect(screen.getAllByText('AgentCardSkeleton')).toHaveLength(5);
+  });
+
+  it('should prefer the skeleton over already-loaded agents while loading', () => {
+    renderGroup([baseAgent], undefined, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    expect(screen.queryByText('AgentCard')).not.toBeInTheDocument();
   });
 });

@@ -18,6 +18,7 @@ import {
   swapSecurityConfig,
   verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
+import { SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -53,8 +54,11 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
     await userPage?.close();
     await userContext?.close();
+
     await restoreSecurity?.();
   });
 
@@ -81,6 +85,16 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
       await expect(signInButton).toBeVisible();
       await signInButton.click();
       await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+
+      // #29597 regression guard: the front-channel authorize request must carry
+      // the server-configured response_type, not oidc-client's 'id_token' default.
+      if (helper.expectedResponseType) {
+        const responseType = new URL(page.url()).searchParams.get(
+          'response_type'
+        );
+
+        expect(responseType).toBe(helper.expectedResponseType);
+      }
     });
 
     await test.step('Authenticate at the identity provider', async () => {

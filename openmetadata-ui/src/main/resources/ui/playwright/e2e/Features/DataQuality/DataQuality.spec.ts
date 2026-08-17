@@ -32,6 +32,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   dismissTagSuggestions,
@@ -319,10 +320,9 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
-        await toastNotification(page, 'Test case updated successfully.');
-        await page.getByTestId('alert-bar').waitFor({
-          state: 'detached',
-        });
+        const updateSuccessMessage = 'Test case updated successfully.';
+        await toastNotification(page, updateSuccessMessage);
+        await waitForToastToDisappear(page, updateSuccessMessage);
 
         await page
           .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
