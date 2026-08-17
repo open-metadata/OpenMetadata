@@ -262,9 +262,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('insights').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton-active').first().waitFor({
-        state: 'detached',
-      });
+      await page
+        .getByTestId('total-data-assets-widget')
+        .locator('.ant-skeleton-active')
+        .first()
+        .waitFor({
+          state: 'detached',
+        });
 
       const databaseResponsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/databases')
