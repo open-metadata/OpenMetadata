@@ -540,7 +540,8 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
   test('owner filter option label uses original casing from _source', async ({
     page,
   }) => {
-    const ownerName = user.responseData.displayName as string;
+    const ownerName = (user.responseData.displayName ??
+      user.responseData.name) as string;
 
     await test.step('Open Owners filter and wait for aggregate response', async () => {
       const aggRes = page.waitForResponse(
