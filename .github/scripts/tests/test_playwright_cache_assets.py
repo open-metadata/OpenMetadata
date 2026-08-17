@@ -454,7 +454,7 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
-    workflow = (ROOT / ".github/workflows/playwright-postgresql-e2e.yml").read_text()
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
     assert (
         "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
         in workflow
@@ -468,7 +468,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
     assert (
-        "COARSE_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}"
+        "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}"
         in workflow
     )
     assert (
@@ -486,7 +486,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
         "  prepare-playwright-fixture:", 1
     )[0]
     prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci-postgresql:", 1
+        "  playwright-ci:", 1
     )[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
