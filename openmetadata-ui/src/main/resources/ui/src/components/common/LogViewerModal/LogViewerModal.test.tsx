@@ -61,10 +61,13 @@ jest.mock('@melloware/react-logviewer', () => ({
       }));
 
       return (
+        // `overflowY` stands in for the real viewer's scroll container, which is
+        // how the modal locates the element that needs a tab stop.
         <pre
           data-colorized={String(Boolean(formatPart))}
           data-follow={String(follow)}
-          data-testid="lazy-log">
+          data-testid="lazy-log"
+          style={{ overflowY: 'auto' }}>
           {text}
         </pre>
       );
@@ -674,6 +677,82 @@ describe('LogViewerModal — auto-follow', () => {
       'aria-pressed',
       'false'
     );
+  });
+
+  it('lets a gesture during the relayout window win instead of fighting it', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+    const body = screen.getByTestId('log-viewer-body');
+
+    fireEvent.click(screen.getByTestId('log-viewer-wrap'));
+    mockLazyLog.scrollToIndex.mockClear();
+
+    // Wheeling up inside the relayout window is the user taking over; the
+    // relayout correction must not drag the view back to the tail.
+    fireEvent.wheel(body, { deltaY: -120 });
+    act(() => mockLazyLog.onScroll?.(scrolledUp));
+
+    expect(mockLazyLog.scrollToIndex).not.toHaveBeenCalled();
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('gives the scrolling element a tab stop and a name so the scroll keys reach it', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    // jsdom reports the mocked viewer's own node as the scrollable one; what
+    // matters is that whatever scrolls becomes focusable and named.
+    const scroller = screen.getByTestId('lazy-log');
+
+    expect(scroller).toHaveAttribute('tabindex', '0');
+    expect(scroller).toHaveAttribute('role', 'region');
+    expect(scroller).toHaveAttribute('aria-label', 'label.log-plural');
+
+    scroller.focus();
+
+    expect(scroller).toHaveFocus();
+
+    fireEvent.keyDown(scroller, { key: 'PageUp' });
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('does not resume when the viewer snaps back to the tail right after a pause', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+    // The library restores its own recorded offset when the text changes, which
+    // can land back at the tail without the user scrolling there.
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('resumes once the user scrolls back to the tail under their own steam', () => {
+    jest.useFakeTimers();
+
+    try {
+      render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+      fireEvent.wheel(screen.getByTestId('log-viewer-body'), { deltaY: -120 });
+      // Past the window that protects a fresh pause from an automatic snap-back.
+      act(() => jest.advanceTimersByTime(5000));
+      act(() => mockLazyLog.onScroll?.(atTail));
+
+      expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('still pauses on a user scroll once the relayout grace has elapsed', () => {

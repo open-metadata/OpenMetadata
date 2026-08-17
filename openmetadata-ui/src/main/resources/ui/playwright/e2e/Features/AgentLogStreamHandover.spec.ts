@@ -20,6 +20,7 @@ import {
   assertLogViewerShowsLogs,
   buildLogStreamFrames,
   buildMarkerLogText,
+  focusLogViewerScroller,
   getLogViewerScrollState,
   isLogViewerAtTail,
   LogStreamFrame,
@@ -365,6 +366,26 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         await isLogViewerAtTail(page),
         'a paused viewer must not follow newly streamed lines'
       ).toBe(false);
+    });
+
+    await test.step('The keyboard can pause a followed log too', async () => {
+      await followToggle.click();
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(() => isLogViewerAtTail(page)).toBe(true);
+
+      // Real focus and a real key press, not a synthetic event: the scrolling
+      // element has to carry a tab stop for the keyboard to reach the log at all.
+      expect(
+        await focusLogViewerScroller(page),
+        'the scrolling element must be focusable for the keyboard to reach it'
+      ).toBe(true);
+
+      await page.keyboard.press('PageUp');
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+      // The key has to move the view as well as pause following — a pause with
+      // no scroll would be worse than not handling the key at all.
+      await expect.poll(() => isLogViewerAtTail(page)).toBe(false);
     });
 
     await test.step('The toggle resumes following and jumps back to the tail', async () => {

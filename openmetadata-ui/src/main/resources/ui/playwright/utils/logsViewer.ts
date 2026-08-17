@@ -90,6 +90,29 @@ export const getLogViewerScrollState = async (
   });
 
 /**
+ * Focuses the element that actually scrolls the log and reports whether it took
+ * focus. The viewer gives that element a tab stop at runtime, so this is also the
+ * assertion that the keyboard can reach the log at all.
+ */
+export const focusLogViewerScroller = async (page: Page): Promise<boolean> =>
+  page.getByTestId('log-viewer-body').evaluate((body) => {
+    const scroller = Array.from(body.querySelectorAll<HTMLElement>('*')).find(
+      (element) => {
+        const { overflowY } = window.getComputedStyle(element);
+
+        return (
+          element.scrollHeight > element.clientHeight + 1 &&
+          (overflowY === 'auto' || overflowY === 'scroll')
+        );
+      }
+    );
+
+    scroller?.focus();
+
+    return Boolean(scroller) && document.activeElement === scroller;
+  });
+
+/**
  * Whether the log viewer is parked at the tail of the log.
  */
 export const isLogViewerAtTail = async (page: Page): Promise<boolean> => {
