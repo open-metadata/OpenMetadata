@@ -181,7 +181,7 @@ def get_formatted_entity_name(name: str) -> str | None:
     return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
 
 
-def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+def has_table_name(name: str | None) -> bool:
     """
     Check that a table reference coming from a query parser actually holds a table name.
 

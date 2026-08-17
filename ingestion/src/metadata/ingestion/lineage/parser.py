@@ -217,7 +217,7 @@ class LineageParser:
         for table in self.involved_tables or []:  # pyright: ignore[reportGeneralTypeIssues]
             table_name = get_formatted_entity_name(str(table))
             if not has_table_name(table_name):
-                logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")
+                logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")  # noqa: G004
                 continue
             clean_tables.append(table_name)
 

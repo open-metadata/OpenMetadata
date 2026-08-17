@@ -201,7 +201,7 @@ def search_table_entities(
     """
     if not table:
         logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
+            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"  # noqa: G004
         )
         return None
 
