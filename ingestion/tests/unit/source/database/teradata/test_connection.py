@@ -21,7 +21,10 @@ from sqlalchemy.pool import StaticPool
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+)
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
@@ -107,10 +110,13 @@ def test_bad_credentials_are_classified_as_auth():
     assert TERADATA_ERRORS.classify(_teradata_error(*_BAD_CREDENTIALS)).title == "Authentication failed"
 
 
-def test_auth_is_keyed_on_sqlstate_not_on_error_8017():
-    # SQLState 28000 covers every bad-credential variant, including the LDAP /
-    # Kerberos logmech rejections that carry their own message codes.
-    error = _teradata_error(3006, "28000", "Password has expired.")
+def test_an_auth_rejection_carrying_another_code_is_still_classified():
+    # The rule keys on SQLState 28000, the SQL-standard "invalid authorization
+    # specification" class, not on Error 8017. So any rejection Teradata files
+    # under that class classifies without the pack having to enumerate its code.
+    # The code below is illustrative - what the test pins is the class, which is
+    # the only part of the pairing this rule depends on.
+    error = _teradata_error(9999, "28000", "Some other authorization failure.")
     assert TERADATA_ERRORS.classify(error).title == "Authentication failed"
 
 
@@ -176,6 +182,53 @@ def test_the_seeded_gate_step_is_tagged_as_the_connection_gate():
     gate = _teradata_definition().steps[0]
     assert gate.name == DatabaseStep.CheckAccess
     assert gate.category.value == "ConnectionGate"
+
+
+def test_the_new_get_databases_step_is_not_mandatory():
+    # The step is new: the legacy handler passed the query but the definition had
+    # no step for it, so it never ran. Making it mandatory would newly fail a
+    # service whose user cannot read dbc.databasesvx but which works today.
+    step = next(s for s in _teradata_definition().steps if s.name == DatabaseStep.GetDatabases)
+    assert step.mandatory is False
+
+
+def _engine_returning(rows: int) -> Engine:
+    """An engine whose next statement returns ``rows`` rows, whatever the SQL.
+
+    ``get_databases`` runs Teradata-specific SQL that sqlite cannot parse, so the
+    statement is swapped for an equivalent sqlite one; what is under test is the
+    summarizer wired to it, not the query text.
+    """
+    engine = create_engine("sqlite://", poolclass=StaticPool)
+    with engine.connect() as connection:
+        connection.exec_driver_sql("CREATE TABLE databasesvx (databasename TEXT)")
+        for index in range(rows):
+            connection.exec_driver_sql("INSERT INTO databasesvx VALUES (?)", (f"db_{index}",))
+        connection.commit()
+    return engine
+
+
+def _get_databases_summary(rows: int) -> str:
+    engine = _engine_returning(rows)
+    with patch(
+        "metadata.ingestion.source.database.teradata.connection.TERADATA_GET_DATABASE",
+        "select databasename from databasesvx",
+    ):
+        return _checks(engine).get_databases().summary
+
+
+def test_get_databases_summarises_what_it_found():
+    assert _get_databases_summary(3) == "3 databases enumerated"
+
+
+def test_get_databases_reports_an_empty_result_without_failing():
+    assert _get_databases_summary(0) == "no databases enumerated"
+
+
+def test_get_databases_marks_the_sample_cap_rather_than_implying_an_exact_count():
+    # run_sql fetches at most DEFAULT_SAMPLE_ROWS, so a full page means "at least
+    # this many", not "exactly this many".
+    assert _get_databases_summary(DEFAULT_SAMPLE_ROWS + 5) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
 
 
 def _engine_failing_with(error: Exception) -> Engine:

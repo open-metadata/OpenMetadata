@@ -88,10 +88,11 @@ def _sqlstate(*states: str) -> Matcher:
 # a guessed diagnosis.
 TERADATA_ERRORS = ErrorPack(
     # SQLState 28000 is the SQL-standard "invalid authorization specification"
-    # class; Teradata reports every bad-credential variant under it (Error 8017
-    # "The UserId, Password or Account is invalid" being the common one). Keying
-    # on the state rather than 8017 alone also covers the LDAP/Kerberos logmech
-    # rejections, which carry their own message codes.
+    # class. Error 8017 "The UserId, Password or Account is invalid" is the code
+    # seen in practice under it, for LOGMECH=TD2 and LOGMECH=LDAP alike. Keying
+    # on the class rather than 8017 alone means any other rejection Teradata
+    # classifies as an authorization failure is covered without enumerating -
+    # or guessing at - codes that have not been observed.
     when(_sqlstate("28000")).diagnose(
         "Authentication failed",
         fix="Check the username, password and account, and that the configured logmech "

@@ -15,7 +15,7 @@
       "name": "GetDatabases",
       "description": "List all the databases available to the user.",
       "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
-      "mandatory": true
+      "mandatory": false
     },
     {
       "name": "GetSchemas",
