@@ -13,7 +13,6 @@ Models related to lineage parsing
 """
 
 from enum import Enum
-from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -136,7 +135,7 @@ class Dialect(Enum):
     VERTICA = "vertica"
 
 
-MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
+MAP_CONNECTION_TYPE_DIALECT: dict[str, Dialect] = {
     str(AthenaType.Athena.value): Dialect.ATHENA,
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
@@ -198,7 +197,7 @@ class QueryParsingError(BaseModel):
     )
 
     query: str = Field(..., description="query text of the failed query")
-    error: Optional[str] = Field(None, description="error message of the failed query")  # noqa: UP045
+    error: str | None = Field(None, description="error message of the failed query")
 
 
 class QueryParsingFailures(metaclass=Singleton):
@@ -206,7 +205,7 @@ class QueryParsingFailures(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the list of parsing failures."""
-        self._query_list: List[QueryParsingError] = []  # noqa: UP006
+        self._query_list: list[QueryParsingError] = []
 
     def add(self, parsing_error: QueryParsingError):
         self._query_list.append(parsing_error)

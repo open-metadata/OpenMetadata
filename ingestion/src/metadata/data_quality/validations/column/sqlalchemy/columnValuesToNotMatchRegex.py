@@ -13,8 +13,6 @@
 Validator for column values to not match regex test case
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
@@ -51,7 +49,7 @@ class ColumnValuesToNotMatchRegexValidator(
 ):
     """Validator for column values to not match regex test case"""
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> int | None:
         """compute result of the test case
 
         Args:
@@ -61,7 +59,7 @@ class ColumnValuesToNotMatchRegexValidator(
         try:
             return self.run_query_results(self.runner, metric, column, **kwargs)
         except (CompileError, SQLAlchemyError) as err:
-            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
+            logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")  # noqa: G004
             return self.run_query_results(self.runner, Metrics.notLikeCount, column, **kwargs)
 
     def _execute_dimensional_validation(
@@ -71,7 +69,7 @@ class ColumnValuesToNotMatchRegexValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates
@@ -113,7 +111,7 @@ class ColumnValuesToNotMatchRegexValidator(
             return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
+            logger.warning(f"Error executing dimensional query: {exc}")  # noqa: G004
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results

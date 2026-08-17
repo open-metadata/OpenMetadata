@@ -14,7 +14,6 @@ Source connection handler
 """
 
 import enum
-from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
@@ -86,8 +85,8 @@ class TeradataConnection(BaseConnection[TeradataConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

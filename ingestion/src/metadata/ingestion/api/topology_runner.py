@@ -16,9 +16,10 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
+from collections.abc import Iterable
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, ClassVar, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
+from typing import Any, ClassVar, Generic, TypeVar, cast
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -103,7 +104,7 @@ class TopologyRunnerMixin(Generic[C]):
         renders % and ETA. Called exactly once by the topology runner, just
         before the first non-root node is processed. Default: no totals."""
 
-    def _node_primary_stage(self, node: TopologyNode) -> Optional[NodeStage]:  # noqa: UP045
+    def _node_primary_stage(self, node: TopologyNode) -> NodeStage | None:
         """The node's primary, non-side-output stage — the stage whose entity is
         the node's real entity (Table, Database, ...). Falls back to the first
         typed stage when every stage is a side output. ``None`` only when the
@@ -117,7 +118,7 @@ class TopologyRunnerMixin(Generic[C]):
                     return stage
         return fallback
 
-    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
+    def _get_entity_type_for_node(self, node: TopologyNode) -> str | None:
         """The primary entity type name for a topology node, used as the
         progress-tracking key. Derived from the node's primary stage."""
         stage = self._node_primary_stage(node)
@@ -244,7 +245,7 @@ class TopologyRunnerMixin(Generic[C]):
             with node_progress.enter_scope():
                 yield from self.process_nodes(child_nodes)
 
-    def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
+    def process_nodes(self, nodes: list[TopologyNode]) -> Iterable[Entity]:
         """
         Given a list of nodes, either roots or children,
         yield from its producers and process the children.
@@ -270,7 +271,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         for node in nodes:
-            logger.debug(f"Processing node {node}")
+            logger.debug(f"Processing node {node}")  # noqa: G004
 
             # Each node producer will give us a list of entities that we need
             # to process. Each of the internal stages will sink result to OM API.
@@ -286,8 +287,8 @@ class TopologyRunnerMixin(Generic[C]):
     def _multithread_process_entity(
         self,
         node: TopologyNode,
-        node_entities: List[Any],  # noqa: UP006
-        child_nodes: List[TopologyNode],  # noqa: UP006
+        node_entities: list[Any],
+        child_nodes: list[TopologyNode],
         parent_thread_id: int,
         node_progress,
     ):
@@ -320,7 +321,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Finally we pop the context and finish the thread
         self.context.pop()
 
-    def _get_child_nodes(self, node: TopologyNode) -> List[TopologyNode]:  # noqa: UP006
+    def _get_child_nodes(self, node: TopologyNode) -> list[TopologyNode]:
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
@@ -331,7 +332,7 @@ class TopologyRunnerMixin(Generic[C]):
             yield from stage_fn(node_entity) or []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error running stage processor: {exc}")
+            logger.error(f"Error running stage processor: {exc}")  # noqa: G004
 
     def _process_stage(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
         """
@@ -342,7 +343,7 @@ class TopologyRunnerMixin(Generic[C]):
         entities by comparing ``sourceHash``) is handled server-side by the bulk endpoint, so the
         connector no longer pre-fetches existing entities to build a local cache.
         """
-        logger.debug(f"Processing stage: {stage}")
+        logger.debug(f"Processing stage: {stage}")  # noqa: G004
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
@@ -352,7 +353,7 @@ class TopologyRunnerMixin(Generic[C]):
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
             except ValueError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
+                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")  # noqa: G004
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000
@@ -369,7 +370,7 @@ class TopologyRunnerMixin(Generic[C]):
         If the node has post_process steps, iterate over them and yield the result
         """
         if node.post_process:
-            logger.debug(f"Post processing node {node}")
+            logger.debug(f"Post processing node {node}")  # noqa: G004
             for process in node.post_process:
                 try:
                     node_post_process = getattr(self, process)

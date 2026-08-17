@@ -13,53 +13,53 @@
 Databricks pipeline Source Model module
 """
 
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class DBRunSchedule(BaseModel):
-    cron: Optional[str] = Field(None, alias="quartz_cron_expression")  # noqa: UP045
-    timezone_id: Optional[str] = None  # noqa: UP045
+    cron: str | None = Field(None, alias="quartz_cron_expression")
+    timezone_id: str | None = None
 
 
 class DependentTask(BaseModel):
-    name: Optional[str] = Field(None, alias="task_key")  # noqa: UP045
+    name: str | None = Field(None, alias="task_key")
 
 
 class PipelineTask(BaseModel):
-    pipeline_id: Optional[str] = None  # noqa: UP045
-    full_refresh: Optional[bool] = None  # noqa: UP045
+    pipeline_id: str | None = None
+    full_refresh: bool | None = None
 
 
 class DBTasks(BaseModel):
-    name: Optional[str] = Field(None, alias="task_key")  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    depends_on: Optional[List[DependentTask]] = None  # noqa: UP006, UP045
-    run_page_url: Optional[str] = None  # noqa: UP045
-    pipeline_task: Optional[PipelineTask] = None  # noqa: UP045
-    notebook_task: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
-    spark_python_task: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    name: str | None = Field(None, alias="task_key")
+    description: str | None = None
+    depends_on: list[DependentTask] | None = None
+    run_page_url: str | None = None
+    pipeline_task: PipelineTask | None = None
+    notebook_task: dict[str, Any] | None = None
+    spark_python_task: dict[str, Any] | None = None
 
 
 class DBSettings(BaseModel):
-    name: Optional[str] = None  # noqa: UP045
-    timeout_seconds: Optional[int] = 0  # noqa: UP045
-    max_concurrent_runs: Optional[int] = 0  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    schedule: Optional[DBRunSchedule] = None  # noqa: UP045
-    task_type: Optional[str] = Field(None, alias="format")  # noqa: UP045
-    tasks: Optional[List[DBTasks]] = None  # noqa: UP006, UP045
+    name: str | None = None
+    timeout_seconds: int | None = 0
+    max_concurrent_runs: int | None = 0
+    description: str | None = None
+    schedule: DBRunSchedule | None = None
+    task_type: str | None = Field(None, alias="format")
+    tasks: list[DBTasks] | None = None
 
 
 class DataBrickPipelineDetails(BaseModel):
-    job_id: Optional[int] = None  # noqa: UP045
-    pipeline_id: Optional[str] = None  # noqa: UP045
-    creator_user_name: Optional[str] = None  # noqa: UP045
-    settings: Optional[DBSettings] = None  # noqa: UP045
-    created_time: Optional[int] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    pipeline_type: Optional[str] = None  # noqa: UP045
+    job_id: int | None = None
+    pipeline_id: str | None = None
+    creator_user_name: str | None = None
+    settings: DBSettings | None = None
+    created_time: int | None = None
+    name: str | None = None
+    pipeline_type: str | None = None
 
     @property
     def id(self) -> str:
@@ -67,22 +67,22 @@ class DataBrickPipelineDetails(BaseModel):
 
 
 class DBRunState(BaseModel):
-    life_cycle_state: Optional[str] = None  # noqa: UP045
-    result_state: Optional[str] = None  # noqa: UP045
-    state_message: Optional[str] = None  # noqa: UP045
-    queue_reason: Optional[str] = None  # noqa: UP045
+    life_cycle_state: str | None = None
+    result_state: str | None = None
+    state_message: str | None = None
+    queue_reason: str | None = None
 
 
 class DBRun(BaseModel):
     job_id: int
     run_id: int
-    name: Optional[str] = Field(None, alias="run_name")  # noqa: UP045
-    creator_user_name: Optional[str] = None  # noqa: UP045
-    state: Optional[DBRunState] = None  # noqa: UP045
-    schedule: Optional[DBRunSchedule] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    tasks: Optional[List[DBTasks]] = None  # noqa: UP006, UP045
-    run_type: Optional[str] = None  # noqa: UP045
-    start_time: Optional[int] = 0  # noqa: UP045
-    end_time: Optional[int] = 0  # noqa: UP045
-    run_page_url: Optional[str] = None  # noqa: UP045
+    name: str | None = Field(None, alias="run_name")
+    creator_user_name: str | None = None
+    state: DBRunState | None = None
+    schedule: DBRunSchedule | None = None
+    description: str | None = None
+    tasks: list[DBTasks] | None = None
+    run_type: str | None = None
+    start_time: int | None = 0
+    end_time: int | None = 0
+    run_page_url: str | None = None

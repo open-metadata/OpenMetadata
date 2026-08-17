@@ -13,8 +13,8 @@ Snowflake usage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -64,7 +64,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
         daydiff = self.end - self.start
         for days in range(daydiff.days):
             logger.info(
-                f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "
+                f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "  # noqa: G004
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
             query = None
@@ -90,7 +90,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                                 row_count += 1
                                 try:
                                     row.update({k.lower(): v for k, v in row.items()})
-                                    logger.debug(f"Processing row: {row}")
+                                    logger.debug(f"Processing row: {row}")  # noqa: G004
                                     query_type = row.get("query_type")
                                     query_text = self.format_query(row["query_text"])
                                     queries.append(
@@ -116,7 +116,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                                     )
                                 except Exception as exc:
                                     logger.debug(traceback.format_exc())
-                                    logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
+                                    logger.warning(f"Unexpected exception processing row [{row}]: {exc}")  # noqa: G004
                         if queries:
                             yield TableQueries(queries=queries)
                         total_fetched += row_count
@@ -124,16 +124,16 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                             break
                         offset += batch_size
                         logger.info(
-                            f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
+                            f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "  # noqa: G004
                             f"for {(self.start + timedelta(days=days)).date()}"
                         )
             except Exception as exc:
                 if query:
                     logger.debug(
                         (  # noqa: UP034
-                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"  # noqa: G004
                             "\n##########################"
                         )
                     )
                 logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")
+                logger.error(f"Source usage processing error: {exc}")  # noqa: G004

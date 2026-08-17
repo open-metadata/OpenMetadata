@@ -16,7 +16,6 @@ To be used by OpenMetadata class
 
 import base64
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import TableData
@@ -61,25 +60,25 @@ class OMetaContainerMixin:
         for row in sample_data.rows:
             self._process_sample_data_row(row)
 
-    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> Optional[str]:  # noqa: UP045
+    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> str | None:
         """Serialize sample data to JSON, returning None on error"""
         try:
             return sample_data.model_dump_json()
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error serializing sample data for {container_fqn} please check if the data is valid")
+            logger.warning(f"Error serializing sample data for {container_fqn} please check if the data is valid")  # noqa: G004
             return None
 
-    def _parse_response(self, resp: dict, container_fqn: str) -> Optional[TableData]:  # noqa: UP045
+    def _parse_response(self, resp: dict, container_fqn: str) -> TableData | None:
         """Parse response into TableData, returning None on error"""
         try:
             return TableData(**resp["sampleData"])
         except UnicodeError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Cannot parse response from {container_fqn} due to {err}")
+            logger.error(f"Cannot parse response from {container_fqn} due to {err}")  # noqa: G004
             return None
 
-    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
+    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> TableData | None:
         """
         PUT sample data for a container
 
@@ -104,7 +103,7 @@ class OMetaContainerMixin:
             return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to PUT sample data for {container.fullyQualifiedName.root}: {exc}")  # noqa: G004
             return None
 
     def list_container_children(
@@ -139,7 +138,7 @@ class OMetaContainerMixin:
             before=paging.get("before"),
         )
 
-    def get_container_sample_data(self, container: Container) -> Optional[Container]:  # noqa: UP045
+    def get_container_sample_data(self, container: Container) -> Container | None:
         """
         GET call for the /sampleData endpoint for a given Container
 
@@ -152,7 +151,7 @@ class OMetaContainerMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to GET sample data for {container.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -160,12 +159,12 @@ class OMetaContainerMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {container.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {container.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error trying to parse sample data results from {container.fullyQualifiedName.root}: {exc}"
+                    f"Error trying to parse sample data results from {container.fullyQualifiedName.root}: {exc}"  # noqa: G004
                 )
 
         return None

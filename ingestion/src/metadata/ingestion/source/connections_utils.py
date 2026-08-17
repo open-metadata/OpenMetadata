@@ -28,5 +28,5 @@ def kill_active_connections(engine: Engine):
         if active_conn:
             engine.dispose()
     except Exception as exc:
-        logger.warning(f"Error Killing the active connections {exc}")
+        logger.warning(f"Error Killing the active connections {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())

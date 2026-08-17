@@ -14,7 +14,6 @@ Source connection handler for Google Cloud Pub/Sub
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import pubsub_v1
@@ -49,11 +48,11 @@ PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST"
 class PubSubClient:
     publisher: pubsub_v1.PublisherClient
     subscriber: pubsub_v1.SubscriberClient
-    schema_client: Optional[SchemaServiceClient]  # noqa: UP045
+    schema_client: SchemaServiceClient | None
     project_id: str
 
 
-def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noqa: UP045
+def _get_project_id(connection: PubSubConnectionConfig) -> str | None:
     """
     Get project ID from connection config or from credentials.
     Returns None if project ID cannot be determined.
@@ -70,11 +69,11 @@ def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noq
             if project_id and hasattr(project_id, "root"):
                 if isinstance(project_id.root, list):
                     if not project_id.root:
-                        logger.debug(f"No project ids found: {str(project_id)}")  # noqa: RUF010
+                        logger.debug(f"No project ids found: {str(project_id)}")  # noqa: G004, RUF010
                         return None
                     if len(project_id.root) > 1:
                         logger.debug(
-                            f"Multiple GCP project IDs found in credentials {str(project_id.root)} "  # noqa: RUF010
+                            f"Multiple GCP project IDs found in credentials {str(project_id.root)} "  # noqa: G004, RUF010
                             f"Using the first project ID {str(project_id.root[0])}",  # noqa: RUF010
                         )
                     return project_id.root[0]
@@ -132,8 +131,8 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

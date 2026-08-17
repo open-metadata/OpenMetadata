@@ -11,7 +11,7 @@
 """QlikCloud source module"""
 
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -68,7 +68,7 @@ class QlikcloudSource(QliksenseSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikCloudConnection):
@@ -81,9 +81,9 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.projects_map: Dict[str, QlikSpace] = {}  # noqa: UP006
-        self.collections: List[QlikApp] = []  # noqa: UP006
-        self.data_models: List[QlikTable] = []  # noqa: UP006
+        self.projects_map: dict[str, QlikSpace] = {}
+        self.collections: list[QlikApp] = []
+        self.data_models: list[QlikTable] = []
 
     def prepare(self):
         """
@@ -126,7 +126,7 @@ class QlikcloudSource(QliksenseSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: QlikApp | None) -> str | None:
         """
         Get Project Name
         """
@@ -136,7 +136,7 @@ class QlikcloudSource(QliksenseSource):
         project = self.projects_map.get(dashboard_details.space_id)
         return project.name if project else None
 
-    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: QlikApp) -> QlikApp | None:
         """
         Get app Details
         """
@@ -160,7 +160,7 @@ class QlikcloudSource(QliksenseSource):
                     "Filtering dashboard as project id is not present in projects map",
                 )
                 logger.warning(
-                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present in projects map"
+                    f"Project ID '{dashboard.space_id}' for Dashboard '{dashboard.name}' is not present in projects map"  # noqa: G004
                 )
                 continue
             project = self.projects_map[dashboard.space_id]
@@ -221,7 +221,7 @@ class QlikcloudSource(QliksenseSource):
         self,
         db_service_entity: DatabaseService,
         data_model_entity: DashboardDataModel,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         Get the table entity for lineage
         """
@@ -244,13 +244,13 @@ class QlikcloudSource(QliksenseSource):
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")
+                logger.warning(f"Error occured while finding table fqn: {exc}")  # noqa: G004
         return None
 
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikApp,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (
@@ -272,7 +272,7 @@ class QlikcloudSource(QliksenseSource):
                             data_model_entity.displayName,
                             "Filtering Table as display name doesnt match prefix table name",
                         )
-                        logger.debug(f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}")
+                        logger.debug(f"Table {data_model_entity.displayName} does not match prefix {prefix_table_name}")  # noqa: G004
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(

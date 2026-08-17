@@ -16,7 +16,7 @@ import json
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Iterator, Union  # noqa: UP035
+from collections.abc import Iterator
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -198,7 +198,7 @@ class StoredProcedureLineageMixin(ABC):
                         "Stored Procedure Filtered Out",
                     )
                     continue
-                logger.debug(f"Processing Lineage for [{procedure.name}]")
+                logger.debug(f"Processing Lineage for [{procedure.name}]")  # noqa: G004
                 procedures_by_name[procedure.name.root.lower()].append(procedure)
 
         # Yield the ProcedureAndQuery for filtered stored procedure
@@ -216,12 +216,12 @@ class StoredProcedureLineageMixin(ABC):
                     query_by_procedure=query_by_procedure,
                 )
 
-        logger.info(f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}")
-        logger.info(f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}")
+        logger.info(f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}")  # noqa: G004
+        logger.info(f"Count of queries per stored procedure: {pprint_format_object(dict(queries_count_per_procedure))}")  # noqa: G004
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterator[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterator[Either[AddLineageRequest | CreateQueryRequest]]:
         """Get all the queries and procedures list and yield them"""
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_producer

@@ -2,7 +2,7 @@
 Containers entity SDK with fluent API
 """
 
-from typing import Any, List, Optional, Type, cast  # noqa: UP035
+from typing import Any, cast
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -15,7 +15,7 @@ class Containers(BaseEntity[Container, CreateContainerRequest]):
     """Containers SDK class - plural to avoid conflict with generated Container entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[Container]:  # noqa: UP006
+    def entity_type(cls) -> type[Container]:
         """Return the Container entity type"""
         return Container
 
@@ -47,7 +47,7 @@ class Containers(BaseEntity[Container, CreateContainerRequest]):
     def _patch_parent(
         cls,
         container_id: UuidLike,
-        parent: Optional[EntityReference],  # noqa: UP045
+        parent: EntityReference | None,
     ) -> Container:
         client = cls._get_client()
         current = client.get_by_id(
@@ -97,7 +97,7 @@ class Containers(BaseEntity[Container, CreateContainerRequest]):
         )
 
     @classmethod
-    def list_ancestors(cls, container_fqn: str) -> List[EntityReference]:  # noqa: UP006
+    def list_ancestors(cls, container_fqn: str) -> list[EntityReference]:
         """
         Resolve the full ancestor chain for a container in a single call.
         Returns ``EntityReference``s ordered from the root container (immediate

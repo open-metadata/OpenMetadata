@@ -12,7 +12,7 @@
 Validate the logic and status handling of the base workflow
 """
 
-from typing import Iterable, Tuple  # noqa: UP035
+from collections.abc import Iterable
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -121,7 +121,7 @@ class SimpleWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -132,7 +132,7 @@ class BrokenWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = BrokenSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
 # Pass only the required details so that the workflow can be initialized

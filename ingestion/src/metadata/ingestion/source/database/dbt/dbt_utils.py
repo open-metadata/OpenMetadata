@@ -15,7 +15,7 @@ DBT utils methods.
 import re
 import traceback
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.data.metric import MetricType
 from metadata.generated.schema.entity.data.table import Table
@@ -87,7 +87,7 @@ def validate_email_format(email: str) -> bool:
     return bool(re.match(pattern, email))
 
 
-def validate_date_time_format(value: str, format_pattern: str, field_type: str) -> Tuple[bool, Optional[str]]:  # noqa: UP006, UP045
+def validate_date_time_format(value: str, format_pattern: str, field_type: str) -> tuple[bool, str | None]:
     """
     Validate date/time value against configured format pattern.
 
@@ -112,7 +112,7 @@ def validate_date_time_format(value: str, format_pattern: str, field_type: str) 
         return False, f"Validation error: {str(exc)}"  # noqa: RUF010
 
 
-def validate_enum_value(value: Any, config: Optional[Dict]) -> Tuple[bool, Optional[str], Optional[Any]]:  # noqa: UP006, UP045
+def validate_enum_value(value: Any, config: dict | None) -> tuple[bool, str | None, Any | None]:
     """
     Validate enum value against configured allowed values.
 
@@ -169,7 +169,7 @@ def validate_enum_value(value: Any, config: Optional[Dict]) -> Tuple[bool, Optio
         return True, None, value  # Valid single value
 
 
-def validate_table_structure(value: Any, config: Optional[Dict]) -> Tuple[bool, Optional[str]]:  # noqa: UP006, UP045
+def validate_table_structure(value: Any, config: dict | None) -> tuple[bool, str | None]:
     """
     Validate table-cp structure against configuration.
 
@@ -220,8 +220,8 @@ def validate_table_structure(value: Any, config: Optional[Dict]) -> Tuple[bool, 
 def validate_time_interval(
     value: Any,
     config: Any | None = None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """
     Validate and convert timeInterval structure.
 
@@ -267,7 +267,7 @@ def format_validation_error_message(
     field_name: str,
     property_type: str,
     value: Any,
-    error_detail: Optional[str] = None,  # noqa: UP045
+    error_detail: str | None = None,
 ) -> str:
     """
     Generate helpful error message for validation failures.
@@ -292,8 +292,8 @@ def format_validation_error_message(
 def _validate_email_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """Validate and convert email type"""
     if not isinstance(value, str):
         return False, f"Expected email string, got {type(value).__name__}", None
@@ -305,8 +305,8 @@ def _validate_email_type(
 def _validate_date_time_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """Validate and convert date/time types"""
     if not isinstance(value, str):
         return False, f"Expected date/time string, got {type(value).__name__}", None
@@ -319,8 +319,8 @@ def _validate_date_time_type(
 def _validate_timestamp_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """Validate and convert timestamp type"""
     if not isinstance(value, int):
         return (
@@ -336,8 +336,8 @@ def _validate_timestamp_type(
 def _validate_duration_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """Validate and convert ISO 8601 duration format"""
     if not isinstance(value, str):
         return (
@@ -357,8 +357,8 @@ def _validate_duration_type(
 def _validate_enum_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Optional[Any]]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any | None]:
     """Validate and convert enum with allowed values"""
     if config and isinstance(config, dict):
         is_valid, error_msg, filtered_value = validate_enum_value(value, config)
@@ -380,8 +380,8 @@ def _validate_enum_type(
 def _validate_table_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """Validate and convert table-cp structure"""
     if not isinstance(value, dict):
         return (
@@ -400,8 +400,8 @@ def _validate_table_type(
 def _validate_entity_reference_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """
     Validate and convert entity reference format and type.
 
@@ -449,7 +449,7 @@ def _validate_entity_reference_type(
             converted = format_entity_reference(entity, entity_type)
             return True, None, converted
         else:  # noqa: RET505
-            logger.warning(f"Entity not found: type={entity_type}, fqn={entity_fqn}")
+            logger.warning(f"Entity not found: type={entity_type}, fqn={entity_fqn}")  # noqa: G004
             return (
                 False,
                 f"Entity not found: type={entity_type}, fqn={entity_fqn}",
@@ -463,8 +463,8 @@ def _validate_entity_reference_type(
 def _validate_entity_reference_list_type(
     value: Any,
     config: Any | None,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """
     Validate and convert entity reference list format and types.
 
@@ -540,10 +540,10 @@ CUSTOM_PROPERTY_TYPE_VALIDATORS = {
 def validate_custom_property_value(
     property_name: str,
     property_type: str,
-    property_config: Optional[Any],  # noqa: UP045
+    property_config: Any | None,
     value: Any,
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
-) -> Tuple[bool, Optional[str], Any]:  # noqa: UP006, UP045
+    metadata: OpenMetadata | None = None,
+) -> tuple[bool, str | None, Any]:
     """
     Comprehensive validation and conversion of custom property value.
 
@@ -574,7 +574,7 @@ def validate_custom_property_value(
     validator = CUSTOM_PROPERTY_TYPE_VALIDATORS.get(property_type)
 
     if not validator:
-        logger.warning(f"Unknown custom property type: {property_type}")
+        logger.warning(f"Unknown custom property type: {property_type}")  # noqa: G004
         return False, f"Unknown property type: {property_type}", None
 
     # Run validation and conversion
@@ -583,7 +583,7 @@ def validate_custom_property_value(
         is_valid, error_msg, converted_value = validator(value, property_config, metadata)
         return is_valid, error_msg, converted_value  # noqa: TRY300
     except Exception as exc:
-        logger.debug(f"Validation exception for {property_name}: {exc}")
+        logger.debug(f"Validation exception for {property_name}: {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
         return False, f"Validation error: {str(exc)}", None  # noqa: RUF010
 
@@ -618,7 +618,7 @@ def create_test_case_parameter_definitions(dbt_test):
             return test_case_param_definition  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")
+        logger.error(f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}")  # noqa: G004
     return None
 
 
@@ -652,7 +652,7 @@ def create_test_case_parameter_values(dbt_test):
             return test_case_param_values  # noqa: RET504
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")
+        logger.error(f"Failed to capture tests case parameter values for node: {dbt_test} {err}")  # noqa: G004
     return None
 
 
@@ -671,7 +671,7 @@ def create_test_case_parameter_values(dbt_test):
 _ENTITY_LINK_FORBIDDEN_CHARS = frozenset("|<>")
 
 
-def get_manifest_column_name(manifest_node) -> Optional[str]:  # noqa: UP045
+def get_manifest_column_name(manifest_node) -> str | None:
     column_name = getattr(manifest_node, "column_name", None)
     if column_name:
         return column_name
@@ -708,7 +708,7 @@ def get_dbt_test_definition_name(manifest_node, entity_type: EntityType) -> str:
     return name if entity_type == EntityType.COLUMN else f"{name}_{entity_type.value.lower()}"
 
 
-def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
+def get_dbt_test_description(manifest_node) -> str | None:
     """
     Return the description of a dbt test node.
 
@@ -737,13 +737,13 @@ _DBT_REF_PATTERN = re.compile(r"\b(?:ref|source)\(\s*['\"]([^'\"]+)['\"]\s*(?:,\
 _AMBIGUOUS_NAME = None
 
 
-def _get_test_kwargs(manifest_node) -> Dict[str, Any]:  # noqa: UP006
+def _get_test_kwargs(manifest_node) -> dict[str, Any]:
     test_metadata = getattr(manifest_node, "test_metadata", None)
     kwargs = getattr(test_metadata, "kwargs", None) if test_metadata else None
     return kwargs if isinstance(kwargs, dict) else {}
 
 
-def _extract_dbt_reference(reference: Any) -> Optional[Tuple[Optional[str], str]]:  # noqa: UP045, UP006
+def _extract_dbt_reference(reference: Any) -> tuple[str | None, str] | None:
     """Return ``(namespace, name)`` for a dbt ``ref()``/``source()`` expression.
 
     ``ref('model')`` yields ``(None, 'model')`` while the two-argument ``ref('pkg', 'model')``
@@ -769,7 +769,7 @@ def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
     )
 
 
-def build_upstream_name_map(upstream_nodes) -> Dict[str, str]:  # noqa: UP006
+def build_upstream_name_map(upstream_nodes) -> dict[str, str]:
     """Index upstream nodes by dbt name so a ``ref()``/``source()`` can be resolved exactly.
 
     Both the qualified (``namespace.name``) and bare names are indexed. A bare name claimed
@@ -786,7 +786,7 @@ def build_upstream_name_map(upstream_nodes) -> Dict[str, str]:  # noqa: UP006
     return name_map
 
 
-def _match_fqn_by_table_name(upstream_list, table_name: str) -> Optional[str]:  # noqa: UP045
+def _match_fqn_by_table_name(upstream_list, table_name: str) -> str | None:
     """Match on the FQN's table segment, case-insensitively so that warehouses which
     upper-case identifiers (Snowflake) still line up with lower-case dbt model names.
 
@@ -797,7 +797,7 @@ def _match_fqn_by_table_name(upstream_list, table_name: str) -> Optional[str]:  
     return matches[0] if len(matches) == 1 else None
 
 
-def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optional[str]:  # noqa: UP045
+def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> str | None:
     """Resolve a dbt ref()/source() expression to one of the test's upstream FQNs.
 
     Prefers the dbt node name map because ``ref()`` carries the model *name* while the
@@ -814,7 +814,7 @@ def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optiona
     return resolved
 
 
-def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> Optional[str]:  # noqa: UP045
+def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> str | None:
     """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
     parent, so if removing it leaves exactly one candidate that must be the tested table."""
     referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
@@ -822,7 +822,7 @@ def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwar
     return candidates[0] if len(candidates) == 1 else None
 
 
-def get_dbt_test_primary_table_fqn(dbt_test) -> Optional[str]:  # noqa: UP045
+def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
     """
     Return the FQN of the table a dbt test belongs to.
 
@@ -877,7 +877,7 @@ def generate_entity_link(dbt_test):
     return [entity_link_str]
 
 
-def get_dbt_compiled_query(mnode) -> Optional[str]:  # noqa: UP045
+def get_dbt_compiled_query(mnode) -> str | None:
     """
     Method to get dbt compiled query
     """
@@ -885,11 +885,11 @@ def get_dbt_compiled_query(mnode) -> Optional[str]:  # noqa: UP045
         return mnode.compiled_code
     if hasattr(mnode, CompiledQueriesEnum.COMPILED_SQL.value) and mnode.compiled_sql:
         return mnode.compiled_sql
-    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
+    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")  # noqa: G004
     return None
 
 
-def get_dbt_raw_query(mnode) -> Optional[str]:  # noqa: UP045
+def get_dbt_raw_query(mnode) -> str | None:
     """
     Method to get dbt raw query
     """
@@ -897,11 +897,11 @@ def get_dbt_raw_query(mnode) -> Optional[str]:  # noqa: UP045
         return mnode.raw_code
     if hasattr(mnode, RawQueriesEnum.RAW_SQL.value) and mnode.raw_sql:
         return mnode.raw_sql
-    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
+    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")  # noqa: G004
     return None
 
 
-def check_or_create_test_suite(metadata: OpenMetadata, test_entity_link: str) -> Union[TestSuite, EntityReference]:  # noqa: UP007
+def check_or_create_test_suite(metadata: OpenMetadata, test_entity_link: str) -> TestSuite | EntityReference:
     """Check if test suite exists, if not create it
 
     Args:
@@ -947,7 +947,7 @@ def get_source_physical_name(manifest_node) -> str:
     return identifier or get_dbt_model_name(manifest_node)
 
 
-def get_corrected_name(name: Optional[str]):  # noqa: UP045
+def get_corrected_name(name: str | None):
     """
     Method to fetch correct name
     """
@@ -979,7 +979,7 @@ def get_snapshot_effective_schema_and_database(
     Returns a SnapshotNodeLocation with the resolved schema and database.
     """
     effective_schema: str = manifest_node.schema_
-    effective_database: Optional[str] = manifest_node.database  # noqa: UP045
+    effective_database: str | None = manifest_node.database
     if hasattr(manifest_node, "config") and manifest_node.config:
         if hasattr(manifest_node.config, "target_schema") and manifest_node.config.target_schema:
             effective_schema = manifest_node.config.target_schema
@@ -988,7 +988,7 @@ def get_snapshot_effective_schema_and_database(
     return SnapshotNodeLocation(schema_=effective_schema, database=effective_database)
 
 
-def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity_fqn: str) -> Optional[Any]:  # noqa: UP045
+def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity_fqn: str) -> Any | None:
     """
     Search for entity by type and FQN.
 
@@ -1043,25 +1043,25 @@ def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity
     # Get entity class
     entity_class = ENTITY_TYPE_MAP.get(entity_type)
     if not entity_class:
-        logger.warning(f"Unknown entity type: {entity_type}")
+        logger.warning(f"Unknown entity type: {entity_type}")  # noqa: G004
         return None
 
     try:
         # Fetch entity from OpenMetadata by FQN
         entity = metadata.get_by_name(entity=entity_class, fqn=entity_fqn)
         if entity:
-            logger.debug(f"Found {entity_type} entity: {entity_fqn}")
+            logger.debug(f"Found {entity_type} entity: {entity_fqn}")  # noqa: G004
             return entity
         else:  # noqa: RET505
-            logger.warning(f"{entity_type} entity not found: {entity_fqn}")
+            logger.warning(f"{entity_type} entity not found: {entity_fqn}")  # noqa: G004
             return None
     except Exception as exc:
-        logger.warning(f"Error finding {entity_type} entity '{entity_fqn}': {exc}")
+        logger.warning(f"Error finding {entity_type} entity '{entity_fqn}': {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
         return None
 
 
-def format_entity_reference(entity: Any, entity_type: Optional[str] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
+def format_entity_reference(entity: Any, entity_type: str | None = None) -> dict[str, Any]:
     """
     Formats entity into entityReference structure for OpenMetadata.
     Extracts all Pydantic .root values to ensure JSON serializability.
@@ -1169,7 +1169,7 @@ def find_semantic_models_transitive(
     metric,
     semantic_models: dict[str, Any],
     all_metrics: dict[str, Any],
-    visited_metrics: Optional[set[str]] = None,  # noqa: UP045
+    visited_metrics: set[str] | None = None,
 ) -> list[Any]:
     """Resolve semantic models transitively through sub-metric dependencies.
 
@@ -1250,7 +1250,7 @@ def find_dependent_metric_names(metric) -> list[str]:
     return result
 
 
-def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[Any]:  # noqa: UP045
+def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Any | None:
     """
     Search domain by name
     """
@@ -1258,12 +1258,12 @@ def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[An
         domain_entity = metadata.get_by_name(entity=Domain, fqn=domain_name)
         return domain_entity  # noqa: RET504, TRY300
     except Exception as exc:
-        logger.warning(f"Error finding domain {domain_name}: {exc}")
+        logger.warning(f"Error finding domain {domain_name}: {exc}")  # noqa: G004
         logger.debug(traceback.format_exc())
         return None
 
 
-def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+def format_domain_reference(domain_entity: Any) -> dict[str, Any] | None:
     """
     Formats domain into EntityReference structure
     """
@@ -1283,5 +1283,5 @@ def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:  # 
             "fullyQualifiedName": domain_fqn,
         }
     except Exception as exc:
-        logger.warning(f"Error formatting domain reference: {exc}")
+        logger.warning(f"Error formatting domain reference: {exc}")  # noqa: G004
         return None

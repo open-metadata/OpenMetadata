@@ -14,11 +14,11 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Set  # noqa: UP035
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -86,7 +86,7 @@ class TablePipelineObservability(BaseModel):
     """
 
     table: Table
-    observability_data: List[PipelineObservability]  # noqa: UP006
+    observability_data: list[PipelineObservability]
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -168,7 +168,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = PipelineServiceTopology()
     context = TopologyContextManager(topology)
-    pipeline_source_state: Set = set()  # noqa: RUF012, UP006
+    pipeline_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()
     def __init__(
@@ -204,7 +204,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """Get lineage between pipeline and data sources"""
 
     @abstractmethod
-    def get_pipelines_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_pipelines_list(self) -> list[Any] | None:
         """Get List of all pipelines"""
 
     @abstractmethod
@@ -215,7 +215,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_pipeline_status(self, pipeline_details: Any) -> Iterable[Either[OMetaPipelineStatus]]:
         """Get Pipeline Status"""
 
-    def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:  # noqa: UP045
+    def get_pipeline_state(self, pipeline_details: Any) -> PipelineState | None:
         """Get Pipeline State"""
 
     def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[Either[PipelineUsage]]:
@@ -251,10 +251,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     and task.endDate.startswith(self.today)
                 )
                 if not current_task_usage:
-                    logger.debug(f"No usage to report for {pipeline.fullyQualifiedName.root}")
+                    logger.debug(f"No usage to report for {pipeline.fullyQualifiedName.root}")  # noqa: G004
 
                 if not pipeline.usageSummary:
-                    logger.info(f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}")
+                    logger.info(f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}")  # noqa: G004
                     yield Either(
                         right=PipelineUsage(
                             pipeline=pipeline,
@@ -268,12 +268,12 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     new_usage = current_task_usage - latest_usage
                     if new_usage < 0:
                         logger.warning(
-                            f"Wrong computation of usage difference for {pipeline.fullyQualifiedName.root}."
+                            f"Wrong computation of usage difference for {pipeline.fullyQualifiedName.root}."  # noqa: G004
                             f" Got new_usage={new_usage}."
                         )
                         return
 
-                    logger.info(f"Yielding new usage for {pipeline.fullyQualifiedName.root}")
+                    logger.info(f"Yielding new usage for {pipeline.fullyQualifiedName.root}")  # noqa: G004
                     yield Either(
                         right=PipelineUsage(
                             pipeline=pipeline,
@@ -282,8 +282,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                     )
 
                 else:
-                    logger.debug(f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute.")
-                    logger.info(f"Usage already informed for {pipeline.fullyQualifiedName.root}")
+                    logger.debug(f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute.")  # noqa: G004
+                    logger.info(f"Usage already informed for {pipeline.fullyQualifiedName.root}")  # noqa: G004
 
         except Exception as exc:
             yield Either(
@@ -325,7 +325,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 else:
                     yield lineage
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:  # noqa: UP045
+    def _get_table_fqn_from_om(self, table_details: TableDetails) -> str | None:
         """
         Based on partial schema and table names look for matching table object in open metadata.
         :param table_details: TableDetails object containing table name, schema, database information
@@ -384,7 +384,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_table_pipeline_observability(
         self, pipeline_details: Any
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
+    ) -> Iterable[dict[str, list[PipelineObservability]]]:
         """
         Method to extract pipeline observability data grouped by table FQN.
         This method should be implemented by each pipeline service.
@@ -401,9 +401,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                             right=TablePipelineObservability(table=table, observability_data=observability_list)
                         )
                     else:
-                        logger.warning(f"Table not found: {table_fqn}")
+                        logger.warning(f"Table not found: {table_fqn}")  # noqa: G004
         except Exception as exc:
-            logger.error(f"Failed to extract pipeline observability data: {exc}")
+            logger.error(f"Failed to extract pipeline observability data: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -441,7 +441,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 params={"service": self.context.get().pipeline_service},
             )
 
-    def get_db_service_names(self) -> List[str]:  # noqa: UP006
+    def get_db_service_names(self) -> list[str]:
         """
         Get the list of db service names
         """
@@ -451,7 +451,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_storage_service_names(self) -> List[str]:  # noqa: UP006
+    def get_storage_service_names(self) -> list[str]:
         """
         Get the list of storage service names
         """
@@ -461,7 +461,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_messaging_service_names(self) -> List[str]:  # noqa: UP006
+    def get_messaging_service_names(self) -> list[str]:
         """
         Get the list of messaging service names
         """

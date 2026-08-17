@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
@@ -18,19 +17,19 @@ class OpenMetadataConfig:
     """Configuration for OpenMetadata SDK."""
 
     server_url: str
-    jwt_token: Optional[str]  # noqa: UP045
-    api_key: Optional[str]  # noqa: UP045
+    jwt_token: str | None
+    api_key: str | None
     verify_ssl: bool
-    ca_bundle: Optional[str]  # noqa: UP045
+    ca_bundle: str | None
     client_timeout: int
 
     def __init__(
         self,
         server_url: str,
-        jwt_token: Optional[str] = None,  # noqa: UP045
-        api_key: Optional[str] = None,  # noqa: UP045
+        jwt_token: str | None = None,
+        api_key: str | None = None,
         verify_ssl: bool = False,
-        ca_bundle: Optional[str] = None,  # noqa: UP045
+        ca_bundle: str | None = None,
         client_timeout: int = 30,
     ):
         self.server_url = server_url.rstrip("/")
@@ -102,11 +101,11 @@ class OpenMetadataConfigBuilder:
     """Builder for :class:`OpenMetadataConfig`."""
 
     def __init__(self) -> None:
-        self._server_url: Optional[str] = None  # noqa: UP045
-        self._jwt_token: Optional[str] = None  # noqa: UP045
-        self._api_key: Optional[str] = None  # noqa: UP045
+        self._server_url: str | None = None
+        self._jwt_token: str | None = None
+        self._api_key: str | None = None
         self._verify_ssl: bool = False
-        self._ca_bundle: Optional[str] = None  # noqa: UP045
+        self._ca_bundle: str | None = None
         self._client_timeout: int = 30
 
     def server_url(self, url: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037

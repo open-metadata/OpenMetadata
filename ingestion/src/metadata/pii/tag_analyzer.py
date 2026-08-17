@@ -1,6 +1,7 @@
 import copy
+from collections.abc import Sequence
 from itertools import groupby
-from typing import List, Optional, Sequence, final  # noqa: UP035
+from typing import final
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -40,9 +41,9 @@ TARGET_MAP = {
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]  # noqa: UP045
-    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
-    target: Optional[recognizer.Target] = None  # noqa: UP045
+    explanation: str | None
+    recognizer_results: list[RecognizerResult] = []
+    target: recognizer.Target | None = None
     column_name_matched: bool = False
 
     @final
@@ -137,8 +138,8 @@ class TagAnalyzer:
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
-        effective_language: Optional[str] = None,  # noqa: UP045
+        nlp_engine: NlpEngine | None = None,
+        effective_language: str | None = None,
     ) -> AnalyzerEngine:
         effective_lang = effective_language or self._language.value
         if effective_lang == ClassificationLanguage.any.value:
@@ -160,7 +161,7 @@ class TagAnalyzer:
         self,
         text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,  # noqa: UP045
+        context: list[str] | None = None,
     ) -> list[RecognizerResult]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []

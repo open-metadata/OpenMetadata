@@ -7,7 +7,6 @@ configuration following the topology structure (service -> database -> schema ->
 """
 
 import traceback
-from typing import Dict, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -37,7 +36,7 @@ class OwnerResolver:
     4. Default configuration
     """
 
-    def __init__(self, metadata: OpenMetadata, owner_config: Optional[Dict] = None):  # noqa: UP006, UP045
+    def __init__(self, metadata: OpenMetadata, owner_config: dict | None = None):
         """
         Initialize the owner resolver
 
@@ -49,9 +48,7 @@ class OwnerResolver:
         self.config = owner_config or {}
         self.enable_inheritance = self.config.get("enableInheritance", True)
 
-    def _try_level_config_match(
-        self, level_config, entity_name: str, entity_type: str
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def _try_level_config_match(self, level_config, entity_name: str, entity_type: str) -> EntityReferenceList | None:
         """Try to match owner from level configuration"""
         if isinstance(level_config, dict):
             return self._try_dict_config_match(level_config, entity_name)
@@ -59,13 +56,13 @@ class OwnerResolver:
             return self._try_string_config_match(level_config, entity_name, entity_type)
         return None
 
-    def _try_dict_config_match(self, level_config: dict, entity_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def _try_dict_config_match(self, level_config: dict, entity_name: str) -> EntityReferenceList | None:
         """Try to match owner from dict configuration"""
         # First try full name matching (FQN)
         if entity_name in level_config:
             owner_ref = self._get_owner_refs(level_config[entity_name])
             if owner_ref:
-                logger.debug(f"Matched owner for '{entity_name}' using FQN: {level_config[entity_name]}")
+                logger.debug(f"Matched owner for '{entity_name}' using FQN: {level_config[entity_name]}")  # noqa: G004
                 return owner_ref
 
         # Fallback to simple name matching
@@ -74,7 +71,7 @@ class OwnerResolver:
             owner_ref = self._get_owner_refs(level_config[simple_name])
             if owner_ref:
                 logger.info(
-                    f"FQN match failed for '{entity_name}', "
+                    f"FQN match failed for '{entity_name}', "  # noqa: G004
                     f"matched using simple name '{simple_name}': {level_config[simple_name]}"
                 )
                 return owner_ref
@@ -82,19 +79,19 @@ class OwnerResolver:
 
     def _try_string_config_match(
         self, level_config: str, entity_name: str, entity_type: str
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+    ) -> EntityReferenceList | None:
         """Try to match owner from string configuration"""
         owner_ref = self._get_owner_refs(level_config)
         if owner_ref:
-            logger.debug(f"Using {entity_type} level owner for '{entity_name}': {level_config}")
+            logger.debug(f"Using {entity_type} level owner for '{entity_name}': {level_config}")  # noqa: G004
         return owner_ref
 
     def resolve_owner(
         self,
         entity_type: str,
         entity_name: str,
-        parent_owner: Optional[Union[str, List[str]]] = None,  # noqa: UP006, UP007, UP045
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        parent_owner: str | list[str] | None = None,
+    ) -> EntityReferenceList | None:
         """
         Resolve owner for an entity based on configuration
 
@@ -110,12 +107,12 @@ class OwnerResolver:
             return None
 
         try:
-            logger.debug(f"Resolving owner for {entity_type} '{entity_name}', parent_owner: {parent_owner}")
-            logger.debug(f"Full config: {self.config}")
+            logger.debug(f"Resolving owner for {entity_type} '{entity_name}', parent_owner: {parent_owner}")  # noqa: G004
+            logger.debug(f"Full config: {self.config}")  # noqa: G004
 
             # 1. Try to get owner from current level configuration
             level_config = self.config.get(entity_type)
-            logger.debug(f"Level config for '{entity_type}': {level_config}")
+            logger.debug(f"Level config for '{entity_type}': {level_config}")  # noqa: G004
 
             if level_config:
                 owner_ref = self._try_level_config_match(level_config, entity_name, entity_type)
@@ -126,7 +123,7 @@ class OwnerResolver:
             if self.enable_inheritance and parent_owner:
                 owner_ref = self._get_owner_refs(parent_owner)
                 if owner_ref:
-                    logger.debug(f"Using inherited owner for '{entity_name}': {parent_owner}")
+                    logger.debug(f"Using inherited owner for '{entity_name}': {parent_owner}")  # noqa: G004
                     return owner_ref
 
             # 3. Use default owner
@@ -134,16 +131,16 @@ class OwnerResolver:
             if default_owner:
                 owner_ref = self._get_owner_refs(default_owner)
                 if owner_ref:
-                    logger.debug(f"Using default owner for '{entity_name}': {default_owner}")
+                    logger.debug(f"Using default owner for '{entity_name}': {default_owner}")  # noqa: G004
                 return owner_ref
 
         except Exception as exc:
-            logger.warning(f"Error resolving owner for {entity_type} '{entity_name}': {exc}")
+            logger.warning(f"Error resolving owner for {entity_type} '{entity_name}': {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return None
 
-    def _find_single_owner(self, owner_name: str) -> Optional[tuple]:  # noqa: UP045
+    def _find_single_owner(self, owner_name: str) -> tuple | None:
         """
         Find a single owner by name or email
 
@@ -161,7 +158,7 @@ class OwnerResolver:
             owner_ref = self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
             if owner_ref and owner_ref.root:
                 owner_entity = owner_ref.root[0]
-                logger.debug(f"Found owner: {owner_name} (type: {owner_entity.type})")
+                logger.debug(f"Found owner: {owner_name} (type: {owner_entity.type})")  # noqa: G004
                 return (owner_entity, owner_entity.type)
 
             # Try by email if name contains @
@@ -169,18 +166,18 @@ class OwnerResolver:
                 owner_ref = self.metadata.get_reference_by_email(owner_name)
                 if owner_ref and owner_ref.root:
                     owner_entity = owner_ref.root[0]
-                    logger.debug(f"Found owner by email: {owner_name} (type: {owner_entity.type})")
+                    logger.debug(f"Found owner by email: {owner_name} (type: {owner_entity.type})")  # noqa: G004
                     return (owner_entity, owner_entity.type)
 
-            logger.warning(f"Could not find owner: {owner_name}")
+            logger.warning(f"Could not find owner: {owner_name}")  # noqa: G004
             return None  # noqa: TRY300
 
         except Exception as exc:
-            logger.warning(f"Error getting owner reference for '{owner_name}': {exc}")
+            logger.warning(f"Error getting owner reference for '{owner_name}': {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return None
 
-    def _validate_owners(self, all_owners: List, owner_types: set) -> Optional[EntityReferenceList]:  # noqa: UP006, UP045
+    def _validate_owners(self, all_owners: list, owner_types: set) -> EntityReferenceList | None:
         """
         Validate owner list according to business rules
 
@@ -197,7 +194,7 @@ class OwnerResolver:
         # VALIDATION 1: Cannot mix users and teams
         if len(owner_types) > 1:
             logger.warning(
-                f"VALIDATION ERROR: Cannot mix users and teams in owner list. "
+                f"VALIDATION ERROR: Cannot mix users and teams in owner list. "  # noqa: G004
                 f"Found types: {owner_types}. Skipping this owner configuration."
             )
             return None
@@ -205,14 +202,14 @@ class OwnerResolver:
         # VALIDATION 2: Only one team allowed
         if "team" in owner_types and len(all_owners) > 1:
             logger.warning(
-                f"VALIDATION ERROR: Only ONE team allowed as owner, but got {len(all_owners)} teams. "
+                f"VALIDATION ERROR: Only ONE team allowed as owner, but got {len(all_owners)} teams. "  # noqa: G004
                 f"Using only the first team: {all_owners[0].name}"
             )
             return EntityReferenceList(root=[all_owners[0]])
 
         return EntityReferenceList(root=all_owners)
 
-    def _get_owner_refs(self, owner_names: Union[str, List[str]]) -> Optional[EntityReferenceList]:  # noqa: UP006, UP007, UP045
+    def _get_owner_refs(self, owner_names: str | list[str]) -> EntityReferenceList | None:
         """
         Get owner references from OpenMetadata (supports single or multiple owners)
 
@@ -248,11 +245,11 @@ class OwnerResolver:
 
 def get_owner_from_config(
     metadata: OpenMetadata,
-    owner_config: Optional[Union[str, Dict]],  # noqa: UP006, UP007, UP045
+    owner_config: str | dict | None,
     entity_type: str,
     entity_name: str,
-    parent_owner: Optional[Union[str, List[str]]] = None,  # noqa: UP006, UP007, UP045
-) -> Optional[EntityReferenceList]:  # noqa: UP045
+    parent_owner: str | list[str] | None = None,
+) -> EntityReferenceList | None:
     """
     Convenience function to resolve owner from configuration
 
@@ -267,7 +264,7 @@ def get_owner_from_config(
         EntityReferenceList with resolved owner, or None
     """
     logger.debug(
-        f"get_owner_from_config called: entity_type={entity_type}, "
+        f"get_owner_from_config called: entity_type={entity_type}, "  # noqa: G004
         f"entity_name={entity_name}, owner_config type={type(owner_config)}"
     )
 
@@ -288,5 +285,5 @@ def get_owner_from_config(
         resolver = OwnerResolver(metadata, config_dict)
         return resolver.resolve_owner(entity_type, entity_name, parent_owner)
 
-    logger.debug(f"Unsupported owner_config type: {type(owner_config)}")
+    logger.debug(f"Unsupported owner_config type: {type(owner_config)}")  # noqa: G004
     return None

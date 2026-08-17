@@ -11,7 +11,7 @@
 """Db2 source module"""
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import Row
@@ -67,7 +67,7 @@ class Db2Source(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: Db2Connection = config.serviceConnection.root.config
         if not isinstance(connection, Db2Connection):
@@ -89,7 +89,7 @@ class Db2Source(CommonDbSourceService):
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")  # noqa: G004
         else:
             if table_info.get("text"):
                 description = table_info["text"]

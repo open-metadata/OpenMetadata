@@ -61,7 +61,7 @@ class MinLength(StaticMetric):
         if self._is_concatenable():
             return func.min(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing MIN_LENGTH")
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MIN_LENGTH")  # noqa: G004
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -76,20 +76,20 @@ class MinLength(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:  # noqa: F841
-                logger.debug(f"Don't know how to process type {self.col.type} when computing MIN_LENGTH")
+                logger.debug(f"Don't know how to process type {self.col.type} when computing MIN_LENGTH")  # noqa: G004
                 return None
         return computation.aggregate_accumulator(accumulator)
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[int], Optional[int]](  # noqa: UP045
+        return PandasComputation[int | None, int | None](
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: MinLength.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_min: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:  # noqa: UP045
+    def update_accumulator(current_min: int | None, df: "pd.DataFrame", column) -> int | None:
         """Computes one DataFrame chunk and updates the running minimum"""
         import pandas as pd
         from numpy import vectorize

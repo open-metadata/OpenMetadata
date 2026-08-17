@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Custom Search connector yielding deterministic in-memory search indexes."""
 
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -65,7 +65,7 @@ class CustomSearchSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "CustomSearchSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config

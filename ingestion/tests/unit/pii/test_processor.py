@@ -3,8 +3,8 @@ import os
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Generator
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Set, Tuple  # noqa: UP035
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -43,8 +43,8 @@ def workflow_config() -> OpenMetadataWorkflowConfig:
     )
 
 
-def group_column_tags_by_column(column_tags: List[ColumnTag]) -> Dict[str, Set[str]]:  # noqa: UP006
-    column_tags_by_column: Dict[str, Set[str]] = defaultdict(set)  # noqa: UP006
+def group_column_tags_by_column(column_tags: list[ColumnTag]) -> dict[str, set[str]]:
+    column_tags_by_column: dict[str, set[str]] = defaultdict(set)
     for column_tag in column_tags:
         column_tags_by_column[column_tag.column_fqn].add(column_tag.tag_label.tagFQN.root)
     return column_tags_by_column
@@ -59,8 +59,8 @@ def import_from_path(module_name, file_path):
 
 
 def generate_test_cases(
-    include: Optional[Set[str]] = None,  # noqa: UP006, UP045
-) -> Generator[Tuple[str, SamplerResponse, List[ColumnTag]], None, None]:  # noqa: UP006
+    include: set[str] | None = None,
+) -> Generator[tuple[str, SamplerResponse, list[ColumnTag]], None, None]:
     test_cases_dir = Path(os.path.join(os.path.dirname(__file__), "test_cases"))  # noqa: PTH118, PTH120
     for file in os.listdir(test_cases_dir):  # noqa: PTH208
         file_path = test_cases_dir / file
@@ -95,7 +95,7 @@ def test_it_returns_the_expected_column_tags(
     sampler_record: SamplerResponse,
     openmetadata: Mock,
     workflow_config: OpenMetadataWorkflowConfig,
-    expected_column_tags: List[ColumnTag],  # noqa: UP006
+    expected_column_tags: list[ColumnTag],
 ):
     processor = PIIProcessor(workflow_config, openmetadata)
 

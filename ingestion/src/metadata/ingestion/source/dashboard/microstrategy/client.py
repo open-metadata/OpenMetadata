@@ -13,7 +13,6 @@ REST Auth & Client for MicroStrategy
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 import requests
 
@@ -89,7 +88,7 @@ class MicroStrategyClient:
             )
         return AuthHeaderCookie(auth_header=response.headers, auth_cookies=response.cookies)
 
-    def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:  # noqa: UP045
+    def _get_auth_header_and_cookies(self) -> AuthHeaderCookie | None:
         """
         Send a request to authenticate the user and get headers and
 
@@ -103,7 +102,7 @@ class MicroStrategyClient:
                 return auth_data
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the auth header and cookies due to : [{exc}]")
+            logger.error(f"Failed to fetch the auth header and cookies due to : [{exc}]")  # noqa: G004
         return None
 
     def _set_api_session(self, auth_data: AuthHeaderCookie) -> bool:
@@ -117,7 +116,7 @@ class MicroStrategyClient:
             timeout=60,
         )
         if api_session.ok:
-            logger.info(f"Connection Successful User {self.config.username} is Authenticated")
+            logger.info(f"Connection Successful User {self.config.username} is Authenticated")  # noqa: G004
             return True
         raise requests.ConnectionError(
             "Connection Failed, Failed to set an api session, Please validate the credentials"
@@ -136,12 +135,12 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to close the api sesison due to [{exc}]")
+            logger.error(f"Failed to close the api sesison due to [{exc}]")  # noqa: G004
 
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
-    def get_projects_list(self) -> List[MstrProject]:  # noqa: UP006
+    def get_projects_list(self) -> list[MstrProject]:
         """
         Get List of all projects
         """
@@ -155,11 +154,11 @@ class MicroStrategyClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the project list due to [{exc}]")
+            logger.error(f"Failed to fetch the project list due to [{exc}]")  # noqa: G004
 
         return []
 
-    def get_project_by_name(self) -> Optional[MstrProject]:  # noqa: UP045
+    def get_project_by_name(self) -> MstrProject | None:
         """
         Get Project By Name
         """
@@ -177,7 +176,7 @@ class MicroStrategyClient:
 
         return None
 
-    def get_search_results_list(self, project_id, object_type) -> List[MstrSearchResult]:  # noqa: UP006
+    def get_search_results_list(self, project_id, object_type) -> list[MstrSearchResult]:
         """
         Get Search Results
 
@@ -209,7 +208,7 @@ class MicroStrategyClient:
 
         return []
 
-    def get_dashboards_list(self, project_id, project_name) -> List[MstrDashboard]:  # noqa: UP006
+    def get_dashboards_list(self, project_id, project_name) -> list[MstrDashboard]:
         """
         Get Dashboard
         """
@@ -229,7 +228,7 @@ class MicroStrategyClient:
 
         return []
 
-    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> Optional[MstrDashboardDetails]:  # noqa: UP045
+    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> MstrDashboardDetails | None:
         """
         Get Dashboard Details
         """
@@ -241,11 +240,11 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: G004
 
         return None
 
-    def get_cube_sql_details(self, project_id: str, cube_id: str) -> Optional[str]:  # noqa: UP045
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> str | None:
         """
         Get Cube SQL Details
         """
@@ -260,6 +259,6 @@ class MicroStrategyClient:
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the cube with id: {cube_id}")
+            logger.error(f"Failed to fetch the cube with id: {cube_id}")  # noqa: G004
 
         return None

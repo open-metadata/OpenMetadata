@@ -4,7 +4,6 @@ import importlib.util
 import inspect
 import logging
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 from locust import HttpUser, TaskSet, constant
 
@@ -13,7 +12,7 @@ TASKS_DIR = "tasks"
 logger = logging.getLogger(__name__)
 
 
-def get_all_tasks_set() -> List:  # noqa: UP006
+def get_all_tasks_set() -> list:
     resource_classes = []
     wd = Path(__file__).parent.joinpath(TASKS_DIR)
     for file_path in wd.glob("*.py"):
@@ -22,7 +21,7 @@ def get_all_tasks_set() -> List:  # noqa: UP006
             module_name = file_path.stem
             spec = importlib.util.spec_from_file_location(module_name, module_path)
             if not spec:
-                logger.error(f"Could not load module {module_name}")
+                logger.error(f"Could not load module {module_name}")  # noqa: G004
                 continue
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)  # type: ignore

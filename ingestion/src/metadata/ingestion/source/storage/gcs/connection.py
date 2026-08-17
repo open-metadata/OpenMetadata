@@ -11,7 +11,6 @@
 """GCS storage connection"""
 
 from dataclasses import dataclass
-from typing import Optional
 
 from google.cloud.exceptions import NotFound
 from google.cloud.monitoring_v3 import MetricServiceClient
@@ -112,7 +111,7 @@ class Tester:
                         break
                 if not matched and self.connection.containerFilterPattern:
                     logger.warning(
-                        f"No buckets in project {project_id} matched the "
+                        f"No buckets in project {project_id} matched the "  # noqa: G004
                         f"containerFilterPattern. Check your include/exclude patterns."
                     )
             if not self.bucket_tests:
@@ -141,7 +140,7 @@ class Tester:
             except StopIteration:
                 # Empty bucket - this is valid, we can list blobs
                 # even if there are none
-                logger.debug(f"Bucket {bucket_test.bucket_name} is empty, but list permission is working correctly")
+                logger.debug(f"Bucket {bucket_test.bucket_name} is empty, but list permission is working correctly")  # noqa: G004
 
     def get_blob(self):
         if not self.bucket_tests:
@@ -165,8 +164,8 @@ class GcsConnection(BaseConnection[GcsConnectionConfig, GcsObjectStoreClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

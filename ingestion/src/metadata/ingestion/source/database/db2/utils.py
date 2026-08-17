@@ -78,9 +78,9 @@ def get_columns_os390(self, connection, table_name, schema=None, **kw):  # pylin
             coltype = self.ischema_names[coltype]
         else:
             if not coltype:
-                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")
+                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")  # noqa: G004
             else:
-                logger.warning(f"Did not recognize type '{coltype}' of column '{r[0]}' - ingesting as UNKNOWN")
+                logger.warning(f"Did not recognize type '{coltype}' of column '{r[0]}' - ingesting as UNKNOWN")  # noqa: G004
             coltype = sa_types.NULLTYPE
 
         sa_columns.append(
@@ -146,7 +146,7 @@ def check_clidriver_version(clidriver_version: str):
     Check if the CLI Driver version is valid
     """
     if clidriver_version not in [v.value for v in DB2CLIDriverVersions]:
-        logger.warning(f"Invalid CLI Driver version provided: {clidriver_version}")
+        logger.warning(f"Invalid CLI Driver version provided: {clidriver_version}")  # noqa: G004
         return None
     return DB2CLIDriverVersions(clidriver_version)
 
@@ -204,7 +204,7 @@ def install_clidriver(clidriver_version: str) -> None:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
             clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"  # noqa: RUF010
     else:
-        logger.error(f"Unsupported operating system for db2 driver installation: {system}")
+        logger.error(f"Unsupported operating system for db2 driver installation: {system}")  # noqa: G004
         return None  # noqa: RET501
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
@@ -213,8 +213,8 @@ def install_clidriver(clidriver_version: str) -> None:
         os.environ["IBM_DB_INSTALLER_URL"] = clidriver_url
     else:
         os.environ["IBM_DB_INSTALLER_URL"] = default_clidriver_url
-    logger.info(f"Set IBM_DB_INSTALLER_URL to {os.environ['IBM_DB_INSTALLER_URL']}")
-    logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
+    logger.info(f"Set IBM_DB_INSTALLER_URL to {os.environ['IBM_DB_INSTALLER_URL']}")  # noqa: G004
+    logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")  # noqa: G004
     # Uninstall ibm_db if it is already installed
     try:
         distribution("ibm_db")

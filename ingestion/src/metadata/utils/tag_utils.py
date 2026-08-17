@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional, Type, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -52,13 +52,13 @@ logger = ingestion_logger()
 
 # pylint: disable=too-many-arguments
 def get_ometa_tag_and_classification(
-    tags: List[str],  # noqa: UP006
+    tags: list[str],
     classification_name: str,
     tag_description: str,
     classification_description: str,
     include_tags: bool = True,
-    tag_fqn: Optional[FullyQualifiedEntityName] = None,  # noqa: UP045
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
+    tag_fqn: FullyQualifiedEntityName | None = None,
+    metadata: OpenMetadata | None = None,
     system_tags: bool = False,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
     """
@@ -83,7 +83,7 @@ def get_ometa_tag_and_classification(
     for tag in tags:
         # Skip empty or whitespace-only tags
         if not tag or not str(tag).strip():
-            logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
+            logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")  # noqa: G004
             continue
 
         specific_tag_description = tag_description
@@ -119,7 +119,7 @@ def get_ometa_tag_and_classification(
                 ),
             )
             yield Either(right=classification)
-            logger.debug(f"Classification {classification_name}, Tag {tag} Ingested")
+            logger.debug(f"Classification {classification_name}, Tag {tag} Ingested")  # noqa: G004
         except Exception as err:
             yield Either(
                 left=StackTraceError(
@@ -134,15 +134,15 @@ def get_ometa_tag_and_classification(
 def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
-    classification_name: Optional[str],  # noqa: UP045
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
-) -> Optional[TagLabel]:  # noqa: UP045
+    classification_name: str | None,
+    tag_type: type[Tag] | type[GlossaryTerm] = Tag,
+) -> TagLabel | None:
     """
     Returns the tag label if the tag is created
     """
     # Skip empty or whitespace-only tag names
     if not tag_name or not str(tag_name).strip():
-        logger.warning(f"Skipping empty or whitespace-only tag name for classification '{classification_name}'")
+        logger.warning(f"Skipping empty or whitespace-only tag name for classification '{classification_name}'")  # noqa: G004
         return None
 
     try:
@@ -171,21 +171,21 @@ def get_tag_label(
                 source=source,
             )
 
-        logger.warning(f"Tag does not exist: {tag_fqn}")
+        logger.warning(f"Tag does not exist: {tag_fqn}")  # noqa: G004
 
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(f"Error processing tag label: {err}")
+        logger.error(f"Error processing tag label: {err}")  # noqa: G004
     return None
 
 
 def get_tag_labels(
     metadata: OpenMetadata,
-    tags: List[str],  # noqa: UP006
-    classification_name: Optional[str] = None,  # noqa: UP045
+    tags: list[str],
+    classification_name: str | None = None,
     include_tags: bool = True,
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
-) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    tag_type: type[Tag] | type[GlossaryTerm] = Tag,
+) -> list[TagLabel] | None:
     """
     Method to create tag labels from the collected tags
     """
@@ -194,7 +194,7 @@ def get_tag_labels(
         for tag in tags:
             # Skip empty or whitespace-only tags
             if not tag or not str(tag).strip():
-                logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")
+                logger.warning(f"Skipping empty or whitespace-only tag for classification '{classification_name}'")  # noqa: G004
                 continue
 
             try:
@@ -209,5 +209,5 @@ def get_tag_labels(
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error processing tag labels: {err}")
+                logger.error(f"Error processing tag labels: {err}")  # noqa: G004
     return tag_labels_list or None

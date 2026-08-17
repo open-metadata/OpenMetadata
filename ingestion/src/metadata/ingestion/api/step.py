@@ -15,7 +15,7 @@ Each of the ingestion steps: Source, Sink, Stage,...
 import inspect
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StepSummary,
@@ -75,7 +75,7 @@ class Step(ABC, Closeable):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         pass
 
@@ -155,7 +155,7 @@ class ReturnStep(Step, ABC):
         Main entrypoint to execute the step
         """
 
-    def run(self, record: Entity) -> Optional[Entity]:  # noqa: UP045
+    def run(self, record: Entity) -> Entity | None:
         """
         Run the step and handle the status and exceptions
         """
@@ -171,7 +171,7 @@ class ReturnStep(Step, ABC):
                     self.status.scanned(result.right)
                     return result.right
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")
+            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
@@ -222,7 +222,7 @@ class StageStep(Step, ABC):
                 if result.right is not None:
                     self.status.scanned(result.right)
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")
+            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = f"Object type defined in `def _run()` {inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
@@ -249,7 +249,7 @@ class IterStep(Step, ABC):
     def _iter(self) -> Iterable[Either]:
         """Main entrypoint to run through the Iterator"""
 
-    def run(self) -> Iterable[Optional[Entity]]:  # noqa: UP045
+    def run(self) -> Iterable[Entity | None]:
         """
         Run the step and handle the status and exceptions
 
@@ -267,7 +267,7 @@ class IterStep(Step, ABC):
                     self.status.scanned(result.right)
                     yield result.right
         except WorkflowFatalError as err:
-            logger.error(f"Fatal error running step [{self}]: [{err}]")
+            logger.error(f"Fatal error running step [{self}]: [{err}]")  # noqa: G004
             raise err  # noqa: TRY201
         except AttributeError as exc:
             error = (

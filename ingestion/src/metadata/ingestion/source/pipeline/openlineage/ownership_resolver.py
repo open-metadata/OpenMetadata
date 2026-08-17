@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Any, Dict, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
@@ -53,15 +53,15 @@ class OpenLineageOwnerResolver:
             else ownership_update_mode or OwnershipUpdateMode.replace.value
         )
         self._owner_cache_loaded = False
-        self._team_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
-        self._user_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
-        self._owner_refs_by_pipeline_fqn: Dict[str, List[EntityReference]] = {}  # noqa: UP006
+        self._team_owner_ref_by_name: dict[str, EntityReference] = {}
+        self._user_owner_ref_by_name: dict[str, EntityReference] = {}
+        self._owner_refs_by_pipeline_fqn: dict[str, list[EntityReference]] = {}
 
     def get_pipeline_job_owners(
         self,
-        job: Dict[str, Any],  # noqa: UP006
-        pipeline_fqn: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        job: dict[str, Any],
+        pipeline_fqn: str | None = None,
+    ) -> EntityReferenceList | None:
         """
         Resolve owners from ``job.facets.ownership.owners``.
 
@@ -77,8 +77,8 @@ class OpenLineageOwnerResolver:
 
         self._ensure_pipeline_owner_cache()
 
-        resolved: List[EntityReference] = []  # noqa: UP006
-        seen: Set[Tuple[str, str]] = set()  # noqa: UP006
+        resolved: list[EntityReference] = []
+        seen: set[tuple[str, str]] = set()
 
         for owner in owners:
             owner_ref = self._get_owner_ref(owner)
@@ -108,7 +108,7 @@ class OpenLineageOwnerResolver:
         self._owner_refs_by_pipeline_fqn[pipeline_fqn] = merged_owners
         return EntityReferenceList(root=merged_owners)
 
-    def _get_owner_ref(self, owner: Any) -> Optional[EntityReference]:  # noqa: UP045
+    def _get_owner_ref(self, owner: Any) -> EntityReference | None:
         """
         Resolve a single OpenLineage ownership owner object to an OpenMetadata owner reference.
 
@@ -142,13 +142,13 @@ class OpenLineageOwnerResolver:
             user_ref = self._user_owner_ref_by_name.get(owner_key)
             if team_ref and user_ref:
                 logger.warning(
-                    f"OpenLineage owner [{raw_owner_name}] matched both a team "
+                    f"OpenLineage owner [{raw_owner_name}] matched both a team "  # noqa: G004
                     "and a user. Using the team for pipeline ownership."
                 )
             owner_ref = team_ref or user_ref
 
         if not owner_ref:
-            logger.warning(f"Unable to resolve OpenLineage owner [{raw_owner_name}] for pipeline ownership.")
+            logger.warning(f"Unable to resolve OpenLineage owner [{raw_owner_name}] for pipeline ownership.")  # noqa: G004
         return owner_ref
 
     def _ensure_pipeline_owner_cache(self) -> None:
@@ -158,9 +158,9 @@ class OpenLineageOwnerResolver:
         if self._owner_cache_loaded:
             return
 
-        team_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
-        user_owner_ref_by_name: Dict[str, EntityReference] = {}  # noqa: UP006
-        owner_refs_by_pipeline_fqn: Dict[str, List[EntityReference]] = {}  # noqa: UP006
+        team_owner_ref_by_name: dict[str, EntityReference] = {}
+        user_owner_ref_by_name: dict[str, EntityReference] = {}
+        owner_refs_by_pipeline_fqn: dict[str, list[EntityReference]] = {}
 
         try:
             for team in self.metadata.list_all_entities(
@@ -194,7 +194,7 @@ class OpenLineageOwnerResolver:
                             ):
                                 pipeline_owner_refs.append(team_ref)
         except Exception as exc:
-            logger.warning(f"Unable to load OpenMetadata teams for owner cache: {exc}")
+            logger.warning(f"Unable to load OpenMetadata teams for owner cache: {exc}")  # noqa: G004
 
         try:
             for user in self.metadata.list_all_entities(
@@ -229,7 +229,7 @@ class OpenLineageOwnerResolver:
                             ):
                                 pipeline_owner_refs.append(user_ref)
         except Exception as exc:
-            logger.warning(f"Unable to load OpenMetadata users for owner cache: {exc}")
+            logger.warning(f"Unable to load OpenMetadata users for owner cache: {exc}")  # noqa: G004
 
         self._team_owner_ref_by_name = team_owner_ref_by_name
         self._user_owner_ref_by_name = user_owner_ref_by_name

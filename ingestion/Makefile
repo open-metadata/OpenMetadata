@@ -9,6 +9,8 @@ else
     ROOT_DIR := .
 endif
 
+MODERN_TYPING_RULES := UP006,UP007,UP035,UP045
+
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install $(INGESTION_DIR)/
@@ -58,6 +60,11 @@ py_format:  ## Run ruff to lint-fix and format the Python codebase
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	@if rg -n --glob '*.py' '[#][[:space:]]*noqa:[^#]*(UP006|UP007|UP035|UP045)' $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/; then \
+		echo "Do not suppress modern typing rules; fix the annotation instead." >&2; \
+		exit 1; \
+	fi
+	ruff check --ignore-noqa --select $(MODERN_TYPING_RULES) $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: generate_settings_docs

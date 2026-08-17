@@ -16,8 +16,6 @@ We need to define this class as we end up having
 multiple test cases per workflow.
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import Field
 
 from metadata.config.common import ConfigModel
@@ -33,26 +31,26 @@ class TestCaseDefinition(ConfigModel):
     """Test case definition for the CLI"""
 
     name: str
-    displayName: Optional[str] = None  # noqa: N815, UP045
-    description: Optional[str] = None  # noqa: UP045
+    displayName: str | None = None  # noqa: N815
+    description: str | None = None
     testDefinitionName: str  # noqa: N815
-    columnName: Optional[str] = None  # noqa: N815, UP045
-    parameterValues: Optional[List[TestCaseParameterValue]] = None  # noqa: N815, UP006, UP045
-    computePassedFailedRowCount: Optional[bool] = False  # noqa: N815, UP045
+    columnName: str | None = None  # noqa: N815
+    parameterValues: list[TestCaseParameterValue] | None = None  # noqa: N815
+    computePassedFailedRowCount: bool | None = False  # noqa: N815
 
 
 class TestSuiteProcessorConfig(ConfigModel):
     """class for the processor config"""
 
-    testCases: Optional[List[TestCaseDefinition]] = None  # noqa: N815, UP006, UP045
-    forceUpdate: Optional[bool] = False  # noqa: N815, UP045
+    testCases: list[TestCaseDefinition] | None = None  # noqa: N815
+    forceUpdate: bool | None = False  # noqa: N815
 
 
 class TestCaseResultResponse(BaseModel):
     testCaseResult: TestCaseResult  # noqa: N815
     testCase: TestCase  # noqa: N815
-    failedRowsSample: Optional[TableData] = None  # noqa: N815, UP045
-    inspectionQuery: Optional[str] = None  # noqa: N815, UP045
+    failedRowsSample: TableData | None = None  # noqa: N815
+    inspectionQuery: str | None = None  # noqa: N815
     validateColumns: bool = True  # noqa: N815
 
 
@@ -61,8 +59,8 @@ class TableAndTests(BaseModel):
 
     table: Table = Field(None, description="Table being processed by the DQ workflow")
     service_type: str = Field(..., description="Service type the table belongs to")
-    test_cases: List[TestCase] = Field(None, description="Test Cases already existing in the Test Suite, if any")  # noqa: UP006
-    executable_test_suite: Optional[CreateTestSuiteRequest] = Field(  # noqa: UP045
+    test_cases: list[TestCase] = Field(None, description="Test Cases already existing in the Test Suite, if any")
+    executable_test_suite: CreateTestSuiteRequest | None = Field(
         None, description="If no executable test suite is found, we'll create one"
     )
     service_connection: DatabaseConnection = Field(..., description="Service connection for the given table")
@@ -71,4 +69,4 @@ class TableAndTests(BaseModel):
 class TestCaseResults(BaseModel):
     """Processor response with a list of computed Test Case Results"""
 
-    test_results: Optional[List[TestCaseResultResponse]]  # noqa: UP006, UP045
+    test_results: list[TestCaseResultResponse] | None

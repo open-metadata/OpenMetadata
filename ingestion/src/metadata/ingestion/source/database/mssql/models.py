@@ -11,7 +11,6 @@
 """MSSQL models"""
 
 from enum import IntEnum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,6 +35,6 @@ class MssqlStoredProcedure(BaseModel):
     """MSSQL stored procedure list query results"""
 
     name: str = Field(...)
-    owner: Optional[str] = Field(None)  # noqa: UP045
+    owner: str | None = Field(None)
     language: str = Field(Language.SQL)
-    definition: Optional[str] = Field(None)  # noqa: UP045
+    definition: str | None = Field(None)

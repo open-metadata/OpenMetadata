@@ -13,7 +13,7 @@ Redash source module
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from packaging import version
 
@@ -80,7 +80,7 @@ class RedashSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedashConnection = config.serviceConnection.root.config
@@ -108,7 +108,7 @@ class RedashSource(DashboardServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         return self.dashboard_list
@@ -119,7 +119,7 @@ class RedashSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return self.client.get_dashboard(dashboard["id"])
 
-    def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details) -> EntityReferenceList | None:
         """
         Get owner from email
         """
@@ -131,7 +131,7 @@ class RedashSource(DashboardServiceSource):
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")
+            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
         return None
 
     def get_dashboard_url(self, dashboard_details: dict) -> str:
@@ -193,7 +193,7 @@ class RedashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -241,7 +241,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_table_name.lower() != database_schema_table.get("table").lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Table {database_schema_table.get('table')} does not match"
+                                f"[{query_hash}] Table {database_schema_table.get('table')} does not match"  # noqa: G004
                                 f" prefix {prefix_table_name}"
                             )
                             continue
@@ -252,7 +252,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_schema_name.lower() != database_schema_name.lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Schema {database_schema_name} does not match"
+                                f"[{query_hash}] Schema {database_schema_name} does not match"  # noqa: G004
                                 f" prefix {prefix_schema_name}"
                             )
                             continue
@@ -263,7 +263,7 @@ class RedashSource(DashboardServiceSource):
                             and prefix_database_name.lower() != database_schema_table.get("database").lower()
                         ):
                             logger.debug(
-                                f"[{query_hash}] Database {database_schema_table.get('database')} does not match"
+                                f"[{query_hash}] Database {database_schema_table.get('database')} does not match"  # noqa: G004
                                 f" prefix {prefix_database_name}"
                             )
                             continue

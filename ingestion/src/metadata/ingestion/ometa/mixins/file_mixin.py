@@ -15,7 +15,6 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.table import TableData
@@ -34,7 +33,7 @@ class OMetaFileMixin:
 
     client: REST
 
-    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> Optional[File]:  # noqa: UP045
+    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> File | None:
         """
         PUT sample data for a file
 
@@ -48,7 +47,7 @@ class OMetaFileMixin:
             except Exception:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error serializing sample data for {file.fullyQualifiedName.root}"
+                    f"Error serializing sample data for {file.fullyQualifiedName.root}"  # noqa: G004
                     " please check if the data is valid"
                 )
                 return None
@@ -59,7 +58,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to PUT sample data for {file.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -67,15 +66,15 @@ class OMetaFileMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {file.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {file.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         return None
 
-    def get_file_sample_data(self, file: File) -> Optional[File]:  # noqa: UP045
+    def get_file_sample_data(self, file: File) -> File | None:
         """
         GET call for the /sampleData endpoint for a given File
 
@@ -88,7 +87,7 @@ class OMetaFileMixin:
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}")
+            logger.warning(f"Error trying to GET sample data for {file.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         if resp:
             try:
@@ -96,10 +95,10 @@ class OMetaFileMixin:
             except UnicodeError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unicode Error parsing the sample data response from {file.fullyQualifiedName.root}: {err}"
+                    f"Unicode Error parsing the sample data response from {file.fullyQualifiedName.root}: {err}"  # noqa: G004
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")
+                logger.warning(f"Error trying to parse sample data results from {file.fullyQualifiedName.root}: {exc}")  # noqa: G004
 
         return None

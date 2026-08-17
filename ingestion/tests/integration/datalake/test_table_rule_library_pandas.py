@@ -13,7 +13,6 @@ Integration tests for Table Rule Library Pandas Expression validator on Datalake
 """
 
 from copy import deepcopy
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -187,7 +186,7 @@ class TestTableRuleLibraryPandas:
         4. Test case status is correctly determined based on row count (0 = success)
         """
         table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
-        test_cases: List[TestCase] = metadata.list_entities(  # noqa: UP006
+        test_cases: list[TestCase] = metadata.list_entities(
             TestCase,
             fields=["*"],
             skip_on_failure=True,

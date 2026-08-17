@@ -14,7 +14,6 @@ Test dashboard connectors with CLI
 """
 
 from abc import abstractmethod
-from typing import List  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -108,32 +107,32 @@ class CliDashboardBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def get_includes_dashboards() -> List[str]:  # noqa: UP006
+        def get_includes_dashboards() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_dashboards() -> List[str]:  # noqa: UP006
+        def get_excludes_dashboards() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_includes_charts() -> List[str]:  # noqa: UP006
+        def get_includes_charts() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_charts() -> List[str]:  # noqa: UP006
+        def get_excludes_charts() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_includes_datamodels() -> List[str]:  # noqa: UP006
+        def get_includes_datamodels() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod
         @abstractmethod
-        def get_excludes_datamodels() -> List[str]:  # noqa: UP006
+        def get_excludes_datamodels() -> list[str]:
             raise NotImplementedError()
 
         @staticmethod

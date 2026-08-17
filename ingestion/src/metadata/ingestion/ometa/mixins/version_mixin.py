@@ -14,7 +14,7 @@ Mixin class containing entity versioning specific methods
 To be used by OpenMetadata
 """
 
-from typing import Generic, List, Optional, Type, TypeVar, Union  # noqa: UP035
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 from requests.models import Response
@@ -39,7 +39,7 @@ class OMetaVersionMixin(Generic[T]):
     client: REST
 
     @staticmethod
-    def version_to_str(version: Union[str, float]):  # noqa: UP007
+    def version_to_str(version: str | float):
         """convert float version to str
 
         Parameters
@@ -59,11 +59,11 @@ class OMetaVersionMixin(Generic[T]):
 
     def get_entity_version(
         self,
-        entity: Type[T],  # noqa: UP006
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
-        version: Union[str, float],  # noqa: UP007
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-    ) -> Optional[T]:  # noqa: UP045
+        entity: type[T],
+        entity_id: str | basic.Uuid,
+        version: str | float,
+        fields: list[str] | None = None,
+    ) -> T | None:
         """
         Get an entity at a specific version
 
@@ -87,9 +87,9 @@ class OMetaVersionMixin(Generic[T]):
 
     def get_list_entity_versions(
         self,
-        entity_id: Union[str, basic.Uuid],  # noqa: UP007
-        entity: Type[T],  # noqa: UP006
-    ) -> Union[Response, EntityVersionHistory]:  # noqa: UP007
+        entity_id: str | basic.Uuid,
+        entity: type[T],
+    ) -> Response | EntityVersionHistory:
         """
         Retrieve the list of versions for a specific entity
 

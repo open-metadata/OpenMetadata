@@ -11,7 +11,7 @@
 """Sigma source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -76,7 +76,7 @@ class SigmaSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SigmaConnection = config.serviceConnection.root.config
@@ -90,9 +90,9 @@ class SigmaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.data_models: List[Elements] = []  # noqa: UP006
+        self.data_models: list[Elements] = []
 
-    def get_dashboards_list(self) -> Optional[List[Workbook]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[Workbook] | None:
         """
         get list of dashboard
         """
@@ -100,13 +100,13 @@ class SigmaSource(DashboardServiceSource):
             logger.debug("Skipping owner information as includeOwners is False")
         return self.client.get_dashboards()
 
-    def get_dashboard_name(self, dashboard: Workbook) -> Optional[str]:  # noqa: UP045
+    def get_dashboard_name(self, dashboard: Workbook) -> str | None:
         """
         get dashboard name
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: Workbook) -> Optional[WorkbookDetails]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
         """
@@ -117,7 +117,7 @@ class SigmaSource(DashboardServiceSource):
         yield Dashboard Entity
         """
         if not dashboard_details:
-            logger.warning(f"Skipping dashboard - details are None (API error)")  # noqa: F541
+            logger.warning(f"Skipping dashboard - details are None (API error)")  # noqa: F541, G004
             return
 
         try:
@@ -169,7 +169,7 @@ class SigmaSource(DashboardServiceSource):
         yield dashboard charts
         """
         if not dashboard_details:
-            logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
+            logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541, G004
             return
 
         charts = self.client.get_chart_details(dashboard_details.workbookId)
@@ -216,8 +216,8 @@ class SigmaSource(DashboardServiceSource):
     def _get_table_entity_from_node(
         self,
         node: NodeDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        db_service_prefix: str | None = None,
+    ) -> Table | None:
         """
         Get the table entity for lineage
         """
@@ -235,15 +235,15 @@ class SigmaSource(DashboardServiceSource):
             table_name = node.name
 
             if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
+                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")  # noqa: G004
                 return None
 
             if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
+                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")  # noqa: G004
                 return None
 
             if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
+                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")  # noqa: G004
                 return None
 
             try:
@@ -260,14 +260,14 @@ class SigmaSource(DashboardServiceSource):
                 return table_result  # noqa: RET504, TRY300
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")
+                logger.warning(f"Error occured while finding table fqn: {exc}")  # noqa: G004
 
         return None
 
     def _yield_lineage_from_files(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API (fallback method)
@@ -312,7 +312,7 @@ class SigmaSource(DashboardServiceSource):
         self,
         dashboard_details: WorkbookDetails,
         data_model: Elements,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API for a single element (fallback per element)
@@ -351,13 +351,13 @@ class SigmaSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
         """
         if not dashboard_details:
-            logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
+            logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541, G004
             return
 
         queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
@@ -442,7 +442,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
-    def get_column_info(self, element: Elements) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
         datamodel_columns = []
         for col in element.columns or []:
@@ -457,13 +457,13 @@ class SigmaSource(DashboardServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")
+                logger.warning(f"Error to yield datamodel column: {exc}")  # noqa: G004
         return datamodel_columns
 
     def yield_datamodel(self, dashboard_details: WorkbookDetails) -> Iterable[Either[DashboardDataModel]]:
         if not dashboard_details:
             logger.warning(
-                f"Skipping data models - dashboard details are None (API error)"  # noqa: F541
+                f"Skipping data models - dashboard details are None (API error)"  # noqa: F541, G004
             )
             return
 
@@ -494,7 +494,7 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
         """
         Get owner from email
         """
@@ -507,5 +507,5 @@ class SigmaSource(DashboardServiceSource):
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not fetch owner data due to {err}")
+            logger.warning(f"Could not fetch owner data due to {err}")  # noqa: G004
         return None

@@ -32,7 +32,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 from metadata.utils.logger import cli_logger
 
@@ -163,8 +162,8 @@ class ConnectorProfile:
         self.display_name: str = ""
         self.service_type: str = ""
         self.connection_type: str = "rest_api"
-        self.scheme: Optional[str] = None  # noqa: UP045
-        self.default_port: Optional[int] = None  # noqa: UP045
+        self.scheme: str | None = None
+        self.default_port: int | None = None
         self.auth_types: list[str] = ["basic"]
         self.capabilities: list[str] = ["metadata"]
         self.description: str = ""
@@ -173,7 +172,7 @@ class ConnectorProfile:
         self.sdk_package: str = ""
         self.api_endpoints: str = ""
         self.docker_image: str = ""
-        self.docker_port: Optional[int] = None  # noqa: UP045
+        self.docker_port: int | None = None
 
     @property
     def camel(self) -> str:
@@ -191,7 +190,7 @@ class ConnectorProfile:
 # ---------------------------------------------------------------------------
 
 
-def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) -> str:  # noqa: UP045
+def _prompt(label: str, default: str = "", choices: list[str] | None = None) -> str:
     if choices:
         options = ", ".join(choices)
         suffix = f" [{options}]"
@@ -219,7 +218,7 @@ def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) 
         print("    This field is required.")  # noqa: T201
 
 
-def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] = None) -> list[str]:  # noqa: UP045
+def _prompt_multi(label: str, choices: list[str], defaults: list[str] | None = None) -> list[str]:
     default_str = ",".join(defaults) if defaults else ""
     suffix = f" [{', '.join(choices)}]"
     if default_str:
@@ -1621,10 +1620,10 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:  # noqa:
 def write_file(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        logger.warning(f"File already exists, skipping: {path}")
+        logger.warning(f"File already exists, skipping: {path}")  # noqa: G004
         return
     path.write_text(content)
-    logger.info(f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}")
+    logger.info(f"  Created: {path.relative_to(Path.cwd()) if path.is_relative_to(Path.cwd()) else path}")  # noqa: G004
 
 
 # ---------------------------------------------------------------------------
@@ -1646,11 +1645,11 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     p = profile
 
     logger.info("")
-    logger.info(f"Scaffolding {p.camel} connector...")
-    logger.info(f"  Service type:    {p.service_type}")
-    logger.info(f"  Connection type: {p.connection_type}")
-    logger.info(f"  Capabilities:    {', '.join(p.capabilities)}")
-    logger.info(f"  Auth types:      {', '.join(p.auth_types)}")
+    logger.info(f"Scaffolding {p.camel} connector...")  # noqa: G004
+    logger.info(f"  Service type:    {p.service_type}")  # noqa: G004
+    logger.info(f"  Connection type: {p.connection_type}")  # noqa: G004
+    logger.info(f"  Capabilities:    {', '.join(p.capabilities)}")  # noqa: G004
+    logger.info(f"  Auth types:      {', '.join(p.auth_types)}")  # noqa: G004
     logger.info("")
 
     is_sqla = p.service_type == "database" and p.connection_type == "sqlalchemy"
@@ -1721,11 +1720,11 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     logger.info("  Generated:")
     logger.info("    - Connection JSON Schema")
     logger.info("    - Test connection JSON")
-    logger.info(f"    - {'Concrete code templates' if is_sqla else 'Skeleton files'} in {source_dir.relative_to(root)}")
+    logger.info(f"    - {'Concrete code templates' if is_sqla else 'Skeleton files'} in {source_dir.relative_to(root)}")  # noqa: G004
     logger.info("    - CONNECTOR_CONTEXT.md (AI agent working document)")
     logger.info("")
     logger.info("  Next steps:")
-    logger.info(f"  1. Read {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")
+    logger.info(f"  1. Read {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")  # noqa: G004
     if is_sqla:
         logger.info("  2. Implement the TODO items in the generated files")
     else:
@@ -1735,7 +1734,7 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     logger.info("  5. Write tests and validate")
     logger.info("")
     logger.info("  For AI-assisted implementation, point your agent at:")
-    logger.info(f"    {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")
+    logger.info(f"    {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")  # noqa: G004
     logger.info("")
     logger.info("  NOTE: CONNECTOR_CONTEXT.md is gitignored — it stays local")
     logger.info("  as a working document and won't be committed to the repo.")

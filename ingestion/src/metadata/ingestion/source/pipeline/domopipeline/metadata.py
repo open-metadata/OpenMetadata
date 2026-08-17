@@ -14,7 +14,7 @@ Domo Pipeline source to extract metadata
 """
 
 import traceback
-from typing import Dict, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -67,7 +67,7 @@ class DomopipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoPipelineConnection):
@@ -77,7 +77,7 @@ class DomopipelineSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details) -> str:
         return pipeline_details["name"]
 
-    def get_pipelines_list(self) -> Dict:  # noqa: UP006
+    def get_pipelines_list(self) -> dict:
         results = self.connection.get_pipelines()
         for result in results:  # noqa: UP028
             yield result
@@ -128,7 +128,7 @@ class DomopipelineSource(PipelineServiceSource):
     def yield_pipeline_status(self, pipeline_details) -> Iterable[OMetaPipelineStatus]:
         pipeline_id = str(pipeline_details.get("id"))
         if not pipeline_id:
-            logger.debug(f"Could not extract ID from {pipeline_details} while getting status.")
+            logger.debug(f"Could not extract ID from {pipeline_details} while getting status.")  # noqa: G004
             return
         runs = self.connection.get_runs(pipeline_id)
         try:
@@ -175,7 +175,7 @@ class DomopipelineSource(PipelineServiceSource):
     def get_source_url(
         self,
         pipeline_id: str,
-    ) -> Optional[SourceUrl]:  # noqa: UP045
+    ) -> SourceUrl | None:
         try:
             return SourceUrl(
                 f"{clean_uri(self.service_connection.instanceDomain)}/datacenter/dataflows/"
@@ -183,5 +183,5 @@ class DomopipelineSource(PipelineServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url for {pipeline_id}: {exc}")
+            logger.error(f"Unable to get source url for {pipeline_id}: {exc}")  # noqa: G004
         return None

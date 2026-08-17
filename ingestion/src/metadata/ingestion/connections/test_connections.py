@@ -14,9 +14,9 @@ creating a service
 """
 
 import traceback
+from collections.abc import Callable
 from datetime import datetime
 from functools import partial
-from typing import Callable, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -79,22 +79,22 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
-    error_message: Optional[str]  # noqa: UP045
-    description: Optional[str]  # noqa: UP045
+    error_message: str | None
+    description: str | None
     mandatory: bool = True
     short_circuit: bool = False
 
 
 class TestConnectionIngestionResult(BaseModel):
-    failed: List[str] = []  # noqa: UP006
-    success: List[str] = []  # noqa: UP006
-    warning: List[str] = []  # noqa: UP006
+    failed: list[str] = []
+    success: list[str] = []
+    warning: list[str] = []
 
 
 def _test_connection_steps(
     metadata: OpenMetadata,
-    steps: List[TestConnectionStep],  # noqa: UP006
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    steps: list[TestConnectionStep],
+    automation_workflow: AutomationWorkflow | None = None,
 ) -> TestConnectionResult:
     """
     Run all the function steps and raise any errors
@@ -110,7 +110,7 @@ def _test_connection_steps(
 
 def _test_connection_steps_automation_workflow(
     metadata: OpenMetadata,
-    steps: List[TestConnectionStep],  # noqa: UP006
+    steps: list[TestConnectionStep],
     automation_workflow: AutomationWorkflow,
 ) -> TestConnectionResult:
     """
@@ -125,7 +125,7 @@ def _test_connection_steps_automation_workflow(
     try:
         for step in steps:
             try:
-                logger.info(f"Running {step.name}...")
+                logger.info(f"Running {step.name}...")  # noqa: G004
                 step.function()
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
@@ -136,7 +136,7 @@ def _test_connection_steps_automation_workflow(
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.error(f"{step.name}-{err}")
+                logger.error(f"{step.name}-{err}")  # noqa: G004
                 test_connection_result.steps.append(
                     TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                         name=step.name,
@@ -169,7 +169,7 @@ def _test_connection_steps_automation_workflow(
         )
 
     except Exception as err:
-        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")
+        logger.error(f"Wild error happened while testing the connection in the workflow - {err}")  # noqa: G004
         logger.debug(traceback.format_exc())
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
         metadata.create_or_update(
@@ -187,7 +187,7 @@ def _test_connection_steps_automation_workflow(
 
 
 def _test_connection_steps_during_ingestion(
-    steps: List[TestConnectionStep],  # noqa: UP006
+    steps: list[TestConnectionStep],
 ) -> TestConnectionResult:
     """Run the test connection steps during ingestion"""
     test_connection_result = TestConnectionResult(
@@ -196,7 +196,7 @@ def _test_connection_steps_during_ingestion(
     )
     for step in steps:
         try:
-            logger.info(f"Running {step.name}...")
+            logger.info(f"Running {step.name}...")  # noqa: G004
             step.function()
             test_connection_result.steps.append(
                 TestConnectionStepResult(
@@ -207,7 +207,7 @@ def _test_connection_steps_during_ingestion(
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"{step.name}-{err}")
+            logger.error(f"{step.name}-{err}")  # noqa: G004
             test_connection_result.steps.append(
                 TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                     name=step.name,
@@ -233,15 +233,15 @@ def raise_test_connection_exception(result: TestConnectionResult) -> None:
         if not step.passed and step.mandatory:
             raise SourceConnectionException(f"Failed to run the test connection step: {step.name}")
         if not step.passed:
-            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")
+            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")  # noqa: G004
 
 
 def test_connection_steps(
     metadata: OpenMetadata,
     service_type: str,
     test_fn: dict,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test the connection steps with a given timeout
@@ -297,9 +297,9 @@ def test_connection_db_common(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
     queries: dict = None,  # noqa: RUF013
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -349,9 +349,9 @@ def test_connection_db_schema_sources(
     metadata: OpenMetadata,
     engine: Engine,
     service_connection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    automation_workflow: AutomationWorkflow | None = None,
     queries: dict = None,  # noqa: RUF013
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    timeout_seconds: int | None = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part

@@ -16,7 +16,7 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, List, Tuple  # noqa: UP035
+from typing import Any
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
@@ -53,7 +53,7 @@ def clear_constraint_cache_for_schema(project: str, schema: str):
     cache_key = f"{project}.{schema}"
     if cache_key in CONSTRAINT_CACHE:
         del CONSTRAINT_CACHE[cache_key]
-        logger.debug(f"Cleared CONSTRAINT_CACHE for {cache_key}")
+        logger.debug(f"Cleared CONSTRAINT_CACHE for {cache_key}")  # noqa: G004
 
 
 class InspectorWrapper(BaseModel):
@@ -160,7 +160,7 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):  # pylin
         return {"constrained_columns": tuple(col_names)}
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error while fetching primary key constraint error for table [{schema}.{table_name}]: {exc}")
+        logger.warning(f"Error while fetching primary key constraint error for table [{schema}.{table_name}]: {exc}")  # noqa: G004
         return {"constrained_columns": []}
 
 
@@ -192,11 +192,11 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
         return fk_list  # noqa: TRY300
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}")
+        logger.warning(f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}")  # noqa: G004
         return []
 
 
-def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:  # noqa: UP006
+def parse_bigqeury_labels(labels: str) -> list[tuple[str, str]]:
     """
     This function is used to parse BigQuery label string into a list of tuples.
     """

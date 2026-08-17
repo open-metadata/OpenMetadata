@@ -13,7 +13,7 @@ MicroStrategy Models
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -44,7 +44,7 @@ class MstrProject(BaseModel):
 
 
 class MstrProjectList(BaseModel):
-    projects: Optional[List[MstrProject]] = None  # noqa: UP006, UP045
+    projects: list[MstrProject] | None = None
 
 
 class MstrSearchResult(BaseModel):
@@ -55,7 +55,7 @@ class MstrSearchResult(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
     subtype: int
     dateCreated: str  # noqa: N815
     dateModified: str  # noqa: N815
@@ -70,8 +70,8 @@ class MstrSearchResult(BaseModel):
 
 
 class MstrSearchResultList(BaseModel):
-    totalItems: Optional[int] = 0  # noqa: N815, UP045
-    result: Optional[List[MstrSearchResult]] = None  # noqa: UP006, UP045
+    totalItems: int | None = 0  # noqa: N815
+    result: list[MstrSearchResult] | None = None
 
 
 class MstrDashboard(BaseModel):
@@ -82,7 +82,7 @@ class MstrDashboard(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
     subtype: int
     dateCreated: str  # noqa: N815
     dateModified: str  # noqa: N815
@@ -98,7 +98,7 @@ class MstrDashboard(BaseModel):
 
 
 class MstrDashboardList(BaseModel):
-    dashboards: Optional[List[MstrDashboard]] = None  # noqa: UP006, UP045
+    dashboards: list[MstrDashboard] | None = None
 
 
 class MstrAttribute(BaseModel):
@@ -122,30 +122,30 @@ class MstrVisualization(BaseModel):
 class MstrPage(BaseModel):
     key: str
     name: str
-    visualizations: List[MstrVisualization]  # noqa: UP006
+    visualizations: list[MstrVisualization]
 
 
 class MstrChapter(BaseModel):
     key: str
     name: str
-    pages: List[MstrPage]  # noqa: UP006
+    pages: list[MstrPage]
 
 
 class MstrAvailableObject(BaseModel):
     id: str
     name: str
     type: str
-    forms: Optional[List[Dict[str, Any]]] = None  # noqa: UP006, UP045
+    forms: list[dict[str, Any]] | None = None
 
 
 class MstrDataset(BaseModel):
     id: str
     name: str
-    availableObjects: Optional[List[MstrAvailableObject]] = None  # noqa: N815, UP006, UP045
-    rows: Optional[List[Dict[str, Any]]] = None  # noqa: UP006, UP045
-    columns: Optional[List[Dict[str, Any]]] = None  # noqa: UP006, UP045
-    pageBy: Optional[List[Dict[str, Any]]] = None  # noqa: N815, UP006, UP045
-    sqlStatement: Optional[str] = None  # noqa: N815, UP045
+    availableObjects: list[MstrAvailableObject] | None = None  # noqa: N815
+    rows: list[dict[str, Any]] | None = None
+    columns: list[dict[str, Any]] | None = None
+    pageBy: list[dict[str, Any]] | None = None  # noqa: N815
+    sqlStatement: str | None = None  # noqa: N815
 
 
 class MstrDashboardDetails(BaseModel):
@@ -154,8 +154,8 @@ class MstrDashboardDetails(BaseModel):
     projectId: str  # noqa: N815
     projectName: str  # noqa: N815
     currentChapter: str  # noqa: N815
-    chapters: List[MstrChapter]  # noqa: UP006
-    datasets: List[MstrDataset]  # noqa: UP006
+    chapters: list[MstrChapter]
+    datasets: list[MstrDataset]
 
 
 class AuthHeaderCookie(BaseModel):

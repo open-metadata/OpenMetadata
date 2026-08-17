@@ -16,7 +16,6 @@ import re
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -64,7 +63,7 @@ class HexProjectLineage:
             self.upstream_tables.append(table)
             self._table_ids_seen.add(table.id.root)
 
-    def add_tables(self, tables: List[Table]) -> None:  # noqa: UP006
+    def add_tables(self, tables: list[Table]) -> None:
         """Add multiple tables, skipping duplicates"""
         for table in tables:
             self.add_table(table)
@@ -98,12 +97,12 @@ class HexQueryFetcher:
         self.start_time = self.end_time - timedelta(days=lookback_days)
 
         # Cache for project lineage
-        self._project_lineage_map: Dict[str, HexProjectLineage] = {}  # noqa: UP006
+        self._project_lineage_map: dict[str, HexProjectLineage] = {}
 
     def fetch_hex_queries_from_service_prefix(
         self,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> Dict[str, HexProjectLineage]:  # noqa: UP006
+        db_service_prefix: str | None = None,
+    ) -> dict[str, HexProjectLineage]:
         """
         Fetch Hex queries from database services matching the prefix
 
@@ -128,21 +127,21 @@ class HexQueryFetcher:
         db_service = self._find_matching_service(service_name)
 
         if not db_service:
-            logger.info(f"No database service found with name: {service_name}")
+            logger.info(f"No database service found with name: {service_name}")  # noqa: G004
             return {}
 
-        logger.info(f"Found database service: {service_name}")
+        logger.info(f"Found database service: {service_name}")  # noqa: G004
 
         try:
-            logger.info(f"Querying {db_service.name.root} for Hex queries...")
+            logger.info(f"Querying {db_service.name.root} for Hex queries...")  # noqa: G004
             self._fetch_from_single_service(db_service, db_service_prefix)
         except Exception as e:
-            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")
+            logger.error(f"Error fetching Hex queries from {db_service.name.root}: {e}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return self._project_lineage_map
 
-    def _find_matching_service(self, service_name: str) -> Optional[DatabaseService]:  # noqa: UP045
+    def _find_matching_service(self, service_name: str) -> DatabaseService | None:
         """
         Find database service by exact name
 
@@ -156,10 +155,10 @@ class HexQueryFetcher:
             service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
             return service  # noqa: RET504, TRY300
         except Exception as e:
-            logger.debug(f"Service not found with name {service_name}: {e}")
+            logger.debug(f"Service not found with name {service_name}: {e}")  # noqa: G004
             return None
 
-    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: Optional[str] = None):  # noqa: UP045
+    def _fetch_from_single_service(self, db_service: DatabaseService, db_service_prefix: str | None = None):
         """
         Fetch Hex queries from a single database service
 
@@ -173,7 +172,7 @@ class HexQueryFetcher:
             # Get the service connection configuration
             service_connection = db_service.connection
             if not service_connection or not service_connection.config:
-                logger.warning(f"No connection configuration for service: {service_name}")
+                logger.warning(f"No connection configuration for service: {service_name}")  # noqa: G004
                 return
 
             # Extract warehouse type
@@ -187,20 +186,20 @@ class HexQueryFetcher:
                     self._process_query_results(queries, service_name, db_service_prefix)
                 else:
                     logger.info(
-                        f"Could not establish direct connection to {service_name}. "
+                        f"Could not establish direct connection to {service_name}. "  # noqa: G004
                         f"This is expected if credentials are encrypted in the metadata store."
                     )
             except Exception as conn_err:
                 logger.info(
-                    f"Could not create direct connection to {service_name}: {str(conn_err)[:100]}. "
+                    f"Could not create direct connection to {service_name}: {str(conn_err)[:100]}. "  # noqa: G004
                     f"This is expected behavior when credentials are secured."
                 )
 
         except Exception as e:
-            logger.error(f"Error fetching from service {db_service.name.root}: {e}")
+            logger.error(f"Error fetching from service {db_service.name.root}: {e}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
-    def _create_engine_for_service(self, connection_config) -> Optional[Engine]:  # noqa: UP045
+    def _create_engine_for_service(self, connection_config) -> Engine | None:
         """
         Create SQLAlchemy engine for a database service
 
@@ -219,11 +218,11 @@ class HexQueryFetcher:
 
         except Exception as e:
             connection_type = connection_config.type.value if connection_config else "Unknown"
-            logger.error(f"Error creating engine for {connection_type}: {e}")
+            logger.error(f"Error creating engine for {connection_type}: {e}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return None
 
-    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> List[Dict]:  # noqa: UP006
+    def _execute_hex_query(self, engine: Engine, warehouse_type: str, connection_config) -> list[dict]:
         """
         Execute Hex-specific query on the warehouse
 
@@ -257,7 +256,7 @@ class HexQueryFetcher:
 
             # Format and execute query
             query = query_template.format(**params)
-            logger.info(f"Executing Hex query on {warehouse_type}")
+            logger.info(f"Executing Hex query on {warehouse_type}")  # noqa: G004
 
             with engine.connect() as conn:
                 result = conn.execute(text(query))
@@ -276,15 +275,15 @@ class HexQueryFetcher:
                             }
                         )
 
-            logger.info(f"Found {len(results)} Hex queries in {warehouse_type}")
+            logger.info(f"Found {len(results)} Hex queries in {warehouse_type}")  # noqa: G004
 
         except Exception as e:
-            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")
+            logger.error(f"Error executing Hex query on {warehouse_type}: {e}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return results
 
-    def _extract_hex_metadata(self, query_text: str) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
+    def _extract_hex_metadata(self, query_text: str) -> dict[str, str] | None:
         """
         Extract Hex metadata from query text
 
@@ -311,9 +310,9 @@ class HexQueryFetcher:
 
     def _process_query_results(
         self,
-        queries: List[Dict],  # noqa: UP006
+        queries: list[dict],
         service_name: str,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Process query results and extract lineage
@@ -348,16 +347,16 @@ class HexQueryFetcher:
                 self._project_lineage_map[project_id].add_tables(upstream_tables)
 
             except Exception as e:
-                logger.debug(f"Error extracting tables from query: {e}")
+                logger.debug(f"Error extracting tables from query: {e}")  # noqa: G004
 
     def _extract_tables_from_query(
         self,
         query_text: str,
         service_name: str,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str],  # noqa: UP045
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> List[Table]:  # noqa: UP006
+        database_name: str | None,
+        schema_name: str | None,
+        db_service_prefix: str | None = None,
+    ) -> list[Table]:
         """
         Extract table references from SQL query and resolve to Table entities
 
@@ -417,14 +416,14 @@ class HexQueryFetcher:
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-                logger.debug(f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}")
+                logger.debug(f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}")  # noqa: G004
 
         except Exception as e:
-            logger.debug(f"Error extracting tables from query: {e}")
+            logger.debug(f"Error extracting tables from query: {e}")  # noqa: G004
 
         return tables
 
-    def _matches_prefix_constraints(self, table: Table, db_service_prefix: Optional[str]) -> bool:  # noqa: UP045
+    def _matches_prefix_constraints(self, table: Table, db_service_prefix: str | None) -> bool:
         """
         Check if a table matches the constraints specified in the prefix
 
@@ -472,5 +471,5 @@ class HexQueryFetcher:
             return True  # noqa: TRY300
 
         except Exception as e:
-            logger.debug(f"Error checking prefix constraints: {e}")
+            logger.debug(f"Error checking prefix constraints: {e}")  # noqa: G004
             return True  # Default to allowing if we can't check

@@ -21,8 +21,9 @@ and sample data for that identified entity.
 """
 
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Iterable, Type, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy.inspection import inspect
 
@@ -92,7 +93,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None
         self.set_inspector()
 
-        logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")
+        logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")  # noqa: G004
 
     def set_inspector(self, database_name: str = None) -> None:  # noqa: RUF013
         """
@@ -102,7 +103,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         """
         new_service_connection = deepcopy(self.service_connection)
         if database_name:
-            logger.info(f"Ingesting from database: {database_name}")
+            logger.info(f"Ingesting from database: {database_name}")  # noqa: G004
             new_service_connection.database = database_name
         self.engine = get_ssl_connection(new_service_connection)
         self.inspector = inspect(self.engine)
@@ -118,7 +119,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     service_name=None,
                 )
                 if not database_entity:
-                    logger.debug(f"Database Entity for database `{database_name}` not found")
+                    logger.debug(f"Database Entity for database `{database_name}` not found")  # noqa: G004
                     continue
                 for schema_name in self.get_schema_names():
                     for table_name in self.get_table_names(schema_name):
@@ -132,7 +133,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         )
                         if not table_entity:
                             logger.debug(
-                                f"Table Entity for table `{database_name}.{schema_name}.{table_name}` not found"
+                                f"Table Entity for table `{database_name}.{schema_name}.{table_name}` not found"  # noqa: G004
                             )
                             continue
 
@@ -164,13 +165,13 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 continue
             yield table_name
 
-    def import_profiler_interface(self) -> Type[ProfilerInterface]:  # noqa: UP006
+    def import_profiler_interface(self) -> type[ProfilerInterface]:
         class_path = BaseSpec.get_for_source(
             ServiceType.Database,
             source_type=self.config.source.type.lower(),
         ).profiler_class
         profiler_source_class = import_from_module(class_path)
-        return cast(Type[ProfilerInterface], profiler_source_class)  # noqa: TC006, UP006
+        return cast(type[ProfilerInterface], profiler_source_class)  # noqa: TC006
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -213,5 +214,5 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 database_name = self.service_connection.__dict__.get("database", custom_database_name or "default")
                 yield database_name
         except Exception as exc:
-            logger.debug(f"Failed to fetch database names {exc}")
+            logger.debug(f"Failed to fetch database names {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())

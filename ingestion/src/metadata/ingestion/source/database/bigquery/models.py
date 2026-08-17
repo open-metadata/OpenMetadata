@@ -13,7 +13,6 @@ BigQuery models
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -36,7 +35,7 @@ class BigQueryStoredProcedure(BaseModel):
 
     name: str
     definition: str
-    language: Optional[str] = Field(None, description="Will only be informed for non-SQL routines.")  # noqa: UP045
+    language: str | None = Field(None, description="Will only be informed for non-SQL routines.")
 
 
 class BigQueryTable(BaseModel):
@@ -56,7 +55,7 @@ class BigQueryTableMap:
     __slots__ = ("_table_map",)
 
     def __init__(self):
-        self._table_map: Dict[SchemaName, Dict[TableName, bool]] = {}  # noqa: UP006
+        self._table_map: dict[SchemaName, dict[TableName, bool]] = {}
 
     def update(self, schema_name: SchemaName, table_name: TableName, deleted: bool):
         """Add a single table entry. First-seen wins (entries ordered DESC by time)."""
@@ -66,10 +65,10 @@ class BigQueryTableMap:
         elif table_name not in schema_tables:
             schema_tables[table_name] = deleted
 
-    def get_deleted(self, schema_name: SchemaName) -> List[TableName]:  # noqa: UP006
+    def get_deleted(self, schema_name: SchemaName) -> list[TableName]:
         return [name for name, deleted in self._table_map.get(schema_name, {}).items() if deleted]
 
-    def get_all_deleted(self) -> Dict[SchemaName, List[TableName]]:  # noqa: UP006
+    def get_all_deleted(self) -> dict[SchemaName, list[TableName]]:
         result = {}
         for schema in self._table_map:
             deleted = self.get_deleted(schema)
@@ -77,5 +76,5 @@ class BigQueryTableMap:
                 result[schema] = deleted
         return result
 
-    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:  # noqa: UP006
+    def get_not_deleted(self, schema_name: SchemaName) -> list[TableName]:
         return [name for name, deleted in self._table_map.get(schema_name, {}).items() if not deleted]

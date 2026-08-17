@@ -15,7 +15,6 @@ Test Exasol connector with CLI
 
 import subprocess
 import time
-from typing import List  # noqa: UP035
 
 import pytest
 import yaml
@@ -117,7 +116,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             ON table_source.col_boolean = join_source.col_boolean
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         f"""
             INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (col_boolean, col_decimal, col_date, col_timestamp, col_char, col_varchar) VALUES
             (TRUE, 18.5, '2023-07-13', '2023-07-13 06:04:45', 'a', 'b');
@@ -370,19 +369,19 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.delete_table_and_view(self)
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return [f"{SCHEMA_NAME}.*"]
 
     @classmethod
-    def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
+    def get_excludes_schemas(cls) -> list[str]:
         return ["IGNORE_SCHEMA.*"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return [f"{TABLE_NAME}"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["IGNORE_TABLE"]
 
     @staticmethod

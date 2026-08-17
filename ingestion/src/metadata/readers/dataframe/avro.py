@@ -14,8 +14,8 @@ Avro DataFrame reader - streams records in batches to avoid OOM
 """
 
 import traceback
+from collections.abc import Iterator
 from functools import singledispatchmethod
-from typing import Iterator, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -77,7 +77,7 @@ class AvroDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
-    def _get_avro_columns(file_obj) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def _get_avro_columns(file_obj) -> list[Column] | None:
         """Extract columns from Avro schema without reading all records."""
         import json
 

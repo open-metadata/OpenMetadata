@@ -13,7 +13,6 @@ REST Auth & Client for Hex
 """
 
 import traceback
-from typing import List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.dashboard.hexConnection import (
     HexConnection,
@@ -65,10 +64,10 @@ class HexApiClient:
                 raise Exception("Invalid response from Hex API")  # noqa: TRY002, TRY301
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to test connection: {exc}")
+            logger.error(f"Failed to test connection: {exc}")  # noqa: G004
             raise
 
-    def get_projects(self) -> List[Project]:  # noqa: UP006
+    def get_projects(self) -> list[Project]:
         """
         Fetch all projects from Hex
         """
@@ -91,7 +90,7 @@ class HexApiClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error fetching projects: {exc}")
+            logger.error(f"Error fetching projects: {exc}")  # noqa: G004
 
         return projects
 

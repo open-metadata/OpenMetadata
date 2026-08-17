@@ -14,7 +14,7 @@ Client to interact with Alation apis
 
 import json
 import traceback
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.metadata.alationSinkConnection import (
     AlationSinkConnection,
@@ -127,7 +127,7 @@ class AlationSinkClient:
         api_url: str,
         data: dict | None = None,
         is_key_offset: bool = False,
-    ) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    ) -> list[Any] | None:
         """
         Method to paginate the entities
         """
@@ -164,7 +164,7 @@ class AlationSinkClient:
         response = self.client.get("/v2/connectors/")
         return {response_data["name"]: response_data["id"] for response_data in response}
 
-    def write_entity(self, create_request: Any) -> Optional[Any]:  # noqa: UP045
+    def write_entity(self, create_request: Any) -> Any | None:
         """
         Method to write the entity to Alation
         """
@@ -176,15 +176,15 @@ class AlationSinkClient:
             )
             if req:
                 logger.info(
-                    f"Successfully wrote entity for [{ROUTES.get(type(create_request))}]: {create_request.title}"
+                    f"Successfully wrote entity for [{ROUTES.get(type(create_request))}]: {create_request.title}"  # noqa: G004
                 )
                 return req
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entity: {exc}")
+            logger.error(f"Failed to write entity: {exc}")  # noqa: G004
         return None
 
-    def write_entities(self, ds_id: int, create_requests: Any) -> Optional[Any]:  # noqa: UP045
+    def write_entities(self, ds_id: int, create_requests: Any) -> Any | None:
         """
         Method to write the entities to Alation
         """
@@ -199,10 +199,10 @@ class AlationSinkClient:
             )
             if req:
                 logger.info(
-                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: RUF010
+                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: G004, RUF010
                 )
             return req  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entities: {exc}")
+            logger.error(f"Failed to write entities: {exc}")  # noqa: G004
         return None

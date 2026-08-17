@@ -13,7 +13,7 @@ SAP Hana lineage module
 """
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
@@ -82,7 +82,7 @@ class SaphanaLineageSource(Source):
         """By default, there's nothing to prepare"""
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config
         if not isinstance(connection, SapHanaConnection):
@@ -109,7 +109,7 @@ class SaphanaLineageSource(Source):
                 error_code = getattr(getattr(exc, "orig", None), "errorcode", None)
                 if error_code not in (362, 259):
                     raise
-                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")
+                logger.warning(f"_SYS_REPO not available for calc/analytic/attribute view lineage: {exc}")  # noqa: G004
                 result = []
             for row in result:
                 try:
@@ -125,7 +125,7 @@ class SaphanaLineageSource(Source):
                         )
                         continue
 
-                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
+                    logger.debug(f"Processing lineage for view: {lineage_model.name}")  # noqa: G004
                     yield from self.parse_cdata(metadata=self.metadata, lineage_model=lineage_model)
                 except Exception as exc:
                     self.status.failed(

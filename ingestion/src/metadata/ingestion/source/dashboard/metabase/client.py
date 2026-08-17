@@ -14,7 +14,6 @@ REST Auth & Client for Metabase
 
 import json
 import traceback
-from typing import Dict, List, Optional  # noqa: UP035
 
 import requests
 
@@ -59,7 +58,7 @@ class MetabaseClient:
     Client Handling API communication with Metabase
     """
 
-    def _get_metabase_session(self) -> Optional[str]:  # noqa: UP045
+    def _get_metabase_session(self) -> str | None:
         try:
             # If API token is provided, return None as we don't need a session
             if self.config.apiKey:
@@ -114,7 +113,7 @@ class MetabaseClient:
 
         self.client = TrackedREST(client_config, source_name="metabase")
 
-    def get_dashboards_list(self, collections: List[MetabaseCollection]) -> List[MetabaseDashboard]:  # noqa: UP006
+    def get_dashboards_list(self, collections: list[MetabaseCollection]) -> list[MetabaseDashboard]:
         """
         Get List of all dashboards
         """
@@ -130,7 +129,7 @@ class MetabaseClient:
                 logger.error("Failed to fetch the dashboard list")
         return dashboards
 
-    def get_dashboards_list_test_conn(self, collections: List[MetabaseCollection]) -> List[MetabaseDashboard]:  # noqa: UP006
+    def get_dashboards_list_test_conn(self, collections: list[MetabaseCollection]) -> list[MetabaseDashboard]:
         """
         Get List of all dashboards
         """
@@ -141,7 +140,7 @@ class MetabaseClient:
                 return dashboard_list.data
         return []
 
-    def get_collections_list_test_conn(self) -> List[MetabaseCollection]:  # noqa: UP006
+    def get_collections_list_test_conn(self) -> list[MetabaseCollection]:
         """
         Get List of all collections
         """
@@ -151,7 +150,7 @@ class MetabaseClient:
             return collection_list.collections
         return []
 
-    def get_collections_list(self) -> List[MetabaseCollection]:  # noqa: UP006
+    def get_collections_list(self) -> list[MetabaseCollection]:
         """
         Get List of all collections
         """
@@ -165,7 +164,7 @@ class MetabaseClient:
             logger.error("Failed to fetch the collections list")
         return []
 
-    def get_charts_dict(self) -> Dict:  # noqa: UP006
+    def get_charts_dict(self) -> dict:
         charts_dict = {}
         try:
             resp_charts = self.client.get("/card")
@@ -176,10 +175,10 @@ class MetabaseClient:
             return charts_dict  # noqa: TRY300
         except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the cards : {e}")
+            logger.error(f"Failed to fetch the cards : {e}")  # noqa: G004
         return {}
 
-    def _create_default_dashboard_details(self, orphan_charts_id: List) -> MetabaseDashboardDetails:  # noqa: UP006
+    def _create_default_dashboard_details(self, orphan_charts_id: list) -> MetabaseDashboardDetails:
         """
         Returns:
             MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
@@ -222,8 +221,8 @@ class MetabaseClient:
         self,
         dashboard_id: str,
         charts_dict: dict,
-        orphan_charts_id: List,  # noqa: UP006
-    ) -> Optional[MetabaseDashboardDetails]:  # noqa: UP045
+        orphan_charts_id: list,
+    ) -> MetabaseDashboardDetails | None:
         """
         Get Dashboard Details
         """
@@ -239,10 +238,10 @@ class MetabaseClient:
                 return self._process_dashboard_response(resp_dashboard, charts_dict, dashboard_id)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
+            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")  # noqa: G004
         return None
 
-    def get_database(self, database_id: str) -> Optional[MetabaseDatabase]:  # noqa: UP045
+    def get_database(self, database_id: str) -> MetabaseDatabase | None:
         """
         Get Database using database ID
         """
@@ -254,10 +253,10 @@ class MetabaseClient:
                 return MetabaseDatabase(**resp_database)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the database with id: {database_id}")
+            logger.error(f"Failed to fetch the database with id: {database_id}")  # noqa: G004
         return None
 
-    def get_table(self, table_id: str) -> Optional[MetabaseTable]:  # noqa: UP045
+    def get_table(self, table_id: str) -> MetabaseTable | None:
         """
         Get Table using table ID
         """
@@ -269,10 +268,10 @@ class MetabaseClient:
                 return MetabaseTable(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the table with id: {table_id}")
+            logger.error(f"Failed to fetch the table with id: {table_id}")  # noqa: G004
         return None
 
-    def get_user_details(self, user_id: str) -> Optional[MetabaseUser]:  # noqa: UP045
+    def get_user_details(self, user_id: str) -> MetabaseUser | None:
         """
         Get User using user ID
         """
@@ -284,5 +283,5 @@ class MetabaseClient:
                 return MetabaseUser(**resp_table)
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the user with id: {user_id}")
+            logger.error(f"Failed to fetch the user with id: {user_id}")  # noqa: G004
         return None

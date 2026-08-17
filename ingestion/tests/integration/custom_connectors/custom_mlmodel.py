@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Custom MlModel connector yielding a deterministic in-memory model."""
 
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.services.createMlModelService import (
@@ -48,7 +48,7 @@ class CustomMlModelSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "CustomMlModelSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config

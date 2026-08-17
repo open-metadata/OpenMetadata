@@ -15,7 +15,6 @@ Local Reader
 import os
 import traceback
 from pathlib import Path
-from typing import List, Optional, Union  # noqa: UP035
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.constants import UTF_8
@@ -29,10 +28,10 @@ class LocalReader(Reader):
     Read files locally
     """
 
-    def __init__(self, base_path: Optional[Path] = None):  # noqa: UP045
+    def __init__(self, base_path: Path | None = None):
         self.base_path = base_path or Path(__file__)
 
-    def read(self, path: str, **kwargs) -> Union[str, bytes]:  # noqa: UP007
+    def read(self, path: str, **kwargs) -> str | bytes:
         """
         simple local reader
 
@@ -52,13 +51,13 @@ class LocalReader(Reader):
             logger.debug(traceback.format_exc())
             raise ReadException(f"Error reading file [{path}] locally: {err}")  # noqa: B904
 
-    def _get_tree(self) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _get_tree(self) -> list[str] | None:
         """
         Return the tree with the files relative to the base path
         """
         return [str(path).replace(str(self.base_path) + "/", "") for path in Path(self.base_path).rglob("*")]
 
-    def get_local_files(self, search_key: str, excluded_files: Optional[List[str]] = None) -> List[str]:  # noqa: UP006, UP045
+    def get_local_files(self, search_key: str, excluded_files: list[str] | None = None) -> list[str]:
         """Scan through local path recursively
         and retuns file path based on `search_key`"""
 

@@ -13,7 +13,7 @@ Test the connection against a source system
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, request
 from markupsafe import escape

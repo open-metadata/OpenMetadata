@@ -15,8 +15,9 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 
 import json
 import traceback
+from collections.abc import Iterable
 from hashlib import md5
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -105,7 +106,7 @@ class DatalakeSource(DatabaseServiceSource):
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
@@ -139,7 +140,7 @@ class DatalakeSource(DatabaseServiceSource):
                     yield database_name
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {database_name}: {exc}")
+                    logger.error(f"Error trying to connect to database {database_name}: {exc}")  # noqa: G004
 
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
@@ -206,7 +207,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None]]:
         """
         Handle table and views.
 
@@ -236,18 +237,18 @@ class DatalakeSource(DatabaseServiceSource):
 
                 if self.filter_dl_table(table_name):
                     continue
-                logger.info(f"Processing table: {table_name}")
+                logger.info(f"Processing table: {table_name}")  # noqa: G004
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
 
                 if table_name.endswith("/") or not file_extension:
-                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")
+                    logger.debug(f"Object filtered due to unsupported file type: {key_name}")  # noqa: G004
                     continue
 
                 yield table_name, TableType.Regular, file_extension, file_size
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None],
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -283,7 +284,7 @@ class DatalakeSource(DatabaseServiceSource):
                     display_name = table_name
                     table_name = md5(table_name.encode()).hexdigest()
                     logger.debug(
-                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
+                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "  # noqa: G004
                         f"as name and storing the full path in displayName: [{display_name}]"
                     )
                 table_request = CreateTableRequest(

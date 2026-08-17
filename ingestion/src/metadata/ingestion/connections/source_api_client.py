@@ -26,7 +26,7 @@ Usage:
 
 import re
 from time import perf_counter
-from typing import Any, Optional, Union
+from typing import Any
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -91,7 +91,7 @@ class TrackedREST(REST):
     Metrics are recorded asynchronously to minimize latency impact.
     """
 
-    def __init__(self, config: ClientConfig, source_name: Optional[str] = None):  # noqa: UP045
+    def __init__(self, config: ClientConfig, source_name: str | None = None):
         """
         Initialize TrackedREST client.
 
@@ -153,9 +153,9 @@ class TrackedREST(REST):
         path: str,
         data: Any = None,
         json: Any = None,
-        headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        retries: Optional[int] = None,  # noqa: UP045
+        headers: dict | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        retries: int | None = None,
     ):
         """POST method with tracking."""
         start = perf_counter()

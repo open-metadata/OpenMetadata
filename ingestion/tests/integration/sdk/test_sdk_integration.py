@@ -8,8 +8,9 @@ fluent SDK classes only.
 from __future__ import annotations
 
 import time
+from collections.abc import Iterable  # noqa: TC003
 from types import SimpleNamespace
-from typing import Any, Iterable  # noqa: UP035
+from typing import Any
 
 import pytest
 

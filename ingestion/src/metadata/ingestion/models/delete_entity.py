@@ -12,8 +12,6 @@
 Pydantic definition for deleting entites
 """
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 from metadata.ingestion.api.models import Entity
@@ -28,5 +26,5 @@ class DeleteEntity(BaseModel):
     """
 
     entity: Entity
-    recursive: Optional[bool] = False  # noqa: UP045
-    dispatch_async: Optional[bool] = False  # noqa: UP045
+    recursive: bool | None = False
+    dispatch_async: bool | None = False

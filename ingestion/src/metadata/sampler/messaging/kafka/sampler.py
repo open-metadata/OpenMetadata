@@ -16,7 +16,7 @@ import hashlib
 import json
 import time
 import traceback
-from typing import Any, List  # noqa: UP035
+from typing import Any
 
 try:
     from confluent_kafka import Consumer, KafkaException
@@ -132,7 +132,7 @@ class KafkaSampler(MessagingSampler):
                     if isinstance(avro_obj, dict):
                         return avro_obj
             except Exception as exc:
-                logger.debug(f"Failed to deserialize Avro message: {exc}")
+                logger.debug(f"Failed to deserialize Avro message: {exc}")  # noqa: G004
 
         return {"message": str(raw_value)}
 
@@ -153,10 +153,10 @@ class KafkaSampler(MessagingSampler):
             if AvroDeserializer and schema_registry_client:
                 self._avro_deserializer = AvroDeserializer(schema_registry_client)
         except Exception as exc:
-            logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")
+            logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")  # noqa: G004
         return getattr(self, "_avro_deserializer", None)
 
-    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+    def _fetch_messages(self, count: int) -> list[dict]:
         if not Consumer:
             logger.warning("confluent_kafka not installed; cannot sample Kafka topics")
             return []

@@ -14,11 +14,11 @@ Base class for ingesting database services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.domain.tags import TagCanonicalizer, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -218,10 +218,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    database_source_state: Set = set()  # noqa: RUF012, UP006
-    stored_procedure_source_state: Set = set()  # noqa: RUF012, UP006
-    database_entity_source_state: Set = set()  # noqa: RUF012, UP006
-    schema_entity_source_state: Set = set()  # noqa: RUF012, UP006
+    database_source_state: set = set()  # noqa: RUF012
+    stored_procedure_source_state: set = set()  # noqa: RUF012
+    database_entity_source_state: set = set()  # noqa: RUF012
+    schema_entity_source_state: set = set()  # noqa: RUF012
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -230,7 +230,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     # Set by sources that own their connection lifecycle; `None` keeps the
     # legacy `connection_obj` test path for non-migrated sources.
-    _connection: Optional[BaseConnection] = None  # noqa: UP045
+    _connection: BaseConnection | None = None
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
@@ -285,7 +285,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     @abstractmethod
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Prepares the table name to be sent to stage.
         Filtering happens here.
@@ -322,7 +322,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -330,7 +330,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def yield_table_tag_details(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -354,9 +354,9 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     @staticmethod
     def normalize_table_constraints(
-        table_constraints: List[TableConstraint],  # noqa: UP006
-        columns: List[Column],  # noqa: UP006
-    ) -> List[TableConstraint]:  # noqa: UP006
+        table_constraints: list[TableConstraint],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
         """
         Normalize constraint column names to match actual column definitions.
         Some data sources (e.g., BigQuery) may return constraint column names
@@ -380,17 +380,17 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         table_name,
         schema_name,
         db_name,
-        table_constraints: List[TableConstraint],  # noqa: UP006
+        table_constraints: list[TableConstraint],
         foreign_columns: [],
         columns,
-    ) -> List[TableConstraint]:  # noqa: UP006
+    ) -> list[TableConstraint]:
         """
         process the table constraints of all tables
         transform SQLAlchemy returned foreign_columns into list of TableConstraint.
         """
 
     @abstractmethod
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
@@ -412,7 +412,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         yield from self.get_database_schema_names()
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
         """
         Pick up the tags registered in the context
         searching by entity FQN
@@ -430,7 +430,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     tag_labels.append(tag_label)
         return tag_labels or None
 
-    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_database_tag_labels(self, database_name: str) -> list[TagLabel] | None:
         """
         Method to get schema tags
         This will only get executed if the tags context
@@ -444,7 +444,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=database_fqn)
 
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_schema_tag_labels(self, schema_name: str) -> list[TagLabel] | None:
         """
         Method to get schema tags
         This will only get executed if the tags context
@@ -459,7 +459,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
-    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_tag_labels(self, table_name: str) -> list[TagLabel] | None:
         """
         This will only get executed if the tags context
         is properly informed
@@ -475,7 +475,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=table_fqn)
 
-    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
         """
         This will only get executed if the tags context
         is properly informed
@@ -631,11 +631,11 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             getattr(self.source_config, "storedProcedureFilterPattern", None),
             (stored_procedure_fqn if self.source_config.useFqnForFiltering else stored_procedure_name),
         ):
-            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")
+            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")  # noqa: G004
             return True
         return False
 
-    def get_database_owner_ref(self, database_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_database_owner_ref(self, database_name: str) -> EntityReferenceList | None:
         """
         Get owner for database entity using ownerConfig.
 
@@ -663,11 +663,11 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for database {database_name}: {exc}")
+            logger.warning(f"Error processing owner for database {database_name}: {exc}")  # noqa: G004
 
         return None
 
-    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_schema_owner_ref(self, schema_name: str) -> EntityReferenceList | None:
         """
         Get owner for schema entity using ownerConfig.
 
@@ -699,11 +699,11 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")
+            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")  # noqa: G004
 
         return None
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
         """
         Get owner for table entity using ownerConfig.
 
@@ -749,7 +749,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 return owner_ref  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")  # noqa: G004
         return None
 
     def mark_tables_as_deleted(self):
@@ -760,7 +760,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
         if self.source_config.markDeletedTables:
-            logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
+            logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # noqa: G004
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
             for schema_fqn in schema_fqn_list:
@@ -777,7 +777,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         Use the current inspector to mark Stored Procedures as deleted
         """
         if self.source_config.markDeletedStoredProcedures:
-            logger.info(f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]")
+            logger.info(f"Mark Deleted Stored Procedures Processing database [{self.context.get().database}]")  # noqa: G004
 
             schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
 
@@ -796,7 +796,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.markDeletedDatabases:
             logger.info(
-                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
+                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"  # noqa: G004
             )
 
             # We need to include ALL databases from the source in the source state
@@ -834,7 +834,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             raise ValueError("No Database found in the context. We cannot run the schema deletion.")
 
         if self.source_config.markDeletedSchemas:
-            logger.info(f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]")
+            logger.info(f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]")  # noqa: G004
 
             # Build the database FQN to use as parameter
             database_fqn = fqn.build(
@@ -870,7 +870,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def yield_table_metrics(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[CreateMetricRequest]]:
         """
         From topology. Yield the Metric entities a table declares, for sources with a

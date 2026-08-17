@@ -14,7 +14,6 @@ Generic call to handle table columns for sql connectors.
 
 import re
 import traceback
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import NoSuchTableError
@@ -67,16 +66,16 @@ class SqlColumnHandlerMixin:
             logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
 
-    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
+    def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
         """
         By Default there are no additional table constraints
         """
 
     @staticmethod
     def _filter_invalid_constraints(
-        table_columns: Optional[List[Column]],  # noqa: UP006, UP045
-        table_constraints: Optional[List[Optional[TableConstraint]]],  # noqa: UP006, UP045
-    ) -> List[TableConstraint]:  # noqa: UP006
+        table_columns: list[Column] | None,
+        table_constraints: list[TableConstraint | None] | None,
+    ) -> list[TableConstraint]:
         """
         Remove constraints referencing columns not present in the processed
         column list.  This can happen when hidden system columns (e.g.
@@ -115,7 +114,7 @@ class SqlColumnHandlerMixin:
         col_type: str,
         col_data_length: str,
         arr_data_type: str,
-        precision: Optional[Tuple[str, str]],  # noqa: UP006, UP045
+        precision: tuple[str, str] | None,
     ) -> str:
         if precision:
             return data_type_display if data_type_display else f"{col_type}({precision[0]},{precision[1]})"
@@ -132,7 +131,7 @@ class SqlColumnHandlerMixin:
             data_type_display = f"array<{arr_data_type}>"
         return data_type_display
 
-    def _process_col_type(self, column: dict, schema: str) -> Tuple:  # noqa: UP006
+    def _process_col_type(self, column: dict, schema: str) -> tuple:
         data_type_display = None
         arr_data_type = None
         parsed_string = None
@@ -162,26 +161,26 @@ class SqlColumnHandlerMixin:
     @staticmethod
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
-    ) -> Tuple[List, List, List]:  # noqa: UP006
+    ) -> tuple[list, list, list]:
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain unique constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
             )
             unique_constraints = []
         try:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
             )
             foreign_constraints = []
         try:
             pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         except (NotImplementedError, KeyError, NoSuchTableError):
             logger.debug(
-                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"  # noqa: G004
             )
             pk_constraints = {}
 
@@ -255,7 +254,7 @@ class SqlColumnHandlerMixin:
         db_name: str,
         inspector: Inspector,
         table_type: TableType = None,
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, list[TableConstraint] | None, list[dict] | None]:
         """
         Get columns types and constraints information
         """
@@ -298,7 +297,7 @@ class SqlColumnHandlerMixin:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected exception getting columns for table [{table_name}] "
+                f"Unexpected exception getting columns for table [{table_name}] "  # noqa: G004
                 f"(schema: '{schema_name}', db: '{db_name}'): {exc}"
             )
             columns = []
@@ -318,7 +317,7 @@ class SqlColumnHandlerMixin:
                 if col_type is None:
                     col_type = DataType.UNKNOWN.name
                     data_type_display = col_type.lower()
-                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: G004, RUF010
                 data_type_display = self._get_display_datatype(
                     data_type_display,
                     col_type,
@@ -368,7 +367,7 @@ class SqlColumnHandlerMixin:
                 om_column = process_column(column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
+                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")  # noqa: G004
                 continue
             table_columns.append(om_column)
 
@@ -394,7 +393,7 @@ class SqlColumnHandlerMixin:
         return None
 
     @staticmethod
-    def _get_column_constraints(column, pk_columns, unique_columns) -> Optional[Constraint]:  # noqa: UP045
+    def _get_column_constraints(column, pk_columns, unique_columns) -> Constraint | None:
         """
         Prepare column constraints for the Table Entity
         """
@@ -449,10 +448,10 @@ class SqlColumnHandlerMixin:
 
     def _extract_json_schema_for_columns(
         self,
-        table_columns: List[Column],  # noqa: UP006
+        table_columns: list[Column],
         schema_name: str,
         table_name: str,
-        db_name: Optional[str] = None,  # noqa: UP045
+        db_name: str | None = None,
     ) -> None:
         """
         Extract JSON schema for JSON columns by sampling data from the table.
@@ -473,7 +472,7 @@ class SqlColumnHandlerMixin:
             return
 
         logger.debug(
-            f"JSON schema extraction for [{schema_name}.{table_name}]: "
+            f"JSON schema extraction for [{schema_name}.{table_name}]: "  # noqa: G004
             f"json_columns={[c.name.root for c in json_columns]}, "
             f"string_columns={[c.name.root for c in string_columns]}"
         )
@@ -503,13 +502,13 @@ class SqlColumnHandlerMixin:
                                 column.dataType = DataType.JSON
                                 column.dataTypeDisplay = "json"
                         logger.debug(
-                            f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"
+                            f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"  # noqa: G004
                         )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to extract JSON schema for table [{schema_name}.{table_name}]: {exc}. "
+                f"Failed to extract JSON schema for table [{schema_name}.{table_name}]: {exc}. "  # noqa: G004
                 f"Continuing without JSON schema information."
             )
 
@@ -517,15 +516,15 @@ class SqlColumnHandlerMixin:
         self,
         schema_name: str,
         table_name: str,
-        column_names: List[str],  # noqa: UP006
+        column_names: list[str],
         sample_size: int,
-        db_name: Optional[str] = None,  # noqa: UP045
-    ) -> Dict[str, List]:  # noqa: UP006
+        db_name: str | None = None,
+    ) -> dict[str, list]:
         """
         Sample data from JSON columns in a table.
         Returns: Dict mapping column names to lists of JSON values
         """
-        result: Dict[str, List] = {c: [] for c in column_names}  # noqa: UP006
+        result: dict[str, list] = {c: [] for c in column_names}
 
         if not column_names or sample_size <= 0:
             return result

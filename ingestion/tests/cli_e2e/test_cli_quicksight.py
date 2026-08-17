@@ -13,8 +13,6 @@
 Test Quicksight connector with CLI
 """
 
-from typing import List  # noqa: UP035
-
 import pytest
 
 from metadata.ingestion.api.status import Status
@@ -27,16 +25,16 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "quicksight"
 
-    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_includes_dashboards(self) -> list[str]:
         return ["^test$"]
 
-    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_excludes_dashboards(self) -> list[str]:
         return ["test_redshift_lineage"]
 
-    def get_includes_charts(self) -> List[str]:  # noqa: UP006
+    def get_includes_charts(self) -> list[str]:
         return [".*Sheet 1.*", ".*"]
 
-    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
+    def get_excludes_charts(self) -> list[str]:
         return []
 
     def expected_dashboards_and_charts(self) -> int:
@@ -62,11 +60,11 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     # Quicksight do not ingest datamodels
-    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_excludes_datamodels(self) -> list[str]:
         return []
 
     # Quicksight do not ingest datamodels
-    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_includes_datamodels(self) -> list[str]:
         return []
 
     def expected_datamodel_lineage(self) -> int:

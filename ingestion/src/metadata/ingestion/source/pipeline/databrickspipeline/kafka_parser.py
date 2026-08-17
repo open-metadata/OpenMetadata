@@ -15,7 +15,6 @@ Kafka configuration parser for Databricks DLT pipelines
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -81,9 +80,9 @@ S3_PATH_PATTERN = re.compile(
 class KafkaSourceConfig:
     """Model for Kafka source configuration extracted from DLT code"""
 
-    bootstrap_servers: Optional[str] = None  # noqa: UP045
-    topics: List[str] = field(default_factory=list)  # noqa: UP006
-    group_id_prefix: Optional[str] = None  # noqa: UP045
+    bootstrap_servers: str | None = None
+    topics: list[str] = field(default_factory=list)
+    group_id_prefix: str | None = None
 
 
 @dataclass
@@ -91,10 +90,10 @@ class DLTTableDependency:
     """Model for DLT table dependencies"""
 
     table_name: str
-    depends_on: List[str] = field(default_factory=list)  # noqa: UP006
+    depends_on: list[str] = field(default_factory=list)
     reads_from_kafka: bool = False
     reads_from_s3: bool = False
-    s3_locations: List[str] = field(default_factory=list)  # noqa: UP006
+    s3_locations: list[str] = field(default_factory=list)
 
 
 def _extract_variables(source_code: str) -> dict:
@@ -115,20 +114,20 @@ def _extract_variables(source_code: str) -> dict:
             var_name = match.group(1)
             var_value = match.group(2)
             variables[var_name] = var_value
-            logger.debug(f"Found variable: {var_name} = {var_value}")
+            logger.debug(f"Found variable: {var_name} = {var_value}")  # noqa: G004
 
         # Extract boolean variables
         for match in BOOL_ASSIGNMENT_PATTERN.finditer(source_code):
             var_name = match.group(1)
             var_value = match.group(2)
             variables[var_name] = var_value
-            logger.debug(f"Found boolean variable: {var_name} = {var_value}")
+            logger.debug(f"Found boolean variable: {var_name} = {var_value}")  # noqa: G004
     except Exception as exc:
-        logger.debug(f"Error extracting variables: {exc}")
+        logger.debug(f"Error extracting variables: {exc}")  # noqa: G004
     return variables
 
 
-def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa: UP006
+def extract_kafka_sources(source_code: str) -> list[KafkaSourceConfig]:
     """
     Extract Kafka topic configurations from DLT source code
 
@@ -182,11 +181,11 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
                     )
                     kafka_configs.append(kafka_config)
                     logger.debug(
-                        f"Extracted Kafka config: brokers={bootstrap_servers}, "
+                        f"Extracted Kafka config: brokers={bootstrap_servers}, "  # noqa: G004
                         f"topics={topic_list}, group_prefix={group_id_prefix}"
                     )
             except Exception as exc:
-                logger.warning(f"Failed to parse individual Kafka config block: {exc}")
+                logger.warning(f"Failed to parse individual Kafka config block: {exc}")  # noqa: G004
                 continue
 
         # Fallback: If no explicit Kafka pattern found, look for topic_name variable
@@ -197,7 +196,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
                 # Look for variables that likely contain topic names
                 if any(keyword in var_name.lower() for keyword in ["topic", "subject", "stream"]):
                     topic_candidates.append(var_value)
-                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")
+                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")  # noqa: G004
 
             if topic_candidates:
                 kafka_config = KafkaSourceConfig(
@@ -206,15 +205,15 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
                     group_id_prefix=None,
                 )
                 kafka_configs.append(kafka_config)
-                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")
+                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")  # noqa: G004
 
     except Exception as exc:
-        logger.warning(f"Error parsing Kafka sources from code: {exc}")
+        logger.warning(f"Error parsing Kafka sources from code: {exc}")  # noqa: G004
 
     return kafka_configs
 
 
-def _extract_option(config_block: str, option_name: str, variables: dict = None) -> Optional[str]:  # noqa: RUF013, UP045
+def _extract_option(config_block: str, option_name: str, variables: dict = None) -> str | None:  # noqa: RUF013
     """
     Extract a single option value from Kafka configuration block
     Supports both string literals and variable references
@@ -237,17 +236,17 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
             var_name = match.group(2)
             # Resolve variable
             if var_name in variables:
-                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")
+                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")  # noqa: G004
                 return variables[var_name]
             else:  # noqa: RET505
-                logger.debug(f"Variable {var_name} referenced but not found in source code")
+                logger.debug(f"Variable {var_name} referenced but not found in source code")  # noqa: G004
 
     except Exception as exc:
-        logger.debug(f"Failed to extract option {option_name}: {exc}")
+        logger.debug(f"Failed to extract option {option_name}: {exc}")  # noqa: G004
     return None
 
 
-def extract_dlt_table_names(source_code: str) -> List[str]:  # noqa: UP006
+def extract_dlt_table_names(source_code: str) -> list[str]:
     """
     Extract DLT table names from @dlt.table decorators
 
@@ -270,7 +269,7 @@ def extract_dlt_table_names(source_code: str) -> List[str]:  # noqa: UP006
             table_name = match.group(1)
             if table_name:
                 table_names.append(table_name)
-                logger.debug(f"Found DLT table (literal): {table_name}")
+                logger.debug(f"Found DLT table (literal): {table_name}")  # noqa: G004
 
         # If no literal names found, try function call pattern
         if not table_names:
@@ -282,15 +281,15 @@ def extract_dlt_table_names(source_code: str) -> List[str]:  # noqa: UP006
                     inferred_name = _infer_table_name_from_function(function_call, source_code)
                     if inferred_name:
                         table_names.append(inferred_name)
-                        logger.debug(f"Found DLT table (inferred from {function_call}): {inferred_name}")
+                        logger.debug(f"Found DLT table (inferred from {function_call}): {inferred_name}")  # noqa: G004
 
     except Exception as exc:
-        logger.warning(f"Error parsing DLT table names from code: {exc}")
+        logger.warning(f"Error parsing DLT table names from code: {exc}")  # noqa: G004
 
     return table_names
 
 
-def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:  # noqa: UP045
+def _infer_table_name_from_function(function_call: str, source_code: str) -> str | None:
     """
     Infer table name from function call pattern
 
@@ -310,17 +309,17 @@ def _infer_table_name_from_function(function_call: str, source_code: str) -> Opt
 
         if entity_name and "generate_event_log_table_name" in function_call.lower():
             table_name = f"{entity_name.lower()}_event_log"
-            logger.debug(f"Inferred event_log table from Materializer pattern: {table_name}")
+            logger.debug(f"Inferred event_log table from Materializer pattern: {table_name}")  # noqa: G004
             return table_name
 
         if entity_name and "generate_snapshot_table_name" in function_call.lower():
             table_name = f"{entity_name.lower()}_snapshot"
-            logger.debug(f"Inferred snapshot table from Materializer pattern: {table_name}")
+            logger.debug(f"Inferred snapshot table from Materializer pattern: {table_name}")  # noqa: G004
             return table_name
 
         # Strategy 2: Use entity_name variable if present (fallback)
         if entity_name:
-            logger.debug(f"Inferred table name from entity_name variable: {entity_name}")
+            logger.debug(f"Inferred table name from entity_name variable: {entity_name}")  # noqa: G004
             return entity_name
 
         # Strategy 3: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
@@ -331,16 +330,16 @@ def _infer_table_name_from_function(function_call: str, source_code: str) -> Opt
         )
         if match:
             inferred = match.group(1)
-            logger.debug(f"Inferred table name from function pattern: {inferred}")
+            logger.debug(f"Inferred table name from function pattern: {inferred}")  # noqa: G004
             return inferred
 
     except Exception as exc:
-        logger.debug(f"Could not infer table name from function {function_call}: {exc}")
+        logger.debug(f"Could not infer table name from function {function_call}: {exc}")  # noqa: G004
 
     return None
 
 
-def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: C901, UP006
+def extract_dlt_table_dependencies(source_code: str) -> list[DLTTableDependency]:  # noqa: C901
     """
     Extract DLT table dependencies by analyzing @dlt.table decorators and dlt.read_stream calls
 
@@ -404,7 +403,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                         table_name = def_match.group(1)
 
                 if not table_name:
-                    logger.debug(f"Could not extract table name from block: {function_block[:100]}...")
+                    logger.debug(f"Could not extract table name from block: {function_block[:100]}...")  # noqa: G004
                     continue
 
                 # Check if it reads from Kafka
@@ -417,7 +416,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:  # noqa: SIM102
                     if "event_log" in table_name:
                         reads_from_kafka = True
-                        logger.debug(f"Table {table_name} reads from Kafka via Materializer")
+                        logger.debug(f"Table {table_name} reads from Kafka via Materializer")  # noqa: G004
 
                 # Check if it reads from S3
                 s3_locations = []
@@ -425,7 +424,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                     s3_path = s3_match.group(1)
                     if s3_path.startswith(("s3://", "s3a://", "s3n://")):
                         s3_locations.append(s3_path)
-                        logger.debug(f"Table {table_name} reads from S3: {s3_path}")
+                        logger.debug(f"Table {table_name} reads from S3: {s3_path}")  # noqa: G004
 
                 reads_from_s3 = len(s3_locations) > 0
 
@@ -434,13 +433,13 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 for stream_match in DLT_READ_STREAM_PATTERN.finditer(function_block):
                     source_table = stream_match.group(1)
                     depends_on.append(source_table)
-                    logger.debug(f"Table {table_name} streams from {source_table}")
+                    logger.debug(f"Table {table_name} streams from {source_table}")  # noqa: G004
 
                 # Extract dlt.read dependencies (batch)
                 for read_match in DLT_READ_PATTERN.finditer(function_block):
                     source_table = read_match.group(1)
                     depends_on.append(source_table)
-                    logger.debug(f"Table {table_name} reads from {source_table}")
+                    logger.debug(f"Table {table_name} reads from {source_table}")  # noqa: G004
 
                 dependency = DLTTableDependency(
                     table_name=table_name,
@@ -451,13 +450,13 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 )
                 dependencies.append(dependency)
                 logger.debug(
-                    f"Extracted dependency: {table_name} - depends_on={depends_on}, "
+                    f"Extracted dependency: {table_name} - depends_on={depends_on}, "  # noqa: G004
                     f"reads_from_kafka={reads_from_kafka}, reads_from_s3={reads_from_s3}, "
                     f"s3_locations={s3_locations}"
                 )
 
             except Exception as exc:
-                logger.debug(f"Error parsing function block: {exc}")
+                logger.debug(f"Error parsing function block: {exc}")  # noqa: G004
                 continue
 
         # Handle Materializer snapshot pattern:
@@ -494,23 +493,23 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                     )
                     dependencies.append(snapshot_dependency)
                     logger.debug(
-                        f"Extracted Materializer snapshot table: {snapshot_table_name} depends on {event_log_table_name}"
+                        f"Extracted Materializer snapshot table: {snapshot_table_name} depends on {event_log_table_name}"  # noqa: G004
                     )
                 else:
                     logger.debug(
-                        f"Found snapshot pattern but event_log table {event_log_table_name} not found in dependencies"
+                        f"Found snapshot pattern but event_log table {event_log_table_name} not found in dependencies"  # noqa: G004
                     )
 
         except Exception as exc:
-            logger.debug(f"Error extracting Materializer snapshot pattern: {exc}")
+            logger.debug(f"Error extracting Materializer snapshot pattern: {exc}")  # noqa: G004
 
     except Exception as exc:
-        logger.warning(f"Error extracting DLT table dependencies: {exc}")
+        logger.warning(f"Error extracting DLT table dependencies: {exc}")  # noqa: G004
 
     return dependencies
 
 
-def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # noqa: UP006
+def get_pipeline_libraries(pipeline_config: dict, client=None) -> list[str]:
     """
     Extract notebook and file paths from pipeline configuration
     Safely handles missing or malformed configuration
@@ -532,10 +531,10 @@ def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # 
                     if file_path:
                         libraries.append(file_path)
             except Exception as exc:
-                logger.debug(f"Failed to process library entry {lib}: {exc}")
+                logger.debug(f"Failed to process library entry {lib}: {exc}")  # noqa: G004
                 continue
 
     except Exception as exc:
-        logger.warning(f"Error extracting pipeline libraries: {exc}")
+        logger.warning(f"Error extracting pipeline libraries: {exc}")  # noqa: G004
 
     return libraries

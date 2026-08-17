@@ -14,7 +14,7 @@ Couchbase source methods.
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
     CouchbaseConnection,
@@ -53,7 +53,7 @@ class CouchbaseSource(CommonNoSQLSource):
         self.index_condition_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CouchbaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CouchbaseConnection):
@@ -71,10 +71,10 @@ class CouchbaseSource(CommonNoSQLSource):
                     self.index_condition_map.clear()
                     yield bucket_name.name
         except Exception as exp:
-            logger.debug(f"Failed to fetch bucket name: {exp}")
+            logger.debug(f"Failed to fetch bucket name: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -86,7 +86,7 @@ class CouchbaseSource(CommonNoSQLSource):
             self.context.get().scope_dict = {scope.name: scope for scope in collection_manager.get_all_scopes()}
             return [scopes.name for scopes in collection_manager.get_all_scopes()]
         except Exception as exp:
-            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")
+            logger.debug(f"Failed to list scope for bucket names [{database_name}]: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
         return []
 
@@ -98,7 +98,7 @@ class CouchbaseSource(CommonNoSQLSource):
             scope_object = self.context.get().scope_dict.get(schema_name)
             return [TableNameAndType(name=collection.name) for collection in scope_object.collections]
         except Exception as exp:
-            logger.debug(f"Failed to list collection names for scope [{schema_name}]: {exp}")
+            logger.debug(f"Failed to list collection names for scope [{schema_name}]: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
         return []
 
@@ -141,7 +141,7 @@ class CouchbaseSource(CommonNoSQLSource):
         self.index_condition_map[(bucket_name, schema_name)] = ""
         return ""
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> List[Dict]:  # noqa: UP006
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict]:
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -162,11 +162,11 @@ class CouchbaseSource(CommonNoSQLSource):
             return list(query_iter.rows())
         except QueryIndexNotFoundException as exp:  # noqa: F841
             logger.warning(
-                f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"
+                f"Fetching columns failed for [`{database_name}`.`{schema_name}`.`{table_name}`],"  # noqa: G004
                 " check if the index is created for the table or data exists in the table"
             )
             logger.debug(traceback.format_exc())
         except Exception as exp:
-            logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")
+            logger.debug(f"Failed to list column names for table [{table_name}]: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
         return []

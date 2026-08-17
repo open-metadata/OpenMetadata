@@ -13,7 +13,8 @@ Client to interact with Nifi apis
 """
 
 import traceback
-from typing import TYPE_CHECKING, Dict, Iterable, List, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
     NifiBasicAuth,
@@ -116,22 +117,22 @@ class NifiClient:
                     raise HTTPError(res.text, response=cast("Response", res))  # noqa: TRY301
 
             except HTTPError as err:
-                logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")
+                logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")  # noqa: G004
                 raise err  # noqa: TRY201
 
             except ValueError as err:
-                logger.error(f"Cannot pick up the token from token response - {err}")
+                logger.error(f"Cannot pick up the token from token response - {err}")  # noqa: G004
                 raise err  # noqa: TRY201
 
             except Exception as err:
-                logger.error(f"Fetching token failed due to - {err}")
+                logger.error(f"Fetching token failed due to - {err}")  # noqa: G004
                 logger.debug(traceback.format_exc())
                 raise err  # noqa: TRY201
 
         return self._token
 
     @property
-    def resources(self) -> List[dict]:  # noqa: UP006
+    def resources(self) -> list[dict]:
         """
         This can be expensive. Only query it once.
         """
@@ -144,17 +145,17 @@ class NifiClient:
         except AttributeError:
             return []
 
-    def _get_process_group_ids(self) -> List[str]:  # noqa: UP006
+    def _get_process_group_ids(self) -> list[str]:
         return [
             elem.get(IDENTIFIER).replace(PROCESS_GROUPS_STARTER, "")
             for elem in self.resources
             if elem.get(IDENTIFIER).startswith(PROCESS_GROUPS_STARTER)
         ]
 
-    def get_process_group(self, id_: str) -> Dict:  # noqa: UP006
+    def get_process_group(self, id_: str) -> dict:
         return self.client.get(f"flow/process-groups/{id_}")
 
-    def list_process_groups(self) -> Iterable[Dict]:  # noqa: UP006
+    def list_process_groups(self) -> Iterable[dict]:
         """
         This will call the API endpoints
         one at a time.

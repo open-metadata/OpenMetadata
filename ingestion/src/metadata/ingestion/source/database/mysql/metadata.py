@@ -11,7 +11,8 @@
 """Mysql source module"""
 
 import traceback
-from typing import Iterable, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql.base import ischema_names
@@ -71,7 +72,7 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = cast(MysqlConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, MysqlConnection):
@@ -105,7 +106,7 @@ class MysqlSource(CommonDbSourceService):
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Error parsing stored procedure/function: {dict(row._mapping).get('routine_name', 'UNKNOWN')} - {exc}"
+                        f"Error parsing stored procedure/function: {dict(row._mapping).get('routine_name', 'UNKNOWN')} - {exc}"  # noqa: G004
                     )
                     self.status.failed(
                         error=StackTraceError(

@@ -15,8 +15,8 @@ Nifi source to extract metadata
 import math
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ValidationError
 
@@ -76,10 +76,10 @@ class NifiProcessor(BaseModel):
     """
 
     id_: str
-    name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
     type_: str
     uri: str
-    run_status: Optional[str] = None  # noqa: UP045
+    run_status: str | None = None
 
 
 class NifiProcessorConnections(BaseModel):
@@ -99,11 +99,11 @@ class NifiPipelineDetails(BaseModel):
     """
 
     id_: str
-    name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
     uri: str
-    processors: List[NifiProcessor]  # noqa: UP006
-    connections: List[NifiProcessorConnections]  # noqa: UP006
-    parent_pipeline_id: Optional[str] = None  # noqa: UP045
+    processors: list[NifiProcessor]
+    connections: list[NifiProcessorConnections]
+    parent_pipeline_id: str | None = None
 
 
 class NifiSource(PipelineServiceSource):
@@ -114,11 +114,11 @@ class NifiSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        self.pipeline_parents_mapping: Dict[str, List[str]] = defaultdict(list)  # noqa: UP006
-        self.process_group_connections: List[NifiProcessorConnections] = []  # noqa: UP006
+        self.pipeline_parents_mapping: dict[str, list[str]] = defaultdict(list)
+        self.process_group_connections: list[NifiProcessorConnections] = []
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: NifiConnection = config.serviceConnection.root.config
         if not isinstance(connection, NifiConnection):
@@ -126,13 +126,13 @@ class NifiSource(PipelineServiceSource):
         return cls(config, metadata)
 
     @staticmethod
-    def _get_downstream_tasks_from(source_id: str, connections: List[NifiProcessorConnections]) -> List[str]:  # noqa: UP006
+    def _get_downstream_tasks_from(source_id: str, connections: list[NifiProcessorConnections]) -> list[str]:
         """
         Fetch all tasks downstream from the source
         """
         return [conn.destination_id for conn in connections if conn.source_id == source_id]
 
-    def _get_tasks_from_details(self, pipeline_details: NifiPipelineDetails) -> Optional[List[Task]]:  # noqa: UP006, UP045
+    def _get_tasks_from_details(self, pipeline_details: NifiPipelineDetails) -> list[Task] | None:
         """
         Prepare the list of the related Tasks
         that form the Pipeline
@@ -154,7 +154,7 @@ class NifiSource(PipelineServiceSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Wild error encountered when trying to get tasks from Pipeline Details {pipeline_details} - {err}."
+                f"Wild error encountered when trying to get tasks from Pipeline Details {pipeline_details} - {err}."  # noqa: G004
             )
         return None
 
@@ -229,7 +229,7 @@ class NifiSource(PipelineServiceSource):
     @staticmethod
     def _get_connections_from_process_group(
         process_group: dict,
-    ) -> List[NifiProcessorConnections]:  # noqa: UP006
+    ) -> list[NifiProcessorConnections]:
         """
         Parse the process_group dictionary to pick up the Connections
         """
@@ -245,7 +245,7 @@ class NifiSource(PipelineServiceSource):
         ]
 
     @staticmethod
-    def _get_processors_from_process_group(process_group: dict) -> List[NifiProcessor]:  # noqa: UP006
+    def _get_processors_from_process_group(process_group: dict) -> list[NifiProcessor]:
         """
         Parse the process_group dictionary to pick up the Processors
         """
@@ -284,14 +284,14 @@ class NifiSource(PipelineServiceSource):
                 yield nifi_pipeline_details
             except (ValueError, KeyError, ValidationError) as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Cannot create NifiPipelineDetails from {process_group} - {err}")
+                logger.warning(f"Cannot create NifiPipelineDetails from {process_group} - {err}")  # noqa: G004
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Wild error encountered when trying to get pipelines from Process Group {process_group} - {err}."
+                    f"Wild error encountered when trying to get pipelines from Process Group {process_group} - {err}."  # noqa: G004
                 )
 
-    def get_process_group_connections(self, process_group: dict) -> List[NifiProcessorConnections]:  # noqa: UP006
+    def get_process_group_connections(self, process_group: dict) -> list[NifiProcessorConnections]:
         """Get all connections for a process group"""
         connections_list = process_group.get(PROCESS_GROUP_FLOW).get("flow").get("connections")
         connections = []
@@ -316,7 +316,7 @@ class NifiSource(PipelineServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Wild error encountered when trying to get process group connections from \
-                    {process_group[PROCESS_GROUP_FLOW][BREADCRUMB][BREADCRUMB].get('name')} - {err}."
+                    {process_group[PROCESS_GROUP_FLOW][BREADCRUMB][BREADCRUMB].get('name')} - {err}."  # noqa: G004
                 )
         return connections
 
@@ -333,7 +333,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{pipeline_id}",
             )
             if not to_entity:
-                logger.warning(f"Pipeline {pipeline_id} not found in metadata, skipping lineage")
+                logger.warning(f"Pipeline {pipeline_id} not found in metadata, skipping lineage")  # noqa: G004
                 continue
             for parent_pipeline_id in parent_pipeline_ids:
                 from_entity = self.metadata.get_by_name(
@@ -341,7 +341,7 @@ class NifiSource(PipelineServiceSource):
                     fqn=f"{self.context.get().pipeline_service}.{parent_pipeline_id}",
                 )
                 if not from_entity:
-                    logger.warning(f"Parent Pipeline {parent_pipeline_id} not found in metadata, skipping lineage")
+                    logger.warning(f"Parent Pipeline {parent_pipeline_id} not found in metadata, skipping lineage")  # noqa: G004
                     continue
                 yield Either(
                     right=AddLineageRequest(
@@ -360,7 +360,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{connection.source_id}",
             )
             if not from_entity:
-                logger.warning(f"Pipeline {connection.source_id} not found in metadata, skipping lineage")
+                logger.warning(f"Pipeline {connection.source_id} not found in metadata, skipping lineage")  # noqa: G004
                 continue
 
             to_entity = self.metadata.get_by_name(
@@ -368,7 +368,7 @@ class NifiSource(PipelineServiceSource):
                 fqn=f"{self.context.get().pipeline_service}.{connection.destination_id}",
             )
             if not to_entity:
-                logger.warning(f"Pipeline {connection.destination_id} not found in metadata, skipping lineage")
+                logger.warning(f"Pipeline {connection.destination_id} not found in metadata, skipping lineage")  # noqa: G004
                 continue
 
             yield Either(

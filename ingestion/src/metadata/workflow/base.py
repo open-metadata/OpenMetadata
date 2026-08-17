@@ -17,7 +17,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from statistics import mean
-from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
+from typing import Any, TypeVar
 
 from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
@@ -86,15 +86,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     Base workflow implementation
     """
 
-    config: Union[Any, Dict]  # noqa: UP006, UP007
-    _run_id: Optional[str] = None  # noqa: UP045
+    config: Any | dict
+    _run_id: str | None = None
     metadata: OpenMetadata
     metadata_config: OpenMetadataConnection
     service_type: ServiceType
 
     def __init__(
         self,
-        config: Union[Any, Dict],  # noqa: UP006, UP007
+        config: Any | dict,
         workflow_config: WorkflowConfig,
         service_type: ServiceType,
         output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
@@ -106,8 +106,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.config = config
         self.workflow_config = workflow_config
         self.service_type = service_type
-        self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
-        self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._timer: RepeatedTimer | None = None
+        self._ingestion_pipeline: IngestionPipeline | None = None
         self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
 
@@ -143,7 +143,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         self.post_init()
 
-    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+    def _build_user_agent(self) -> str | None:
         """
         HTTP User-Agent identifying this workflow's requests to the OpenMetadata server.
         Subclasses override this to provide more specific identifiers. Best-effort: the
@@ -152,11 +152,11 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         try:
             return f"openmetadata-ingestion (v{get_client_version()})"
         except Exception as exc:
-            logger.debug(f"Could not resolve the ingestion client version: {exc}")
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")  # noqa: G004
             return "openmetadata-ingestion"
 
     @property
-    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+    def ingestion_pipeline(self) -> IngestionPipeline | None:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
@@ -185,7 +185,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             try:
                 step.close()
             except Exception as exc:
-                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")  # noqa: G004
 
     def stop(self) -> None:
         """
@@ -239,7 +239,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
 
-    def calculate_success(self) -> Optional[float]:  # noqa: UP045
+    def calculate_success(self) -> float | None:
         """
         Get the success % of the internal execution.
         Since we'll use this to get a single success % from multiple steps, we'll take
@@ -255,11 +255,11 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         return mean([step.get_status().calculate_success() for step in self.workflow_steps()])
 
     @abstractmethod
-    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
+    def get_failures(self) -> list[StackTraceError]:
         """Get the failures to flag whether if the workflow succeeded or not"""
 
     @abstractmethod
-    def workflow_steps(self) -> List[Step]:  # noqa: UP006
+    def workflow_steps(self) -> list[Step]:
         """Steps to report status from"""
 
     def raise_from_status_internal(self, raise_warnings=False) -> None:
@@ -278,7 +278,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """Log the workflow type and ingestion runner at the start of execution"""
         if self.config.ingestionRunnerName:
             logger.info(
-                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"
+                f"Executing workflow [{self.config.ingestionPipelineFQN}] in Runner [{self.config.ingestionRunnerName}]"  # noqa: G004
             )
 
     def execute(self) -> None:
@@ -367,7 +367,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._run_id
 
-    def get_or_create_ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+    def get_or_create_ingestion_pipeline(self) -> IngestionPipeline | None:
         """
         If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
         keep track of the status.
@@ -382,7 +382,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         status at the end of the flow.
         """
         try:
-            maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(  # noqa: UP045
+            maybe_pipeline: IngestionPipeline | None = self.metadata.get_by_name(
                 entity=IngestionPipeline,
                 fqn=self.config.ingestionPipelineFQN,
             )
@@ -413,10 +413,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             return maybe_pipeline  # noqa: TRY300
 
         except Exception as exc:
-            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
+            logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")  # noqa: G004
             return None
 
-    def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
+    def _get_ingestion_pipeline_service(self) -> T | None:
         """
         Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
         or a Test Suite.
@@ -441,7 +441,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 )
 
                 logger.info(
-                    f"{step.name}: Processed {record_count} records,"
+                    f"{step.name}: Processed {record_count} records,"  # noqa: G004
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
@@ -452,7 +452,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self._is_debug_enabled():
                 metrics = WorkflowResourceMetrics()
                 logger.debug(
-                    f"Workflow Resources - "
+                    f"Workflow Resources - "  # noqa: G004
                     f"CPU: {metrics.cpu_usage_percent:.2f}% "
                     f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
                     f"Memory: {metrics.memory_used_mb:.2f}MB/"
@@ -472,7 +472,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Wild exception reporting status - {exc}")
+            logger.error(f"Wild exception reporting status - {exc}")  # noqa: G004
 
     def _is_debug_enabled(self) -> bool:
         return (

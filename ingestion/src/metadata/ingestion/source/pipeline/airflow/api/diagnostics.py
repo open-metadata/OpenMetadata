@@ -27,7 +27,6 @@ import re
 import traceback
 import urllib.parse
 from enum import Enum
-from typing import Optional
 
 import requests
 
@@ -61,7 +60,7 @@ _ASTRONOMER_HOST_SUFFIXES = (".astronomer.run", ".astronomer.io", ".cloud.astron
 _GCP_CONSOLE_HOST_SUFFIXES = ("console.cloud.google.com", "console.developers.google.com")
 
 
-def detect_flavor(host: Optional[str], auth_config) -> AirflowFlavor:  # noqa: UP045
+def detect_flavor(host: str | None, auth_config) -> AirflowFlavor:
     """
     Auth-config wins over URL pattern. Falls back to URL pattern when the auth
     config is generic (Basic / AccessToken), and finally to SELF_HOSTED.
@@ -82,7 +81,7 @@ def detect_flavor(host: Optional[str], auth_config) -> AirflowFlavor:  # noqa: U
     return flavor
 
 
-def diagnose(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def diagnose(host: str | None, auth_config, verify: bool, original_error: Exception) -> str | None:
     """
     Run flavor-specific probes and return an actionable hint string, or None
     when no flavor-specific guidance applies.
@@ -102,7 +101,7 @@ def diagnose(host: Optional[str], auth_config, verify: bool, original_error: Exc
 # ── Probes ──────────────────────────────────────────────────────────────────
 
 
-def _probe_composer(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_composer(host: str | None, auth_config, verify: bool, original_error: Exception) -> str | None:
     hint = None
     if not host:
         hint = "Set hostPort to the Airflow web UI URL from your Composer environment page (https://<env>.composer.googleusercontent.com)."
@@ -122,7 +121,7 @@ def _probe_composer(host: Optional[str], auth_config, verify: bool, original_err
     return hint
 
 
-def _composer_access_hint(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[str]:  # noqa: UP045
+def _composer_access_hint(host: str, auth_config: GcpServiceAccount, verify: bool) -> str | None:
     """
     A valid GCP Service Account config that still fails CheckAccess is almost
     always an IAM permission problem: Google rejects the request before it
@@ -169,7 +168,7 @@ def _composer_permission_hint(env_info: dict) -> str:
     )
 
 
-def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[dict]:  # noqa: UP045
+def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, verify: bool) -> dict | None:
     """
     Call the Composer Management API to find the env matching this airflowUri,
     proving whether the service account has any project-level access at all.
@@ -218,7 +217,7 @@ def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, ve
     return info
 
 
-def _composer_region_from_host(host: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _composer_region_from_host(host: str | None) -> str | None:
     """Extract region from a Composer hostname like 'abc-dot-us-east4.composer.googleusercontent.com'."""
     region = None
     netloc = _hostname(host)
@@ -229,7 +228,7 @@ def _composer_region_from_host(host: Optional[str]) -> Optional[str]:  # noqa: U
     return region
 
 
-def _project_from_credentials(credentials) -> Optional[str]:  # noqa: UP045
+def _project_from_credentials(credentials) -> str | None:
     """
     Resolve the GCP project ID to query for Composer environments. Prefers the
     explicit `projectId` field on GcpCredentialsValues; falls back to whatever
@@ -257,7 +256,7 @@ def _project_from_credentials(credentials) -> Optional[str]:  # noqa: UP045
     return project
 
 
-def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optional[str]:  # noqa: UP045
+def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> str | None:
     """
     Mint an OAuth2 access token (cloud-platform scope) for the Composer
     Management API call. Returns None on any failure.
@@ -291,7 +290,7 @@ def _extract_env_info(env: dict, region: str) -> dict:
     }
 
 
-def _detect_composer_iap_model(host: str, verify: bool) -> Optional[str]:  # noqa: UP045
+def _detect_composer_iap_model(host: str, verify: bool) -> str | None:
     """
     Identify which Composer access-control variant we're talking to:
       - "classic": redirect points at accounts.google.com/o/oauth2/auth?client_id=...
@@ -315,7 +314,7 @@ def _detect_composer_iap_model(host: str, verify: bool) -> Optional[str]:  # noq
     return model
 
 
-def _probe_mwaa(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_mwaa(host: str | None, auth_config, verify: bool, original_error: Exception) -> str | None:
     hint = None
     if not isinstance(auth_config, MwaaAuthentication):
         hint = (
@@ -342,7 +341,7 @@ def _probe_mwaa(host: Optional[str], auth_config, verify: bool, original_error: 
     return hint
 
 
-def _probe_astronomer(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_astronomer(host: str | None, auth_config, verify: bool, original_error: Exception) -> str | None:
     hint = None
     if isinstance(auth_config, BasicAuth):
         hint = (
@@ -367,7 +366,7 @@ def _is_astronomer_control_plane(netloc: str) -> bool:
     return netloc == "cloud.astronomer.io" or netloc.endswith(".cloud.astronomer.io")
 
 
-def _probe_self_hosted(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_self_hosted(host: str | None, auth_config, verify: bool, original_error: Exception) -> str | None:
     hint = None
     if host:
         try:
@@ -401,7 +400,7 @@ _PROBES = {
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
-def _hostname(host: Optional[str]) -> str:  # noqa: UP045
+def _hostname(host: str | None) -> str:
     """Return the lowercased hostname of a URL or '' when unparseable."""
     result = ""
     if host:

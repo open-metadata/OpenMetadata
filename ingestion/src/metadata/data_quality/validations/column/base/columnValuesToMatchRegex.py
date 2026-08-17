@@ -15,7 +15,6 @@ Validator for column values to match regex test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -55,7 +54,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
+            column: SQALikeColumn | Column = self.get_column()
             count, match_count = self._run_results(
                 (Metrics.valuesCount, Metrics.regexCount),
                 column,
@@ -130,7 +129,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -170,8 +169,8 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
-        test_params: Optional[dict] = None,  # noqa: UP045
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for in-set test
 
@@ -194,7 +193,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         else:  # noqa: RET505
             return f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test
 
         Args:
@@ -211,11 +210,11 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
+    def compute_row_count(self, column: SQALikeColumn | Column):
         """Compute row count for the given column
 
         Args:

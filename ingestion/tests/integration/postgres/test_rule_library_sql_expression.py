@@ -13,7 +13,6 @@ Integration tests for Rule Library SQL Expression validator
 """
 
 from dataclasses import dataclass
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -99,7 +98,7 @@ def rule_library_test_definition(
 
 @pytest.fixture()
 def get_rule_library_test_suite_config(workflow_config, sink_config):
-    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):  # noqa: UP006
+    def inner(entity_fqn: str, test_case_definitions: list[TestCaseDefinition]):
         return {
             "source": {
                 "type": "postgres",

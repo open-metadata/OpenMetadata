@@ -14,7 +14,7 @@ Utility functions to create open metadata connections from yaml file
 
 import os
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
@@ -27,7 +27,7 @@ from metadata.utils.logger import great_expectations_logger
 logger = great_expectations_logger()
 
 
-def env(key: str) -> Optional[Any]:  # noqa: UP045
+def env(key: str) -> Any | None:
     """Render environment variable from jinja template
 
     Args:
@@ -70,7 +70,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
         return tmplt.render()
     except TemplateNotFound as err:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Template file at {template_file} not found: {err}")
+        logger.warning(f"Template file at {template_file} not found: {err}")  # noqa: G004
         try:
             tmplt = environment.get_template("config.yaml")
             return tmplt.render()

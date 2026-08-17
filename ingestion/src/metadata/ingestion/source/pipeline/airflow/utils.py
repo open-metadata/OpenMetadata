@@ -14,7 +14,7 @@ Airflow metadata utils
 
 import traceback
 from datetime import timedelta
-from typing import Any, Dict, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.utils.constants import TIMEDELTA
 from metadata.utils.importer import import_from_module
@@ -24,7 +24,7 @@ logger = ingestion_logger()
 
 
 # pylint: disable=too-many-branches,too-many-return-statements,too-many-nested-blocks
-def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:  # noqa: C901, UP006, UP045
+def get_schedule_interval(pipeline_data: dict[str, Any]) -> str | None:  # noqa: C901
     """
     Fetch Schedule Intervals from Airflow Dags
     """
@@ -67,14 +67,14 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:  # no
                                 # If instantiation fails, return the class name
                                 return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except ImportError as import_error:
-                    logger.debug(f"Could not import timetable class {expression_class}: {import_error}")
+                    logger.debug(f"Could not import timetable class {expression_class}: {import_error}")  # noqa: G004
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except TypeError as type_error:
                     # If instantiation fails due to missing arguments, log and continue
-                    logger.debug(f"Could not instantiate timetable class {expression_class}: {type_error}")
+                    logger.debug(f"Could not instantiate timetable class {expression_class}: {type_error}")  # noqa: G004
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
                 except Exception as inst_error:
-                    logger.debug(f"Error instantiating timetable class {expression_class}: {inst_error}")
+                    logger.debug(f"Error instantiating timetable class {expression_class}: {inst_error}")  # noqa: G004
                     return f"Custom Timetable ({expression_class.split('.')[-1]})"
 
         if schedule:
@@ -93,5 +93,5 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:  # no
     except Exception as exc:
         logger.debug(traceback.format_exc())
         dag_id = pipeline_data.get("_dag_id", "unknown")
-        logger.warning(f"Couldn't fetch schedule interval for dag {dag_id}: {exc}")
+        logger.warning(f"Couldn't fetch schedule interval for dag {dag_id}: {exc}")  # noqa: G004
     return None

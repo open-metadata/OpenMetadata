@@ -14,7 +14,7 @@ TimescaleDB lineage module with continuous aggregate support
 """
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 
@@ -44,7 +44,7 @@ class TimescaleLineageSource(PostgresLineageSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create TimescaleLineageSource"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
@@ -63,9 +63,9 @@ class TimescaleLineageSource(PostgresLineageSource):
             with self.engine.connect() as conn:
                 result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
             self.timescaledb_installed = result.timescaledb_installed if result else False
-            logger.info(f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}")
+            logger.info(f"TimescaleDB extension installed for lineage: {self.timescaledb_installed}")  # noqa: G004
         except Exception as exc:
-            logger.warning(f"Could not check TimescaleDB extension: {exc}")
+            logger.warning(f"Could not check TimescaleDB extension: {exc}")  # noqa: G004
             self.timescaledb_installed = False
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -103,12 +103,12 @@ class TimescaleLineageSource(PostgresLineageSource):
                         view_definition=row.view_definition,
                     )
 
-                    logger.debug(f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}")
+                    logger.debug(f"Extracted continuous aggregate view: {row.view_schema}.{row.view_name}")  # noqa: G004
 
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}")
+                    logger.warning(f"Failed to process continuous aggregate {row.view_schema}.{row.view_name}: {exc}")  # noqa: G004
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to extract continuous aggregate views: {exc}")
+            logger.warning(f"Failed to extract continuous aggregate views: {exc}")  # noqa: G004

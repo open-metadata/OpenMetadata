@@ -15,7 +15,6 @@ Test Bigquery connector with CLI
 
 import random
 from datetime import datetime
-from typing import List, Tuple  # noqa: UP035
 
 import pytest
 
@@ -54,7 +53,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                        FROM `open-metadata-beta`.exclude_me.orders;
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         (
             "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES "
             + ",".join(
@@ -124,15 +123,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_bigquery.open-metadata-beta.exclude_me.orders"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["exclude_me"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["exclude_table"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["testtable"]
 
     @staticmethod
@@ -156,7 +155,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 2
 
     @staticmethod
-    def delete_queries() -> List[str]:  # noqa: UP006
+    def delete_queries() -> list[str]:
         return [
             """
             DELETE FROM `open-metadata-beta.exclude_me`.orders WHERE id IN (1)
@@ -164,14 +163,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:  # noqa: UP006
+    def update_queries() -> list[str]:
         return [
             """
             UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
         ]
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
+    def get_system_profile_cases(self) -> list[tuple[str, list[SystemProfile]]]:
         return [
             (
                 "local_bigquery.open-metadata-beta.exclude_me.orders",
@@ -207,7 +206,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def get_data_quality_table(self):
         return self.fqn_created_table()
 
-    def get_test_case_definitions(self) -> List[TestCaseDefinition]:  # noqa: UP006
+    def get_test_case_definitions(self) -> list[TestCaseDefinition]:
         return [
             TestCaseDefinition(
                 name="bigquery_data_diff",

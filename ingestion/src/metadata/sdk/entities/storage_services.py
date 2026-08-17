@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Type  # noqa: UP035
-
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
@@ -15,5 +13,5 @@ class StorageServices(BaseEntity[StorageService, CreateStorageServiceRequest]):
     """Fluent facade for storage service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[StorageService]:  # noqa: UP006
+    def entity_type(cls) -> type[StorageService]:
         return StorageService

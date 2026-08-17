@@ -16,7 +16,7 @@ OpenAPI schema parser for both JSON and YAML formats
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, Union  # noqa: UP035
+from typing import Any
 from urllib.parse import urlparse
 
 import yaml
@@ -33,7 +33,7 @@ class OpenAPIParseError(Exception):
     """
 
 
-def _ensure_mapping(parsed: Any, source: str) -> Dict[str, Any]:  # noqa: UP006
+def _ensure_mapping(parsed: Any, source: str) -> dict[str, Any]:
     """
     Reject parser output that isn't an object/mapping.
 
@@ -46,7 +46,7 @@ def _ensure_mapping(parsed: Any, source: str) -> Dict[str, Any]:  # noqa: UP006
     return parsed
 
 
-def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
+def parse_openapi_schema(response: Response) -> dict[str, Any]:
     """
     Parse OpenAPI schema from HTTP response.
     Supports both JSON and YAML formats.
@@ -68,12 +68,12 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         try:
             return _ensure_mapping(json.loads(content), "JSON")
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse as JSON despite content-type: {e}")
+            logger.error(f"Failed to parse as JSON despite content-type: {e}")  # noqa: G004
     elif "yaml" in content_type or "yml" in content_type:
         try:
             return _ensure_mapping(yaml.safe_load(content), "YAML")
         except yaml.YAMLError as e:
-            logger.error(f"Failed to parse as YAML despite content-type: {e}")
+            logger.error(f"Failed to parse as YAML despite content-type: {e}")  # noqa: G004
 
     # If content-type is not definitive or parsing failed, try both formats
 
@@ -91,7 +91,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
         logger.debug("Successfully parsed OpenAPI schema as YAML")
         return parsed  # noqa: TRY300
     except (yaml.YAMLError, OpenAPIParseError) as e:
-        logger.error(f"Failed to parse as YAML: {e}")
+        logger.error(f"Failed to parse as YAML: {e}")  # noqa: G004
 
     # If both formats fail, raise an error
     raise OpenAPIParseError(
@@ -100,7 +100,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
     )
 
 
-def validate_openapi_schema(schema: Dict[str, Any]) -> bool:  # noqa: UP006
+def validate_openapi_schema(schema: dict[str, Any]) -> bool:
     """
     Validate that the parsed schema is a valid OpenAPI specification.
 
@@ -118,7 +118,7 @@ def validate_openapi_schema(schema: Dict[str, Any]) -> bool:  # noqa: UP006
     return schema.get("openapi") is not None or schema.get("swagger") is not None
 
 
-def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any]:  # noqa: UP006, UP007
+def parse_openapi_schema_from_file(file_path: str | Path) -> dict[str, Any]:
     """
     Parse OpenAPI schema from a local file.
     Supports both JSON and YAML formats.
@@ -201,7 +201,7 @@ def _parse_s3_url(s3_url: str) -> tuple:
 def parse_openapi_schema_from_s3(
     s3_url: str,
     aws_credentials: "AWSCredentials",  # noqa: F821
-) -> Dict[str, Any]:  # noqa: UP006
+) -> dict[str, Any]:
     """
     Download and parse an OpenAPI schema file from S3.
     Supports both JSON and YAML formats.

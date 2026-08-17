@@ -13,7 +13,7 @@ Classification run manager for auto-classification workflows.
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Protocol  # noqa: UP035
+from typing import Any, Protocol
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -26,9 +26,9 @@ logger = profiler_logger()
 
 
 class ClassificationManagerInterface(Protocol):
-    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]: ...  # noqa: UP006, UP045
+    def get_enabled_classifications(self, filter_names: list[str] | None = None) -> list[Classification]: ...
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]: ...  # noqa: UP006
+    def get_enabled_tags(self, classifications: list[Classification]) -> list[Tag]: ...
 
 
 class ClassificationManager:
@@ -39,10 +39,10 @@ class ClassificationManager:
 
     def __init__(self, metadata: OpenMetadata[Any, Any]):
         self.metadata: OpenMetadata[Any, Any] = metadata
-        self._classification_cache: Dict[str, List[Classification]] = defaultdict(list)  # noqa: UP006
-        self._tags_cache: Dict[str, List[Tag]] = {}  # noqa: UP006
+        self._classification_cache: dict[str, list[Classification]] = defaultdict(list)
+        self._tags_cache: dict[str, list[Tag]] = {}
 
-    def get_enabled_classifications(self, filter_names: Optional[List[str]] = None) -> List[Classification]:  # noqa: UP006, UP045
+    def get_enabled_classifications(self, filter_names: list[str] | None = None) -> list[Classification]:
         """
         Fetch classifications that have auto-classification enabled.
 
@@ -58,7 +58,7 @@ class ClassificationManager:
         cached_classifications = self._classification_cache[cache_key]
 
         if cached_classifications:
-            logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")
+            logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")  # noqa: G004
             return cached_classifications
 
         logger.debug("Fetching enabled classifications from OpenMetadata")
@@ -75,27 +75,27 @@ class ClassificationManager:
                 )
             )
         except Exception as exc:
-            logger.error(f"Failed to fetch classifications: {exc}")
+            logger.error(f"Failed to fetch classifications: {exc}")  # noqa: G004
             return []
 
         for classification in classifications:
             if filter_names and classification.name.root not in filter_names:
-                logger.debug(f"Skipping classification {classification.name.root} (not in filter)")
+                logger.debug(f"Skipping classification {classification.name.root} (not in filter)")  # noqa: G004
                 continue
 
             auto_config = classification.autoClassificationConfig
             if not auto_config or not auto_config.enabled:
-                logger.debug(f"Skipping classification {classification.name.root} (auto-classification disabled)")
+                logger.debug(f"Skipping classification {classification.name.root} (auto-classification disabled)")  # noqa: G004
                 continue
 
             cached_classifications.append(classification)
 
         logger.info(
-            f"Found {len(cached_classifications)} enabled classifications: {[c.name.root for c in cached_classifications]}"
+            f"Found {len(cached_classifications)} enabled classifications: {[c.name.root for c in cached_classifications]}"  # noqa: G004
         )
         return cached_classifications
 
-    def get_enabled_tags(self, classifications: List[Classification]) -> List[Tag]:  # noqa: UP006
+    def get_enabled_tags(self, classifications: list[Classification]) -> list[Tag]:
         """
         Get all tags with recognizers from enabled classifications.
 
@@ -113,12 +113,12 @@ class ClassificationManager:
 
         cache_key = ",".join(sorted(classification_names))
         if cache_key in self._tags_cache:
-            logger.debug(f"Returning cached tags for classifications: {cache_key}")
+            logger.debug(f"Returning cached tags for classifications: {cache_key}")  # noqa: G004
             return self._tags_cache[cache_key]
 
-        logger.info(f"Fetching enabled tags from classifications: {classification_names}")
+        logger.info(f"Fetching enabled tags from classifications: {classification_names}")  # noqa: G004
 
-        candidate_tags: List[Tag] = []  # noqa: UP006
+        candidate_tags: list[Tag] = []
 
         for classification_name in classification_names:
             try:
@@ -141,17 +141,17 @@ class ClassificationManager:
 
                 for tag in tags:
                     if not tag.autoClassificationEnabled:
-                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)")
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (auto-classification disabled)")  # noqa: G004
                         continue
 
                     if not tag.recognizers:
-                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)")
+                        logger.debug(f"Skipping tag {tag.fullyQualifiedName} (no recognizers configured)")  # noqa: G004
                         continue
 
                     candidate_tags.append(tag)
 
             except Exception as exc:
-                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")
+                logger.error(f"Failed to fetch tags for classification {classification_name}: {exc}")  # noqa: G004
                 continue
 
         logger.info(

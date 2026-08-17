@@ -13,7 +13,8 @@ BurstIQ LifeGraph source module for OpenMetadata
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -86,7 +87,7 @@ class Burstiqsource(DatabaseServiceSource):
         self.metadata = metadata
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection: BurstIQConnection = self.config.serviceConnection.root.config
-        self._current_dictionary: Optional[BurstIQDictionary] = None  # noqa: UP045
+        self._current_dictionary: BurstIQDictionary | None = None
 
         self._connection = create_connection(self.service_connection)
         self.client: BurstIQClient = cast("BaseConnection", self._connection).client
@@ -98,7 +99,7 @@ class Burstiqsource(DatabaseServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
@@ -106,7 +107,7 @@ class Burstiqsource(DatabaseServiceSource):
             raise InvalidSourceException(f"Expected BurstIQConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _get_current_dictionary(self, table_name: str) -> Optional[BurstIQDictionary]:  # noqa: UP045
+    def _get_current_dictionary(self, table_name: str) -> BurstIQDictionary | None:
         """
         Get the currently cached dictionary for the given table name
 
@@ -120,7 +121,7 @@ class Burstiqsource(DatabaseServiceSource):
             return self._current_dictionary
 
         # If not cached or doesn't match, fetch from API
-        logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")
+        logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")  # noqa: G004
         client = self.client
         return client.get_dictionary_by_name(table_name)
 
@@ -178,7 +179,7 @@ class Burstiqsource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Fetch dictionaries from BurstIQ and return as table names with type
         Caches each dictionary one at a time for use in yield_table
@@ -230,16 +231,16 @@ class Burstiqsource(DatabaseServiceSource):
 
         except ConnectionError as err:
             # Connection errors are critical - fail fast and stop the workflow
-            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")
+            logger.error(f"Failed to connect to BurstIQ for schema {schema_name}: {err}")  # noqa: G004
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Cannot connect to BurstIQ API: {err}") from err
         except Exception as err:
             # Other errors - log and re-raise to fail the workflow
-            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")
+            logger.error(f"Fetching dictionaries from BurstIQ failed for schema {schema_name}: {err}")  # noqa: G004
             logger.debug(traceback.format_exc())
             raise
 
-    def _process_attribute_to_column(self, attribute, table_name: str) -> Optional[Column]:  # noqa: UP045
+    def _process_attribute_to_column(self, attribute, table_name: str) -> Column | None:
         """
         Process a single BurstIQ attribute and convert it to an OpenMetadata Column
 
@@ -291,7 +292,7 @@ class Burstiqsource(DatabaseServiceSource):
             return Column(**column_props)
 
         except Exception as exc:
-            logger.warning(f"Error processing column {attribute.name} for table {table_name}: {exc}")
+            logger.warning(f"Error processing column {attribute.name} for table {table_name}: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())
             return None
 
@@ -311,7 +312,7 @@ class Burstiqsource(DatabaseServiceSource):
             if column:
                 yield column
 
-    def _map_burstiq_datatype(self, burstiq_type: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
+    def _map_burstiq_datatype(self, burstiq_type: str) -> tuple[str, str | None]:
         """
         Map BurstIQ data types to OpenMetadata/SQL data types
 
@@ -355,7 +356,7 @@ class Burstiqsource(DatabaseServiceSource):
         # Regular types - no array element type
         return (type_mapping.get(burstiq_type, "VARCHAR"), None)
 
-    def get_table_constraints(self, dictionary: BurstIQDictionary) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
+    def get_table_constraints(self, dictionary: BurstIQDictionary) -> list[TableConstraint] | None:
         """
         Get all table constraints (primary key, unique, and foreign key) from BurstIQ dictionary
 
@@ -413,7 +414,7 @@ class Burstiqsource(DatabaseServiceSource):
 
         return table_constraints if table_constraints else None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink

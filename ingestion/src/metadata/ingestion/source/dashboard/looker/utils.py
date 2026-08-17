@@ -15,7 +15,6 @@ Utilities for Looker service
 
 import os
 import shutil
-from typing import Optional, Union
 
 from git import Repo
 
@@ -53,15 +52,15 @@ def _is_azure_devops_host(hostname: str) -> bool:
 def _clone_repo(
     repo_name: str,
     path: str,
-    credential: Optional[Union[NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials]],  # noqa: UP007, UP045
-    overwrite: Optional[bool] = False,  # noqa: UP045
+    credential: NoGitCredentials | GitHubCredentials | BitBucketCredentials | GitlabCredentials | None,
+    overwrite: bool | None = False,
 ):
     """Clone a repo to local `path`"""
     try:
         if overwrite:
             shutil.rmtree(path, ignore_errors=True)
         if os.path.isdir(path):  # noqa: PTH112
-            logger.debug(f"_clone_repo: repo {path} already cloned.")
+            logger.debug(f"_clone_repo: repo {path} already cloned.")  # noqa: G004
             return
 
         url = None
@@ -95,7 +94,7 @@ def _clone_repo(
 
         Repo.clone_from(url, path, allow_unsafe_protocols=allow_unsafe_protocols)
 
-        logger.info(f"repo {repo_name} cloned to {path}")
+        logger.info(f"repo {repo_name} cloned to {path}")  # noqa: G004
     except Exception as exc:
         sanitized_msg = sanitize_url_credentials(str(exc))
-        logger.error(f"_clone_repo: ERROR {sanitized_msg}")
+        logger.error(f"_clone_repo: ERROR {sanitized_msg}")  # noqa: G004

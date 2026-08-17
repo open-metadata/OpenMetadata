@@ -17,8 +17,8 @@ Run profiler metrics on the table
 import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from collections.abc import Callable
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -71,7 +71,7 @@ ERROR_MSG = "Schema/Table name not found in table args. Falling back to default 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
+    def __init__(self, runner: QueryRunner, metrics: list[Metrics], conn_config, entity: OMTable):
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -134,7 +134,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
+    def _get_col_names_and_count(self) -> tuple[str, int]:
         """get column names and count from table
 
         Args:
@@ -149,9 +149,9 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: List[Column],  # noqa: UP006
+        columns: list[Column],
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
+        where_clause: list[ColumnOperators] | None = None,
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -298,7 +298,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             return self.tables()
         except Exception as exc:
             # if an error occurs fetching data from `__TABLES__`, fallback to `TABLE_STORAGE`
-            logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")
+            logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")  # noqa: G004
             return self.table_storage()
 
     def table_storage(self):
@@ -369,7 +369,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
+    def compute(self, metrics: Inject[type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -830,7 +830,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
+    def _parse_created_datetime(self, value) -> _datetime | None:
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -1086,7 +1086,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         conn_config,
         entity: OMTable,
     ):

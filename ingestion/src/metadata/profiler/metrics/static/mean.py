@@ -13,8 +13,9 @@
 AVG Metric definition
 """
 
+from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Callable, NamedTuple, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
@@ -127,7 +128,7 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             return AvgFn(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(f"Don't know how to process type {self.col.type} when computing MEAN")
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MEAN")  # noqa: G004
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -141,17 +142,17 @@ class Mean(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(f"Error while computing mean for column {self.col.name}: {err}")
+                logger.debug(f"Error while computing mean for column {self.col.name}: {err}")  # noqa: G004
                 return None
         mean = computation.aggregate_accumulator(accumulator)
 
         if mean is None:
-            logger.warning(f"Don't know how to process type {self.col.type} when computing MEAN")
+            logger.warning(f"Don't know how to process type {self.col.type} when computing MEAN")  # noqa: G004
             return None
         return mean
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[SumAndCount, Optional[float]](  # noqa: UP045
+        return PandasComputation[SumAndCount, float | None](
             create_accumulator=lambda: SumAndCount(0.0, 0),
             update_accumulator=lambda acc, df: Mean.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Mean.aggregate_accumulator,
@@ -192,13 +193,13 @@ class Mean(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_and_count: SumAndCount,
-    ) -> Optional[float]:  # noqa: UP045
+    ) -> float | None:
         """Compute final mean from running sum and count"""
         if sum_and_count.count_value == 0:
             return None
         return sum_and_count.sum_value / sum_and_count.count_value
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], T | None]:
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.mean, column=self.col)

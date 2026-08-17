@@ -14,7 +14,7 @@ External Table Lineage Mixin
 
 import traceback
 from abc import ABC
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
@@ -86,10 +86,10 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
                         )
                     )
             except Exception as exc:
-                logger.error(f"Failed to yield external table lineage due to - {exc}")
+                logger.error(f"Failed to yield external table lineage due to - {exc}")  # noqa: G004
                 logger.debug(traceback.format_exc())
 
-    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
+    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> str | None:
         """
         Get fqn of column if exist in data model entity
         """
@@ -104,8 +104,8 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         self,
         data_model_entity: ContainerDataModel,
         table_entity: Table,
-        columns_list: List[str],  # noqa: UP006
-    ) -> List[ColumnLineage]:  # noqa: UP006
+        columns_list: list[str],
+    ) -> list[ColumnLineage]:
         """
         Get the column lineage
         """
@@ -118,5 +118,5 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
             return column_lineage  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(f"Error to get column lineage: {exc}")  # noqa: G004
             logger.debug(traceback.format_exc())

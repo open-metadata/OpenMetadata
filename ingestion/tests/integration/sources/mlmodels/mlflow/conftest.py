@@ -28,7 +28,6 @@ import io
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Optional
 
 import pymysql
 import pytest
@@ -51,7 +50,7 @@ class MlflowContainerConfigs:
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
-    exposed_port: Optional[int] = None  # noqa: UP045
+    exposed_port: int | None = None
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)

@@ -13,8 +13,6 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -36,7 +34,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
+    def compute_row_count(self) -> int | None:
         """Compute row count for the given column
 
         Returns:
@@ -57,7 +55,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
                         total_rows += len(dataframe.query(partition_expression))
                     except Exception as e:
                         logger.error(
-                            "Error executing partition expression, "
+                            "Error executing partition expression, "  # noqa: G004
                             f"expression may be invalid: {partition_expression} - {e}"
                         )
                         return None

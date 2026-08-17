@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type, cast  # noqa: UP035
+from typing import Any, cast
 from uuid import UUID
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -23,7 +23,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
     """SDK facade for `Table` entities."""
 
     @classmethod
-    def entity_type(cls) -> Type[Table]:  # noqa: UP006
+    def entity_type(cls) -> type[Table]:
         return Table
 
     @classmethod
@@ -86,14 +86,14 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         return cls._coerce_entity(updated)
 
     @classmethod
-    def add_sample_data(cls, table_id: UuidLike, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
+    def add_sample_data(cls, table_id: UuidLike, sample_data: TableData) -> TableData | None:
         """Attach sample data rows to a table."""
         client = cls._get_client()
         table = cls._build_table_reference(table_id)
         return client.ingest_table_sample_data(table, sample_data)
 
     @classmethod
-    def get_sample_data(cls, table_id: UuidLike) -> Optional[Table]:  # noqa: UP045
+    def get_sample_data(cls, table_id: UuidLike) -> Table | None:
         """Fetch a table including its sample data payload."""
         client = cls._get_client()
         table = cls._build_table_reference(table_id)

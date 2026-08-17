@@ -15,7 +15,6 @@ Validate workflow configs and filters
 
 import unittest
 import uuid
-from typing import List  # noqa: UP035
 
 from metadata.data_quality.api.models import TableAndTests  # noqa: TC001
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -251,7 +250,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         table: Table = workflow.source._get_table_entity()
         table_and_tests: Either[TableAndTests] = list(workflow.source._process_table_suite(table=table))[0]  # noqa: RUF015
 
-        test_cases: List[TestCase] = workflow.steps[0].get_test_cases(  # noqa: UP006
+        test_cases: list[TestCase] = workflow.steps[0].get_test_cases(
             test_cases=table_and_tests.right.test_cases,
             table_fqn=self.table_with_suite.fullyQualifiedName.root,
         )

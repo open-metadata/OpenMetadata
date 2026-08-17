@@ -13,7 +13,7 @@ Cassandra source methods.
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
@@ -51,14 +51,14 @@ class CassandraSource(CommonNoSQLSource):
         self.cassandra = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CassandraConnection = config.serviceConnection.root.config
         if not isinstance(connection, CassandraConnection):
             raise InvalidSourceException(f"Expected CassandraConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -67,7 +67,7 @@ class CassandraSource(CommonNoSQLSource):
         try:
             schema_names = [row.keyspace_name for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACES)]
         except Exception as exp:
-            logger.debug(f"Failed to list keyspace names: {exp}")
+            logger.debug(f"Failed to list keyspace names: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return schema_names
@@ -84,7 +84,7 @@ class CassandraSource(CommonNoSQLSource):
                 for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACE_TABLES, [schema_name])
             ]
         except Exception as exp:
-            logger.debug(f"Failed to list table names for schema [{schema_name}]: {exp}")
+            logger.debug(f"Failed to list table names for schema [{schema_name}]: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return tables
@@ -101,17 +101,17 @@ class CassandraSource(CommonNoSQLSource):
                 for row in self.cassandra.execute(CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS, [schema_name])
             ]
         except Exception as exp:
-            logger.debug(f"Failed to list materialized view names for schema [{schema_name}]: {exp}")
+            logger.debug(f"Failed to list materialized view names for schema [{schema_name}]: {exp}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return materialized_views
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:  # noqa: UP006
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         try:
             data = self.cassandra.execute(CASSANDRA_GET_TABLE_COLUMNS, [schema_name, table_name])
             return [CassandraColumnParser.parse(field=field) for field in data]
         except Exception as opf:
-            logger.debug(f"Failed to read table [{table_name}]: {opf}")
+            logger.debug(f"Failed to read table [{table_name}]: {opf}")  # noqa: G004
             logger.debug(traceback.format_exc())
 
         return []

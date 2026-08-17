@@ -15,7 +15,6 @@ OpenMetadata Airflow Lineage Operator
 
 import logging
 import traceback
-from typing import List  # noqa: UP035
 
 from airflow.models.baseoperator import BaseOperator
 from airflow.sdk.definitions.context import Context
@@ -65,9 +64,9 @@ class OpenMetadataLineageOperator(BaseOperator):
         and push it to OpenMetadata using the Python Client.
         """
         try:
-            xlet_list: List[XLets] = get_xlets_from_dag(self.dag)  # noqa: UP006
+            xlet_list: list[XLets] = get_xlets_from_dag(self.dag)
 
-            logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")
+            logger.info(f"Extracted the following XLet data from the DAG: {xlet_list}")  # noqa: G004
 
             metadata = OpenMetadata(self.server_config)
             runner = AirflowLineageRunner(
@@ -82,5 +81,5 @@ class OpenMetadataLineageOperator(BaseOperator):
             runner.execute()
         except Exception as err:
             logger.info(traceback.format_exc())
-            logger.error(f"Error executing the lineage runner - {err}")
+            logger.error(f"Error executing the lineage runner - {err}")  # noqa: G004
             raise err  # noqa: TRY201

@@ -14,7 +14,6 @@ Class defining the interface for the profiler source
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -32,7 +31,7 @@ class ProfilerSourceInterface(ABC):
 
     @property
     @abstractmethod
-    def interface(self) -> Optional[ProfilerInterface]:  # noqa: UP045
+    def interface(self) -> ProfilerInterface | None:
         """Interface property"""
         raise NotImplementedError
 
