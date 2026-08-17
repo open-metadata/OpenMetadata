@@ -494,15 +494,18 @@ export const AuthProvider = ({
     }
   };
 
-  useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
+  // Renewer registration for TokenService moved into each authenticator's
+  // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
+  // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
+  // Auth0Authenticator). The previous ref-deps effect here
+  // (`[authenticatorRef.current?.renewIdToken]`) never re-ran after the
+  // lazy authenticator finished loading because ref changes don't
+  // schedule re-renders — so on cold-load the first 401 raced ahead of
+  // the registration and TokenService.refreshToken() returned null
+  // without ever firing the `/api/v1/auth/refresh` HTTP call.
+  // `updateRefreshSuccessCallback(startTokenExpiryTimer)` is registered
+  // from the main mount effect below because that timer callback lives
+  // in this component's closure.
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness
@@ -918,6 +921,10 @@ export const AuthProvider = ({
     fetchAuthConfig();
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
+    // Timer restart after a successful cross-tab refresh — the callback
+    // itself lives in this component's closure, so we register it here
+    // rather than from each authenticator.
+    tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
 
     return cleanup;
   }, []);
