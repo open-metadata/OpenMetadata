@@ -59,3 +59,10 @@ export interface LogViewerModalBaseProps {
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps;
+
+/** The geometry the log viewer reports on every scroll. */
+export interface LogViewerScrollValues {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}

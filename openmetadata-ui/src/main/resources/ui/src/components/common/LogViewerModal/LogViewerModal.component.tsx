@@ -44,14 +44,17 @@ import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
-import { LogViewerModalProps } from './LogViewerModal.interface';
+import {
+  LogViewerModalProps,
+  LogViewerScrollValues,
+} from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
 import LogViewerToolbarToggle from './LogViewerToolbarToggle.component';
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 40;
 
 /** Keys that move the view back through the log rather than along with it. */
-const SCROLL_BACK_KEYS = ['ArrowUp', 'PageUp', 'Home'];
+const SCROLL_BACK_KEYS = new Set(['ArrowUp', 'PageUp', 'Home']);
 
 /**
  * Movement below this is jitter, not the user going anywhere. Used to tell a
@@ -89,6 +92,43 @@ const USER_PAUSE_GRACE_MS = 1000;
  * re-pins it.
  */
 const UPWARD_MOVES_TO_TAKE_CONTROL = 2;
+
+interface ScrollFacts {
+  isBottom: boolean;
+  fillsViewport: boolean;
+  userMovedTheView: boolean;
+  movedAwayFromTail: boolean;
+}
+
+/**
+ * What a single scroll report says, before any decision is taken on it.
+ *
+ * `userMovedTheView` is false when the offset stands still: the tail moved away
+ * from the view rather than the other way round, which is what an append or a
+ * wrap/full-screen relayout does. `movedAwayFromTail` is the stricter case of the
+ * view also leaving the tail — a relayout emits long runs of offset corrections
+ * (12 in a row on one measured wrap toggle) that track the tail as the content
+ * shrinks, and those are the viewer keeping up, not the user leaving.
+ */
+const readScrollFacts = (
+  { scrollTop, scrollHeight, clientHeight }: LogViewerScrollValues,
+  previousScrollTop: number
+): ScrollFacts => {
+  const isBottom =
+    Math.abs(clientHeight + scrollTop - scrollHeight) <
+    SCROLL_BOTTOM_THRESHOLD_PX;
+  const isFirstReport = previousScrollTop < 0;
+  const movedBy = isFirstReport ? 0 : previousScrollTop - scrollTop;
+
+  return {
+    isBottom,
+    fillsViewport: scrollHeight > clientHeight,
+    userMovedTheView:
+      isFirstReport || Math.abs(movedBy) > SCROLL_MOVED_THRESHOLD_PX,
+    movedAwayFromTail:
+      !isBottom && !isFirstReport && movedBy > SCROLL_MOVED_THRESHOLD_PX,
+  };
+};
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
@@ -206,94 +246,93 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     }
   }, []);
 
+  /**
+   * Whether this scroll still belongs to the viewer rather than the user. A jump
+   * to the tail or a relayout moves the offset too, so both claim a short window —
+   * but anything that keeps pulling away from the tail outranks the claim, which
+   * the catch-up itself never does: it only ever moves back down.
+   */
+  const isViewerScroll = useCallback((facts: ScrollFacts) => {
+    // The catch-up lands back at the tail between a slow drag's steps. Counting
+    // that as "not pulling away" would reset the run every time and a drag the
+    // catch-up keeps beating could never outrun the claim.
+    const catchUpLanded = facts.isBottom && caughtUpRef.current;
+    caughtUpRef.current = false;
+
+    if (facts.movedAwayFromTail) {
+      upwardMovesRef.current += 1;
+    } else if (!catchUpLanded) {
+      upwardMovesRef.current = 0;
+    }
+
+    if (upwardMovesRef.current >= UPWARD_MOVES_TO_TAKE_CONTROL) {
+      viewerScrollAtRef.current = 0;
+    }
+
+    return Date.now() - viewerScrollAtRef.current < VIEWER_SCROLL_GRACE_MS;
+  }, []);
+
+  /**
+   * Scrolling away from the tail hands control back to the user; scrolling back to
+   * it resumes following.
+   */
+  const applyUserScrollIntent = useCallback(
+    (isBottom: boolean) => {
+      const justPausedByUser =
+        Date.now() - userPausedAtRef.current < USER_PAUSE_GRACE_MS;
+
+      // A landing at the tail just after the user paused is the library restoring
+      // its own offset, not the user scrolling back down.
+      if (isBottom && justPausedByUser) {
+        return;
+      }
+
+      if (!isBottom) {
+        userPausedAtRef.current = Date.now();
+      }
+
+      setFollow(isBottom);
+    },
+    [setFollow]
+  );
+
   const handleScroll = useCallback(
-    (scrollValues: {
-      scrollTop: number;
-      scrollHeight: number;
-      clientHeight: number;
-    }) => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollValues;
-      const isBottom =
-        Math.abs(clientHeight + scrollTop - scrollHeight) <
-        SCROLL_BOTTOM_THRESHOLD_PX;
+    (scrollValues: LogViewerScrollValues) => {
+      const facts = readScrollFacts(scrollValues, lastScrollTopRef.current);
+      lastScrollTopRef.current = scrollValues.scrollTop;
 
-      const previousScrollTop = lastScrollTopRef.current;
-      lastScrollTopRef.current = scrollTop;
-
-      // The offset standing still while the view is no longer at the tail means
-      // the tail moved away from the user, not the other way round: an append, or
-      // a wrap/full-screen relayout that re-measured every row. Following must
-      // survive that, so catch up instead of reading it as intent.
-      const userMovedTheView =
-        previousScrollTop < 0 ||
-        Math.abs(scrollTop - previousScrollTop) > SCROLL_MOVED_THRESHOLD_PX;
-
-      // Only movement that also leaves the tail counts as pulling away from it. A
-      // relayout emits long runs of downward offset corrections as rows are
-      // re-measured — 12 in a row on one measured wrap toggle — but they track the
-      // tail as the content shrinks, so they are the viewer keeping up, not the
-      // user leaving.
-      const movedAwayFromTail =
-        !isBottom &&
-        previousScrollTop >= 0 &&
-        previousScrollTop - scrollTop > SCROLL_MOVED_THRESHOLD_PX;
-
-      // The catch-up lands back at the tail between a slow drag's steps. Counting
-      // that as "not pulling away" would reset the run every time and the drag
-      // could never outrun the claim, so a landing the viewer caused is skipped
-      // rather than treated as the user settling at the tail.
-      const catchUpLanded = isBottom && caughtUpRef.current;
-      caughtUpRef.current = false;
-
-      if (movedAwayFromTail) {
-        upwardMovesRef.current += 1;
-      } else if (!catchUpLanded) {
-        upwardMovesRef.current = 0;
-      }
-
-      // Something is pulling away from the tail against the catch-up, which the
-      // catch-up itself never does — it only ever moves back down. Whatever it is
-      // outranks the viewer's claim, so no pointer event is needed to notice it.
-      if (upwardMovesRef.current >= UPWARD_MOVES_TO_TAKE_CONTROL) {
-        viewerScrollAtRef.current = 0;
-      }
-
-      // A jump to the tail or a relayout moves the offset too, but the viewer
-      // moved it — not the user.
-      const isViewerScroll =
-        Date.now() - viewerScrollAtRef.current < VIEWER_SCROLL_GRACE_MS;
+      const viewerOwnsThisScroll = isViewerScroll(facts);
 
       if (
         followTailRef.current &&
-        !isBottom &&
-        (!userMovedTheView || isViewerScroll)
+        !facts.isBottom &&
+        (!facts.userMovedTheView || viewerOwnsThisScroll)
       ) {
         caughtUpRef.current = true;
         scrollToEnd();
-      } else if (isLive && scrollHeight > clientHeight && userMovedTheView) {
-        const justPausedByUser =
-          Date.now() - userPausedAtRef.current < USER_PAUSE_GRACE_MS;
-
-        // Scrolling away from the tail hands control back to the user; scrolling
-        // back to it resumes following. Content that does not fill the viewport
-        // is trivially "at the bottom" and must not drive the state, or follow
-        // flips before the first screen is filled. A landing at the tail just
-        // after the user paused is the library restoring its own offset, not the
-        // user scrolling back down, so it must not resume.
-        if ((!isBottom || !justPausedByUser) && !isViewerScroll) {
-          if (!isBottom) {
-            userPausedAtRef.current = Date.now();
-          }
-
-          setFollow(isBottom);
-        }
+      } else if (
+        isLive &&
+        facts.fillsViewport &&
+        facts.userMovedTheView &&
+        !viewerOwnsThisScroll
+      ) {
+        applyUserScrollIntent(facts.isBottom);
       }
 
-      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
+      if (facts.isBottom && hasMore && !loadingMore && !query && onLoadMore) {
         onLoadMore();
       }
     },
-    [isLive, hasMore, loadingMore, query, onLoadMore, scrollToEnd, setFollow]
+    [
+      isLive,
+      hasMore,
+      loadingMore,
+      query,
+      onLoadMore,
+      scrollToEnd,
+      isViewerScroll,
+      applyUserScrollIntent,
+    ]
   );
 
   const resumeFollowingTail = useCallback(() => {
@@ -360,7 +399,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     };
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (SCROLL_BACK_KEYS.includes(event.key)) {
+      if (SCROLL_BACK_KEYS.has(event.key)) {
         pauseFollow();
       }
     };
