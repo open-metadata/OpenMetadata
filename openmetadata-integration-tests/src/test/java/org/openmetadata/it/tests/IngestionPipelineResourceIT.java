@@ -46,6 +46,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
 import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -1876,5 +1877,28 @@ public class IngestionPipelineResourceIT
 
   private static String encodeSegment(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * Creating an application pipeline reads the app type off `appConfig` to pick a specific create
+   * permission. With no `appConfig` there is no type to read, and that used to escape as a 500
+   * before authorization even ran instead of falling back to the generic create permission.
+   */
+  @Test
+  void test_createApplicationPipelineWithoutAppConfig(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("appNoConfig"))
+            .withPipelineType(PipelineType.APPLICATION)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new ApplicationPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    assertNotNull(pipeline.getId());
+    assertEquals(PipelineType.APPLICATION, pipeline.getPipelineType());
   }
 }

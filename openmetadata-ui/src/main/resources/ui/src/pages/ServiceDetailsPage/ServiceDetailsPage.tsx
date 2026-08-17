@@ -89,6 +89,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
+import { AgentType } from '../../generated/entity/services/ingestionPipelines/agentType';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
@@ -591,7 +592,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
-          pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
+          agentType: AgentType.Metadata,
           limit,
         });
 
