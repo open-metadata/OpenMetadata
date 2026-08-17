@@ -53,8 +53,15 @@ RUN apt-get -qq update \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+  # docker-ce-cli comes from the airflow base and nothing in this image runs it:
+  # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
+  # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
+  # executable, so it reports the full go/stdlib CVE set (CVE-2026-39821 Critical
+  # among them) against every build. Docker's apt repo is not configured here, so
+  # --only-upgrade cannot reach a fixed build; removing it is the only remediation.
+  # Nothing installed depends on it -- verified with apt-get -s purge.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
