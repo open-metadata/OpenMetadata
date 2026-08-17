@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
+  ARTICLES_URL,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -51,7 +51,7 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
-  waitForDraftPersisted,
+  waitForDraftPersisted
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -428,7 +428,7 @@ test.describe('Context Center Articles', () => {
     await readArticleInHierarchy(page, testQuickLink.displayName);
     await scrollHierarchyToNode(page, testQuickLink.displayName);
 
-    const searchInput = await verifyArticleSearch(
+    await verifyArticleSearch(
       page,
       testQuickLink.displayName
     );
@@ -436,8 +436,6 @@ test.describe('Context Center Articles', () => {
       page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
     ).toBeVisible();
 
-    await searchInput.clear();
-    await waitForAllLoadersToDisappear(page);
     await updateQuickLink(page, testQuickLink);
 
     const updatedCard = page.getByTestId(
