@@ -30,7 +30,6 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -47,7 +46,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const persona = new PersonaClass();
-const dbService = new DatabaseServiceClass();
 
 const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
@@ -132,14 +130,12 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await persona.create(apiContext);
-    await dbService.create(apiContext);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await persona.delete(apiContext);
-    await dbService.delete(apiContext);
     await afterAction();
   });
 
@@ -320,68 +316,6 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       });
 
       await deleteRuleByName(page, 'filter-regression-31564');
-    });
-
-    /**
-     * Regression guard for the same hasUnfinishedRule bug, exercising the
-     * async-dropdown (Service Is) path.  Description Contains above uses a
-     * plain text input and therefore cannot catch regressions introduced in
-     * the dropdown-value widget branch (e.g. the value stored in a different
-     * shape, a different key, or async state not yet committed when Save is
-     * clicked).
-     */
-    test('fully-completed Service Is condition allows save', async ({
-      adminPage: page,
-    }) => {
-      await navigateToAIContextTab(page);
-      await openAddRuleDrawer(page);
-      await page
-        .getByTestId('context-rule-name')
-        .fill('service-is-regression-test');
-
-      await test.step('add a condition row', async () => {
-        await page.getByTestId('add-context-condition').click();
-        await page
-          .locator('.rule--field .ant-select')
-          .first()
-          .waitFor({ state: 'visible' });
-      });
-
-      await test.step('select the Service field', async () => {
-        await selectOption(
-          page,
-          page.locator('.rule--field .ant-select').first(),
-          'Service',
-          true
-        );
-      });
-
-      await test.step('select Is operator', async () => {
-        const operatorLocator = page
-          .locator('.rule--operator .ant-select')
-          .first();
-        await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
-        await selectOption(page, operatorLocator, 'Is', false);
-      });
-
-      await test.step('select the test database service from the value dropdown', async () => {
-        const valueSelect = page.locator('.rule--widget .ant-select').first();
-        await valueSelect.waitFor({ state: 'visible' });
-        await selectOption(page, valueSelect, dbService.entity.name, true);
-      });
-
-      await test.step('Save Rule must NOT show the filter error — condition is complete', async () => {
-        await page.getByRole('button', { name: 'Save Rule' }).click();
-        await expect(
-          page.getByTestId('context-rule-filter-error')
-        ).not.toBeVisible();
-      });
-
-      await test.step('rule saves successfully', async () => {
-        await toastNotification(page, /AI context rule saved\./);
-      });
-
-      await deleteRuleByName(page, 'service-is-regression-test');
     });
 
     test('changing entity type clears an incomplete filter and unblocks save', async ({

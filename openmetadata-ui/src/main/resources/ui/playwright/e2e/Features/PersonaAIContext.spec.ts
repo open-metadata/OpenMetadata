@@ -19,7 +19,9 @@ import {
   PersonaContextDefinition,
 } from '../../../src/generated/type/personaContextDefinition';
 import { expect, test } from '../../support/fixtures/userPages';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
   toastNotification,
@@ -31,6 +33,7 @@ import {
 } from '../../utils/persona';
 
 const persona = new PersonaClass();
+const dbService = new DatabaseServiceClass();
 const RULE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
 
@@ -276,6 +279,7 @@ test.describe.serial('Persona AI Context', () => {
       browser
     );
     await persona.create(apiContext);
+    await dbService.create(apiContext);
     await afterAction();
   });
 
@@ -284,6 +288,7 @@ test.describe.serial('Persona AI Context', () => {
       browser
     );
     await persona.delete(apiContext);
+    await dbService.delete(apiContext);
     await afterAction();
   });
 
@@ -1217,5 +1222,126 @@ test.describe.serial('Persona AI Context', () => {
     ).postDataJSON() as ContextRule;
 
     expect(recoveredRule).toMatchObject({ name: 'Recovered rule' });
+  });
+
+  // When "Custom Properties" is chosen as the filter field the rule builder must
+  // load the entity's custom properties and show them in the sub-field selector.
+  // Before the fix, RuleQueryBuilderField never fetched custom properties so the
+  // sub-field dropdown always showed "No data".
+  test('Custom Properties filter sub-fields load instead of showing No data', async ({
+    adminPage,
+  }) => {
+    // Intercept the custom-properties endpoint used by RuleQueryBuilderField on mount
+    // and return a single predictable enum property for "table".
+    await adminPage.route(
+      '**/api/v1/metadata/types/customProperties',
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            table: [
+              {
+                name: 'pw-context-enum-prop',
+                type: 'enum',
+                customPropertyConfig: { config: ['option-a', 'option-b'] },
+              },
+            ],
+          }),
+        });
+      }
+    );
+
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('add-context-condition').click();
+    await adminPage
+      .locator('.rule--field .ant-select')
+      .first()
+      .waitFor({ state: 'visible' });
+
+    await selectOption(
+      adminPage,
+      adminPage.locator('.rule--field .ant-select').first(),
+      'Custom Properties',
+      true
+    );
+
+    // The sub-field selector must appear — click it and verify our mocked property
+    // is listed and "No data" is absent.
+    const subFieldSelect = adminPage
+      .locator('.rule--field .ant-select')
+      .last();
+    await subFieldSelect.click();
+    const dropdown = adminPage.locator('.ant-select-dropdown:visible').first();
+    await dropdown.waitFor({ state: 'visible' });
+    await expect(dropdown).toContainText('pw-context-enum-prop');
+    await expect(dropdown).not.toContainText('No data');
+
+    await adminPage.keyboard.press('Escape');
+  });
+
+  // Regression guard for the hasUnfinishedRule bug exercising the async-dropdown
+  // (Service Is) path. The "Description Contains" test in the spec above uses a
+  // plain text input and cannot catch regressions in the dropdown-value widget
+  // branch (e.g. value stored in a different shape or key).
+  test('fully-completed Service Is condition allows save', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('service-is-regression-test');
+
+    await adminPage.getByTestId('add-context-condition').click();
+    await adminPage
+      .locator('.rule--field .ant-select')
+      .first()
+      .waitFor({ state: 'visible' });
+
+    await selectOption(
+      adminPage,
+      adminPage.locator('.rule--field .ant-select').first(),
+      'Service',
+      true
+    );
+
+    const operatorLocator = adminPage
+      .locator('.rule--operator .ant-select')
+      .first();
+    await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
+    await selectOption(adminPage, operatorLocator, 'Is', false);
+
+    const valueSelect = adminPage
+      .locator('.rule--widget .ant-select')
+      .first();
+    await valueSelect.waitFor({ state: 'visible' });
+    await selectOption(adminPage, valueSelect, dbService.entity.name, true);
+
+    const saveRequest = adminPage.waitForRequest(
+      (req) =>
+        req.url().includes('/aiContext/rules') &&
+        req.method() === 'POST' &&
+        req.postDataJSON()?.name === 'service-is-regression-test'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    // The filter error must NOT appear — the condition is fully complete.
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).not.toBeVisible();
+    await saveRequest;
   });
 });
