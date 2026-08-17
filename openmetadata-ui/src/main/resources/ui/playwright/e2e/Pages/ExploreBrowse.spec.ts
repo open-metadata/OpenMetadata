@@ -282,6 +282,48 @@ test.describe(
       );
     });
 
+    test('the last breadcrumb on a column result links to its parent table', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const column = table.entityResponseData.columns?.[0];
+      if (!column?.fullyQualifiedName) {
+        throw new Error('The table fixture did not return its first column');
+      }
+
+      const searchRes = page.waitForResponse('/api/v1/search/query?*');
+      await page.getByTestId('searchBox').fill(column.name);
+      await page.getByTestId('searchBox').press('Enter');
+      await searchRes;
+      await waitForAllLoadersToDisappear(page);
+
+      const card = page.getByTestId(
+        `table-data-card_${column.fullyQualifiedName}`
+      );
+      const tableLink = card
+        .getByRole('list', { name: 'Breadcrumb' })
+        .getByRole('listitem')
+        .last()
+        .getByRole('link');
+
+      await expect(tableLink).toHaveAttribute(
+        'href',
+        `/table/${getEncodedFqn(
+          table.entityResponseData.fullyQualifiedName ?? ''
+        )}`
+      );
+
+      await tableLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/table/${getEncodedFqn(
+            table.entityResponseData.fullyQualifiedName ?? ''
+          )}$`
+        )
+      );
+    });
+
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
       page,
     }) => {
