@@ -253,11 +253,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return toPipelineStatuses(jsonMap.getOrDefault(fqnHash, List.of()));
   }
 
-  private static List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
-    return jsonValues.stream()
-        .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
-        .filter(Objects::nonNull)
-        .toList();
+  /**
+   * The single conversion point for the `pipelineStatuses` entity field, which both the single-entity
+   * and the bulk read go through, so the stale-queued cutoff has to be applied here as well as in
+   * {@link #listPipelineStatus} or the Agents page would keep showing a run that never started.
+   */
+  private List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
+    List<PipelineStatus> pipelineStatusList =
+        jsonValues.stream()
+            .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
+            .filter(Objects::nonNull)
+            .toList();
+    return dropStaleQueuedStatuses(pipelineStatusList);
   }
 
   public static PipelineStatus latestPipelineStatus(IngestionPipeline ingestionPipeline) {

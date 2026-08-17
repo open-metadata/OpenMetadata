@@ -60,6 +60,7 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -1878,6 +1879,87 @@ public class IngestionPipelineResourceIT
   private static String encodeSegment(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
   }
+
+  /**
+   * A run the orchestrator accepts but never starts leaves a `queued` status behind that no worker
+   * will ever supersede, so it is hidden once older than `queuedStatusTimeoutSeconds`. That cutoff
+   * has to hold for the `pipelineStatuses` entity field too, not just the pipelineStatus endpoint —
+   * the Agents page reads the field, and shows the newest entry as the pipeline's current state.
+   */
+  @Test
+  void test_staleQueuedStatusIsHiddenFromThePipelineStatusesField(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createRequest(ns.prefix("staleQueued"), ns));
+    String fqn = pipeline.getFullyQualifiedName();
+    String serviceFqn = pipeline.getService().getFullyQualifiedName();
+    long twoHoursAgo = System.currentTimeMillis() - Duration.ofHours(2).toMillis();
+    long ninetyMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(90).toMillis();
+
+    addStatus(fqn, "stale-queued-run", PipelineStatusType.QUEUED, twoHoursAgo);
+    addStatus(fqn, "finished-run", PipelineStatusType.SUCCESS, ninetyMinutesAgo);
+
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+                    PipelineStatusList.class)
+                .getData()),
+        "pipelineStatus endpoint must hide the stale queued run");
+
+    // setFields path: single entity read with the field requested
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/name/"
+                        + encodeSegment(fqn)
+                        + "?fields=pipelineStatuses",
+                    IngestionPipeline.class)
+                .getPipelineStatuses()),
+        "pipelineStatuses field must hide it too, or the Agents page shows Queued forever");
+
+    // setFieldsInBulk path: the list call the Agents page actually makes
+    IngestionPipeline fromList =
+        get(
+                "/v1/services/ingestionPipelines?limit=100&fields=pipelineStatuses&service="
+                    + encodeSegment(serviceFqn),
+                IngestionPipelineList.class)
+            .getData()
+            .stream()
+            .filter(p -> fqn.equals(p.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("pipeline missing from the list response"));
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(fromList.getPipelineStatuses()),
+        "the bulk field fetch must apply the same cutoff as the single-entity read");
+  }
+
+  private static List<String> runIdsOf(List<PipelineStatus> statuses) {
+    return statuses == null ? List.of() : statuses.stream().map(PipelineStatus::getRunId).toList();
+  }
+
+  private static <T> T get(String path, Class<T> type) {
+    return SdkClients.adminClient().getHttpClient().execute(HttpMethod.GET, path, null, type);
+  }
+
+  private void addStatus(String fqn, String runId, PipelineStatusType state, long timestamp) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+            new PipelineStatus()
+                .withRunId(runId)
+                .withPipelineState(state)
+                .withStartDate(timestamp)
+                .withTimestamp(timestamp),
+            IngestionPipeline.class);
+  }
+
+  static class PipelineStatusList extends ResultList<PipelineStatus> {}
+
+  static class IngestionPipelineList extends ResultList<IngestionPipeline> {}
 
   /**
    * Creating an application pipeline reads the app type off `appConfig` to pick a specific create
