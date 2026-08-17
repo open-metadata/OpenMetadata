@@ -821,6 +821,29 @@ describe('LogViewerModal — auto-follow', () => {
     );
   });
 
+  it('keeps following when its own catch-up reports an offset short of the tail', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    act(() => mockLazyLog.onScroll?.(atTail));
+
+    // An append moves the tail away, the viewer catches up, and the jump reports
+    // an intermediate offset on the way. That is the viewer moving the view, not
+    // the user leaving it.
+    act(() => mockLazyLog.onScroll?.(tailMovedAway));
+    act(() =>
+      mockLazyLog.onScroll?.({
+        scrollTop: 1200,
+        scrollHeight: 2000,
+        clientHeight: 400,
+      })
+    );
+
+    expect(screen.getByTestId('log-viewer-follow')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
   it('does not treat an earlier resume as consent after the user pauses again', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
     const body = screen.getByTestId('log-viewer-body');

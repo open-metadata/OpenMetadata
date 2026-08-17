@@ -197,7 +197,12 @@ export const useLogAutoFollow = ({
         !facts.isBottom &&
         (!facts.userMovedTheView || viewerOwnsThisScroll)
       ) {
+        // Mark it before it happens: the catch-up is a jump, and a long jump
+        // reports intermediate offsets on the way that would otherwise read as the
+        // user leaving the tail. Fast machines land straight on the bottom and
+        // never show them, which is why this only ever failed on CI.
         caughtUpRef.current = true;
+        viewerScrollAtRef.current = Date.now();
         scrollToEnd();
       } else if (
         isLive &&
