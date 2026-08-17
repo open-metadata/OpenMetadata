@@ -419,9 +419,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions --
-                  Breadcrumbs owns interaction semantics. This wrapper stops card bubbling
-                  because React Aria can filter event props passed through Breadcrumbs. */}
+              {/* Own the event boundary here because React Aria may filter event
+                  props passed through Breadcrumbs; crumb clicks must not open the card. */}
               <div
                 className="tw:min-w-0 tw:flex-1"
                 onClick={(event) => event.stopPropagation()}
