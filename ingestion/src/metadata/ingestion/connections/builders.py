@@ -89,23 +89,40 @@ def create_generic_db_connection(
     Returns:
         SQLAlchemy Engine
     """
-    engine = create_engine(
-        get_connection_url_fn(connection),
-        connect_args=get_connection_args_fn(connection),
-        poolclass=QueuePool,
-        pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
-        echo=False,
-        max_overflow=-1,
-        **kwargs,
-    )
+    url = get_connection_url_fn(connection)
+    connect_args = get_connection_args_fn(connection)
+
+    def build_engine(**extra) -> Engine:
+        return create_engine(
+            url,
+            connect_args=connect_args,
+            poolclass=QueuePool,
+            pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
+            echo=False,
+            max_overflow=-1,
+            **extra,
+            **kwargs,
+        )
+
+    engine = build_engine()
 
     # Read-only metadata/profiler ingestion must not hold a transaction open for
     # the whole run. On Redshift/Postgres that pins AccessShareLock on every
     # crawled table and blocks other users' DDL for hours (issue #29092).
     # AUTOCOMMIT releases locks after each statement. Skip dialects that do not
     # support it (non-transactional engines do not hold these locks anyway).
+    #
+    # It has to be a create_engine kwarg rather than engine.update_execution_options:
+    # only the kwarg records the level on the dialect, and that is what SQLAlchemy
+    # restores to when a connection returns to the pool. Supplied as an execution
+    # option that field stays unset and the restore falls back to the dialect's
+    # default_isolation_level, which Dialect.initialize leaves as None on any dialect
+    # that cannot read its level back (Azure Synapse cannot query sys.dm_exec_sessions),
+    # so releasing the connection asserts in reset_isolation_level. Dialect support can
+    # only be probed once the engine has resolved it, and building an engine opens no
+    # connection, so discarding the first one costs nothing.
     if "isolation_level" not in kwargs and _dialect_supports_autocommit(engine.dialect):
-        engine.update_execution_options(isolation_level="AUTOCOMMIT")
+        engine = build_engine(isolation_level="AUTOCOMMIT")
 
     attach_query_tracker(engine)
 
