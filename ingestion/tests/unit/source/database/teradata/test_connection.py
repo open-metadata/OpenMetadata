@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.teradata.connection import (
+    TERADATA_DEFAULT_PORT,
     TERADATA_ERRORS,
     TeradataChecks,
     TeradataConnection,
@@ -104,6 +105,12 @@ _BAD_CREDENTIALS = (8017, "28000", "The UserId, Password or Account is invalid."
 _DATABASE_NOT_FOUND = (3802, "42S02", "Database 'nope_db' does not exist.")
 _OBJECT_NOT_FOUND = (3807, "42S02", "Object 'nope_tbl' does not exist.")
 _NO_PRIVILEGE = (3523, "42000", "The user does not have SELECT access to dbc.tablesvx.")
+# Captured from a live 20.0 system against an unresolvable hostname.
+_HOSTNAME_LOOKUP_FAILED = (
+    493,
+    "08000",
+    "Hostname lookup failed for testenv-vsigiyl08pyh5ml.env.trial.teradata.com",
+)
 
 
 def test_bad_credentials_are_classified_as_auth():
@@ -137,6 +144,25 @@ def test_auth_outranks_a_code_rule_when_both_could_match():
     # auth - rule order is the only thing that decides this.
     error = _teradata_error(3802, "28000", "The UserId, Password or Account is invalid.")
     assert TERADATA_ERRORS.classify(error).title == "Authentication failed"
+
+
+def test_hostname_lookup_failure_is_classified():
+    # teradatasql is a Go driver: it resolves the hostname itself and reports the
+    # failure as its own OperationalError, with no Python socket exception in the
+    # chain for NETWORK_ERRORS to match on. Only the code rule catches this.
+    assert TERADATA_ERRORS.classify(_teradata_error(*_HOSTNAME_LOOKUP_FAILED)).title == "Host could not be resolved"
+
+
+def test_another_connection_class_failure_falls_back_to_the_generic_diagnosis():
+    error = _teradata_error(301, "08000", "Some other connection failure.")
+    assert TERADATA_ERRORS.classify(error).title == "Cannot connect to the Teradata system"
+
+
+def test_the_hostname_rule_outranks_the_generic_connection_rule():
+    # Both match Error 493's message; the sharper wording has to win.
+    assert TERADATA_ERRORS.classify(_teradata_error(*_HOSTNAME_LOOKUP_FAILED)).title != (
+        "Cannot connect to the Teradata system"
+    )
 
 
 def test_network_errors_classify_through_including():
@@ -284,6 +310,37 @@ def test_an_unclassified_failure_still_reports_its_raw_error_log():
     assert gate.passed is False
     assert gate.diagnosis is None
     assert "something we have never seen" in gate.errorLog
+
+
+def _probe_target(url_host: str, url_port: int | None) -> tuple[str, int]:
+    """The host:port check_access actually probes for a given engine URL.
+
+    The stubbed probe raises, so the check stops there rather than going on to
+    run SELECT 1 against an engine that only exists to carry a URL.
+    """
+    client = MagicMock()
+    client.url.host = url_host
+    client.url.port = url_port
+    with (
+        patch(
+            "metadata.ingestion.source.database.teradata.connection.probe_or_fail",
+            side_effect=RuntimeError("probe reached"),
+        ) as mock_probe,
+        pytest.raises(RuntimeError),
+    ):
+        _checks(client).check_access()
+    return mock_probe.call_args.args
+
+
+def test_the_preflight_uses_the_port_from_host_port_when_one_is_given():
+    assert _probe_target("td.example.com", 1125) == ("td.example.com", 1125)
+
+
+def test_the_preflight_falls_back_to_teradatas_default_port():
+    # hostPort is commonly a bare hostname. The shared ping() skips the preflight
+    # entirely in that case, which let a DNS failure reach the Go driver and come
+    # back undiagnosable - so the probe defaults to the port the driver dials.
+    assert _probe_target("td.example.com", None) == ("td.example.com", TERADATA_DEFAULT_PORT)
 
 
 def test_check_access_reports_an_unreachable_host_as_a_network_failure():

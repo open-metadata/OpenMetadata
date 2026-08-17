@@ -29,12 +29,11 @@ from metadata.core.connections.test_connection.checks.database import (
     list_schemas,
     list_tables,
     list_views,
-    ping,
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.classifier import chain_text
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS, probe_or_fail
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
     TeradataConnection as TeradataConnectionConfig,
 )
@@ -65,6 +64,10 @@ if TYPE_CHECKING:
 # locale-independent, unlike the message that follows them.
 _ERROR_CODE = re.compile(r"\[error (\d+)\]")
 _SQL_STATE = re.compile(r"\[sqlstate ([0-9a-z]+)\]")
+
+# The port teradatasql dials when hostPort carries none. The preflight has to
+# probe the same one, or it silently checks the wrong door.
+TERADATA_DEFAULT_PORT = 1025
 
 
 def _codes(pattern: re.Pattern[str], error: BaseException) -> set[str]:
@@ -98,6 +101,23 @@ TERADATA_ERRORS = ErrorPack(
         fix="Check the username, password and account, and that the configured logmech "
         "(TD2, LDAP, KRB5, ...) is the one this system expects.",
     ),
+    # teradatasql is a Go driver behind cgo, so a network failure it detects
+    # itself never surfaces as a Python socket exception - NETWORK_ERRORS matches
+    # by exception type and is structurally blind to it. The preflight in
+    # check_access catches most of these first, in Python; these two rules are the
+    # backstop for whatever still reaches the driver. SQLState 08000 is the
+    # SQL-standard "connection exception" class, so the generic rule stays true
+    # for any member of it; Error 493 is the observed hostname-lookup case and is
+    # ordered first to keep the sharper wording.
+    when(_error(493)).diagnose(
+        "Host could not be resolved",
+        fix="Check hostPort for typos and that DNS can resolve it from where ingestion runs.",
+    ),
+    when(_sqlstate("08000")).diagnose(
+        "Cannot connect to the Teradata system",
+        fix="Check hostPort, that the system is running, and that the network, firewall or "
+        "IP allow-list permits the connection from where ingestion runs.",
+    ),
     when(_error(3802)).diagnose(
         "Database not found",
         fix="Verify the referenced database exists and that the user can see it.",
@@ -128,7 +148,17 @@ class TeradataChecks:
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self._db.client)
+        # Not the shared ``ping``: it derives the probe target from the URL and
+        # skips the preflight when no port is present. Teradata's hostPort is
+        # commonly a bare hostname, so that skip is the normal case, and the DNS
+        # or firewall failure then lands inside the Go driver - which reports it
+        # as an opaque OperationalError carrying no socket exception for the
+        # error pack to match on. Probing the port the driver would dial keeps
+        # the failure in Python, where it is diagnosed properly and fails fast.
+        client = self._db.client
+        if client.url.host:
+            probe_or_fail(client.url.host, client.url.port or TERADATA_DEFAULT_PORT)
+        return run_sql(client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
