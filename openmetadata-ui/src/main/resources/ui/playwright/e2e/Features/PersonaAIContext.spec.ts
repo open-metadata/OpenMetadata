@@ -1344,4 +1344,361 @@ test.describe.serial('Persona AI Context', () => {
     ).not.toBeVisible();
     await saveRequest;
   });
+
+  // Verifies that unchecking a section checkbox removes it from the sections
+  // array in the POST body. The default sections for Table include Description;
+  // this test unchecks it and confirms the payload omits it.
+  test('unchecking a section removes it from the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('sections-payload-test');
+
+    const descriptionCheckbox = adminPage.getByRole('checkbox', {
+      name: 'Description',
+    });
+    await descriptionCheckbox.waitFor({ state: 'visible' });
+    await expect(descriptionCheckbox).toBeChecked();
+    await descriptionCheckbox.uncheck();
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    expect(createdRule.sections ?? []).not.toContain(ContextSection.Description);
+  });
+
+  test('rule description is included in the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('description-payload-test');
+    await adminPage
+      .getByTestId('context-rule-description')
+      .locator('textarea')
+      .fill('Guides the AI toward operational metrics only');
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    expect(createdRule.description).toBe(
+      'Guides the AI toward operational metrics only'
+    );
+  });
+
+  test('View in Explore link href updates when entity type changes', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+
+    const exploreLink = adminPage.getByRole('link', { name: 'View in Explore' });
+    // Default entity type is Table.
+    await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
+
+    // Switch to Glossary Term — the explore tab path must change away from tables.
+    await adminPage.getByTestId('context-rule-entity-type').click();
+    await adminPage
+      .getByRole('listbox')
+      .getByText('Glossary Term', { exact: true })
+      .click();
+    await expect(exploreLink).not.toHaveAttribute('href', /\/explore\/tables/);
+    await expect(exploreLink).toHaveAttribute('href', /\/explore\//);
+
+    await adminPage.keyboard.press('Escape');
+  });
+
+  test('preview modal closes via the Close button', async ({ adminPage }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('preview-persona-context').click();
+    const modal = adminPage.getByTestId('persona-context-preview-modal');
+    await expect(modal).toBeVisible();
+
+    // CloseButton renders with aria-label="Close" (from @openmetadata/ui-core-components).
+    await modal.getByRole('button', { name: 'Close' }).click();
+    await expect(modal).toBeHidden();
+  });
+
+  // The STALE and FAILED cache states require overriding the main aiContext GET
+  // while leaving the rest of the mock (rules, document, preview) intact.
+  // Playwright evaluates routes in LIFO order so registering the override AFTER
+  // mockPersonaContextApi means it is checked first; route.fallback() hands off
+  // non-matching requests to the underlying mock.
+
+  test('stale cache state shows the stale badge on the settings card', async ({
+    adminPage,
+  }) => {
+    const personaId = persona.responseData.id as string;
+    const basePath = `/api/v1/personas/${personaId}/aiContext`;
+
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Stale cache rule',
+        sections: [ContextSection.Description],
+      },
+    ]);
+
+    // Override only the main GET — all other aiContext requests fall through
+    // to the mock registered above.
+    await adminPage.route(`**${basePath}`, async (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          body: JSON.stringify({
+            cacheState: CacheState.Stale,
+            cacheTtlMinutes: 30,
+            characterBudget: 400000,
+            enabled: true,
+            lastGeneratedAt: Date.now(),
+            rules: [
+              {
+                entityType: EntityType.TABLE,
+                id: RULE_ID,
+                matchedCount: 142,
+                maxAssets: 50,
+                name: 'Stale cache rule',
+                sections: [ContextSection.Description],
+              },
+            ],
+          }),
+          contentType: 'application/json',
+          status: 200,
+        });
+      }
+
+      return route.fallback();
+    });
+
+    await openPersonaContext(adminPage);
+
+    await expect(
+      adminPage
+        .getByTestId('persona-ai-context-settings-card')
+        .getByText('stale', { exact: true })
+    ).toBeVisible();
+  });
+
+  test('failed cache state shows the failed badge and the compilation error', async ({
+    adminPage,
+  }) => {
+    const personaId = persona.responseData.id as string;
+    const basePath = `/api/v1/personas/${personaId}/aiContext`;
+    const ERROR_MESSAGE = 'Query timed out after 30 s';
+
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Failing rule',
+        sections: [ContextSection.Description],
+      },
+    ]);
+
+    await adminPage.route(`**${basePath}`, async (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          body: JSON.stringify({
+            cacheState: CacheState.Failed,
+            cacheTtlMinutes: 30,
+            characterBudget: 400000,
+            enabled: true,
+            lastError: ERROR_MESSAGE,
+            rules: [
+              {
+                entityType: EntityType.TABLE,
+                id: RULE_ID,
+                matchedCount: 142,
+                maxAssets: 50,
+                name: 'Failing rule',
+                sections: [ContextSection.Description],
+              },
+            ],
+          }),
+          contentType: 'application/json',
+          status: 200,
+        });
+      }
+
+      return route.fallback();
+    });
+
+    await openPersonaContext(adminPage);
+
+    const settingsCard = adminPage.getByTestId(
+      'persona-ai-context-settings-card'
+    );
+    await expect(settingsCard.getByText('failed', { exact: true })).toBeVisible();
+    await expect(settingsCard.getByText(ERROR_MESSAGE)).toBeVisible();
+  });
+
+  test('closing the edit drawer without saving leaves the rule card unchanged', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Rule to keep unchanged',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('edit-context-rule').click();
+    await expect(adminPage.getByTestId('form-heading')).toContainText(
+      'Edit Rule'
+    );
+
+    // Modify the name but do NOT save.
+    await adminPage.getByTestId('context-rule-name').clear();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('This change must be discarded');
+    await adminPage.keyboard.press('Escape');
+
+    // Original name still visible; the modified name must be absent.
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'Rule to keep unchanged' })
+    ).toBeVisible();
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'This change must be discarded' })
+    ).toHaveCount(0);
+  });
+
+  test('rule card displays the matched asset count returned by the server', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 57,
+        maxAssets: 50,
+        name: 'Count display rule',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await openPersonaContext(adminPage);
+
+    const ruleCard = adminPage
+      .getByTestId('context-rule-card')
+      .filter({ hasText: 'Count display rule' });
+    await expect(ruleCard).toBeVisible();
+    // Badge text: "{{count}} {{entity}} matched" → e.g. "57 Tables matched"
+    await expect(ruleCard).toContainText('57');
+  });
+
+  // Adds two Description Contains conditions joined by OR, saves the rule, and
+  // verifies both search terms appear in the serialized queryFilter payload.
+  test('compound OR conditions are serialized into the save payload', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('or-compound-rule');
+
+    // Add first condition and fill it completely before adding the second.
+    await adminPage.getByTestId('add-context-condition').click();
+    const firstField = adminPage.locator('.rule--field .ant-select').first();
+    await firstField.waitFor({ state: 'visible' });
+    await selectOption(adminPage, firstField, 'Description', true);
+
+    const firstOp = adminPage.locator('.rule--operator .ant-select').first();
+    await firstOp.waitFor({ state: 'visible', timeout: 5000 });
+    await selectOption(adminPage, firstOp, 'Contains', false);
+    await adminPage
+      .locator('.rule--widget--TEXT input[type="text"]')
+      .first()
+      .fill('alpha');
+
+    // Switch the group connector to OR — the query builder adds a second empty
+    // condition row so the group has at least two members.
+    const orButton = adminPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Or', exact: true });
+    await expect(orButton).toBeVisible();
+    await orButton.click();
+
+    // Fill second condition: Description Contains "beta"
+    const secondField = adminPage.locator('.rule--field .ant-select').last();
+    await secondField.waitFor({ state: 'visible' });
+    await selectOption(adminPage, secondField, 'Description', true);
+
+    const secondOp = adminPage.locator('.rule--operator .ant-select').last();
+    await secondOp.waitFor({ state: 'visible', timeout: 5000 });
+    await selectOption(adminPage, secondOp, 'Contains', false);
+    await adminPage
+      .locator('.rule--widget--TEXT input[type="text"]')
+      .last()
+      .fill('beta');
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).not.toBeVisible();
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    // Both terms must appear in the serialized Elasticsearch query.
+    expect(createdRule.queryFilter).toContain('alpha');
+    expect(createdRule.queryFilter).toContain('beta');
+  });
 });
