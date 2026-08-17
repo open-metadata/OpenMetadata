@@ -124,14 +124,8 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
 
   await listLoader.waitFor({ state: 'detached' });
 
-  // The search box is empty on arrival, so this fill is a real value change and
-  // dispatches the search. Re-typing a term already in the box would not: the
-  // searchbar debounces at 1s and the list refetches only when `searchValue`
-  // changes.
   const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(userName))
+    '/api/v1/search/query?q=*&index=user&from=0&size=*'
   );
   await page.getByTestId('searchbar').fill(userName);
   await searchResponse;
