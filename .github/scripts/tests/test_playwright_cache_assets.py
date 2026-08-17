@@ -476,11 +476,12 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
         in workflow
     )
     assert "compression-level: 0" in workflow
-    assert "CACHE_KEYS_RESULT: ${{ needs.cache-keys.result }}" in workflow
-    assert (
-        "FIXTURE_RESTORE_RESULT: ${{ needs.restore-playwright-fixture.result }}"
-        in workflow
-    )
+    # CACHE_KEYS_RESULT / FIXTURE_RESTORE_RESULT are consumed by the summary
+    # job that now lives in the postgres PR caller. Confirm the reusable
+    # surfaces them via workflow_call outputs (which the caller renames to
+    # cache_keys_result / restore_playwright_fixture_result).
+    assert "cache_keys_result:" in workflow
+    assert "restore_playwright_fixture_result:" in workflow
 
     restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split(
         "  prepare-playwright-fixture:", 1

@@ -2317,7 +2317,14 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
+    # The playwright-summary job lives in the postgres PR caller (not the
+    # reusable) so branch protection can require its unprefixed check name.
+    # The paths-filter that watches render_playwright_summary.cjs still
+    # lives in the reusable's check-changes job.
     workflow = (
+        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    reusable = (
         SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
@@ -2340,7 +2347,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
         "\n      - name:", 1
     )[0]
     assert len(summary_script) < 21_000
-    assert "- '.github/scripts/render_playwright_summary.cjs'" in workflow
+    assert "- '.github/scripts/render_playwright_summary.cjs'" in reusable
     assert "'${{ github.run_id }}'" not in summary_helper
     assert "process.env.GITHUB_RUN_ID" in summary_helper
     assert "zero-attempt; reason unknown" in summary_helper

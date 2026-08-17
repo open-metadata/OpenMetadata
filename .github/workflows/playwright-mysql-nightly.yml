@@ -60,13 +60,10 @@ jobs:
   playwright:
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     secrets: inherit
-    # See playwright-postgresql-e2e.yml for the write-permission rationale;
-    # the reusable's baseline-refresh job is gated on merge_group and never
-    # runs from a workflow_dispatch, so nothing actually writes here.
     permissions:
       actions: read
-      contents: write
-      pull-requests: write
+      contents: read
+      pull-requests: read
       checks: read
     with:
       database: mysql
