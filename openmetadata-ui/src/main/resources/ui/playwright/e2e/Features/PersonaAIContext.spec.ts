@@ -1335,6 +1335,31 @@ test.describe.serial('Persona AI Context', () => {
       persona.responseData.id as string,
       []
     );
+
+    // The "Service Is" value dropdown calls /api/v1/search/aggregate with
+    // field=service — it aggregates over TABLE documents, not service entities.
+    // Because dbService has no tables, its name never appears in that
+    // aggregation regardless of how long we wait. Mock the endpoint so the
+    // dropdown returns immediately with the test service name.
+    await adminPage.route('**/api/v1/search/aggregate**', async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get('field') === 'service') {
+        return route.fulfill({
+          contentType: 'application/json',
+          status: 200,
+          body: JSON.stringify({
+            aggregations: {
+              'sterms#service': {
+                buckets: [{ key: dbService.entity.name, doc_count: 1 }],
+              },
+            },
+          }),
+        });
+      }
+
+      return route.fallback();
+    });
+
     await openPersonaContext(adminPage);
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage
@@ -1364,23 +1389,6 @@ test.describe.serial('Persona AI Context', () => {
       .locator('.rule--widget .ant-select')
       .first();
     await valueSelect.waitFor({ state: 'visible' });
-
-    // The value dropdown is backed by the Elasticsearch index.  A service
-    // created in beforeAll may not be immediately searchable due to index
-    // refresh latency.  Poll the search API before opening the dropdown so
-    // selectOption does not time out with "No data".
-    await expect
-      .poll(
-        () =>
-          adminPage.request
-            .get(
-              `/api/v1/search/query?q=${encodeURIComponent(dbService.entity.name)}&index=dataAsset&from=0&size=1`
-            )
-            .then((r) => r.json())
-            .then((j) => (j.hits?.hits?.length ?? 0) > 0),
-        { timeout: 30_000 }
-      )
-      .toBe(true);
 
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
 
