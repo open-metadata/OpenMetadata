@@ -203,7 +203,10 @@ const ContextCenterDocumentsPage: FC = () => {
   );
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearchQuery(documentSearchQuery), 300);
+    const id = setTimeout(
+      () => setDebouncedSearchQuery(documentSearchQuery),
+      300
+    );
 
     return () => clearTimeout(id);
   }, [documentSearchQuery]);

@@ -527,9 +527,9 @@ test.describe('Context Center - Documents Page', () => {
         url.pathname.includes('/api/v1/search/query') &&
         url.searchParams.get('index') === 'contextFile',
       async (route) => {
-        const isFolderScoped = decodeURIComponent(route.request().url()).includes(
-          folder.id
-        );
+        const isFolderScoped = decodeURIComponent(
+          route.request().url()
+        ).includes(folder.id);
         const hits = isFolderScoped
           ? [{ _source: { ...inFolderDoc } }]
           : [{ _source: { ...inFolderDoc } }, { _source: { ...outsideDoc } }];
