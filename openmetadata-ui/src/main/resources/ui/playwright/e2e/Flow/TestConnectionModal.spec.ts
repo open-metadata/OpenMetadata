@@ -22,6 +22,13 @@ import {
 
 const MOCK_WORKFLOW_ID = 'mock-test-workflow-id';
 
+// Fixture text, not a connector's real errorMessage — the test connection definition
+// endpoint is mocked below, so nothing here is coupled to a shipped *.json definition.
+// The point is only that whatever the backend returns in `message` becomes the headline.
+const MOCK_STEP_MESSAGE =
+  'Mock step message from the test connection definition';
+const MOCK_STEP_ERROR_LOG = 'Mock raw driver output: connection refused';
+
 const MOCK_STEPS = [
   {
     name: 'CheckAccess',
@@ -318,9 +325,8 @@ test.describe(
               name: 'CheckAccess',
               passed: false,
               mandatory: true,
-              message:
-                'Failed to connect to mysql, please validate the credentials',
-              errorLog: 'Connection refused: localhost:3306',
+              message: MOCK_STEP_MESSAGE,
+              errorLog: MOCK_STEP_ERROR_LOG,
             },
           ],
         },
@@ -335,14 +341,10 @@ test.describe(
 
       await expect(remediationCard).toBeVisible({ timeout: 30000 });
 
-      // The definition's errorMessage is the headline; the raw driver output sits below it.
+      // The step's `message` is the headline; the raw driver output sits below it.
+      await expect(remediationCard.getByText(MOCK_STEP_MESSAGE)).toBeVisible();
       await expect(
-        remediationCard.getByText(
-          'Failed to connect to mysql, please validate the credentials'
-        )
-      ).toBeVisible();
-      await expect(
-        remediationCard.getByText('Connection refused: localhost:3306')
+        remediationCard.getByText(MOCK_STEP_ERROR_LOG)
       ).toBeVisible();
     });
 
