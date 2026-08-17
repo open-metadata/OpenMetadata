@@ -15,9 +15,11 @@ Unit tests for Databricks Kafka parser
 
 import unittest
 
-from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
+    PythonDltParser,
     extract_dlt_table_dependencies,
-    extract_dlt_table_names,
+)
+from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_kafka_sources,
     get_pipeline_libraries,
 )
@@ -386,7 +388,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def bronze_events():
             return spark.readStream.format("kafka").load()
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "user_events_bronze")
 
@@ -400,7 +402,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def my_function():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "my_table")
 
@@ -415,7 +417,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def silver():
             return dlt.read("bronze_table")
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 2)
         self.assertIn("bronze_table", table_names)
         self.assertIn("silver_table", table_names)
@@ -429,7 +431,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def event_log():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         # Should infer from entity_name variable and function pattern
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "customerevent_event_log")
@@ -441,7 +443,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def my_function():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         # Should return empty list when no name found
         self.assertEqual(len(table_names), 0)
 
@@ -452,18 +454,18 @@ class TestDLTTableExtraction(unittest.TestCase):
         def func():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "CasedTable")
 
     def test_empty_source_code(self):
         """Test empty source code"""
-        table_names = extract_dlt_table_names("")
+        table_names = PythonDltParser.extract_dlt_table_names("")
         self.assertEqual(len(table_names), 0)
 
     def test_null_source_code(self):
         """Test None source code doesn't crash"""
-        table_names = extract_dlt_table_names(None)
+        table_names = PythonDltParser.extract_dlt_table_names(None)
         self.assertEqual(len(table_names), 0)
 
 
@@ -577,7 +579,7 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         self.assertEqual(kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"])
 
         # Test DLT table extraction
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "customerevent_event_log")
 

@@ -30,7 +30,9 @@ from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
+    PythonDltParser,
+    dlt_parser_registry,
     extract_dlt_table_dependencies,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
@@ -267,3 +269,129 @@ class TestSqlDltPipelineLineage:
             (f"{DB_SERVICE}.raw_catalog.raw_schema.events_raw", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary"),
             (f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_totals", f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.order_summary"),
         }
+
+
+class TestParserDispatch:
+    """The registry must pick the right language, whatever the source contains."""
+
+    def test_both_languages_are_registered(self):
+        assert set(dlt_parser_registry.registry) == {"python", "sql"}
+
+    def test_python_wins_over_embedded_sql(self):
+        """A Python notebook that builds SQL strings must not be read as SQL."""
+        source = """
+import dlt
+spark.sql("CREATE OR REFRESH MATERIALIZED VIEW sneaky AS SELECT * FROM raw_catalog.raw_schema.other")
+
+@dlt.table(name="real_table")
+def build():
+    return dlt.read("upstream_ds")
+"""
+        deps = _deps_by_name(source)
+        assert set(deps) == {"real_table"}
+        assert deps["real_table"].depends_on == ["upstream_ds"]
+
+    def test_dlt_view_without_a_name_is_recognised(self):
+        """`@dlt.view()` takes no name argument, so detection must not require one."""
+        source = """
+@dlt.view()
+def staged():
+    return spark.read.json("s3://bucket/data/")
+"""
+        assert PythonDltParser.handles(source) is True
+        assert extract_dlt_table_dependencies(source)
+
+    def test_unrecognised_source_yields_nothing(self):
+        assert extract_dlt_table_dependencies("print('not a dlt pipeline')") == []
+        assert extract_dlt_table_dependencies("") == []
+        assert extract_dlt_table_dependencies(None) == []
+
+
+class TestSqlDltEdgeCases:
+    """Databricks SQL constructs that a plain CREATE ... SELECT reader would miss."""
+
+    def test_apply_changes_into_keeps_its_source(self):
+        """CDC pipelines declare the table, then populate it with APPLY CHANGES INTO."""
+        source = (
+            "CREATE OR REFRESH STREAMING TABLE customers_cdc;\n"
+            "APPLY CHANGES INTO live.customers_cdc "
+            "FROM STREAM(raw_catalog.raw_schema.customers_raw) KEYS (id) SEQUENCE BY ts"
+        )
+        deps = _deps_by_name(source)
+        assert deps["customers_cdc"].depends_on == ["raw_catalog.raw_schema.customers_raw"]
+
+    def test_live_prefix_resolves_to_a_sibling_dataset(self):
+        """`LIVE.x` is a pipeline namespace, not a schema called `live`."""
+        deps = _deps_by_name("CREATE MATERIALIZED VIEW gold AS SELECT * FROM LIVE.silver JOIN live.bronze USING (id)")
+        assert set(deps["gold"].depends_on) == {"silver", "bronze"}
+
+    def test_table_valued_functions_are_not_treated_as_tables(self):
+        """Auto Loader reads have no upstream entity to resolve."""
+        assert (
+            _deps_by_name(
+                "CREATE OR REFRESH STREAMING TABLE raw AS "
+                "SELECT * FROM STREAM read_files('/mnt/data', format => 'json')"
+            )["raw"].depends_on
+            == []
+        )
+        assert (
+            _deps_by_name("CREATE OR REFRESH STREAMING TABLE raw2 AS SELECT * FROM cloud_files('/mnt/data', 'json')")[
+                "raw2"
+            ].depends_on
+            == []
+        )
+
+    def test_streaming_table_and_backticked_identifiers(self):
+        deps = _deps_by_name(
+            "CREATE OR REFRESH STREAMING TABLE `bronze` AS SELECT * FROM `raw_catalog`.`raw_schema`.`src`"
+        )
+        assert deps["bronze"].depends_on == ["raw_catalog.raw_schema.src"]
+
+    def test_cte_does_not_leak_as_an_upstream(self):
+        deps = _deps_by_name(
+            "CREATE MATERIALIZED VIEW c AS WITH staged AS "
+            "(SELECT * FROM raw_catalog.raw_schema.orders_raw) SELECT * FROM staged"
+        )
+        assert deps["c"].depends_on == ["raw_catalog.raw_schema.orders_raw"]
+
+    def test_unparseable_statement_is_skipped_not_raised(self):
+        assert extract_dlt_table_dependencies("CREATE MATERIALIZED VIEW broken AS SELECT FROM WHERE ((") == []
+
+    def test_multiple_statements_in_one_file(self):
+        deps = _deps_by_name(
+            "CREATE MATERIALIZED VIEW a AS SELECT * FROM raw_catalog.raw_schema.t1;\n"
+            "CREATE MATERIALIZED VIEW b AS SELECT * FROM raw_catalog.raw_schema.t2"
+        )
+        assert deps["a"].depends_on == ["raw_catalog.raw_schema.t1"]
+        assert deps["b"].depends_on == ["raw_catalog.raw_schema.t2"]
+
+
+class TestQualifyDltTableName:
+    """Resolution of a dataset reference against the pipeline's target."""
+
+    def test_bare_name_uses_the_pipeline_target(self):
+        assert DatabrickspipelineSource._qualify_dlt_table_name("orders", "cat", "sch") == ("cat", "sch", "orders")
+
+    def test_two_part_name_overrides_only_the_schema(self):
+        assert DatabrickspipelineSource._qualify_dlt_table_name("other.orders", "cat", "sch") == (
+            "cat",
+            "other",
+            "orders",
+        )
+
+    def test_three_part_name_overrides_both(self):
+        assert DatabrickspipelineSource._qualify_dlt_table_name("c2.s2.orders", "cat", "sch") == (
+            "c2",
+            "s2",
+            "orders",
+        )
+
+    def test_extra_qualifiers_keep_the_last_three_parts(self):
+        assert DatabrickspipelineSource._qualify_dlt_table_name("x.c2.s2.orders", "cat", "sch") == (
+            "c2",
+            "s2",
+            "orders",
+        )
+
+    def test_empty_name_falls_back_to_the_pipeline_target(self):
+        assert DatabrickspipelineSource._qualify_dlt_table_name("", "cat", "sch") == ("cat", "sch", "")

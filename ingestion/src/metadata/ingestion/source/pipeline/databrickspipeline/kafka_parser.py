@@ -10,13 +10,17 @@
 #  limitations under the License.
 
 """
-Kafka configuration parser for Databricks DLT pipelines
+Kafka source configuration parsing for Databricks DLT pipelines.
+
+Dataset dependency extraction lives in `dlt_parsers.py`.
 """
 
 import re
-from dataclasses import dataclass, field
-from typing import Any, List, Optional  # noqa: UP035
+from typing import List, Optional  # noqa: UP035
 
+from metadata.ingestion.source.pipeline.databrickspipeline.models import (
+    KafkaSourceConfig,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -39,75 +43,8 @@ BOOL_ASSIGNMENT_PATTERN = re.compile(
     re.MULTILINE,
 )
 
-# Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...) or @dlt.table(name=func())
-DLT_TABLE_PATTERN = re.compile(
-    r"@dlt\.table\s*\(",
-    re.IGNORECASE,
-)
 
-# Pattern to extract table name from decorator - supports both literals and function calls
-DLT_TABLE_NAME_LITERAL = re.compile(
-    r'@dlt\.table\s*\(\s*(?:.*?name\s*=\s*["\']([^"\']+)["\'])?',
-    re.DOTALL | re.IGNORECASE,
-)
-
-DLT_TABLE_NAME_FUNCTION = re.compile(
-    r"@dlt\.table\s*\(\s*(?:.*?name\s*=\s*([a-zA-Z_][a-zA-Z0-9_\.]+)\s*\([^)]*\))?",
-    re.DOTALL | re.IGNORECASE,
-)
-
-# Pattern to extract dlt.read_stream("table_name") calls
-DLT_READ_STREAM_PATTERN = re.compile(
-    r'dlt\.read_stream\s*\(\s*["\']([^"\']+)["\']\s*\)',
-    re.IGNORECASE,
-)
-
-# Pattern to extract dlt.read("table_name") calls (batch reads)
-DLT_READ_PATTERN = re.compile(
-    r'dlt\.read\s*\(\s*["\']([^"\']+)["\']\s*\)',
-    re.IGNORECASE,
-)
-
-# Pattern to extract S3 paths from spark.read operations
-# Matches: spark.read.json("s3://..."), spark.read.format("parquet").load("s3a://...")
-# Uses a simpler pattern that captures any spark.read followed by method calls ending with a path
-S3_PATH_PATTERN = re.compile(
-    r'spark\.read.*?\.(?:load|json|parquet|csv|orc|avro)\s*\(\s*["\']([^"\']+)["\']\s*\)',
-    re.DOTALL | re.IGNORECASE,
-)
-
-# A DLT dataset declared in SQL rather than through the Python API. Databricks allows
-# CREATE OR REFRESH, an optional TEMPORARY/PRIVATE modifier, and MATERIALIZED VIEW,
-# STREAMING TABLE or the legacy LIVE TABLE spelling. This only detects the shape so we
-# know the file is worth handing to the lineage parser, which does the real work.
-SQL_DLT_CREATE_PATTERN = re.compile(
-    r"\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+|PRIVATE\s+)?"
-    r"(?:MATERIALIZED\s+VIEW|STREAMING\s+(?:LIVE\s+)?TABLE|LIVE\s+TABLE)\b",
-    re.IGNORECASE,
-)
-
-
-@dataclass
-class KafkaSourceConfig:
-    """Model for Kafka source configuration extracted from DLT code"""
-
-    bootstrap_servers: Optional[str] = None  # noqa: UP045
-    topics: List[str] = field(default_factory=list)  # noqa: UP006
-    group_id_prefix: Optional[str] = None  # noqa: UP045
-
-
-@dataclass
-class DLTTableDependency:
-    """Model for DLT table dependencies"""
-
-    table_name: str
-    depends_on: List[str] = field(default_factory=list)  # noqa: UP006
-    reads_from_kafka: bool = False
-    reads_from_s3: bool = False
-    s3_locations: List[str] = field(default_factory=list)  # noqa: UP006
-
-
-def _extract_variables(source_code: str) -> dict:
+def extract_variables(source_code: str) -> dict:
     """
     Extract variable assignments from source code
 
@@ -164,7 +101,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
             return kafka_configs
 
         # Extract variable assignments for resolution
-        variables = _extract_variables(source_code)
+        variables = extract_variables(source_code)
 
         # Try to find explicit Kafka streaming patterns
         found_explicit_kafka = False
@@ -257,371 +194,47 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
     return None
 
 
-def extract_dlt_table_names(source_code: str) -> List[str]:  # noqa: UP006
-    """
-    Extract DLT table names from @dlt.table decorators
-
-    Parses patterns like:
-    - @dlt.table(name="user_events_bronze_pl", ...)
-    - @dlt.table(comment="...", name="my_table")
-    - @dlt.table(name=generate_table_name())  (function call - infer from pattern)
-
-    Returns list of table names found in decorators
-    """
-    table_names = []
-
-    try:
-        if not source_code:
-            logger.debug("Empty or None source code provided")
-            return table_names
-
-        # First try to extract literal string table names
-        for match in DLT_TABLE_NAME_LITERAL.finditer(source_code):
-            table_name = match.group(1)
-            if table_name:
-                table_names.append(table_name)
-                logger.debug(f"Found DLT table (literal): {table_name}")
-
-        # If no literal names found, try function call pattern
-        if not table_names:
-            for match in DLT_TABLE_NAME_FUNCTION.finditer(source_code):
-                function_call = match.group(1)
-                if function_call:
-                    # Extract table name hint from function name
-                    # e.g., generate_event_log_table_name() -> event_log
-                    inferred_name = _infer_table_name_from_function(function_call, source_code)
-                    if inferred_name:
-                        table_names.append(inferred_name)
-                        logger.debug(f"Found DLT table (inferred from {function_call}): {inferred_name}")
-
-    except Exception as exc:
-        logger.warning(f"Error parsing DLT table names from code: {exc}")
-
-    return table_names
-
-
-def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:  # noqa: UP045
-    """
-    Infer table name from function call pattern
-
-    Strategies:
-    1. Look for entity_name variable and use it to build table name
-    2. Extract keywords from function name (e.g., "event_log" from "generate_event_log_table_name")
-    3. Handle Materializer pattern: entity_name + suffix from function name
-    """
-    try:
-        # Extract variables to find entity_name or similar
-        variables = _extract_variables(source_code)
-
-        # Strategy 1: Materializer pattern - entity_name + suffix from function
-        # Handles: @dlt.table(name=materializer.generate_event_log_table_name())
-        # where entity_name = "customerEvent" should produce "customerevent_event_log"
-        entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
-
-        if entity_name and "generate_event_log_table_name" in function_call.lower():
-            table_name = f"{entity_name.lower()}_event_log"
-            logger.debug(f"Inferred event_log table from Materializer pattern: {table_name}")
-            return table_name
-
-        if entity_name and "generate_snapshot_table_name" in function_call.lower():
-            table_name = f"{entity_name.lower()}_snapshot"
-            logger.debug(f"Inferred snapshot table from Materializer pattern: {table_name}")
-            return table_name
-
-        # Strategy 2: Use entity_name variable if present (fallback)
-        if entity_name:
-            logger.debug(f"Inferred table name from entity_name variable: {entity_name}")
-            return entity_name
-
-        # Strategy 3: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
-        # Common patterns: generate_X_table_name, create_X_table, build_X_dataframe
-        match = re.search(
-            r"(?:generate|create|build)_([a-z_]+?)(?:_table|_dataframe)",
-            function_call.lower(),
-        )
-        if match:
-            inferred = match.group(1)
-            logger.debug(f"Inferred table name from function pattern: {inferred}")
-            return inferred
-
-    except Exception as exc:
-        logger.debug(f"Could not infer table name from function {function_call}: {exc}")
-
-    return None
-
-
-def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: C901, UP006
-    """
-    Extract DLT table dependencies by analyzing @dlt.table decorators and dlt.read_stream calls
-
-    For each DLT table, identifies:
-    - Table name from @dlt.table(name="...")
-    - Dependencies from dlt.read_stream("other_table") or dlt.read("other_table") calls
-    - Whether it reads from Kafka (spark.readStream.format("kafka"))
-    - Whether it reads from S3 (spark.read.json("s3://..."))
-    - S3 locations if applicable
-
-    Example:
-        @dlt.table(name="source_table")
-        def my_source():
-            return spark.read.json("s3://bucket/path/")...
-
-        @dlt.table(name="target_table")
-        def my_target():
-            return dlt.read("source_table")
-
-    Returns:
-        [
-            DLTTableDependency(table_name="source_table", depends_on=[], reads_from_s3=True,
-                             s3_locations=["s3://bucket/path/"]),
-            DLTTableDependency(table_name="target_table", depends_on=["source_table"],
-                             reads_from_s3=False)
-        ]
-    """
-    dependencies = []
-
-    try:
-        if not source_code:
-            return dependencies
-
-        # Split source code into function definitions
-        # Pattern: @dlt.table(...) or @dlt.view(...) followed by def function_name():
-        # Handle multiline decorators with potentially nested parentheses
-        function_pattern = re.compile(
-            r"(@dlt\.(?:table|view)\s*\(.*?\)\s*def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)\s*:.*?)(?=@dlt\.|$)",
-            re.DOTALL | re.IGNORECASE,
-        )
-
-        for match in function_pattern.finditer(source_code):
-            try:
-                function_block = match.group(1)
-
-                # Extract table name from @dlt.table decorator
-                table_name = None
-                name_match = DLT_TABLE_NAME_LITERAL.search(function_block)
-                if name_match and name_match.group(1):
-                    table_name = name_match.group(1)
-                else:
-                    # Try function name pattern
-                    func_name_match = DLT_TABLE_NAME_FUNCTION.search(function_block)
-                    if func_name_match and func_name_match.group(1):
-                        table_name = _infer_table_name_from_function(func_name_match.group(1), source_code)
-
-                if not table_name:
-                    # Try to extract from function definition itself
-                    def_match = re.search(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block)
-                    if def_match:
-                        table_name = def_match.group(1)
-
-                if not table_name:
-                    logger.debug(f"Could not extract table name from block: {function_block[:100]}...")
-                    continue
-
-                # Check if it reads from Kafka
-                # Direct pattern: spark.readStream.format("kafka")
-                reads_from_kafka = bool(KAFKA_STREAM_PATTERN.search(function_block))
-
-                # Materializer pattern: materializer.build_event_log_dataframe()
-                # This method internally reads from Kafka, so if we find this pattern
-                # and the table name matches event_log pattern, mark as Kafka reader
-                if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:  # noqa: SIM102
-                    if "event_log" in table_name:
-                        reads_from_kafka = True
-                        logger.debug(f"Table {table_name} reads from Kafka via Materializer")
-
-                # Check if it reads from S3
-                s3_locations = []
-                for s3_match in S3_PATH_PATTERN.finditer(function_block):
-                    s3_path = s3_match.group(1)
-                    if s3_path.startswith(("s3://", "s3a://", "s3n://")):
-                        s3_locations.append(s3_path)
-                        logger.debug(f"Table {table_name} reads from S3: {s3_path}")
-
-                reads_from_s3 = len(s3_locations) > 0
-
-                # Extract dlt.read_stream dependencies (streaming)
-                depends_on = []
-                for stream_match in DLT_READ_STREAM_PATTERN.finditer(function_block):
-                    source_table = stream_match.group(1)
-                    depends_on.append(source_table)
-                    logger.debug(f"Table {table_name} streams from {source_table}")
-
-                # Extract dlt.read dependencies (batch)
-                for read_match in DLT_READ_PATTERN.finditer(function_block):
-                    source_table = read_match.group(1)
-                    depends_on.append(source_table)
-                    logger.debug(f"Table {table_name} reads from {source_table}")
-
-                dependency = DLTTableDependency(
-                    table_name=table_name,
-                    depends_on=depends_on,
-                    reads_from_kafka=reads_from_kafka,
-                    reads_from_s3=reads_from_s3,
-                    s3_locations=s3_locations,
-                )
-                dependencies.append(dependency)
-                logger.debug(
-                    f"Extracted dependency: {table_name} - depends_on={depends_on}, "
-                    f"reads_from_kafka={reads_from_kafka}, reads_from_s3={reads_from_s3}, "
-                    f"s3_locations={s3_locations}"
-                )
-
-            except Exception as exc:
-                logger.debug(f"Error parsing function block: {exc}")
-                continue
-
-        # Handle Materializer snapshot pattern:
-        # if snapshot_required:
-        #     materializer.build_snapshot_dataframe()
-        # This creates a snapshot table without @dlt.table decorator
-        try:
-            variables = _extract_variables(source_code)
-            snapshot_required = variables.get("snapshot_required")
-            entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
-
-            # Check if snapshot table is built
-            # snapshot_required can be "True" (string) or True (boolean)
-            is_snapshot_enabled = snapshot_required and str(snapshot_required).lower() == "true"
-
-            if is_snapshot_enabled and entity_name and "build_snapshot_dataframe" in source_code:
-                snapshot_table_name = f"{entity_name.lower()}_snapshot"
-                event_log_table_name = f"{entity_name.lower()}_event_log"
-
-                # Find the event_log table in existing dependencies
-                event_log_dep = next(
-                    (d for d in dependencies if d.table_name == event_log_table_name),
-                    None,
-                )
-
-                if event_log_dep:
-                    # Create snapshot table that depends on event_log
-                    snapshot_dependency = DLTTableDependency(
-                        table_name=snapshot_table_name,
-                        depends_on=[event_log_table_name],
-                        reads_from_kafka=False,
-                        reads_from_s3=False,
-                        s3_locations=[],
-                    )
-                    dependencies.append(snapshot_dependency)
-                    logger.debug(
-                        f"Extracted Materializer snapshot table: {snapshot_table_name} depends on {event_log_table_name}"
-                    )
-                else:
-                    logger.debug(
-                        f"Found snapshot pattern but event_log table {event_log_table_name} not found in dependencies"
-                    )
-
-        except Exception as exc:
-            logger.debug(f"Error extracting Materializer snapshot pattern: {exc}")
-
-    except Exception as exc:
-        logger.warning(f"Error extracting DLT table dependencies: {exc}")
-
-    # A pipeline is either Python or SQL, so only fall back once the Python API found
-    # nothing. This keeps existing Python pipelines on exactly the path they use today.
-    if not dependencies:
-        dependencies = extract_sql_dlt_dependencies(source_code)
-
-    return dependencies
-
-
-def extract_sql_dlt_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
-    """
-    Extract DLT dependencies from transformations written in SQL instead of Python.
-
-    A SQL DLT file declares its datasets with statements such as::
-
-        CREATE OR REFRESH MATERIALIZED VIEW customer_orders AS
-        SELECT ...
-        FROM raw_catalog.raw_schema.orders_raw o
-        INNER JOIN order_totals t ON t.order_id = o.order_id
-
-    Each statement yields one dataset plus the tables it reads. Upstreams may be fully
-    qualified or bare, the latter referring to a sibling dataset in the same pipeline.
-    Both are returned verbatim and resolved against the pipeline's target catalog and
-    schema by the caller.
-
-    Returns an empty list when the source is not SQL DLT or cannot be parsed.
-    """
-    dependencies = []
-
-    if not source_code or not SQL_DLT_CREATE_PATTERN.search(source_code):
-        return dependencies
-
-    # Imported here so pipelines that only use the Python DLT API do not pay the
-    # import cost of the SQL lineage stack.
-    import sqlparse
-
-    from metadata.ingestion.lineage.models import Dialect
-    from metadata.ingestion.lineage.parser import LineageParser
-    from metadata.utils.helpers import (
-        get_formatted_entity_name,
-        has_table_name,
-    )
-
-    def _clean(table) -> Optional[str]:  # noqa: UP045
-        name = get_formatted_entity_name(str(table))
-        return name if has_table_name(name) else None
-
-    try:
-        for raw_statement in sqlparse.split(source_code):
-            statement = raw_statement.strip()
-            if not statement or not SQL_DLT_CREATE_PATTERN.search(statement):
-                continue
-            try:
-                parser = LineageParser(statement, Dialect.DATABRICKS)
-                # LineageParser exposes these through the third-party cached_property,
-                # which type checkers cannot resolve to the underlying list
-                parsed_targets: Any = parser.target_tables or []
-                parsed_sources: Any = parser.source_tables or []
-
-                targets = [name for name in map(_clean, parsed_targets) if name]
-                if not targets:
-                    logger.debug(f"No target dataset parsed from SQL DLT statement: {statement[:120]}")
-                    continue
-
-                sources = [name for name in map(_clean, parsed_sources) if name]
-                # A dataset never depends on itself, even if the statement self-references
-                depends_on = [name for name in sources if name not in targets]
-
-                for target in targets:
-                    dependencies.append(DLTTableDependency(table_name=target, depends_on=depends_on))
-                    logger.debug(f"Extracted SQL DLT dataset {target} depends_on={depends_on}")
-            except Exception as exc:
-                logger.debug(f"Error parsing SQL DLT statement: {exc}")
-                continue
-    except Exception as exc:
-        logger.warning(f"Error extracting SQL DLT dependencies: {exc}")
-
-    return dependencies
-
-
 def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:  # noqa: UP006
     """
-    Extract notebook and file paths from pipeline configuration
-    Safely handles missing or malformed configuration
+    Collect the source paths a DLT pipeline declares in `spec.libraries`.
+
+    A library entry is one of three shapes, and a pipeline may mix them:
+      - `{"notebook": {"path": ...}}`  a workspace notebook
+      - `{"file": {"path": ...}}`      a file, used by Git folders and Asset Bundles
+      - `{"glob": {"include": ...}}`   a directory tree, returned as a directory path
+        with a trailing slash so the caller knows to expand it
+
+    Malformed entries are skipped rather than failing the whole pipeline.
     """
     libraries = []
 
-    try:
-        if not pipeline_config:
-            return libraries
+    if not pipeline_config:
+        return libraries
 
-        for lib in pipeline_config.get("libraries", []):
-            try:
-                if "notebook" in lib:
-                    notebook_path = lib["notebook"].get("path")
-                    if notebook_path:
-                        libraries.append(notebook_path)
-                elif "file" in lib:
-                    file_path = lib["file"].get("path")
-                    if file_path:
-                        libraries.append(file_path)
-            except Exception as exc:
-                logger.debug(f"Failed to process library entry {lib}: {exc}")
-                continue
-
-    except Exception as exc:
-        logger.warning(f"Error extracting pipeline libraries: {exc}")
+    for lib in pipeline_config.get("libraries") or []:
+        if not isinstance(lib, dict):
+            continue
+        try:
+            for key in ("notebook", "file"):
+                entry = lib.get(key)
+                if not entry:
+                    continue
+                path = entry.get("path") if isinstance(entry, dict) else entry
+                if path:
+                    libraries.append(path)
+                    logger.info(f"   ✓ Found {key}: {path}")
+                break
+            else:
+                glob_entry = lib.get("glob")
+                include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
+                if include:
+                    # "/path/**" addresses a tree. Normalise to a directory path so the
+                    # caller expands it rather than trying to export it as one file.
+                    base_path = include.replace("/**", "/").replace("**", "")
+                    libraries.append(base_path)
+                    logger.info(f"   ✓ Found glob pattern, using base path: {base_path}")
+        except Exception as exc:
+            logger.debug(f"Failed to process library entry {lib}: {exc}")
+            continue
 
     return libraries

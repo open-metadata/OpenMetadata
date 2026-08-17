@@ -13,6 +13,7 @@
 Databricks pipeline Source Model module
 """
 
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
@@ -86,3 +87,30 @@ class DBRun(BaseModel):
     start_time: Optional[int] = 0  # noqa: UP045
     end_time: Optional[int] = 0  # noqa: UP045
     run_page_url: Optional[str] = None  # noqa: UP045
+
+
+@dataclass
+class KafkaSourceConfig:
+    """Kafka source configuration read out of a DLT pipeline's source code"""
+
+    bootstrap_servers: Optional[str] = None  # noqa: UP045
+    topics: List[str] = field(default_factory=list)  # noqa: UP006
+    group_id_prefix: Optional[str] = None  # noqa: UP045
+
+
+@dataclass
+class DLTTableDependency:
+    """
+    One dataset declared by a DLT pipeline, plus what it reads from.
+
+    `depends_on` entries are returned exactly as the pipeline source spells them.
+    A bare name is a sibling dataset in the same pipeline and gets resolved against
+    the pipeline's target catalog and schema. A qualified name already says where
+    the table lives and is resolved as written.
+    """
+
+    table_name: str
+    depends_on: List[str] = field(default_factory=list)  # noqa: UP006
+    reads_from_kafka: bool = False
+    reads_from_s3: bool = False
+    s3_locations: List[str] = field(default_factory=list)  # noqa: UP006

@@ -58,9 +58,12 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
     extract_dlt_table_dependencies,
+)
+from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_kafka_sources,
+    get_pipeline_libraries,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
@@ -701,39 +704,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 if spec and "libraries" in spec:
                     libraries = spec["libraries"]
                     logger.info(f"⟳ Extracting notebook paths from {len(libraries)} libraries...")
-                    for idx, lib in enumerate(libraries):
-                        logger.debug(f"   Library {idx + 1}: {lib}")
-                        # Library can be dict or have different structures
-                        if isinstance(lib, dict):
-                            # Check for notebook path
-                            if "notebook" in lib and lib["notebook"]:  # noqa: RUF019
-                                notebook = lib["notebook"]
-                                if isinstance(notebook, dict):
-                                    path = notebook.get("path")
-                                else:
-                                    path = notebook
-                                if path:
-                                    notebook_paths.append(path)
-                                    logger.info(f"   ✓ Found notebook: {path}")
-                            # Pipelines sourced from Git folders or Asset Bundles declare
-                            # their transformations as files rather than notebooks
-                            elif "file" in lib and lib["file"]:  # noqa: RUF019
-                                source_file = lib["file"]
-                                path = source_file.get("path") if isinstance(source_file, dict) else source_file
-                                if path:
-                                    notebook_paths.append(path)
-                                    logger.info(f"   ✓ Found file: {path}")
-                            # Check for glob pattern
-                            elif "glob" in lib and lib["glob"]:  # noqa: RUF019
-                                glob_pattern = lib["glob"]
-                                if isinstance(glob_pattern, dict):
-                                    include_pattern = glob_pattern.get("include")
-                                    if include_pattern:
-                                        # Convert glob pattern to directory path
-                                        # e.g., "/path/**" -> "/path/"
-                                        base_path = include_pattern.replace("/**", "/").replace("**", "")
-                                        notebook_paths.append(base_path)
-                                        logger.info(f"   ✓ Found glob pattern, using base path: {base_path}")
+                    notebook_paths = get_pipeline_libraries(spec)
 
                 # Also check for source path in spec configuration
                 if not notebook_paths and spec:
