@@ -962,6 +962,7 @@ test.describe('Context Center Articles', () => {
     await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
@@ -972,6 +973,7 @@ test.describe('Context Center Articles', () => {
     await titleInput.fill(`${updatedTitle} Unsaved`);
     await page.goBack();
     await waitForAllLoadersToDisappear(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
