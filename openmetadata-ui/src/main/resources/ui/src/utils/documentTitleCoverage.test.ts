@@ -70,27 +70,44 @@ const findLiteralTitles = (file: string): string[] => {
 
 const ROUTER_DIRECTORY = path.join(SRC_ROOT, 'components/AppRouter');
 
+/**
+ * Route targets are not all reached from a router. Entity detail routes are
+ * dispatched through a lazy map keyed by entity type, so the map is a second
+ * root for discovery.
+ */
+const ENTITY_COMPONENT_MAP = 'utils/EntityDetailComponentUtils.tsx';
+
 const LAZY_IMPORT = /import\('([^']+)'\)/g;
 
-/** Anything a page can use to put a title on the document. */
-const TITLE_SOURCE = /pageTitle|DocumentTitle|withPageLayout/;
+/** Relative static imports, used to follow a wrapper to what it renders. */
+const STATIC_IMPORT = /^import\s+[\w*{}\s,]+\s+from\s+'(\.[^']+)';/gm;
 
 /**
- * Routed modules that legitimately carry no title of their own: nested
- * routers and shells (they only render other routes), and thin wrappers that
- * delegate rendering — and therefore the title — to a component that has one.
+ * Anything a page can use to put a title on the document.
+ *
+ * Deliberately matched in usage position rather than as bare words: a page
+ * that only *declares* a `pageTitle` prop, or names one of these in a comment
+ * or an import, is not setting a title and must not satisfy the guard.
+ */
+const TITLE_SOURCE = /pageTitle=\{|<DocumentTitle\b|withPageLayout\(/;
+
+/**
+ * How far to follow a wrapper that renders another component. Many routed
+ * pages are one-line delegators (`ChartDetailsPage` renders `ChartDetails`,
+ * which owns the title), and the title genuinely lives one hop away. One hop
+ * is enough for every such wrapper in the tree and keeps the check honest —
+ * it verifies the delegation instead of trusting an allowlist entry.
+ */
+const DELEGATION_DEPTH = 1;
+
+/**
+ * Routed modules that legitimately set no title anywhere in their render
+ * tree: app shells and nested routers (they only render other routes), and a
+ * transient OAuth redirect that is gone before a title could be read.
  */
 const MODULES_WITHOUT_OWN_TITLE = new Set([
   'components/AppRouter/AuthenticatedApp.tsx',
-  'components/AppRouter/AuthenticatedRoutes.tsx',
   'components/AppRouter/ContextCenterRouter/ContextCenterRouter.tsx',
-  'components/AppRouter/EntityRouter.tsx',
-  'components/AppRouter/GlossaryTermRouter/GlossaryTermRouter.tsx',
-  // Renders BotDetails, which owns the title.
-  'pages/BotDetailsPage/BotDetailsPage.tsx',
-  // Renders IncidentManagerDetailPage, which owns the title.
-  'pages/TestCaseVersionPage/TestCaseVersionPage.tsx',
-  // A transient OAuth redirect, gone before a title would be read.
   'components/Auth/AppCallbacks/Auth0Callback/Auth0Callback.tsx',
 ]);
 
@@ -123,15 +140,19 @@ const resolveSpecifier = (
 
 const collectRoutedModules = (): string[] => {
   const modules = new Set<string>();
+  const roots = [
+    ...collectRouterFiles(ROUTER_DIRECTORY),
+    path.join(SRC_ROOT, ENTITY_COMPONENT_MAP),
+  ];
 
-  collectRouterFiles(ROUTER_DIRECTORY).forEach((routerFile) => {
-    const contents = fs.readFileSync(routerFile, 'utf8');
+  roots.forEach((rootFile) => {
+    const contents = fs.readFileSync(rootFile, 'utf8');
 
     [...contents.matchAll(LAZY_IMPORT)]
       .map(([, specifier]) => specifier)
       .filter((specifier) => specifier.startsWith('.'))
       .forEach((specifier) => {
-        const file = resolveSpecifier(specifier, routerFile);
+        const file = resolveSpecifier(specifier, rootFile);
 
         if (file) {
           modules.add(toRelativePath(file));
@@ -140,6 +161,38 @@ const collectRoutedModules = (): string[] => {
   });
 
   return [...modules];
+};
+
+/**
+ * Whether `module` sets a title itself, or renders something that does.
+ * Following the render one hop is what lets a one-line delegator pass on the
+ * strength of its target rather than on an allowlist entry.
+ */
+const setsDocumentTitle = (module: string, depth: number): boolean => {
+  const file = path.join(SRC_ROOT, module);
+  const contents = fs.readFileSync(file, 'utf8');
+
+  if (TITLE_SOURCE.test(contents)) {
+    return true;
+  }
+
+  if (depth === 0) {
+    return false;
+  }
+
+  return [
+    ...[...contents.matchAll(STATIC_IMPORT)].map(([, specifier]) => specifier),
+    ...[...contents.matchAll(LAZY_IMPORT)].map(([, specifier]) => specifier),
+  ]
+    .filter((specifier) => specifier.startsWith('.'))
+    .some((specifier) => {
+      const target = resolveSpecifier(specifier, file);
+
+      return (
+        target !== undefined &&
+        setsDocumentTitle(toRelativePath(target), depth - 1)
+      );
+    });
 };
 
 /**
@@ -160,18 +213,13 @@ describe('document title coverage', () => {
     const routedModules = collectRoutedModules();
 
     it('finds the routed page modules', () => {
-      expect(routedModules.length).toBeGreaterThan(80);
+      expect(routedModules.length).toBeGreaterThan(100);
     });
 
     it('gives every routed page a title source', () => {
       const untitled = routedModules
         .filter((module) => !MODULES_WITHOUT_OWN_TITLE.has(module))
-        .filter(
-          (module) =>
-            !TITLE_SOURCE.test(
-              fs.readFileSync(path.join(SRC_ROOT, module), 'utf8')
-            )
-        );
+        .filter((module) => !setsDocumentTitle(module, DELEGATION_DEPTH));
 
       expect(untitled).toEqual([]);
     });
