@@ -67,6 +67,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
       await page.close();
       await context.close();
     }
+
     await restoreSecurity?.();
   });
 

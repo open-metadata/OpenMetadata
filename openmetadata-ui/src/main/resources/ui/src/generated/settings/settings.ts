@@ -991,6 +991,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }

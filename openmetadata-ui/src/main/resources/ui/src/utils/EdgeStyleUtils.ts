@@ -24,6 +24,7 @@ export interface LineageEdgeColors {
   dqHighlight: string;
 }
 
+const EDGE_STYLE_CACHE_MAX = 1_000;
 const edgeStyleCache = new Map<string, EdgeStyle>();
 let cachedColorSignature = '';
 
@@ -129,8 +130,12 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
-  if (edgeStyleCache.has(cacheKey)) {
-    return edgeStyleCache.get(cacheKey)!;
+  const cachedStyle = edgeStyleCache.get(cacheKey);
+  if (cachedStyle) {
+    edgeStyleCache.delete(cacheKey);
+    edgeStyleCache.set(cacheKey, cachedStyle);
+
+    return cachedStyle;
   }
 
   const style = calculateEdgeStyle(
@@ -145,6 +150,12 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
+  if (edgeStyleCache.size >= EDGE_STYLE_CACHE_MAX) {
+    const oldestKey = edgeStyleCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      edgeStyleCache.delete(oldestKey);
+    }
+  }
   edgeStyleCache.set(cacheKey, style);
 
   return style;

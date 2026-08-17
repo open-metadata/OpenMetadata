@@ -141,6 +141,13 @@ class TokenService {
 
   // Call renewal method according to the provider
   async fetchNewToken() {
+    // Wait briefly for the renewer to be registered by the lazy authenticator
+    // wrapper (MSAL / Okta / Auth0 / OIDC / Basic / Generic). The wrapper's
+    // mount effect races the first refresh call on cold-load — returning null
+    // here would trigger AuthProvider's response interceptor to clear storage
+    // (`resetUserDetails(true)`) and force the user to /signin on merely-slow
+    // lazy-load, discarding a valid refresh credential.
+    await this.awaitRenewerReady();
     let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
@@ -162,6 +169,27 @@ class TokenService {
     }
 
     return response;
+  }
+
+  /**
+   * Poll `this.renewToken` until it is a function or the timeout elapses.
+   * Only blocks the very first refresh on cold-load; subsequent calls
+   * short-circuit because `renewToken` is already registered.
+   *
+   * The 10s cap covers slow lazy-chunk loads on poor networks without
+   * hanging indefinitely if the authenticator module fails to load.
+   */
+  async awaitRenewerReady(maxWaitMs = 10_000, pollMs = 100): Promise<void> {
+    if (typeof this.renewToken === 'function') {
+      return;
+    }
+    const start = Date.now();
+    while (
+      typeof this.renewToken !== 'function' &&
+      Date.now() - start < maxWaitMs
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
   }
 
   // Set refresh in progress (used by the tab that initiates the refresh)
