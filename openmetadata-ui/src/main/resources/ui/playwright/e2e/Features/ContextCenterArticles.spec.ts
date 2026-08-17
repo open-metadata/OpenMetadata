@@ -50,7 +50,7 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
-  waitForDraftPersisted
+  waitForDraftPersisted,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -1215,7 +1215,7 @@ test.describe('Context Center Articles', () => {
       );
       const href = await element.getAttribute('href');
 
-       expect(href).toMatch(
+      expect(href).toMatch(
         new RegExp(
           `/knowledge-center/${relatedKnowledgeCenter.knowledgePages[0].name}$`
         )
