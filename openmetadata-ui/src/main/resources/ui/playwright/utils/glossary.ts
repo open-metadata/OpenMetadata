@@ -399,6 +399,8 @@ export const createGlossary = async (
 
   if (glossaryData.mutuallyExclusive) {
     await page.click('[data-testid="mutually-exclusive-button"]');
+
+    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
   }
 
   if (glossaryData.tags && glossaryData.tags.length > 0) {
