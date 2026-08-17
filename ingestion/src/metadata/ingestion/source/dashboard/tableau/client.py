@@ -321,7 +321,10 @@ class TableauClient:
 
     def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
         """
-        Names of the data sources on a workbook whose upstream tables came back unnamed.
+        Names of the data sources on a workbook whose upstream tables cannot be resolved.
+
+        Mirrors _get_database_tables: a table with no name is still resolved through its
+        referencedByQueries, so only a table with neither is lineage that cannot be built.
         """
         datasources = self._query_datasources(
             dashboard_id=workbook_id,
@@ -331,7 +334,9 @@ class TableauClient:
         withheld = []
         for datasource in (datasources.nodes if datasources else None) or []:
             withheld.extend(
-                datasource.name or datasource.id for table in datasource.upstreamTables or [] if not table.name
+                datasource.name or datasource.id
+                for table in datasource.upstreamTables or []
+                if not table.name and not table.referencedByQueries
             )
         return withheld
 

@@ -58,6 +58,15 @@ REDACTED_TABLE = {
     "database": {"id": "0f9b1efd-b968-d24c-f5e1-b3788b993cbe", "name": None},
 }
 
+# A custom SQL data source. The name is withheld the same way, but the query survives, and
+# _get_database_tables resolves the table from it, so no lineage is lost.
+QUERY_BACKED_TABLE = {
+    **REDACTED_TABLE,
+    "referencedByQueries": [
+        {"id": "0f5a1c22-9d3e-4b71-8c6a-2e4f7b90d135", "name": "Custom SQL Query", "query": "SELECT 1"}
+    ],
+}
+
 # Captured live: a sample workbook over a spreadsheet. An Explorer reads these names even
 # when every database asset on the same site is withheld.
 SPREADSHEET_TABLE = {
@@ -117,6 +126,14 @@ class TestGetSourceTablesCheck:
 
     def test_named_tables_pass(self):
         with fake_site([("Repro", datasources_with([VISIBLE_TABLE]))]) as client:
+            assert client.test_get_source_tables() is True
+
+    def test_a_withheld_name_with_a_query_fallback_passes(self):
+        """
+        _get_database_tables resolves a nameless table through its referencedByQueries and
+        the SQL lineage parser, so that table is not lost and there is nothing to report.
+        """
+        with fake_site([("Custom SQL", datasources_with([QUERY_BACKED_TABLE]))]) as client:
             assert client.test_get_source_tables() is True
 
     def test_no_upstream_tables_passes(self):

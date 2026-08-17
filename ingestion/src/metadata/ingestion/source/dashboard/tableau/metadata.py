@@ -515,9 +515,10 @@ class TableauSource(DashboardServiceSource):
                     # and reports the cause once per run, so this only records which data
                     # models lost their upstream.
                     logger.debug(
-                        "Could not build lineage for data model "
-                        f"[{model_str(upstream_data_model_entity.fullyQualifiedName)}]. Tableau "
-                        f"did not return a name for its source table [{table.luid or table.id}]."
+                        "Could not build lineage for data model [%s]. Tableau did not return a "
+                        "name for its source table [%s].",
+                        model_str(upstream_data_model_entity.fullyQualifiedName),
+                        table.luid or table.id,
                     )
                 for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
