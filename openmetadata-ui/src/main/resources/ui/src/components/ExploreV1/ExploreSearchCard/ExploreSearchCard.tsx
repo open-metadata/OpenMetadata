@@ -419,6 +419,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
+              {/* Own the event boundary here because React Aria may filter event
+                  props passed through Breadcrumbs; crumb clicks must not open the card. */}
               <div
                 className="tw:min-w-0 tw:flex-1"
                 role="presentation"

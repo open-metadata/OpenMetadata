@@ -301,6 +301,8 @@ test.describe(
       const card = page.getByTestId(
         `table-data-card_${column.fullyQualifiedName}`
       );
+      // Fixture table display names can differ from their raw names, so select
+      // by hierarchy position and assert the destination independently.
       const tableLink = card
         .getByRole('list', { name: 'Breadcrumb' })
         .getByRole('listitem')

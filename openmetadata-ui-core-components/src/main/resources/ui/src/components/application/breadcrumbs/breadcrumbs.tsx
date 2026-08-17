@@ -360,6 +360,8 @@ export const Breadcrumbs = ({
                   />
                 ) : !isCurrentItem && link ? (
                   isCurrent ? (
+                    // React Aria always disables the physical last crumb as the
+                    // current page, so clear that context when it is a destination.
                     <LinkContext.Provider value={{}}>
                       {link}
                     </LinkContext.Provider>
