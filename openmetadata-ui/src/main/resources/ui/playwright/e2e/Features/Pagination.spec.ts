@@ -264,7 +264,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(response.status()).toBe(200);
       await page
         .getByTestId('total-data-assets-widget')
-        .locator('.ant-skeleton-active')
+        .locator('.ant-skeleton')
         .first()
         .waitFor({
           state: 'detached',
