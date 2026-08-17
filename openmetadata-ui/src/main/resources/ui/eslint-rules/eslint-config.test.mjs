@@ -29,6 +29,13 @@ const duplicateLiteralJsx = `
     </>
   );
 `;
+const duplicateLiteralTypescript = `
+  const iconNames = [
+    'database-icon',
+    'database-icon',
+    'database-icon',
+  ];
+`;
 
 test('suppresses string warnings in test TSX files', async () => {
   const [result] = await eslint.lintText(duplicateLiteralJsx, {
@@ -40,6 +47,23 @@ test('suppresses string warnings in test TSX files', async () => {
     )
   );
 
+  assert.deepEqual(stringRuleMessages, []);
+});
+
+test('suppresses string warnings in test TS files', async () => {
+  const filePath = 'src/Component.test.ts';
+  const config = await eslint.calculateConfigForFile(filePath);
+  const [result] = await eslint.lintText(duplicateLiteralTypescript, {
+    filePath,
+  });
+  const stringRuleMessages = result.messages.filter(({ ruleId }) =>
+    ['i18next/no-literal-string', 'sonarjs/no-duplicate-string'].includes(
+      ruleId
+    )
+  );
+
+  assert.equal(config.rules['i18next/no-literal-string']?.[0], 0);
+  assert.equal(config.rules['sonarjs/no-duplicate-string']?.[0], 0);
   assert.deepEqual(stringRuleMessages, []);
 });
 
