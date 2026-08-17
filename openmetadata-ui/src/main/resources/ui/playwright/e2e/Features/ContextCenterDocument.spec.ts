@@ -490,11 +490,11 @@ test.describe('Context Center - Documents Page', () => {
     browser,
     page,
   }) => {
-    const folderName = `search-scope-folder-${uuid()}`;
-    const docInFolderName = `in-folder-${uuid()}.txt`;
-    const docOutsideName = `outside-folder-${uuid()}.txt`;
+    const sharedToken = uuid();
+    const folderName = `search-scope-folder-${sharedToken}`;
+    const docInFolderName = `doc-${sharedToken}-in.txt`;
+    const docOutsideName = `doc-${sharedToken}-out.txt`;
 
-    // ── Setup: create folder + upload one doc inside, one outside ──
     const { apiContext, afterAction } = await createNewPage(browser);
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
@@ -508,18 +508,41 @@ test.describe('Context Center - Documents Page', () => {
 
     contextFolderIdsToCleanup.add(folder.id);
 
-    await uploadDocument(
+    const inFolderDoc = await uploadDocument(
       apiContext,
       docInFolderName,
       Buffer.from('document inside folder'),
       folder.fullyQualifiedName
     );
-    await uploadDocument(
+    const outsideDoc = await uploadDocument(
       apiContext,
       docOutsideName,
       Buffer.from('document outside folder')
     );
+
     await afterAction();
+
+    await page.route(
+      (url) =>
+        url.pathname.includes('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'contextFile',
+      async (route) => {
+        const isFolderScoped = decodeURIComponent(route.request().url()).includes(
+          folder.id
+        );
+        const hits = isFolderScoped
+          ? [{ _source: { ...inFolderDoc } }]
+          : [{ _source: { ...inFolderDoc } }, { _source: { ...outsideDoc } }];
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            hits: { hits, total: { value: hits.length } },
+          }),
+        });
+      }
+    );
 
     await navigateToDocuments(page);
 
@@ -527,41 +550,45 @@ test.describe('Context Center - Documents Page', () => {
       .getByTestId('context-center-header')
       .getByTestId('search-input')
       .getByLabel('Search Documents');
+    const view = page.getByTestId('documents-view');
 
-    // ── Step 1: Search with no folder selected → request has no folder filter ──
     const noFolderSearchResPromise = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/search/query') &&
         res.url().includes('index=contextFile')
     );
 
-    await searchInput.fill('in-folder');
-    const noFolderSearchRes = await noFolderSearchResPromise;
+    await searchInput.fill(sharedToken);
+    await noFolderSearchResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    expect(noFolderSearchRes.status()).toBe(200);
-    expect(decodeURIComponent(noFolderSearchRes.request().url())).not.toContain(
-      folder.id
-    );
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).toBeVisible();
 
-    // ── Step 2: Clear search, select folder ──
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
     await selectFolderInSidebar(page, folderName);
 
-    // ── Step 3: Search again with folder selected → request includes folder id as filter ──
     const folderSearchResPromise = page.waitForResponse(
       (res) =>
         res.url().includes('/api/v1/search/query') &&
         res.url().includes('index=contextFile')
     );
 
-    await searchInput.fill('in-folder');
-    const folderSearchRes = await folderSearchResPromise;
+    await searchInput.fill(sharedToken);
+    await folderSearchResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    expect(folderSearchRes.status()).toBe(200);
-    expect(decodeURIComponent(folderSearchRes.request().url())).toContain(
-      folder.id
-    );
+    await expect(
+      view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
+    ).toBeVisible();
+    await expect(
+      view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
+    ).not.toBeVisible();
   });
 
   // ─── Basic rendering ──────────────────────────────────────────────────────
