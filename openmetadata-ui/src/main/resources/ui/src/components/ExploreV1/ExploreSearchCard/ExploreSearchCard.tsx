@@ -419,22 +419,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              {/* Own the event boundary here because React Aria may filter event
-                  props passed through Breadcrumbs; crumb clicks must not open the card. */}
-              <div
-                className="tw:min-w-0 tw:flex-1"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}>
-                <Breadcrumbs
-                  autoCollapse
-                  className={classNames(
-                    'explore-search-card-breadcrumbs tw:min-w-0',
-                    classNameForBreadcrumb
-                  )}
-                  currentItem="none"
-                  items={breadcrumbItems}
-                />
-              </div>
+              <Breadcrumbs
+                autoCollapse
+                className={classNames(
+                  'explore-search-card-breadcrumbs tw:min-w-0',
+                  classNameForBreadcrumb
+                )}
+                items={breadcrumbItems}
+              />
               {score !== undefined && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />

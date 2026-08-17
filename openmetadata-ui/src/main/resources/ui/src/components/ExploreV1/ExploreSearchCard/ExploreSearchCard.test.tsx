@@ -95,56 +95,31 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Breadcrumbs: jest.fn(
-    ({
-      items = [],
-      currentItem = 'last',
-    }: {
-      items: Array<{
-        id: string;
-        label: string;
-        href: string;
-        icon?: (props: { className?: string }) => ReactElement;
-      }>;
-      currentItem?: 'last' | 'none';
-    }) => (
-      <nav data-testid="breadcrumbs">
-        {items.map(
-          (
-            item: {
-              id: string;
-              label: string;
-              href: string;
-              icon?: (props: { className?: string }) => ReactElement;
-            },
-            index: number
-          ) => {
-            const Icon = item.icon;
-            const label = (
-              <>
-                {Icon && (
-                  <span data-testid="breadcrumb-icon">
-                    <Icon className="breadcrumb-icon" />
-                  </span>
-                )}
-                {item.label}
-              </>
-            );
+  Breadcrumbs: jest.fn(({ items = [] }) => (
+    <nav data-testid="breadcrumbs">
+      {items.map(
+        (item: {
+          id: string;
+          label: string;
+          href: string;
+          icon?: (props: { className?: string }) => ReactElement;
+        }) => {
+          const Icon = item.icon;
 
-            return currentItem === 'none' || index < items.length - 1 ? (
-              <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
-                {label}
-              </a>
-            ) : (
-              <span data-testid="breadcrumb-item" key={item.id}>
-                {label}
-              </span>
-            );
-          }
-        )}
-      </nav>
-    )
-  ),
+          return (
+            <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
+              {Icon && (
+                <span data-testid="breadcrumb-icon">
+                  <Icon className="breadcrumb-icon" />
+                </span>
+              )}
+              {item.label}
+            </a>
+          );
+        }
+      )}
+    </nav>
+  )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
 }));
 
@@ -788,62 +763,6 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       }),
       expect.anything()
     );
-  });
-
-  it('renders every hierarchy breadcrumb as a link to its own location', () => {
-    (searchClassBase.getEntityBreadcrumbItems as jest.Mock).mockReturnValue([
-      {
-        id: 'service',
-        label: 'Service',
-        href: '/service',
-      },
-      {
-        id: 'database',
-        label: 'Database',
-        href: '/database',
-      },
-      {
-        id: 'schema',
-        label: 'Schema',
-        href: '/schema',
-      },
-    ]);
-
-    renderCard({});
-
-    expect(screen.getByRole('link', { name: 'Service' })).toHaveAttribute(
-      'href',
-      '/service'
-    );
-    expect(screen.getByRole('link', { name: 'Database' })).toHaveAttribute(
-      'href',
-      '/database'
-    );
-    expect(screen.getByRole('link', { name: 'Schema' })).toHaveAttribute(
-      'href',
-      '/schema'
-    );
-  });
-
-  it('does not trigger the card action when a breadcrumb is clicked', () => {
-    const handleSummaryPanelDisplay = jest.fn();
-    (searchClassBase.getEntityBreadcrumbItems as jest.Mock).mockReturnValue([
-      {
-        id: 'service',
-        label: 'Service',
-        href: '/service',
-      },
-      {
-        id: 'database',
-        label: 'Database',
-        href: '/database',
-      },
-    ]);
-
-    renderCard({}, { handleSummaryPanelDisplay });
-    fireEvent.click(screen.getByRole('link', { name: 'Service' }));
-
-    expect(handleSummaryPanelDisplay).not.toHaveBeenCalled();
   });
 
   it('renders icon in the DOM when breadcrumb item has an icon', () => {

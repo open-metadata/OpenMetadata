@@ -22,33 +22,29 @@ const items = [
 ];
 
 describe('Breadcrumbs', () => {
-  it('renders the last item as the current page by default', () => {
+  it('renders every item with an href as a link', () => {
     render(<Breadcrumbs items={items} />);
 
     expect(screen.getByRole('link', { name: 'Service' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Database' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Schema' })).toHaveAttribute(
+      'href',
+      '/schema'
+    );
+  });
+
+  it('renders a last item without an href as the current page', () => {
+    render(
+      <Breadcrumbs
+        items={[...items.slice(0, -1), { id: 'schema', label: 'Schema' }]}
+      />
+    );
+
     expect(
       screen.queryByRole('link', { name: 'Schema' })
     ).not.toBeInTheDocument();
     expect(
       screen.getByText('Schema').closest('[aria-current]')
     ).toHaveAttribute('aria-current', 'page');
-  });
-
-  it('renders every item as a link when the trail has no current page', () => {
-    render(<Breadcrumbs currentItem="none" items={items} />);
-
-    expect(screen.getByRole('link', { name: 'Service' })).toHaveAttribute(
-      'href',
-      '/service'
-    );
-    expect(screen.getByRole('link', { name: 'Database' })).toHaveAttribute(
-      'href',
-      '/database'
-    );
-    expect(screen.getByRole('link', { name: 'Schema' })).toHaveAttribute(
-      'href',
-      '/schema'
-    );
   });
 });
