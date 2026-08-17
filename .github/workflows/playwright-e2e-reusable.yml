@@ -74,9 +74,10 @@ on:
         required: false
         type: string
         default: ""
-    secrets:
-      E2E_SLACK_BOT_OAUTH_TOKEN:
-        required: false
+    # No `secrets:` block: declaring it turns the reusable's secret access into
+    # a closed set. Callers use `secrets: inherit`, which requires the block
+    # to be absent so every caller-scoped secret (TEST_*, PLAYWRIGHT_*,
+    # E2E_SLACK_BOT_OAUTH_TOKEN, GITHUB_TOKEN) flows through unchanged.
 
 permissions:
   actions: read
