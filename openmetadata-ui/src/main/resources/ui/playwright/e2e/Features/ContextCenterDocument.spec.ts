@@ -484,6 +484,86 @@ test.describe('Context Center - Documents Page', () => {
     });
   });
 
+  // ─── Search scoped to selected folder ────────────────────────────────────
+
+  test('searching with folder selected scopes results to that folder only', async ({
+    browser,
+    page,
+  }) => {
+    const folderName = `search-scope-folder-${uuid()}`;
+    const docInFolderName = `in-folder-${uuid()}.txt`;
+    const docOutsideName = `outside-folder-${uuid()}.txt`;
+
+    // ── Setup: create folder + upload one doc inside, one outside ──
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const folderRes = await apiContext.post(
+      '/api/v1/contextCenter/drive/folders',
+      { data: { name: folderName, displayName: folderName } }
+    );
+    const folderBody = await folderRes.text();
+
+    expect(folderRes.status(), folderBody).toBe(201);
+
+    const folder = parseResponseJson<ContextCenterFolder>(folderBody);
+
+    contextFolderIdsToCleanup.add(folder.id);
+
+    await uploadDocument(
+      apiContext,
+      docInFolderName,
+      Buffer.from('document inside folder'),
+      folder.fullyQualifiedName
+    );
+    await uploadDocument(
+      apiContext,
+      docOutsideName,
+      Buffer.from('document outside folder')
+    );
+    await afterAction();
+
+    await navigateToDocuments(page);
+
+    const searchInput = page
+      .getByTestId('context-center-header')
+      .getByTestId('search-input')
+      .getByLabel('Search Documents');
+
+    // ── Step 1: Search with no folder selected → request has no folder filter ──
+    const noFolderSearchResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.url().includes('index=contextFile')
+    );
+
+    await searchInput.fill('in-folder');
+    const noFolderSearchRes = await noFolderSearchResPromise;
+
+    expect(noFolderSearchRes.status()).toBe(200);
+    expect(decodeURIComponent(noFolderSearchRes.request().url())).not.toContain(
+      folder.id
+    );
+
+    // ── Step 2: Clear search, select folder ──
+    await searchInput.clear();
+    await waitForAllLoadersToDisappear(page);
+    await selectFolderInSidebar(page, folderName);
+
+    // ── Step 3: Search again with folder selected → request includes folder id as filter ──
+    const folderSearchResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.url().includes('index=contextFile')
+    );
+
+    await searchInput.fill('in-folder');
+    const folderSearchRes = await folderSearchResPromise;
+
+    expect(folderSearchRes.status()).toBe(200);
+    expect(decodeURIComponent(folderSearchRes.request().url())).toContain(
+      folder.id
+    );
+  });
+
   // ─── Basic rendering ──────────────────────────────────────────────────────
 
   test('shows header with Upload File button', async ({ page }) => {
