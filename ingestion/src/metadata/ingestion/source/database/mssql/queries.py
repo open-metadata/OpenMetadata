@@ -297,7 +297,8 @@ index_info AS (
         constraint_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN constraint_info ON
             constraint_info.constraint_schema =
@@ -316,7 +317,8 @@ index_info AS (
         index_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN index_info ON
             index_info.index_schema = fk_info.unique_constraint_schema
@@ -417,7 +419,9 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = (
+    "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
+)
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """
