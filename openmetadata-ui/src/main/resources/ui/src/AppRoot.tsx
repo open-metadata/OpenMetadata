@@ -85,7 +85,7 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
+        <BrowserRouter basename={getBasePath()} useTransitions={false}>
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>
