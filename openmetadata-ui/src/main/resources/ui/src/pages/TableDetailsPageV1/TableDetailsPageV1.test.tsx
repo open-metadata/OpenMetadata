@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -24,6 +24,7 @@ import TableDetailsPageV1 from './TableDetailsPageV1';
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+const mockNavigate = jest.fn();
 
 const COMMON_API_FIELDS =
   'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
@@ -73,6 +74,8 @@ jest.mock('../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 jest.mock('../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn().mockReturnValue('/table/fqn/sample_data'),
+  getVersionPath: jest.fn(),
   refreshPage: jest.fn(),
 }));
 jest.mock('../../utils/TagsUtils', () => ({
@@ -120,9 +123,14 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest
-      .fn()
-      .mockImplementation(() => <p>testDataAssetsHeader</p>),
+    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
+      <div>
+        testDataAssetsHeader
+        <span data-testid="header-breadcrumb-data">
+          {JSON.stringify(breadcrumbData)}
+        </span>
+      </div>
+    )),
   })
 );
 
@@ -206,14 +214,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: 'mockPath',
-    search: '',
-    hash: '',
-    state: null,
-    key: 'default',
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
@@ -622,5 +623,50 @@ describe('TestDetailsPageV1 component', () => {
         expect.anything()
       )
     );
+  });
+
+  it('should preserve the table suite breadcrumb in the header and tab navigation', async () => {
+    const breadcrumbData = [
+      {
+        name: 'Test Suites',
+        url: '/data-quality/test-suites/table-suites',
+      },
+      {
+        name: 'orders',
+        url: '/table/service.database.schema.orders/profiler/data-quality',
+      },
+    ];
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        ViewBasic: true,
+      }),
+    }));
+    mockNavigate.mockClear();
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/table/fqn/profiler/data-quality',
+              state: { breadcrumbData },
+            },
+          ]}>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(
+      await screen.findByTestId('header-breadcrumb-data')
+    ).toHaveTextContent(JSON.stringify(breadcrumbData));
+
+    fireEvent.click(screen.getByText('label.sample-data'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/table/fqn/sample_data', {
+      replace: true,
+      state: { breadcrumbData },
+    });
   });
 });

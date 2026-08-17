@@ -23,7 +23,6 @@ import {
   toggleThumbsUpReaction,
   visitTableActivityFeed,
 } from '../../utils/activityAPI';
-import { postActivityComment } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
@@ -180,30 +179,23 @@ test.describe(
 );
 
 test.describe(
-  'Activity API - Comments',
+  'Activity API - Detail panel',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    let commentsTable: TableClass;
-    let commentFeedText: string;
+    let layoutTable: TableClass;
     let layoutFeedText: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
-      commentsTable = new TableClass();
-      commentFeedText = `Test activity for comments ${uuid()}`;
+      layoutTable = new TableClass();
       layoutFeedText = `Test activity detail layout ${uuid()}`;
 
       try {
-        await commentsTable.create(apiContext);
+        await layoutTable.create(apiContext);
         await insertActivityEventForTest(
           apiContext,
-          commentsTable,
-          commentFeedText
-        );
-        await insertActivityEventForTest(
-          apiContext,
-          commentsTable,
+          layoutTable,
           layoutFeedText
         );
       } finally {
@@ -216,25 +208,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('adds a comment to a feed item', async ({ page }) => {
-      const commentText = `Test comment ${uuid()}`;
-
+    test('shows the activity detail layout, read-only', async ({ page }) => {
       await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
-      });
-
-      await test.step('Open the feed detail and post a comment', async () => {
-        const feedItem = await getFeedItemByText(page, commentFeedText);
-
-        await feedItem.click();
-        await waitForAllLoadersToDisappear(page);
-        await postActivityComment(page, commentText);
-      });
-    });
-
-    test('shows the activity detail layout', async ({ page }) => {
-      await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
+        await visitTableActivityFeed(page, layoutTable);
       });
 
       await test.step('Open the detail view and verify layout regions', async () => {
@@ -246,9 +222,15 @@ test.describe(
         const activityPanel = page.locator('#activity-panel');
 
         await expect(activityPanel).toBeVisible();
+        await expect(activityPanel).toContainText(layoutFeedText);
+
+        // Change-events are read-only notifications: the panel renders the
+        // event but offers no way to reply to it. Only conversation threads
+        // carry an editor.
         await expect(
           activityPanel.getByTestId('comments-input-field')
-        ).toBeVisible();
+        ).toHaveCount(0);
+        await expect(activityPanel.getByTestId('send-button')).toHaveCount(0);
       });
     });
   }

@@ -28,6 +28,7 @@ export const THUMBS_UP_EMOJI = '👍';
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
 export type ActivityEventType =
+  | 'EntityCreated'
   | 'DescriptionUpdated'
   | 'OwnerUpdated'
   | 'TagsUpdated';

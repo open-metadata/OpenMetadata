@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
-import { getApiContext } from './common';
+import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { performAdminLogin } from './admin';
+import { getApiContext, getAuthContext } from './common';
 
 export interface ProviderCredentials {
   username: string;
@@ -26,11 +27,13 @@ export interface ProviderConfigOverride {
 }
 
 const SECURITY_CONFIG_ENDPOINT = '/api/v1/system/security/config';
+const PERSONAL_ACCESS_TOKEN_ENDPOINT = '/api/v1/users/security/token';
 
-// Round-trippable = can be GET'd and PUT back unchanged. These two aren't:
-// GET returns empty-string placeholders that the PUT validator rejects.
+// GET returns these unusable for a PUT: ldap/saml as empty-string stubs the
+// validator rejects, oidc with its secret masked and nothing to unmask it.
 const NON_ROUND_TRIPPABLE_AUTH_FIELDS = [
   'ldapConfiguration',
+  'oidcConfiguration',
   'samlConfiguration',
 ] as const;
 
@@ -111,6 +114,80 @@ export const restoreSecurityConfig = async (
   });
 
   expect(response.status()).toBe(200);
+};
+
+/**
+ * Mints a personal access token for the admin `apiContext` is authenticated as.
+ *
+ * Neither obvious credential survives a provider swap. The admin's own login
+ * token is session-bound, and `JwtFilter.validateSessionProviderIsCurrent`
+ * rejects a session minted under the decommissioned provider (401). A JWT from
+ * a fresh SSO login is accepted, but it belongs to a self-signed-up IdP user
+ * that `authorizeAdmin` will not let near `PUT /system/security/config` (403) —
+ * and adding them to `adminPrincipals` does not help, because `isAdmin` lives on
+ * the User entity and a security reload never re-bootstraps it.
+ *
+ * A PAT clears both bars: it carries no `sessionId` claim, so
+ * `JwtFilter.validateSessionBoundToken` returns before the provider check ever
+ * runs, and it belongs to the real admin. It stays verifiable after the swap
+ * because every provider payload keeps OpenMetadata's own JWKS in
+ * `publicKeyUrls`, and `isInternallyIssuedToken` exempts it from principal-domain
+ * enforcement.
+ */
+export const mintAdminRestoreToken = async (
+  apiContext: APIRequestContext
+): Promise<string> => {
+  const response = await apiContext.put(PERSONAL_ACCESS_TOKEN_ENDPOINT, {
+    data: {
+      tokenName: `sso-e2e-restore-${Date.now()}`,
+      JWTTokenExpiry: '1',
+    },
+  });
+
+  expect(response.status()).toBe(200);
+
+  const { jwtToken } = (await response.json()) as { jwtToken?: string };
+
+  if (!jwtToken) {
+    throw new Error('Personal access token response carried no jwtToken');
+  }
+
+  return jwtToken;
+};
+
+/**
+ * Applies `override` for the lifetime of a suite; returns the restore function.
+ *
+ * The restore token is minted before the swap and is provider-independent, so
+ * callers do not need a live SSO session in `afterAll` — see
+ * {@link mintAdminRestoreToken}.
+ */
+export const swapSecurityConfig = async (
+  browser: Browser,
+  override: ProviderConfigOverride
+): Promise<() => Promise<void>> => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    // Mint before the swap: it needs an admin the current provider still accepts,
+    // and failing here must abort rather than leave the server in SSO mode.
+    const restoreToken = await mintAdminRestoreToken(apiContext);
+    const snapshot = await fetchSecurityConfig(apiContext);
+
+    await applyProviderConfig(apiContext, snapshot, override);
+
+    return async () => {
+      const adminContext = await getAuthContext(restoreToken);
+
+      try {
+        await restoreSecurityConfig(adminContext, snapshot);
+      } finally {
+        await adminContext.dispose();
+      }
+    };
+  } finally {
+    await afterAction();
+  }
 };
 
 export const verifyLoggedInUserMatches = async (

@@ -38,7 +38,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_SESSION_TAG_QUERY,
+    set_session_tag_query,
 )
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
@@ -77,7 +77,7 @@ class SQAInterfaceMixin(Root):
             and self.service_connection_config.queryTag
         ):
             query_tag = self.service_connection_config.queryTag  # pyright: ignore[reportAttributeAccessIssue]
-            session.execute(text(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag)))
+            session.execute(text(set_session_tag_query(query_tag)))
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.

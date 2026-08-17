@@ -15,7 +15,12 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  expectNoErrorToast,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
 import {
   getFailedRowsData,
@@ -249,7 +254,7 @@ test.describe('Failed rows sample fetch gating', () => {
 
         // The 404 is the expected "no sample stored" empty state — it must not
         // surface as an error toast.
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        await expectNoErrorToast(page);
       });
     }
   );

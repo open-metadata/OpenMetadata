@@ -178,7 +178,14 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   //      tuple check is satisfied by our write and it never consults
   //      the hint, so a cmd+click from an AI tab silently boots the new
   //      tab into Classic.
-  if (readAppModeSession()?.mode) {
+  // A returning tab (a `'manual'` or `'resolver'` tuple from a prior
+  // resolve) or a fresh tab that inherits an active hint from a
+  // sibling — leave both alone. `useResolvedAppMode` treats these as
+  // sticky and returns without rewriting. A `'boot'` tuple from an
+  // earlier auth cycle is NOT sticky and should be re-resolved, so
+  // don't skip on that.
+  const existingSession = readAppModeSession();
+  if (existingSession?.mode && existingSession.source !== 'boot') {
     return;
   }
   const hint = readAppModeHint();
@@ -188,7 +195,18 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 
   const userPref =
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
-  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
+
+  // Provisional boot write — persona isn't known synchronously (its
+  // docStore doc is fetched by `useResolvedAppMode`), so we compute
+  // the best guess from what IS available (userPref, appDefault) and
+  // mark it `source: 'boot'`. The async resolver is allowed to
+  // override this tuple once it has the persona-doc result and the
+  // route registry has settled. The `writeHint` call inside
+  // `writeAppMode` is skipped for `'boot'` writes so a provisional
+  // guess doesn't leak to sibling tabs as an authoritative hint.
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault), null, {
+    source: 'boot',
+  });
 };
 
 let requestInterceptor: number | null = null;
@@ -412,6 +430,14 @@ export const AuthProvider = ({
   const getLoggedInUserDetails = async () => {
     setApplicationLoading(true);
     try {
+      // Bug 1: on cold-load with an expired token, /loggedInUser 401s and
+      // the axios response interceptor drives a refresh via TokenService.
+      // The real fix for the race between that refresh and the lazy
+      // authenticator's renewer registration lives in
+      // TokenService.fetchNewToken (it now awaits `awaitRenewerReady`),
+      // so this catch just needs to make sure we don't swallow the
+      // recovered response — the interceptor drains the queued request
+      // itself and getLoggedInUser resolves normally on success.
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         setCurrentUser(res);
@@ -504,7 +530,15 @@ export const AuthProvider = ({
         );
 
         if (isExpired || timeoutExpiry <= 0) {
-          tokenService.current?.refreshToken();
+          const newToken = await tokenService.current?.refreshToken();
+          // Post-refresh reauth: if the user was bounced to signin by an
+          // earlier failed call, a successful refresh must re-run the
+          // loggedInUser flow to flip isAuthenticated back to true.
+          // Reading via getState() avoids the stale closure of the
+          // mount-only useEffect.
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
         } else {
           startTokenExpiryTimer();
         }
