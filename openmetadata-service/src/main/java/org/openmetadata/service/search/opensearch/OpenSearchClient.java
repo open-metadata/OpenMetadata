@@ -920,6 +920,8 @@ public class OpenSearchClient implements SearchClient {
           requestConfigBuilder ->
               requestConfigBuilder
                   .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
+                  .setConnectionRequestTimeout(
+                      Timeout.ofSeconds(esConfig.getConnectionRequestTimeoutSecs()))
                   .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
 
       var defaultFactory =

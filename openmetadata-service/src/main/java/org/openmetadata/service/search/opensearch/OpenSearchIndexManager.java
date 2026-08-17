@@ -53,16 +53,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   @Override
   public boolean indexExists(String indexName) {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot check index exists.");
-      return false;
+      throw new IllegalStateException("OpenSearch client is not available");
     }
     try {
       BooleanResponse response = client.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
       LOG.info("index {} exist: {}", indexName, response.value());
       return response.value();
     } catch (Exception e) {
-      LOG.error("Failed to check if index {} exists", indexName, e);
-      return false;
+      throw new IllegalStateException("Failed to check if index " + indexName + " exists", e);
     }
   }
 
@@ -505,8 +503,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   public Set<String> getIndicesByAlias(String aliasName) {
     Set<String> indices = new HashSet<>();
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot get indices by alias.");
-      return indices;
+      throw new IllegalStateException("OpenSearch client is not available");
     }
     try {
       boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
@@ -527,14 +524,10 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         return indices;
       }
 
-      // Other errors should not be masked
-      LOG.error(
-          "Unexpected OpensearchException while getting alias {}: {}",
-          aliasName,
-          osEx.getMessage(),
-          osEx);
+      throw new IllegalStateException(
+          "Failed to get indices for OpenSearch alias " + aliasName, osEx);
     } catch (Exception e) {
-      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+      throw new IllegalStateException("Failed to get indices for OpenSearch alias " + aliasName, e);
     }
     return indices;
   }

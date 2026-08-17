@@ -871,6 +871,9 @@ public class ElasticSearchClient implements SearchClient {
                     .setConnectTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
+                    .setConnectionRequestTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionRequestTimeoutSecs()))
                     .setResponseTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));

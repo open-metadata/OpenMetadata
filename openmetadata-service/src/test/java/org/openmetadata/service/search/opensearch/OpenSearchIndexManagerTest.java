@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
@@ -108,13 +109,11 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testIndexExists_ReturnsFalseOnException() throws IOException {
+  void testIndexExists_PropagatesConnectionFailure() throws IOException {
     when(indicesClient.exists(any(ExistsRequest.class)))
         .thenThrow(new IOException("Connection error"));
 
-    boolean result = indexManager.indexExists(TEST_INDEX);
-
-    assertFalse(result);
+    assertThrows(IllegalStateException.class, () -> indexManager.indexExists(TEST_INDEX));
     verify(indicesClient).exists(any(ExistsRequest.class));
   }
 
@@ -294,7 +293,7 @@ class OpenSearchIndexManagerTest {
     OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
 
     assertNotNull(managerWithNullClient);
-    assertFalse(managerWithNullClient.indexExists(TEST_INDEX));
+    assertThrows(IllegalStateException.class, () -> managerWithNullClient.indexExists(TEST_INDEX));
   }
 
   @Test
@@ -487,16 +486,14 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testGetIndicesByAlias_HandlesException() throws IOException {
+  void testGetIndicesByAlias_PropagatesConnectionFailure() throws IOException {
     when(indicesClient.existsAlias(any(java.util.function.Function.class)))
         .thenReturn(booleanResponse);
     when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class)))
         .thenThrow(new IOException("Get indices by alias failed"));
 
-    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
-
-    assertTrue(result.isEmpty());
+    assertThrows(IllegalStateException.class, () -> indexManager.getIndicesByAlias(TEST_ALIAS));
     verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
@@ -531,7 +528,7 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testGetIndicesByAlias_HandlesUnexpectedOpenSearchException() throws IOException {
+  void testGetIndicesByAlias_PropagatesUnexpectedOpenSearchException() throws IOException {
     os.org.opensearch.client.opensearch._types.OpenSearchException unexpectedException =
         new os.org.opensearch.client.opensearch._types.OpenSearchException(
             buildErrorResponse(500, "internal_server_error"));
@@ -540,9 +537,7 @@ class OpenSearchIndexManagerTest {
     when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenThrow(unexpectedException);
 
-    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
-
-    assertTrue(result.isEmpty());
+    assertThrows(IllegalStateException.class, () -> indexManager.getIndicesByAlias(TEST_ALIAS));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
 
@@ -668,9 +663,8 @@ class OpenSearchIndexManagerTest {
   void testGetIndicesByAlias_ClientNotAvailable() {
     OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
 
-    Set<String> result = managerWithNullClient.getIndicesByAlias(TEST_ALIAS);
-
-    assertTrue(result.isEmpty());
+    assertThrows(
+        IllegalStateException.class, () -> managerWithNullClient.getIndicesByAlias(TEST_ALIAS));
     verifyNoInteractions(indicesClient);
   }
 

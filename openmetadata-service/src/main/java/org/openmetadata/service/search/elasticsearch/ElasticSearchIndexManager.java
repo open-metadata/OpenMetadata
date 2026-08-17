@@ -51,8 +51,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   @Override
   public boolean indexExists(String indexName) {
     if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot check index exists.");
-      return false;
+      throw new IllegalStateException("ElasticSearch client is not available");
     }
     try {
       ElasticsearchIndicesClient indicesClient = client.indices();
@@ -61,8 +60,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.info("index {} exist: {}", indexName, response.value());
       return response.value();
     } catch (Exception e) {
-      LOG.error("Failed to check if index {} exists", indexName, e);
-      return false;
+      throw new IllegalStateException("Failed to check if index " + indexName + " exists", e);
     }
   }
 
@@ -467,8 +465,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   public Set<String> getIndicesByAlias(String aliasName) {
     Set<String> indices = new HashSet<>();
     if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot get indices by alias.");
-      return indices;
+      throw new IllegalStateException("ElasticSearch client is not available");
     }
     try {
 
@@ -490,14 +487,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         return indices;
       }
 
-      // Other errors should not be masked
-      LOG.error(
-          "Unexpected ElasticsearchException while getting alias {}: {}",
-          aliasName,
-          esEx.getMessage(),
-          esEx);
+      throw new IllegalStateException(
+          "Failed to get indices for Elasticsearch alias " + aliasName, esEx);
     } catch (Exception e) {
-      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+      throw new IllegalStateException(
+          "Failed to get indices for Elasticsearch alias " + aliasName, e);
     }
     return indices;
   }

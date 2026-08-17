@@ -53,6 +53,12 @@
       "type": "integer",
       "default": 5
     },
+    "connectionRequestTimeoutSecs": {
+      "description": "Maximum time in seconds to wait for a connection from the HTTP connection pool",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "socketTimeoutSecs": {
       "description": "Socket Timeout in Seconds",
       "type": "integer",
@@ -70,7 +76,7 @@
     "maxConnPerRoute": {
       "description": "Maximum connections per host/route in the connection pool",
       "type": "integer",
-      "default": 10
+      "default": 30
     },
     "batchSize": {
       "description": "Batch Size for Requests",
@@ -293,6 +299,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": ["scheme", "connectionTimeoutSecs", "connectionRequestTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }
