@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -45,6 +46,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -77,6 +79,7 @@ export const CustomizablePage = () => {
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const { document, setDocument, currentPage, getPage, setCurrentPageType } =
@@ -126,6 +129,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -170,6 +177,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -238,6 +249,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -298,6 +313,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
