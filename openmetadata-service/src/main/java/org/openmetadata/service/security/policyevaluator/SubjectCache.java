@@ -36,7 +36,9 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Cache for user policies to improve authorization performance. Caches the compiled policies for
@@ -72,6 +74,15 @@ public class SubjectCache {
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());
+
+  private static final Invalidatable INVALIDATOR =
+      (type, id, fqn) -> {
+        if (Entity.PERSONA.equals(type)) {
+          invalidateAllUserContexts();
+        } else if (Entity.USER.equals(type) && fqn != null) {
+          invalidateUserContextByFqn(fqn);
+        }
+      };
 
   private SubjectCache() {}
 
@@ -139,6 +150,37 @@ public class SubjectCache {
   public static void invalidateAllUserContexts() {
     LOG.info("Invalidating all user context caches");
     USER_CONTEXT_CACHE.invalidateAll();
+  }
+
+  /**
+   * The {@link Invalidatable} to register with {@code CacheBundle} so persona assignments converge
+   * across pods. The repositories invalidate only the JVM that served the write, so without this a
+   * peer keeps a {@code User} carrying the old persona list for up to the 15-minute TTL and
+   * {@code SubjectContext.getActivePersona()} discards the requested persona as "not assigned" —
+   * which reads to the user as a persona switch that intermittently doesn't take.
+   *
+   * <p>A persona write drops every user context because the affected set isn't derivable from the
+   * message: assignments change through the persona, the user's {@code defaultPersona}, and a
+   * team's default alike. Persona writes are rare admin actions and the reload is a cached entity
+   * read, so the blunt drop is the cheaper trade. A context {@code refresh} is published under
+   * {@code TYPE_PERSONA_CONTEXT} and so does not land here.
+   */
+  public static Invalidatable invalidator() {
+    return INVALIDATOR;
+  }
+
+  /**
+   * A user's FQN is the lower-cased quoted name while the cache is keyed by the principal name as
+   * the request presented it, so match case-insensitively rather than dropping a key that may not
+   * exist in that exact form.
+   */
+  private static void invalidateUserContextByFqn(String fqn) {
+    try {
+      String userName = FullyQualifiedName.unquoteName(fqn);
+      USER_CONTEXT_CACHE.asMap().keySet().removeIf(key -> key.equalsIgnoreCase(userName));
+    } catch (Exception e) {
+      LOG.debug("Could not invalidate user context for fqn {}", fqn, e);
+    }
   }
 
   public static void invalidateAll() {
