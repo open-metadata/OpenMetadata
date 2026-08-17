@@ -59,9 +59,9 @@ export const RuleQueryBuilderField = ({
   // which entityType is currently selected — fetch once on mount and cache it
   // in state. The second effect rebuilds enriched fields whenever entityType
   // changes without issuing a redundant network request.
-  const [customProps, setCustomProps] = useState<
-    Awaited<ReturnType<typeof getAllCustomProperties>> | null
-  >(null);
+  const [customProps, setCustomProps] = useState<Awaited<
+    ReturnType<typeof getAllCustomProperties>
+  > | null>(null);
 
   useEffect(() => {
     getAllCustomProperties()

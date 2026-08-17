@@ -18,8 +18,8 @@ import {
   ContextSection,
   PersonaContextDefinition,
 } from '../../../src/generated/type/personaContextDefinition';
-import { expect, test } from '../../support/fixtures/userPages';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
@@ -1311,9 +1311,7 @@ test.describe.serial('Persona AI Context', () => {
 
     // The sub-field selector must appear — click it and verify our mocked property
     // is listed and "No data" is absent.
-    const subFieldSelect = adminPage
-      .locator('.rule--field .ant-select')
-      .last();
+    const subFieldSelect = adminPage.locator('.rule--field .ant-select').last();
     await subFieldSelect.click();
     const dropdown = adminPage.locator('.ant-select-dropdown:visible').first();
     await dropdown.waitFor({ state: 'visible' });
@@ -1387,9 +1385,7 @@ test.describe.serial('Persona AI Context', () => {
     await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
     await selectOption(adminPage, operatorLocator, 'Is', false);
 
-    const valueSelect = adminPage
-      .locator('.rule--widget .ant-select')
-      .first();
+    const valueSelect = adminPage.locator('.rule--widget .ant-select').first();
     await valueSelect.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
@@ -1437,12 +1433,15 @@ test.describe.serial('Persona AI Context', () => {
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
-        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
     );
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
     const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
 
-    expect(createdRule.sections ?? []).not.toContain(ContextSection.Description);
+    expect(createdRule.sections ?? []).not.toContain(
+      ContextSection.Description
+    );
     // Save closes the drawer and the new card appears in the list.
     await expect(
       adminPage
@@ -1471,7 +1470,8 @@ test.describe.serial('Persona AI Context', () => {
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
-        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
     );
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
     const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
@@ -1500,7 +1500,9 @@ test.describe.serial('Persona AI Context', () => {
     await openPersonaContext(adminPage);
     await adminPage.getByTestId('empty-add-context-rule').click();
 
-    const exploreLink = adminPage.getByRole('link', { name: 'View in Explore' });
+    const exploreLink = adminPage.getByRole('link', {
+      name: 'View in Explore',
+    });
     // Default entity type is Table.
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
 
@@ -1674,9 +1676,9 @@ test.describe.serial('Persona AI Context', () => {
       // nested OR group and causes .last() to target the original alpha rule
       // instead of the new empty slot, overwriting alpha with beta.
       await adminPage.getByTestId('add-context-condition').click();
-      await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
-        2
-      );
+      await expect(
+        adminPage.getByTestId('delete-condition-button')
+      ).toHaveCount(2);
 
       const secondField = drawer.locator('.rule--field .ant-select').last();
       await selectOption(adminPage, secondField, 'Description', true);
@@ -1697,7 +1699,8 @@ test.describe.serial('Persona AI Context', () => {
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
-        request.url().endsWith('/aiContext/rules') && request.method() === 'POST'
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
     );
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
     await expect(
