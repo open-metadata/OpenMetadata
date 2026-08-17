@@ -535,6 +535,16 @@ export default [
     },
   },
 
+  // Test fixtures use literal and repeated strings as selectors and controlled inputs,
+  // so production-facing string rules create noise without protecting user-visible copy.
+  {
+    files: ['src/**/*.test.tsx'],
+    rules: {
+      'i18next/no-literal-string': 'off',
+      'sonarjs/no-duplicate-string': 'off',
+    },
+  },
+
   // Test setup files
   {
     files: [
