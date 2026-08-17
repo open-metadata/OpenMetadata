@@ -38,6 +38,7 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateEntityLink } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -145,6 +146,7 @@ export const ContractQualityFormTab: React.FC<{
       {
         title: t('label.name'),
         dataIndex: 'name',
+        render: (_: string, record: TestCase) => getEntityName(record),
       },
       {
         title: t('label.status'),
@@ -195,6 +197,7 @@ export const ContractQualityFormTab: React.FC<{
       return {
         description: testCase?.description,
         name: testCase?.name,
+        displayName: testCase?.displayName,
         id: testCase?.id,
         type: EntityType.TEST_CASE,
       } as EntityReference;

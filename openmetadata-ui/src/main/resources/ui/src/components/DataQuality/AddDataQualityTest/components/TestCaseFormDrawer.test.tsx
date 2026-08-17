@@ -185,7 +185,7 @@ jest.mock('./TestCaseFormBody', () =>
               onChange={() => undefined}
             />
           )}
-          {!showOnlyParameter && isEditMode && (
+          {!showOnlyParameter && (
             <input
               data-testid="display-name"
               value={displayNameValue ?? ''}

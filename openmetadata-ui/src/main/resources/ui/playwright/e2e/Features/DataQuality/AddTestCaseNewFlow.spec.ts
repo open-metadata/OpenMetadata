@@ -83,6 +83,7 @@ test.describe(
       testType: string;
       testTypeId: string;
       paramsValue?: string;
+      displayName?: string;
       expectSchedulerCard?: boolean;
     }) => {
       const {
@@ -90,6 +91,7 @@ test.describe(
         testType,
         testTypeId,
         paramsValue,
+        displayName,
         expectSchedulerCard = true,
       } = data;
       await page.getByTestId('test-case-name').click();
@@ -119,6 +121,14 @@ test.describe(
         .getByTestId('test-case-name')
         .locator('input')
         .fill(`${testTypeId}_test_case`);
+
+      if (displayName) {
+        await page
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(displayName);
+      }
+
       await page.click('[id="root\\/testType"]');
       await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
 
@@ -153,6 +163,7 @@ test.describe(
           response.request().method() === 'POST'
       );
 
+      let testCaseResponse: Response;
       let ingestionPipelineCalled = false;
       if (expectSchedulerCard) {
         const ingestionPipeline = page.waitForResponse(
@@ -163,6 +174,7 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         const response = await tableTestCaseResponse;
+        testCaseResponse = response;
         const ingestionPipelineResponse = await ingestionPipeline;
 
         const requestBody = JSON.parse(
@@ -187,10 +199,20 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         const response = await tableTestCaseResponse;
+        testCaseResponse = response;
 
         expect(response.status()).toBe(201);
         expect(ingestionPipelineCalled).toBe(false);
       }
+
+      // The form's display name is optional and falls back to the test name.
+      const testCaseRequestBody = JSON.parse(
+        testCaseResponse.request().postData() || '{}'
+      );
+
+      expect(testCaseRequestBody.displayName).toBe(
+        displayName ?? `${testTypeId}_test_case`
+      );
     };
 
     // Helper function to open test case form
@@ -245,6 +267,8 @@ test.describe(
 
       await visitDataQualityPage(page);
 
+      const displayName = 'Table row count is exactly ten';
+
       await test.step('Create table-level test case', async () => {
         // Create table-level test case
         await openTestCaseForm(page);
@@ -252,11 +276,16 @@ test.describe(
         await createTestCase({
           page,
           ...tableTestCaseDetails,
+          displayName,
         });
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('entity-header-name')).toHaveText(
           `${tableTestCaseDetails.testTypeId}_test_case`
+        );
+
+        await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+          displayName
         );
       });
 

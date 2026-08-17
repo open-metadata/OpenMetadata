@@ -3283,6 +3283,7 @@
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
+    "doc-field-test-case-display-name": "Un nom convivial facultatif affiché dans l'interface. Laissez-le vide pour utiliser le nom du cas de test.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
     "doc-field-test-definition-data-quality-dimension": "La dimension de qualité des données mesurée par ce test, telle que Complétude, Exactitude ou Unicité.",
     "doc-field-test-definition-description": "Décrivez ce que la définition de test valide, quand elle doit être utilisée et tout comportement important que les utilisateurs doivent connaître avant de créer des cas de test à partir de celle-ci.",

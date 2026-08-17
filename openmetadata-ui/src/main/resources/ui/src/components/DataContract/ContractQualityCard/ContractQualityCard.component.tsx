@@ -25,6 +25,7 @@ import {
   getTestCaseExecutionSummary,
 } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -197,7 +198,7 @@ const ContractQualityCard: React.FC<{
                     to={getTestCaseDetailPagePath(
                       item.fullyQualifiedName ?? ''
                     )}>
-                    {item.name}
+                    {getEntityName(item)}
                   </Link>
                 </div>
               </div>

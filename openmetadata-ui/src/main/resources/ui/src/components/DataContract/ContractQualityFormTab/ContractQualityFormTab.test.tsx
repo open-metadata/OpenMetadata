@@ -70,8 +70,17 @@ jest.mock('../../common/Table/Table', () => {
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item: any, index: number) => (
           <div data-testid={`table-row-${item.id}`} key={item[rowKey]}>
+            {columns?.map((column: any) => (
+              <div
+                data-testid={`cell-${column.key ?? column.dataIndex}`}
+                key={column.key ?? column.dataIndex}>
+                {column.render
+                  ? column.render(item[column.dataIndex], item, index)
+                  : item[column.dataIndex]}
+              </div>
+            ))}
             <button
               data-testid={`select-row-${item.id}`}
               onClick={() => rowSelection?.onChange?.([item.id])}>
@@ -283,6 +292,39 @@ describe('ContractQualityFormTab', () => {
       });
     });
 
+    it('should carry the display name into the selected quality expectation', async () => {
+      (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            ...mockTestCases[0],
+            name: 'test_case_1',
+            displayName: 'Row count is within range',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-1'));
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        qualityExpectations: [
+          expect.objectContaining({
+            id: 'test-1',
+            name: 'test_case_1',
+            displayName: 'Row count is within range',
+          }),
+        ],
+      });
+    });
+
     it('should display selected rows in table', async () => {
       render(
         <ContractQualityFormTab selectedQuality={['test-1']} {...commonProps} />
@@ -413,6 +455,29 @@ describe('ContractQualityFormTab', () => {
 
       expect(screen.getByTestId('table-row-test-1')).toBeInTheDocument();
       expect(screen.getByTestId('table-row-test-2')).toBeInTheDocument();
+    });
+
+    it('should show the display name of a test case in the name column', async () => {
+      (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            ...mockTestCases[0],
+            name: 'test_case_1',
+            displayName: 'Row count is within range',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('table-row-test-1')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('cell-name')).toHaveTextContent(
+        'Row count is within range'
+      );
     });
 
     it('should handle empty test cases data', async () => {

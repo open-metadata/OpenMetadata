@@ -3283,6 +3283,7 @@
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
+    "doc-field-test-case-display-name": "UI에 표시되는 선택적 사용자 친화적 이름입니다. 비워 두면 테스트 케이스 이름이 사용됩니다.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
     "doc-field-test-definition-data-quality-dimension": "이 테스트가 측정하는 데이터 품질 차원입니다(예: 완전성, 정확성 또는 고유성).",
     "doc-field-test-definition-description": "테스트 정의가 검증하는 내용, 사용 시점, 그리고 이 정의로 테스트 케이스를 만들기 전에 사용자가 알아야 할 중요한 동작을 설명합니다.",

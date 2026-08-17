@@ -710,12 +710,12 @@ describe('TestCaseFormBody', () => {
       expect(await screen.findByTestId('display-name')).toBeInTheDocument();
     });
 
-    it('does not render the display name field in create mode', async () => {
+    it('renders the display name field in create mode', async () => {
       await act(async () => {
         renderBody({ table: SELECTED_TABLE });
       });
 
-      expect(screen.queryByTestId('display-name')).not.toBeInTheDocument();
+      expect(await screen.findByTestId('display-name')).toBeInTheDocument();
     });
 
     it('does not auto-generate the test name in edit mode', async () => {

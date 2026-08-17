@@ -37,6 +37,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
@@ -127,11 +128,10 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     ? incident?.testCaseResolutionStatusType
     : testCase.testCaseResult?.testCaseStatus;
 
-  const testCaseName = isIncidentMode
-    ? incident?.testCaseReference?.displayName ||
-      incident?.testCaseReference?.name ||
-      'Unknown Test Case'
-    : testCase.name;
+  // In incident mode the card is fed a test case synthesized from the
+  // incident's reference (see `convertIncidentToTestCase`), so both modes can
+  // read the label off the same object and honour its display name.
+  const testCaseName = getEntityName(testCase);
 
   const severity = incident?.severity;
   const statusBadgeType = isIncidentMode
@@ -577,10 +577,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return {
       id: incident.id || '',
-      name:
-        incident.testCaseReference?.displayName ||
-        incident.testCaseReference?.name ||
-        'Unknown Test Case',
+      name: incident.testCaseReference?.name || 'Unknown Test Case',
+      displayName: incident.testCaseReference?.displayName,
       fullyQualifiedName: incident.testCaseReference?.fullyQualifiedName || '',
       entityLink: matchingTestCase?.entityLink || '',
       testCaseResult: {

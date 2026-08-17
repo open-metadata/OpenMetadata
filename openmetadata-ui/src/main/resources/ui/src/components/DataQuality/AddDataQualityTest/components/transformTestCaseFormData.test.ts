@@ -113,6 +113,41 @@ describe('transformTestCaseFormData', () => {
     expect(result.displayName).toBe('generated_name_123');
   });
 
+  it('sends the display name entered on the create form', () => {
+    const result = transformTestCaseFormData(
+      {
+        testLevel: TestLevel.TABLE,
+        testTypeId: 'x',
+        testName: 'my_test',
+        displayName: '  Orders row count  ',
+      },
+      {
+        selectedTestLevel: TestLevel.TABLE,
+        selectedTableData: makeTable('t'),
+      }
+    );
+
+    expect(result.name).toBe('my_test');
+    expect(result.displayName).toBe('Orders row count');
+  });
+
+  it('falls back to the name when the display name is left blank', () => {
+    const result = transformTestCaseFormData(
+      {
+        testLevel: TestLevel.TABLE,
+        testTypeId: 'x',
+        testName: 'my_test',
+        displayName: '   ',
+      },
+      {
+        selectedTestLevel: TestLevel.TABLE,
+        selectedTableData: makeTable('t'),
+      }
+    );
+
+    expect(result.displayName).toBe('my_test');
+  });
+
   it('normalizes a select-valued param into an unwrapped parameterValue', () => {
     const result = transformTestCaseFormData(
       {

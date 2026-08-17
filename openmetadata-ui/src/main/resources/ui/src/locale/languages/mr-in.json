@@ -3283,6 +3283,7 @@
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
+    "doc-field-test-case-display-name": "UI मध्ये दर्शवले जाणारे एक पर्यायी वापरकर्ता-अनुकूल नाव. रिक्त ठेवल्यास चाचणी प्रकरणाचे नाव वापरले जाईल.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
     "doc-field-test-definition-data-quality-dimension": "ही चाचणी मोजत असलेले डेटा गुणवत्ता आयाम, जसे की पूर्णता, अचूकता किंवा अद्वितीयता.",
     "doc-field-test-definition-description": "चाचणी व्याख्या काय प्रमाणित करते, ती केव्हा वापरावी आणि तिच्यापासून चाचणी प्रकरणे तयार करण्यापूर्वी वापरकर्त्यांना माहीत असावे असे कोणतेही महत्त्वाचे वर्तन वर्णन करा.",

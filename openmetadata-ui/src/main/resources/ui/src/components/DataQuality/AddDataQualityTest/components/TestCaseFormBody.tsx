@@ -957,6 +957,17 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/displayName',
+    doc: fieldDocs.displayName ?? t('message.doc-field-test-case-display-name'),
+    placeholder: t('message.enter-display-name'),
+    rules: {
+      maxLength: {
+        value: MAX_NAME_LENGTH,
+        message: t('message.entity-maximum-size', {
+          entity: t('label.display-name'),
+          max: MAX_NAME_LENGTH,
+        }),
+      },
+    },
     props: {
       'data-testid': 'display-name',
     },
@@ -1135,7 +1146,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           data-testid="test-details-card">
           {getField(testNameField)}
 
-          {isEditMode && getField(displayNameField)}
+          {getField(displayNameField)}
 
           <FormField control={form.control} name="description">
             {({ field }) => (

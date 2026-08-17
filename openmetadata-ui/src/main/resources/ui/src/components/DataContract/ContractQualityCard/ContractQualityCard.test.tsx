@@ -190,6 +190,33 @@ describe('ContractQualityCard', () => {
     );
   });
 
+  it('should display the display name of a test case when it has one', async () => {
+    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
+      mockTestSummary
+    );
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          ...mockTestCases[0],
+          name: 'test_case_1',
+          displayName: 'Row count is within range',
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Row count is within range')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('test_case_1')).not.toBeInTheDocument();
+  });
+
   it('should display test summary chart when data is available', async () => {
     (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
       mockTestSummary

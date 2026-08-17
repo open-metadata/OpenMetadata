@@ -39,6 +39,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -213,7 +214,7 @@ const IncidentManagerDetailPage = ({
       return [
         ...data,
         {
-          name: testCase?.name ?? '',
+          name: getEntityName(testCase),
           url: observabilityRouterClassBase.getTestCaseDetailPagePath(
             testCaseFQN,
             activeTab as TestCasePageTabs
@@ -231,7 +232,7 @@ const IncidentManagerDetailPage = ({
     return [
       ...data,
       {
-        name: testCase?.name ?? '',
+        name: getEntityName(testCase),
         url: '',
         activeTitle: true,
       },

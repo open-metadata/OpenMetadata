@@ -165,7 +165,10 @@ export const transformTestCaseFormData = (
 
   return {
     name,
-    displayName: name,
+    // The form's display name is optional; falling back to the (possibly
+    // auto-generated) name keeps the test case labelled in every list that
+    // reads displayName first.
+    displayName: values.displayName?.trim() || name,
     computePassedFailedRowCount: values.computePassedFailedRowCount,
     entityLink,
     testDefinition: unwrapSelectValue(values.testTypeId) ?? '',

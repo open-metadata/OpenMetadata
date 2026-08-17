@@ -358,6 +358,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               id: testCase.id ?? '',
               type: EntityType.TEST_CASE,
               name: testCase.name,
+              displayName: testCase.displayName,
               fullyQualifiedName: testCase.fullyQualifiedName,
             },
           } as TestCaseResolutionStatus,

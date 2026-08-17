@@ -896,6 +896,38 @@ describe('DataQualityTab', () => {
     });
   });
 
+  describe('Display Name', () => {
+    it('should render the display name of a test case when it has one', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({
+        data: [
+          {
+            ...mockTestCases[0],
+            name: 'test_case_1',
+            displayName: 'Row count is within range',
+          },
+        ],
+      });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Row count is within range')
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('test_case_1')).not.toBeInTheDocument();
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle missing entityFQN', async () => {
       const { getListTestCaseBySearch } = jest.requireMock(
