@@ -402,7 +402,9 @@ test.describe(
       );
 
       await openExportScopeModal(page);
-      await modalCountApiPromise;
+      const modalCountResponse = await modalCountApiPromise;
+
+      expect(modalCountResponse.status()).toBe(200);
 
       const modalContent = getExportModalContent(page);
 
