@@ -1761,10 +1761,12 @@ public class EventSubscriptionResourceIT
               .withTokenUrl(URI.create("http://localhost:" + port + "/oauth/token"))
               .withClientId(ns.prefix("client-id"))
               .withClientSecret(clientSecret);
+      String queryToken = ns.prefix("query-token");
       SubscriptionDestination reachable =
-          webhookDestination("http://localhost:" + port + "/webhook", oauth2);
+          webhookDestination("http://localhost:" + port + "/webhook", oauth2, null);
       SubscriptionDestination unreachable =
-          webhookDestination("http://localhost:" + closedPort() + "/webhook", null);
+          webhookDestination(
+              "http://localhost:" + closedPort() + "/webhook", null, Map.of("token", queryToken));
 
       HttpResponse<String> response = postTestDestination(List.of(reachable, unreachable));
 
@@ -1773,6 +1775,9 @@ public class EventSubscriptionResourceIT
           response.body().contains(clientSecret), "Response echoed the webhook client secret");
       assertFalse(response.body().contains("clientSecret"), "Response echoed the auth config");
       assertFalse(response.body().contains("authType"), "Response echoed the auth config");
+      assertFalse(
+          response.body().contains(queryToken),
+          "Response echoed a credential carried in the endpoint query string");
 
       List<SubscriptionDestination> results =
           JsonUtils.readObjects(response.body(), SubscriptionDestination.class);
@@ -1788,8 +1793,12 @@ public class EventSubscriptionResourceIT
   }
 
   private SubscriptionDestination webhookDestination(
-      String endpoint, WebhookOAuth2Config authType) {
-    Webhook webhook = new Webhook().withEndpoint(URI.create(endpoint)).withAuthType(authType);
+      String endpoint, WebhookOAuth2Config authType, Map<String, String> queryParams) {
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create(endpoint))
+            .withAuthType(authType)
+            .withQueryParams(queryParams);
 
     return new SubscriptionDestination()
         .withId(UUID.randomUUID())

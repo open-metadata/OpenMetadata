@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -114,6 +115,8 @@ public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions/";
   public static final String FIELDS = "owners,filteringRules";
+  private static final Pattern URL_QUERY_PATTERN = Pattern.compile("(https?://[^\\s?]*)\\?\\S*");
+  private static final String REDACTED_QUERY_REPLACEMENT = "$1?***";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
@@ -1464,9 +1467,20 @@ public class EventSubscriptionResource
       LOG.error("Failed to send test message to destination: {}", e.getMessage());
       destination.setStatusDetails(
           AlertUtil.buildTestDestinationStatus(
-              TestDestinationStatus.Status.FAILED, e.getMessage(), System.currentTimeMillis()));
+              TestDestinationStatus.Status.FAILED,
+              redactUrlQueryParams(e.getMessage()),
+              System.currentTimeMillis()));
     }
     return destination.withConfig(null);
+  }
+
+  /** Endpoint query strings can carry credentials, so keep them out of the returned reason. */
+  private static String redactUrlQueryParams(String reason) {
+    String result = null;
+    if (reason != null) {
+      result = URL_QUERY_PATTERN.matcher(reason).replaceAll(REDACTED_QUERY_REPLACEMENT);
+    }
+    return result;
   }
 
   private void validateDestinationConfig(SubscriptionDestination destination) {
