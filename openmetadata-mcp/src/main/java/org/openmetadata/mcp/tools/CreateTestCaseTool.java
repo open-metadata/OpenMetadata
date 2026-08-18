@@ -101,14 +101,19 @@ public class CreateTestCaseTool implements McpTool {
     TestCaseRepository repository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     repository.setFullyQualifiedName(testCase);
-    repository.prepare(testCase, false);
 
+    // Authorize before prepare: TestCaseRepository.prepare resolves the basic test suite and
+    // persists one as the ingestion bot when it is missing, so running it first let a caller who
+    // is then denied leave a test suite behind. TestCaseResource orders authorization first too.
     OperationContext operationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
     CreateResourceContext<TestCase> createResourceContext =
         new CreateResourceContext<>(Entity.TEST_CASE, testCase);
     limits.enforceLimits(catalogSecurityContext, createResourceContext, operationContext);
     authorizer.authorize(catalogSecurityContext, operationContext, createResourceContext);
+
+    repository.prepare(testCase, false);
+    CommonUtils.authorizeOverwrite(authorizer, catalogSecurityContext, Entity.TEST_CASE, testCase);
 
     LOG.info(
         "Creating test case '{}' with definition '{}' for entity: {}",
