@@ -314,6 +314,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -327,7 +331,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
