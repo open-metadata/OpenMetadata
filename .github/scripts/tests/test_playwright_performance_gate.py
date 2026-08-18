@@ -139,10 +139,11 @@ def test_enforce_exits_with_detailed_message(tmp_path):
 
 
 def test_failed_details_absent_when_phase_targets_pass(tmp_path):
-    # Even when non-phase targets fail (empty requests/timings trip a few of
-    # them), only the phase-attributable targets contribute entries to
-    # `failedBlockingTargetDetails`. This isolates the shard-attribution
-    # payload to the targets that carry per-shard evidence.
+    # Only `executionAtMostTwentyFiveMinutes` is blocking (see the module
+    # docstring above). The environment and elapsed-before-upload phase
+    # counters are reported as convergence observations because a slow apt
+    # cache or fixture download on a single hosted runner shouldn't fail
+    # the run when every playwright test itself ran inside its wrapper.
     timings = tmp_path / "timings.json"
     requests = tmp_path / "requests.json"
     phase = tmp_path / "phase-chromium-01.json"
@@ -173,11 +174,12 @@ def test_failed_details_absent_when_phase_targets_pass(tmp_path):
     )
 
     payload = json.loads(output.read_text())
-    # All three phase-attributable targets are within budget for this fixture.
+    assert payload["blockingTargets"]["executionAtMostTwentyFiveMinutes"] is True
+    # Setup/upload phases are convergence-only now — surfaced there instead.
     for target in (
         "environmentAtMostFiveMinutes",
-        "executionAtMostTwentyFiveMinutes",
         "shardsAtMostThirtyMinutesBeforeUpload",
     ):
-        assert payload["blockingTargets"][target] is True
+        assert payload["convergenceTargets"][target] is True
+        assert target not in payload["blockingTargets"]
     assert payload["failedBlockingTargetDetails"] == {}
