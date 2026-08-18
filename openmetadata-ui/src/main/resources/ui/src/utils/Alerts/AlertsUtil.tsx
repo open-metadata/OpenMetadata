@@ -1246,12 +1246,7 @@ export const getSourceOptionsFromResourceList = (
         {showCheckbox && (
           <Checkbox checked={selectedResource?.includes(resource)} />
         )}
-        {showIcon &&
-          searchClassBase.getEntityIconWithBg(
-            resource ?? '',
-            { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
-            { size: 12 }
-          )}
+        {showIcon && searchClassBase.getEntityIconWithBg(resource ?? '', 'sm')}
         <span>{getEntityNameLabel(resource ?? '')}</span>
       </div>
     ),

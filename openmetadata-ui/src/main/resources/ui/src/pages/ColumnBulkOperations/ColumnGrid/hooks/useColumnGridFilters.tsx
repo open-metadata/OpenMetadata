@@ -117,8 +117,7 @@ export const useColumnGridFilters = (
           icon:
             searchClassBase.getEntityIconWithBg(
               getCanonicalEntityType(opt.key),
-              { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
-              { size: 12 }
+              'sm'
             ) ?? undefined,
         })),
       };

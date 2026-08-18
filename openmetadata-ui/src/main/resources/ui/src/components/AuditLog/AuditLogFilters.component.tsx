@@ -110,8 +110,7 @@ const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
     icon:
       searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(o.value),
-        { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
-        { size: 12 }
+        'sm'
       ) ?? undefined,
   }));
 

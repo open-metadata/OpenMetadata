@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import type { ComponentType, HTMLAttributes } from 'react';
+import type { ComponentType } from 'react';
 import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
@@ -61,10 +61,7 @@ import {
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import {
-  EntityIconProps,
-  getEntityIconWithBg,
-} from './Assets/AssetsUtils';
+import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { EntityIconSize, getEntityIcon } from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -74,6 +71,21 @@ import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
+
+const ENTITY_ICON_BG_VARIANTS = {
+  sm: {
+    containerProps: { style: { height: '22px', width: '22px' } },
+    iconProps: { size: 14 },
+  },
+  md: {
+    containerProps: undefined,
+    iconProps: undefined,
+  },
+  lg: {
+    containerProps: { style: { height: '32px', width: '32px' } },
+    iconProps: { size: 18 },
+  },
+} as const;
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
@@ -867,9 +879,10 @@ class SearchClassBase {
 
   public getEntityIconWithBg(
     entityType?: string,
-    containerProps?: HTMLAttributes<HTMLSpanElement>,
-    iconProps?: EntityIconProps
+    variant: keyof typeof ENTITY_ICON_BG_VARIANTS = 'md'
   ) {
+    const { containerProps, iconProps } = ENTITY_ICON_BG_VARIANTS[variant];
+
     return getEntityIconWithBg(
       entityType,
       containerProps,

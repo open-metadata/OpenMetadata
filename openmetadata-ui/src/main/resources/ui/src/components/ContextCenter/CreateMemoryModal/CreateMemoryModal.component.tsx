@@ -92,7 +92,7 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -141,11 +141,7 @@ const LinkedAssetCard: FC<{
       className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5"
       data-testid="linked-asset-card">
       <div className="tw:shrink-0">
-        {getEntityIconWithBg(
-          asset.reference?.type,
-          { className: 'tw:w-8 tw:h-8' },
-          { size: 18 }
-        )}
+        {searchClassBase.getEntityIconWithBg(asset.reference?.type, 'lg')}
       </div>
       <Box
         align="center"
