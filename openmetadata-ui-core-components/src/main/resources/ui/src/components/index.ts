@@ -150,6 +150,12 @@ export type {
   ShowToastOptions,
 } from './application/toast/toast-store';
 
+// Common
+export * from './common/document-title/document-title';
+
+// Page header
+export * from './application/page-header/page-header';
+
 // Foundations
 export * from './foundations/dot-icon';
 export * from './foundations/featured-icon/featured-icon';

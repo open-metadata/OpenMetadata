@@ -1,4 +1,21 @@
 {
-  "fr-fr": ["label.page", "label.pagination"],
-  "nl-nl": ["label.records"]
+  "ar-sa": ["label.brand-name"],
+  "de-de": ["label.brand-name"],
+  "es-es": ["label.brand-name"],
+  "fr-fr": ["label.brand-name", "label.page", "label.pagination"],
+  "gl-es": ["label.brand-name"],
+  "he-he": ["label.brand-name"],
+  "ja-jp": ["label.brand-name"],
+  "ko-kr": ["label.brand-name"],
+  "mr-in": ["label.brand-name"],
+  "nl-nl": ["label.brand-name", "label.records"],
+  "pr-pr": ["label.brand-name"],
+  "pt-br": ["label.brand-name"],
+  "pt-pt": ["label.brand-name"],
+  "ru-ru": ["label.brand-name"],
+  "sv-se": ["label.brand-name"],
+  "th-th": ["label.brand-name"],
+  "tr-tr": ["label.brand-name"],
+  "zh-cn": ["label.brand-name"],
+  "zh-tw": ["label.brand-name"]
 }

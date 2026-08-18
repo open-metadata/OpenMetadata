@@ -11,21 +11,29 @@
  *  limitations under the License.
  */
 import { cx } from '@/utils/cx';
-import type { HTMLAttributes, ReactNode } from 'react';
 import { createContext, forwardRef, useContext, useMemo } from 'react';
+import { DocumentTitle } from '../../common/document-title/document-title';
+import { PageHeader } from '../page-header/page-header';
+import type { PageHeaderProps } from '../page-header/page-header';
+import type {
+  PageLayoutContentProps,
+  PageLayoutHeaderProps,
+  PageLayoutPanelProps,
+  PageLayoutProps,
+  PageLayoutScroll,
+  PageLayoutVariant,
+  PanelSize,
+} from './page-layout.types';
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-/**
- * `default` keeps a 16px horizontal gutter; `compact` uses a uniform 8px
- * gutter and is meant for pages whose header is a full-bleed shell. The
- * variant lives in context so `PageLayout.Content` picks the matching gutter
- * without the caller repeating it.
- */
-export type PageLayoutVariant = 'default' | 'compact';
-
-/** A pixel number (`230` → `230px`) or any CSS length string (`'16rem'`). */
-export type PanelSize = number | string;
+export type {
+  PageLayoutContentProps,
+  PageLayoutHeaderProps,
+  PageLayoutPanelProps,
+  PageLayoutProps,
+  PageLayoutScroll,
+  PageLayoutVariant,
+  PanelSize,
+} from './page-layout.types';
 
 const DEFAULT_LEFT_PANEL_WIDTH = 230;
 const DEFAULT_RIGHT_PANEL_WIDTH = 284;
@@ -37,10 +45,12 @@ const toCssSize = (value: PanelSize): string =>
 
 interface PageLayoutContextValue {
   variant: PageLayoutVariant;
+  scroll: PageLayoutScroll;
 }
 
 const PageLayoutContext = createContext<PageLayoutContextValue>({
   variant: 'default',
+  scroll: 'content',
 });
 
 const usePageLayoutContext = () => useContext(PageLayoutContext);
@@ -50,18 +60,16 @@ const GUTTER_CLASS: Record<PageLayoutVariant, string> = {
   compact: 'tw:p-2',
 };
 
-// ─── Root ──────────────────────────────────────────────────────────────────────
+/**
+ * In `content` mode each scroll region owns its overflow; in `page` mode the
+ * region grows with its children and the root scrolls instead.
+ */
+const REGION_SCROLL_CLASS: Record<PageLayoutScroll, string> = {
+  content: 'tw:h-full tw:overflow-y-auto',
+  page: '',
+};
 
-export interface PageLayoutProps extends HTMLAttributes<HTMLDivElement> {
-  /** Gutter density applied to `PageLayout.Content`. */
-  variant?: PageLayoutVariant;
-  /**
-   * Fill the parent's height (the default — the app shell wants a full-height
-   * page). Set `false` for content that should grow with its children.
-   */
-  fullHeight?: boolean;
-  children?: ReactNode;
-}
+// ─── Root ──────────────────────────────────────────────────────────────────────
 
 /**
  * Page scaffold: an optional full-width header on top of a
@@ -70,35 +78,50 @@ export interface PageLayoutProps extends HTMLAttributes<HTMLDivElement> {
  * to zero width — no width math, no `wrap={false}`, no Ant Design.
  *
  * @example
- * <PageLayout variant="compact">
+ * <PageLayout pageTitle="Explore" scroll="page" variant="compact">
  *   <PageLayout.Header>{toolbar}</PageLayout.Header>
- *   <PageLayout.LeftPanel aria-label={t('label.navigation')}>{nav}</PageLayout.LeftPanel>
+ *   <PageLayout.LeftPanel aria-label={navLabel}>{nav}</PageLayout.LeftPanel>
  *   <PageLayout.Content>{page}</PageLayout.Content>
- *   <PageLayout.RightPanel aria-label={t('label.detail-plural')}>{aside}</PageLayout.RightPanel>
+ *   <PageLayout.RightPanel aria-label={detailLabel}>{aside}</PageLayout.RightPanel>
  * </PageLayout>
  */
 const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
   function PageLayout(
-    { variant = 'default', fullHeight = true, className, children, ...props },
+    {
+      variant = 'default',
+      scroll = 'content',
+      pageTitle,
+      fullHeight = true,
+      className,
+      children,
+      ...props
+    },
     ref
   ) {
-    const contextValue = useMemo(() => ({ variant }), [variant]);
+    const contextValue = useMemo(
+      () => ({ variant, scroll }),
+      [variant, scroll]
+    );
 
     return (
       <PageLayoutContext.Provider value={contextValue}>
+        {pageTitle ? <DocumentTitle title={pageTitle} /> : null}
         <div
           ref={ref}
           {...props}
           className={cx(
-            'tw:grid tw:w-full tw:overflow-hidden',
+            'tw:grid tw:w-full tw:p-2',
+            scroll === 'page' ? 'tw:overflow-y-auto' : 'tw:overflow-hidden',
             fullHeight ? 'tw:h-full' : 'tw:min-h-0',
             className
           )}
+          data-scroll={scroll}
           data-testid="page-layout"
           data-variant={variant}
           style={{
             gridTemplateColumns: 'auto minmax(0, 1fr) auto',
-            gridTemplateRows: 'auto minmax(0, 1fr)',
+            gridTemplateRows:
+              scroll === 'page' ? 'auto auto' : 'auto minmax(0, 1fr)',
             gridTemplateAreas: '"header header header" "left content right"',
             ...props.style,
           }}>
@@ -110,11 +133,6 @@ const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
 );
 
 // ─── Header ────────────────────────────────────────────────────────────────────
-
-export interface PageLayoutHeaderProps
-  extends HTMLAttributes<HTMLElement> {
-  children?: ReactNode;
-}
 
 const PageLayoutHeader = ({
   className,
@@ -131,23 +149,23 @@ const PageLayoutHeader = ({
 );
 PageLayoutHeader.displayName = 'PageLayout.Header';
 
+// ─── PageHeader convenience ──────────────────────────────────────────────────────
+
+/**
+ * Convenience compound: renders a `PageHeader` inside the layout's `header`
+ * grid-area. Use it for the standard rich header (breadcrumb / title / actions);
+ * reach for the bare `PageLayout.Header` slot when the header is fully custom.
+ */
+const PageLayoutPageHeader = (props: PageHeaderProps) => (
+  <PageLayoutHeader>
+    <PageHeader {...props} />
+  </PageLayoutHeader>
+);
+PageLayoutPageHeader.displayName = 'PageLayout.PageHeader';
+
 // ─── Side panels ───────────────────────────────────────────────────────────────
 
 type PanelSide = 'left' | 'right';
-
-export interface PageLayoutPanelProps extends HTMLAttributes<HTMLElement> {
-  /** Panel width — px number or CSS length. */
-  width?: PanelSize;
-  /** Draw the divider between the panel and the content. Default `true`. */
-  bordered?: boolean;
-  /**
-   * Accessible name for this complementary landmark. Every panel is an
-   * `<aside>`; a name lets assistive tech tell two panels apart. Provide one
-   * unless an `aria-labelledby` is supplied instead.
-   */
-  'aria-label'?: string;
-  children?: ReactNode;
-}
 
 const PANEL_BORDER_CLASS: Record<PanelSide, string> = {
   left: 'tw:border-r tw:border-secondary',
@@ -162,19 +180,25 @@ const createPanel = (side: PanelSide, defaultWidth: number) => {
     children,
     style,
     ...props
-  }: PageLayoutPanelProps) => (
-    <aside
-      {...props}
-      className={cx(
-        'tw:h-full tw:min-w-0 tw:max-w-full tw:shrink-0 tw:overflow-y-auto',
-        bordered && PANEL_BORDER_CLASS[side],
-        className
-      )}
-      style={{ gridArea: side, width: toCssSize(width), ...style }}>
-      {children}
-    </aside>
-  );
-  Panel.displayName = side === 'left' ? 'PageLayout.LeftPanel' : 'PageLayout.RightPanel';
+  }: PageLayoutPanelProps) => {
+    const { scroll } = usePageLayoutContext();
+
+    return (
+      <aside
+        {...props}
+        className={cx(
+          'tw:min-w-0 tw:max-w-full tw:shrink-0',
+          REGION_SCROLL_CLASS[scroll],
+          bordered && PANEL_BORDER_CLASS[side],
+          className
+        )}
+        style={{ gridArea: side, width: toCssSize(width), ...style }}>
+        {children}
+      </aside>
+    );
+  };
+  Panel.displayName =
+    side === 'left' ? 'PageLayout.LeftPanel' : 'PageLayout.RightPanel';
 
   return Panel;
 };
@@ -184,15 +208,6 @@ const PageLayoutRightPanel = createPanel('right', DEFAULT_RIGHT_PANEL_WIDTH);
 
 // ─── Content ───────────────────────────────────────────────────────────────────
 
-export interface PageLayoutContentProps
-  extends HTMLAttributes<HTMLElement> {
-  /** Center the content and cap it at `maxWidth`. */
-  center?: boolean;
-  /** Max content width when `center` is set. Default `1200px`. */
-  maxWidth?: PanelSize;
-  children?: ReactNode;
-}
-
 const PageLayoutContent = ({
   center = false,
   maxWidth = 1200,
@@ -201,13 +216,14 @@ const PageLayoutContent = ({
   style,
   ...props
 }: PageLayoutContentProps) => {
-  const { variant } = usePageLayoutContext();
+  const { variant, scroll } = usePageLayoutContext();
 
   return (
     <main
       {...props}
       className={cx(
-        'tw:h-full tw:min-w-0 tw:overflow-y-auto',
+        'tw:min-w-0',
+        REGION_SCROLL_CLASS[scroll],
         GUTTER_CLASS[variant],
         className
       )}
@@ -230,6 +246,7 @@ PageLayoutContent.displayName = 'PageLayout.Content';
 
 type PageLayoutComponent = typeof PageLayoutRoot & {
   Header: typeof PageLayoutHeader;
+  PageHeader: typeof PageLayoutPageHeader;
   LeftPanel: typeof PageLayoutLeftPanel;
   Content: typeof PageLayoutContent;
   RightPanel: typeof PageLayoutRightPanel;
@@ -237,6 +254,7 @@ type PageLayoutComponent = typeof PageLayoutRoot & {
 
 export const PageLayout = PageLayoutRoot as PageLayoutComponent;
 PageLayout.Header = PageLayoutHeader;
+PageLayout.PageHeader = PageLayoutPageHeader;
 PageLayout.LeftPanel = PageLayoutLeftPanel;
 PageLayout.Content = PageLayoutContent;
 PageLayout.RightPanel = PageLayoutRightPanel;

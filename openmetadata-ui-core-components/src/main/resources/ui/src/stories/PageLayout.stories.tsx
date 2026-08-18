@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Database01, HomeLine } from '@untitledui/icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { PageLayout } from '../components/application/page-layout/page-layout';
@@ -26,6 +27,11 @@ const meta = {
       control: 'inline-radio',
       options: ['default', 'compact'],
     },
+    scroll: {
+      control: 'inline-radio',
+      options: ['content', 'page'],
+    },
+    pageTitle: { control: 'text' },
     fullHeight: { control: 'boolean' },
   },
 } satisfies Meta<typeof PageLayout>;
@@ -125,6 +131,99 @@ export const CenteredContent: Story = {
     <Frame>
       <PageLayout {...args}>
         <PageLayout.Content center maxWidth={640}>
+          <Body />
+        </PageLayout.Content>
+      </PageLayout>
+    </Frame>
+  ),
+};
+
+// Enough rows to overflow the 480px frame so the scroll behaviour is visible.
+const TallBody = () => (
+  <div className="tw:py-4">
+    {Array.from({ length: 30 }, (_, i) => (
+      <p className="tw:py-2 tw:text-sm tw:text-secondary" key={i}>
+        Row {i + 1} — scroll to see how the header behaves.
+      </p>
+    ))}
+  </div>
+);
+
+const StickyHeader = () => (
+  <div className="tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:py-3 tw:text-sm tw:font-semibold tw:text-primary">
+    Header / toolbar
+  </div>
+);
+
+// `scroll="content"` (default): the header stays fixed while the content scrolls.
+export const FixedHeaderScrollContent: Story = {
+  args: { scroll: 'content' },
+  render: (args) => (
+    <Frame>
+      <PageLayout {...args}>
+        <PageLayout.Header>
+          <StickyHeader />
+        </PageLayout.Header>
+        <PageLayout.Content>
+          <TallBody />
+        </PageLayout.Content>
+      </PageLayout>
+    </Frame>
+  ),
+};
+
+// `scroll="page"`: header and content scroll together as one document.
+export const PageScroll: Story = {
+  args: { scroll: 'page' },
+  render: (args) => (
+    <Frame>
+      <PageLayout {...args}>
+        <PageLayout.Header>
+          <StickyHeader />
+        </PageLayout.Header>
+        <PageLayout.Content>
+          <TallBody />
+        </PageLayout.Content>
+      </PageLayout>
+    </Frame>
+  ),
+};
+
+// `PageLayout.PageHeader` drops a rich PageHeader into the header grid-area.
+export const WithPageHeader: Story = {
+  render: (args) => (
+    <Frame>
+      <PageLayout {...args}>
+        <PageLayout.PageHeader
+          breadcrumb={[
+            { id: 'home', label: 'Home', href: '#', icon: HomeLine },
+            { id: 'services', label: 'Services', href: '#' },
+            { id: 'snowflake', label: 'Snowflake' },
+          ]}
+          icon={Database01}
+          search={{ placeholder: 'Search...', 'aria-label': 'Search' }}
+          subtitle="Production data warehouse service"
+          title="Snowflake"
+          variant="gradient"
+        />
+        <PageLayout.Content>
+          <Body />
+        </PageLayout.Content>
+      </PageLayout>
+    </Frame>
+  ),
+};
+
+// `pageTitle` sets the browser tab title through `DocumentTitle`.
+export const WithPageTitle: Story = {
+  args: { pageTitle: 'Explore' },
+  render: (args) => (
+    <Frame>
+      <PageLayout {...args}>
+        <PageLayout.Header>
+          <StickyHeader />
+        </PageLayout.Header>
+        <PageLayout.Content>
           <Body />
         </PageLayout.Content>
       </PageLayout>

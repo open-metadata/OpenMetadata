@@ -20,7 +20,13 @@ void i18n.use(initReactI18next).init({
   lng: 'en-US',
   ns: [CORE_NS],
   defaultNS: CORE_NS,
-  interpolation: { escapeValue: false },
+  interpolation: {
+    escapeValue: false,
+    // The app supplies `brandName` globally (see the frontend's i18next config);
+    // mirror a default here so `DocumentTitle`'s `{{brandName}}` resolves in
+    // Storybook instead of rendering the raw key.
+    defaultVariables: { brandName: 'OpenMetadata' },
+  },
 });
 
 // `initCoreI18n` eagerly registers every supported language, so no

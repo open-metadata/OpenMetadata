@@ -1,5 +1,6 @@
 {
   "label": {
+    "brand-name": "{{brandName}}",
     "close": "Fechar",
     "close-navigation-menu": "Fechar menu de navegação",
     "copy-link": "Copiar ligação",
