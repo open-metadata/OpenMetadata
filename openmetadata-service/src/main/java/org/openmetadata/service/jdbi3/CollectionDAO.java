@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -10184,6 +10185,84 @@ public interface CollectionDAO {
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
+    int DELETE_BATCH_SIZE = 1000;
+    String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+    String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+    String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
+    default int deleteTableProfilerData(String tableFqn) {
+      int deleted = deleteInBatches(tableFqn, TABLE_PROFILE_EXTENSION);
+      deleted += deleteInBatches(tableFqn, SYSTEM_PROFILE_EXTENSION);
+      deleted += deleteInBatches(tableFqn, TABLE_COLUMN_PROFILE_EXTENSION);
+      return deleted;
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE ctid IN ("
+                + "SELECT rows.ctid FROM <table> rows "
+                + "WHERE rows.entityFQNHash = :entityFQNHash AND rows.extension = :extension "
+                + "LIMIT :limit)",
+        connectionType = POSTGRES)
+    int deleteByFqnHashBatch(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE entityFQNHash LIKE :hashPrefix AND extension = :extension "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM <table> WHERE ctid IN ("
+                + "SELECT rows.ctid FROM <table> rows "
+                + "WHERE rows.entityFQNHash LIKE :hashPrefix AND rows.extension = :extension "
+                + "LIMIT :limit)",
+        connectionType = POSTGRES)
+    int deleteByFqnHashPrefixBatch(
+        @Define("table") String table,
+        @Bind("hashPrefix") String hashPrefix,
+        @Bind("extension") String extension,
+        @Bind("limit") int limit);
+
+    private int deleteInBatches(String entityFQN, String extension) {
+      IntSupplier deleteBatch =
+          TABLE_COLUMN_PROFILE_EXTENSION.equals(extension)
+              ? descendantDeleteBatch(entityFQN, extension)
+              : exactDeleteBatch(entityFQN, extension);
+      return drainBatches(deleteBatch);
+    }
+
+    private IntSupplier exactDeleteBatch(String entityFQN, String extension) {
+      return () ->
+          deleteByFqnHashBatch(getTimeSeriesTableName(), entityFQN, extension, DELETE_BATCH_SIZE);
+    }
+
+    private IntSupplier descendantDeleteBatch(String entityFQN, String extension) {
+      String hashPrefix = FullyQualifiedName.buildHash(entityFQN) + Entity.SEPARATOR + "%";
+      return () ->
+          deleteByFqnHashPrefixBatch(
+              getTimeSeriesTableName(), hashPrefix, extension, DELETE_BATCH_SIZE);
+    }
+
+    private int drainBatches(IntSupplier deleteBatch) {
+      int totalDeleted = 0;
+      int deleted;
+      do {
+        deleted = deleteBatch.getAsInt();
+        totalDeleted += deleted;
+      } while (deleted == DELETE_BATCH_SIZE);
+      return totalDeleted;
+    }
+
     @Override
     default String getTimeSeriesTableName() {
       return "profiler_data_time_series";
@@ -10242,19 +10321,6 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
-    // A table FQN is always service.database.schema.table, so table_entity.fqnHash is always four
-    // '.'-joined MD5 segments. Column profile rows are keyed by the column FQN, whose hash carries
-    // at least one extra segment (more for nested columns), so a column row only resolves to its
-    // parent table after the trailing segments are dropped. Comparing the raw hash never matched,
-    // which silently purged every column profile of every live table on each run (issue #27041).
-    String MYSQL_PARENT_TABLE_HASH =
-        "SUBSTRING_INDEX(profiler_data_time_series.entityFQNHash, '.', 4)";
-    String POSTGRES_PARENT_TABLE_HASH =
-        "split_part(pdts.entityFQNHash, '.', 1) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 2) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 3) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 4)";
-
     // profiler_data_time_series has no id column (unique key is
     // entityFQNHash + extension + operation + timestamp), so we limit by
     // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
@@ -10264,11 +10330,11 @@ public interface CollectionDAO {
             "DELETE FROM profiler_data_time_series "
                 + "WHERE NOT EXISTS ("
                 + "  SELECT 1 FROM table_entity te "
-                + "  WHERE te.fqnHash = CASE WHEN profiler_data_time_series.extension = '"
-                + TableRepository.TABLE_COLUMN_PROFILE_EXTENSION
-                + "' THEN "
-                + MYSQL_PARENT_TABLE_HASH
-                + " ELSE profiler_data_time_series.entityFQNHash END"
+                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + "    OR (profiler_data_time_series.extension = '"
+                + TABLE_COLUMN_PROFILE_EXTENSION
+                + "' AND profiler_data_time_series.entityFQNHash "
+                + "LIKE CONCAT(te.fqnHash, '.%'))"
                 + ") "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -10279,11 +10345,10 @@ public interface CollectionDAO {
                 + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
                 + "  WHERE NOT EXISTS ("
                 + "    SELECT 1 FROM table_entity te "
-                + "    WHERE te.fqnHash = CASE WHEN pdts.extension = '"
-                + TableRepository.TABLE_COLUMN_PROFILE_EXTENSION
-                + "' THEN "
-                + POSTGRES_PARENT_TABLE_HASH
-                + " ELSE pdts.entityFQNHash END"
+                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "      OR (pdts.extension = '"
+                + TABLE_COLUMN_PROFILE_EXTENSION
+                + "' AND pdts.entityFQNHash LIKE te.fqnHash || '.%')"
                 + "  ) "
                 + "  LIMIT :limit"
                 + ")",

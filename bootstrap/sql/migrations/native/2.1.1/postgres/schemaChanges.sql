@@ -1,7 +1,7 @@
 -- Index the FQN-hash prefix scan behind the table hard-delete profiler purge (issue #27041).
 --
--- TableRepository.entitySpecificCleanup purges a hard-deleted table's column profiles with
--- EntityTimeSeriesDAO.deleteDescendants, which matches
+-- TableRepository.postDelete asynchronously purges a hard-deleted table's column profiles through
+-- ProfilerDataTimeSeriesDAO, which matches
 --   entityFQNHash LIKE '<table hash>.%'
 -- because column profiles are keyed by the *column* FQN, not the table FQN. The only persistent
 -- index with entityFQNHash leading is the 1.1.5 unique constraint

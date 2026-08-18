@@ -32,6 +32,9 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.SYSTEM_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_COLUMN_PROFILE_EXTENSION;
+import static org.openmetadata.service.jdbi3.CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
@@ -129,6 +132,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -148,10 +152,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
-  public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
-  public static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
-  public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
-
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
@@ -1726,7 +1726,26 @@ public class TableRepository extends EntityRepository<Table> {
   protected void entitySpecificCleanup(String deletedBy, Table table) {
     deleteResidualTestCases(table, deletedBy);
     deleteResidualExecutableTestSuite(table, deletedBy);
-    deleteProfilerData(table);
+  }
+
+  @Override
+  protected void postDelete(Table table, boolean hardDelete) {
+    super.postDelete(table, hardDelete);
+    if (hardDelete) {
+      AsyncService.getInstance().execute(() -> deleteProfilerDataSafely(table));
+    }
+  }
+
+  private void deleteProfilerDataSafely(Table table) {
+    try {
+      deleteProfilerData(table);
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Failed to purge profiler data for hard-deleted table {}. "
+              + "The orphaned time-series cleanup will retry it.",
+          table.getFullyQualifiedName(),
+          exception);
+    }
   }
 
   /**
@@ -1737,29 +1756,9 @@ public class TableRepository extends EntityRepository<Table> {
    */
   private void deleteProfilerData(Table table) {
     String tableFqn = table.getFullyQualifiedName();
-    EntityTimeSeriesDAO profilerDao = daoCollection.profilerDataTimeSeriesDao();
-    profilerDao.delete(tableFqn, TABLE_PROFILE_EXTENSION);
-    profilerDao.delete(tableFqn, SYSTEM_PROFILE_EXTENSION);
-    logColumnProfilePurge(
-        tableFqn, profilerDao.deleteDescendants(tableFqn, TABLE_COLUMN_PROFILE_EXTENSION));
-  }
-
-  private void logColumnProfilePurge(String tableFqn, EntityTimeSeriesDAO.DescendantPurge purge) {
-    if (purge.capReached()) {
-      LOG.warn(
-          "Purged {} column profile row(s) for hard-deleted table {} but stopped at the per-delete "
-              + "cap of {} batches of {} rows, so rows remain. If a table is re-created at this FQN "
-              + "it adopts them, and the orphan sweep cannot reclaim them because the parent table "
-              + "is live again — only age-based profiler retention will.",
-          purge.rowsDeleted(),
-          tableFqn,
-          EntityTimeSeriesDAO.DESCENDANT_DELETE_MAX_BATCHES,
-          EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE);
-    } else if (purge.rowsDeleted() > 0) {
-      LOG.info(
-          "Purged {} column profile row(s) for hard-deleted table {}",
-          purge.rowsDeleted(),
-          tableFqn);
+    int deleted = daoCollection.profilerDataTimeSeriesDao().deleteTableProfilerData(tableFqn);
+    if (deleted > 0) {
+      LOG.info("Purged {} profiler row(s) for hard-deleted table {}", deleted, tableFqn);
     }
   }
 

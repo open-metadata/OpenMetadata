@@ -22,21 +22,13 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface EntityTimeSeriesDAO {
-  /** Rows removed per statement by {@link #deleteDescendants(String, String)}. */
-  int DESCENDANT_DELETE_BATCH_SIZE = 1000;
-
-  /** Ceiling on batches per call so one delete cannot hold a connection indefinitely. */
-  int DESCENDANT_DELETE_MAX_BATCHES = 1000;
-
   String getTimeSeriesTableName();
 
   default String getPartitionFieldName() {
@@ -643,55 +635,6 @@ public interface EntityTimeSeriesDAO {
 
   default void deleteBeforeTimestamp(String entityFQNHash, String extension, Long timestamp) {
     deleteBeforeTimestamp(getTimeSeriesTableName(), entityFQNHash, extension, timestamp);
-  }
-
-  @ConnectionAwareSqlUpdate(
-      value =
-          "DELETE FROM <table> WHERE entityFQNHash LIKE :hashPrefix AND extension = :extension "
-              + "LIMIT :limit",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(
-      value =
-          "DELETE FROM <table> WHERE ctid IN ("
-              + "SELECT rows.ctid FROM <table> rows "
-              + "WHERE rows.entityFQNHash LIKE :hashPrefix AND rows.extension = :extension "
-              + "LIMIT :limit)",
-      connectionType = POSTGRES)
-  int deleteByFqnHashPrefixBatch(
-      @Define("table") String table,
-      @Bind("hashPrefix") String hashPrefix,
-      @Bind("extension") String extension,
-      @Bind("limit") int limit);
-
-  /**
-   * Outcome of {@link #deleteDescendants(String, String)}. {@code capReached} means the batch cap
-   * stopped the purge before the subtree was drained, so rows were left behind.
-   */
-  record DescendantPurge(int rowsDeleted, boolean capReached) {}
-
-  /**
-   * Purge every row whose entity FQN is a descendant of {@code entityFQN} (e.g. the column-level
-   * rows of a table). Runs as bounded batches so a single call can never issue an unbounded
-   * {@code DELETE}; a subtree that outlasts the batch cap leaves the remainder in place and
-   * reports {@code capReached}.
-   */
-  default DescendantPurge deleteDescendants(String entityFQN, String extension) {
-    // Hash segments are hex MD5 and the separator is a dot, so the pattern carries no LIKE
-    // wildcard that would need escaping.
-    String hashPrefix = FullyQualifiedName.buildHash(entityFQN) + Entity.SEPARATOR + "%";
-    int totalDeleted = 0;
-    boolean drained = false;
-    // One pass beyond the cap settles the exact-multiple case: a subtree whose size is a whole
-    // multiple of the batch size would otherwise exit on the counter and be reported as truncated
-    // even though the next statement would have deleted nothing.
-    for (int batch = 0; batch <= DESCENDANT_DELETE_MAX_BATCHES && !drained; batch++) {
-      int deleted =
-          deleteByFqnHashPrefixBatch(
-              getTimeSeriesTableName(), hashPrefix, extension, DESCENDANT_DELETE_BATCH_SIZE);
-      totalDeleted += deleted;
-      drained = deleted < DESCENDANT_DELETE_BATCH_SIZE;
-    }
-    return new DescendantPurge(totalDeleted, !drained);
   }
 
   @ConnectionAwareSqlUpdate(

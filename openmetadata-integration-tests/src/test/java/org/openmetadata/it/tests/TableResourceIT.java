@@ -141,7 +141,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
   private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
   private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
-  // One more than EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE, so a single-batch purge leaves
+  // One more than EntityTimeSeriesDAO.DELETE_BATCH_SIZE, so a single-batch purge leaves
   // a row behind.
   private static final int PROFILE_ROWS_OVER_ONE_BATCH = 1001;
 
@@ -2011,18 +2011,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(table.getId().toString());
 
-    assertEquals(
-        0,
-        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
-        "Hard delete must purge table profile rows");
-    assertEquals(
-        0,
-        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
-        "Hard delete must purge column profile rows");
-    assertEquals(
-        0,
-        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
-        "Hard delete must purge system profile rows");
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
 
     Table recreated = createEntity(createRequest);
     assertEquals(
@@ -2094,22 +2083,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
     client.databaseSchemas().delete(schema.getId().toString(), params);
 
-    assertEquals(
-        0,
-        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
-        "Recursive schema hard delete must purge the table's table profile rows");
-    assertEquals(
-        0,
-        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
-        "Recursive schema hard delete must purge the table's column profile rows");
-    assertEquals(
-        0,
-        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
-        "Recursive schema hard delete must purge the table's system profile rows");
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
   }
 
   /**
-   * The column-profile purge deletes in {@code DESCENDANT_DELETE_BATCH_SIZE}-row batches, so a table
+   * The column-profile purge deletes in {@code DELETE_BATCH_SIZE}-row batches, so a table
    * with more history than one batch is the only thing that exercises the drain loop.
    */
   @Test
@@ -2135,10 +2113,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(table.getId().toString());
 
-    assertEquals(
-        0,
-        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
-        "Purge must keep batching until the column profile history is drained");
+    Awaitility.await("column profile history is drained")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    0,
+                    countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                    "Purge must keep batching until the column profile history is drained"));
   }
 
   /**
@@ -2177,10 +2159,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(shrunkTable.getId().toString());
 
-    assertEquals(
-        0,
-        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION),
-        "Hard delete must purge column profiles of columns dropped before the delete");
+    Awaitility.await("dropped column profiles are purged")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    0,
+                    countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION),
+                    "Hard delete must purge column profiles of columns dropped before the delete"));
   }
 
   @Test
@@ -2307,6 +2293,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                     .bind("extension", extension)
                     .mapTo(Integer.class)
                     .one());
+  }
+
+  private void awaitProfilerRowsDeleted(String tableFqn, String columnFqn) {
+    Awaitility.await("profiler data is purged for " + tableFqn)
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+                  "Hard delete must purge table profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                  "Hard delete must purge column profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+                  "Hard delete must purge system profile rows");
+            });
   }
 
   // ===================================================================
