@@ -1194,7 +1194,13 @@ test.describe('Glossary tests', () => {
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      const assetsSearchResponse = page.waitForResponse(
+        '/api/v1/search/query*'
+      );
+      await page.getByTestId('assets').click();
+      await assetsSearchResponse;
+      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
