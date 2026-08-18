@@ -33,6 +33,7 @@ import {
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
@@ -74,7 +75,7 @@ const addEntityTypeIcons = (
     icon:
       searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(opt.key),
-        'sm'
+        EntityIconSize.Size14
       ) ?? undefined,
   }));
 };

@@ -23,6 +23,7 @@ import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import {
   ADDITIONAL_FILTER_KEYS,
@@ -117,7 +118,7 @@ export const useColumnGridFilters = (
           icon:
             searchClassBase.getEntityIconWithBg(
               getCanonicalEntityType(opt.key),
-              'sm'
+              EntityIconSize.Size14
             ) ?? undefined,
         })),
       };

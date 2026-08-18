@@ -72,20 +72,24 @@ import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
-const ENTITY_ICON_BG_VARIANTS = {
-  sm: {
+const ENTITY_ICON_BG_SIZE_MAP: Partial<
+  Record<
+    EntityIconSize,
+    {
+      containerProps: { style: { height: string; width: string } };
+      iconProps: { size: EntityIconSize };
+    }
+  >
+> = {
+  [EntityIconSize.Size14]: {
     containerProps: { style: { height: '22px', width: '22px' } },
-    iconProps: { size: 14 },
+    iconProps: { size: EntityIconSize.Size14 },
   },
-  md: {
-    containerProps: undefined,
-    iconProps: undefined,
-  },
-  lg: {
+  [EntityIconSize.Size18]: {
     containerProps: { style: { height: '32px', width: '32px' } },
-    iconProps: { size: 18 },
+    iconProps: { size: EntityIconSize.Size18 },
   },
-} as const;
+};
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
@@ -877,16 +881,14 @@ class SearchClassBase {
     return ENTITY_ICON_MAPPER;
   }
 
-  public getEntityIconWithBg(
-    entityType?: string,
-    variant: keyof typeof ENTITY_ICON_BG_VARIANTS = 'md'
-  ) {
-    const { containerProps, iconProps } = ENTITY_ICON_BG_VARIANTS[variant];
+  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconSize) {
+    const config =
+      iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
 
     return getEntityIconWithBg(
       entityType,
-      containerProps,
-      iconProps,
+      config?.containerProps,
+      config?.iconProps,
       this.getEntityIconMapper()
     );
   }

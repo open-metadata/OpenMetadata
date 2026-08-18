@@ -81,6 +81,7 @@ import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
+import { EntityIconSize } from '../EntityIconUtils';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
@@ -1246,7 +1247,11 @@ export const getSourceOptionsFromResourceList = (
         {showCheckbox && (
           <Checkbox checked={selectedResource?.includes(resource)} />
         )}
-        {showIcon && searchClassBase.getEntityIconWithBg(resource ?? '', 'sm')}
+        {showIcon &&
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            EntityIconSize.Size14
+          )}
         <span>{getEntityNameLabel(resource ?? '')}</span>
       </div>
     ),
