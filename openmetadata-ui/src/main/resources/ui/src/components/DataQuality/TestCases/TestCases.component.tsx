@@ -14,19 +14,17 @@ import { RightOutlined } from '@ant-design/icons';
 import {
   EmptyPlaceholderAction,
   MultiSelect,
-  SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { useListData } from 'react-stately';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_ITEMS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -41,47 +39,9 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
+import { getSelectedTestCaseStatuses } from './TestCases.utils';
+import { useSyncedListData } from './useSyncedListData';
 import { useTestCaseListPage } from './useTestCaseListPage';
-
-const TEST_CASE_STATUS_ITEMS: SelectItemType[] = Object.values(
-  TestCaseStatus
-).map((status) => ({
-  id: status,
-  label:
-    TEST_CASE_STATUS_OPTION.find((option) => option.value === status)?.label ??
-    status,
-}));
-
-// MultiSelect owns mutable ListData, while chart navigation and browser history
-// can change the URL independently, so keep its model aligned with URL state.
-const useSyncedListData = (selectedStatuses: TestCaseStatus[]) => {
-  const selectedItems = useListData<SelectItemType>({ initialItems: [] });
-  const selectedStatusKey = selectedStatuses.join(',');
-
-  useEffect(() => {
-    const selectedStatusSet = new Set<string>(selectedStatuses);
-    selectedItems.items.forEach(({ id }) => {
-      if (!selectedStatusSet.has(String(id))) {
-        selectedItems.remove(id);
-      }
-    });
-
-    const renderedStatusSet = new Set(selectedItems.items.map(({ id }) => id));
-    selectedStatuses.forEach((status) => {
-      if (!renderedStatusSet.has(status)) {
-        const item = TEST_CASE_STATUS_ITEMS.find(({ id }) => id === status);
-        if (item) {
-          selectedItems.append(item);
-        }
-      }
-    });
-    // useListData returns a new facade on every render. URL status changes are
-    // the only reason to reconcile it with external state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStatusKey]);
-
-  return selectedItems;
-};
 
 export const TestCases = () => {
   const { t } = useTranslation();
@@ -121,16 +81,14 @@ export const TestCases = () => {
     extraDropdownContent,
   } = useTestCaseListPage();
 
-  const selectedStatuses = useMemo(() => {
-    const status = params.testCaseStatus;
-
-    if (!status) {
-      return [];
-    }
-
-    return Array.isArray(status) ? status : [status];
-  }, [params.testCaseStatus]);
-  const selectedStatusItems = useSyncedListData(selectedStatuses);
+  const selectedStatuses = useMemo(
+    () => getSelectedTestCaseStatuses(params.testCaseStatus),
+    [params.testCaseStatus]
+  );
+  const selectedStatusItems = useSyncedListData(
+    selectedStatuses,
+    TEST_CASE_STATUS_ITEMS
+  );
 
   const handleStatusInserted = useCallback(
     (key: Key) => {

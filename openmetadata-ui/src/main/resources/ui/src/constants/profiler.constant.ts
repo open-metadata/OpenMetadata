@@ -439,6 +439,13 @@ export const TEST_CASE_STATUS_FILTER_OPTIONS = values(TestCaseStatus).map(
   })
 );
 
+export const TEST_CASE_STATUS_ITEMS = TEST_CASE_STATUS_FILTER_OPTIONS.map(
+  ({ label, value }) => ({
+    id: value,
+    label,
+  })
+);
+
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
   (value) => ({
     label: TEST_CASE_DIMENSION_LABELS[value],
