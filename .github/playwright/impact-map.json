@@ -146,7 +146,8 @@
         "playwright/e2e/Search/**/*.spec.ts",
         "playwright/e2e/Features/SearchSeparation/**/*.spec.ts",
         "playwright/e2e/**/*AfterReindex.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
