@@ -276,7 +276,9 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DomainListing/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataProduct/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
