@@ -15,6 +15,15 @@ import { AIRFLOW_HYBRID } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from './AirflowMessageBanner';
 
+// The real previewer parses markdown asynchronously and renders nothing in jsdom, so the message
+// itself is only assertable through the prop.
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => ({
+  __esModule: true,
+  default: ({ markdown }: { markdown: string }) => (
+    <div data-testid="viewer-container">{markdown}</div>
+  ),
+}));
+
 jest.mock(
   '../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({
@@ -105,7 +114,7 @@ describe('Test Airflow Message Banner', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Should not render the banner if reason is empty', () => {
+    it('Should fall back to a generic message when the status call answered with no reason', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
         reason: '',
         isAirflowAvailable: false,
@@ -114,12 +123,13 @@ describe('Test Airflow Message Banner', () => {
       }));
       render(<AirflowMessageBanner />);
 
+      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
-      ).not.toBeInTheDocument();
+        screen.getByText('message.pipeline-service-unreachable-agent-actions')
+      ).toBeInTheDocument();
     });
 
-    it('Should not render the banner if reason is null', () => {
+    it('Should fall back to a generic message when reason is null', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
         reason: null,
         isAirflowAvailable: false,
@@ -128,9 +138,10 @@ describe('Test Airflow Message Banner', () => {
       }));
       render(<AirflowMessageBanner />);
 
+      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
-      ).not.toBeInTheDocument();
+        screen.getByText('message.pipeline-service-unreachable-agent-actions')
+      ).toBeInTheDocument();
     });
 
     it('Should render the banner if platform is not available and reason is not empty', () => {

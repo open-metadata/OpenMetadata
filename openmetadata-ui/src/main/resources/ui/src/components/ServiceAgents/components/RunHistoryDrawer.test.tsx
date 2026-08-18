@@ -64,6 +64,15 @@ const mockRuns: AgentRun[] = [
   },
 ];
 
+const mockAirflowStatus = jest.fn();
+
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: () => mockAirflowStatus(),
+  })
+);
+
 jest.mock('../hooks/useAgentRuns', () => ({
   useAgentRuns: jest.fn().mockImplementation(() => ({
     runs: mockRuns,
@@ -115,6 +124,36 @@ const renderDrawer = (
   );
 
 describe('RunHistoryDrawer', () => {
+  beforeEach(() => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+  });
+
+  it.each([
+    [
+      'is still being fetched',
+      { isAirflowAvailable: false, isFetchingStatus: true },
+    ],
+    [
+      'reports it unreachable',
+      { isAirflowAvailable: false, isFetchingStatus: false },
+    ],
+  ])(
+    'should disable the pipeline-service controls while the status %s, keeping the run history',
+    (_label, status) => {
+      mockAirflowStatus.mockReturnValue({ ...status, platform: 'Airflow' });
+
+      renderDrawer();
+
+      expect(screen.getByTestId('raw-logs-button')).toBeDisabled();
+      expect(screen.getByTestId('drawer-run-now-button')).toBeDisabled();
+      expect(screen.getByTestId('run-history-drawer')).toBeInTheDocument();
+    }
+  );
+
   beforeEach(() => {
     mockOnRun.mockClear();
   });

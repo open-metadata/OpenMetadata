@@ -4065,6 +4065,7 @@
     "pipeline-killed-successfully": "Succesvol lopende workflows gestopt voor {{pipelineName}}",
     "pipeline-not-deployed": "Pijpleiding is niet geïmplementeerd",
     "pipeline-scheduler-message": "De ingestiescheduler reageert niet. Neem contact op met {{brandName}}-ondersteuning. Dank je.",
+    "pipeline-service-unreachable-agent-actions": "De pipelineservice is niet bereikbaar. Agents en hun uitvoeringsgeschiedenis worden getoond in hun laatst vastgelegde staat, en agentacties blijven niet beschikbaar totdat de service weer reageert.",
     "pipeline-will-trigger-manually": "Pipeline wordt alleen handmatig geactiveerd.",
     "pipeline-will-triggered-manually": "Pipeline wordt alleen handmatig geactiveerd",
     "platform-insight-description": "Begrijp de beschikbare metadata in je service en volg de belangrijkste KPI-dekking.",

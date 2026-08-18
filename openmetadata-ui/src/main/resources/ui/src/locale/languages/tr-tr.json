@@ -4065,6 +4065,7 @@
     "pipeline-killed-successfully": "{{pipelineName}} için çalışan iş akışları başarıyla sonlandırıldı",
     "pipeline-not-deployed": "İş akışı dağıtılmadı",
     "pipeline-scheduler-message": "Alım Zamanlayıcısı yanıt veremiyor. Lütfen {{brandName}} desteğine başvurun. Teşekkürler.",
+    "pipeline-service-unreachable-agent-actions": "Pipeline hizmetine ulaşılamıyor. Aracılar ve çalıştırma geçmişleri son kaydedilen durumlarıyla gösteriliyor ve hizmet yeniden yanıt verene kadar aracı işlemleri kullanılamayacak.",
     "pipeline-will-trigger-manually": "İş akışı yalnızca manuel olarak tetiklenecektir.",
     "pipeline-will-triggered-manually": "İş akışı yalnızca manuel olarak tetiklenecektir",
     "platform-insight-description": "Servisinizdeki mevcut metadatayı anlayın ve ana KPI kapsamını takip edin.",

@@ -4065,6 +4065,7 @@
     "pipeline-killed-successfully": "تم إنهاء سير العمل قيد التشغيل بنجاح لـ {{pipelineName}}",
     "pipeline-not-deployed": "لم يتم نشر المسار (pipeline)",
     "pipeline-scheduler-message": "غير قادر على مجدول الاستيعاب على الاستجابة. يرجى التواصل مع دعم {{brandName}}. شكرًا لك.",
+    "pipeline-service-unreachable-agent-actions": "تعذّر الوصول إلى خدمة خطوط المعالجة. يتم عرض الوكلاء وسجل تشغيلهم وفق آخر حالة مسجّلة، وتظل إجراءات الوكلاء غير متاحة إلى أن تستجيب الخدمة مجددًا.",
     "pipeline-will-trigger-manually": "سيتم تشغيل المسار (pipeline) يدويًا فقط.",
     "pipeline-will-triggered-manually": "سيتم تشغيل المسار (pipeline) يدويًا فقط",
     "platform-insight-description": "افهم البيانات الوصفية المتاحة في خدمتك وتتبع تغطية مؤشرات الأداء الرئيسية (KPIs) الرئيسية.",
