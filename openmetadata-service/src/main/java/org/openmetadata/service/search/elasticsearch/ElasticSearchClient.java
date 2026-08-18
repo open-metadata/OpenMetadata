@@ -104,6 +104,11 @@ public class ElasticSearchClient implements SearchClient {
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
 
+  // How long a caller waits for a connection from the pool. HC5 defaults this to 3 minutes,
+  // so a saturated pool blocks a Jetty thread that long before failing. Fail fast instead.
+  private static final org.apache.hc.core5.util.Timeout CONNECTION_REQUEST_TIMEOUT =
+      org.apache.hc.core5.util.Timeout.ofSeconds(10);
+
   private volatile boolean isNewClientAvailable;
 
   private final String clusterAlias;
@@ -873,8 +878,8 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
                     .setResponseTimeout(
-                        org.apache.hc.core5.util.Timeout.ofSeconds(
-                            esConfig.getSocketTimeoutSecs())));
+                        org.apache.hc.core5.util.Timeout.ofSeconds(esConfig.getSocketTimeoutSecs()))
+                    .setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT));
 
         restClientBuilder.setCompressionEnabled(true);
 

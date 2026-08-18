@@ -28,6 +28,11 @@
       "type": "integer",
       "default": 300
     },
+    "queuedStatusTimeoutSeconds": {
+      "description": "How long a `queued` pipeline status recorded when triggering a run stays visible before it is treated as stale and hidden. Covers runs that the orchestrator accepted but never started.",
+      "type": "integer",
+      "default": 3600
+    },
     "ingestionIpInfoEnabled": {
       "description": "Enable or disable the API that fetches the public IP running the ingestion process.",
       "type": "boolean",
