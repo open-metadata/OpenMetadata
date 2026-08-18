@@ -128,10 +128,7 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
   test('should display terms with narrower relation in Hierarchy view', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(
-      page,
-      hierarchyGlossary!.responseData.id
-    );
+    await navigateAndFilterByGlossary(page, hierarchyGlossary!.responseData.id);
 
     await page.getByTestId('view-mode-select').click();
     await page.getByRole('option', { name: 'Hierarchy' }).click();
@@ -485,12 +482,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     if (dataModeGlossary) {
-      await deleteEntities(
-        apiContext,
-        dataTerm1,
-        dataTerm2,
-        dataModeGlossary
-      );
+      await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
     }
     await disposeApiContext(afterAction, apiContext);
   });
@@ -498,10 +490,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test('Data mode stats do not show Data Assets when no assets are tagged', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(
-      page,
-      dataModeGlossary!.responseData.id
-    );
+    await navigateAndFilterByGlossary(page, dataModeGlossary!.responseData.id);
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);
@@ -514,10 +503,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test('switching back from Data to Model mode restores stats', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(
-      page,
-      dataModeGlossary!.responseData.id
-    );
+    await navigateAndFilterByGlossary(page, dataModeGlossary!.responseData.id);
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);

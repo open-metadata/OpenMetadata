@@ -260,7 +260,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === termA!.responseData.id && e.to === termB!.responseData.id) ||
+        (e.from === termA!.responseData.id &&
+          e.to === termB!.responseData.id) ||
         (e.from === termB!.responseData.id && e.to === termA!.responseData.id)
     );
 
