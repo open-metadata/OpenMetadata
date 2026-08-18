@@ -22,7 +22,6 @@ export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.OWNERS,
   EntityFields.DOMAINS,
   EntityFields.DATA_PRODUCT_TYPE,
-  EntityFields.LIFECYCLE_STAGE,
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
 ];
@@ -39,10 +38,6 @@ export const DATAPRODUCT_FILTERS = [
   {
     label: 'label.type',
     key: EntityFields.DATA_PRODUCT_TYPE,
-  },
-  {
-    label: 'label.lifecycle-stage',
-    key: EntityFields.LIFECYCLE_STAGE,
   },
   {
     label: 'label.visibility',
