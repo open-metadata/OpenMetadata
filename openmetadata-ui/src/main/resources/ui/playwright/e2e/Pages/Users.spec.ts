@@ -996,6 +996,10 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         hasText: personaName,
       });
 
+      // Asserted first so the negative checks below cannot pass against a
+      // label that never rendered.
+      await expect(userPersonaLabel).toBeVisible();
+
       await expect(
         userPersonaLabel.locator('[data-testid="default-persona-tag"]')
       ).not.toBeVisible();
