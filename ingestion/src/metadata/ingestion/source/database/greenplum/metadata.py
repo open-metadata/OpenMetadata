@@ -126,13 +126,19 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         get_materialized_view_names().  Both regular views and materialized
         views are yielded only when includeViews=True.
         """
-        return [
+        views = [
             TableNameAndType(name=view_name, type_=TableType.View)
             for view_name in self.inspector.get_view_names(schema_name) or []
-        ] + [
-            TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
-            for matview_name in self.inspector.get_materialized_view_names(schema_name) or []
         ]
+        try:
+            matviews = [
+                TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
+                for matview_name in self.inspector.get_materialized_view_names(schema_name) or []
+            ]
+        except Exception as err:  # noqa: BLE001
+            logger.warning(f"Fetching materialized views failed for schema {schema_name}: {err}")
+            matviews = []
+        return views + matviews
 
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
