@@ -31,8 +31,9 @@ const STATUS_ROUTE = '**/api/v1/services/ingestionPipelines/status';
 
 /** Kills the SSE progress stream so it cannot repaint cards mid-assertion. */
 const stubProgressStream = (page: Page) =>
-  page.route('**/api/v1/services/ingestionPipelines/progress/service/**', (route) =>
-    route.fulfill({ status: 204, body: '' })
+  page.route(
+    '**/api/v1/services/ingestionPipelines/progress/service/**',
+    (route) => route.fulfill({ status: 204, body: '' })
   );
 
 const visitAgentsTab = async (page: Page, serviceFQN: string) => {
@@ -117,7 +118,9 @@ test.describe('Service agents when the pipeline-service status degrades', () => 
 
     // The whole point: the card is there before the status call has answered.
     await expect(agentCard).toBeVisible();
-    await expect(agentCard.getByTestId('agent-card-actions-skeleton')).toBeVisible();
+    await expect(
+      agentCard.getByTestId('agent-card-actions-skeleton')
+    ).toBeVisible();
     await expect(page.getByTestId('add-agent-skeleton')).toBeVisible();
     await expect(agentCard.getByTestId('logs-button')).toBeHidden();
     await expect(agentCard.getByTestId('more-actions')).toBeHidden();
@@ -127,7 +130,9 @@ test.describe('Service agents when the pipeline-service status degrades', () => 
     await expect(agentCard.getByTestId('logs-button')).toBeEnabled();
     await expect(agentCard.getByTestId('more-actions')).toBeEnabled();
     await expect(page.getByTestId('add-new-ingestion-button')).toBeEnabled();
-    await expect(agentCard.getByTestId('agent-card-actions-skeleton')).toBeHidden();
+    await expect(
+      agentCard.getByTestId('agent-card-actions-skeleton')
+    ).toBeHidden();
   });
 
   test('should list the agents with disabled actions when the status call fails', async ({
