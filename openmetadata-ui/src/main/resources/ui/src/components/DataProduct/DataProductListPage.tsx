@@ -42,7 +42,7 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
-  NAME_CELL_CLIP_CLASS
+  NAME_CELL_CLIP_CLASS,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -280,37 +280,37 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <div className='tw:relative tw:min-h-70'>
-          <NoFilteredResultsPlaceholder
-            onClearFilters={() => dataProductListing.handleSearchChange('')}
-          />
+          <div className="tw:relative tw:min-h-70">
+            <NoFilteredResultsPlaceholder
+              onClearFilters={() => dataProductListing.handleSearchChange('')}
+            />
           </div>
         );
       }
 
       return (
-        <div className='tw:relative tw:min-h-70'>
-        <EmptyPlaceholder
-          actions={
-            permissions.dataProduct?.Create
-              ? [
-                  {
-                    color: 'primary',
-                    iconLeading: Plus,
-                    key: 'add-data-product',
-                    label: t('label.add-entity', {
-                      entity: t('label.data-product'),
-                    }),
-                    onPress: openDrawer,
-                  },
-                ]
-              : undefined
-          }
-          description={t('label.no-data-products-yet-description')}
-          icon={<Package className="tw:text-fg-brand-primary" />}
-          title={t('label.no-data-products-yet')}
-          variant="blank"
-        />
+        <div className="tw:relative tw:min-h-70">
+          <EmptyPlaceholder
+            actions={
+              permissions.dataProduct?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'add-data-product',
+                      label: t('label.add-entity', {
+                        entity: t('label.data-product'),
+                      }),
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('label.no-data-products-yet-description')}
+            icon={<Package className="tw:text-fg-brand-primary" />}
+            title={t('label.no-data-products-yet')}
+            variant="blank"
+          />
         </div>
       );
     }

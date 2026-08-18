@@ -183,28 +183,28 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       }
 
       return (
-        <div className='tw:relative tw:min-h-70'>
-        <EmptyPlaceholder
-          actions={
-            permissions.domain?.Create
-              ? [
-                  {
-                    color: 'primary',
-                    iconLeading: Plus,
-                    key: 'add-domain',
-                    label: t('label.add-entity', {
-                      entity: t('label.domain'),
-                    }),
-                    onPress: openDrawer,
-                  },
-                ]
-              : undefined
-          }
-          description={t('message.no-domains-yet-desc')}
-          icon={<Globe01 className="tw:text-fg-brand-primary" />}
-          title={t('label.no-domains-yet')}
-          variant="blank"
-        />
+        <div className="tw:relative tw:min-h-70">
+          <EmptyPlaceholder
+            actions={
+              permissions.domain?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'add-domain',
+                      label: t('label.add-entity', {
+                        entity: t('label.domain'),
+                      }),
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-domains-yet-desc')}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-domains-yet')}
+            variant="blank"
+          />
         </div>
       );
     }
