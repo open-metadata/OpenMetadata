@@ -1200,9 +1200,21 @@ test.describe('Glossary tests', () => {
       );
       await page.getByTestId('assets').click();
       await assetsSearchResponse;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
-      const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
+      // Wait for the filter-count badge to appear, which confirms the Assets tab
+      // is active and the search response has been rendered.
+      const filterCount = page
+        .getByTestId('assets')
+        .getByTestId('filter-count');
+      await filterCount.waitFor();
+
+      // The glossary term is isolated (fresh per test), so the count must be ≥ 1.
+      // We assert ≥ 1 rather than exactly 1 because the ALL search index may also
+      // include column-level documents that inherit the table's glossary tag.
+      const countText = await filterCount.textContent();
+      expect(parseInt(countText ?? '0', 10)).toBeGreaterThanOrEqual(1);
+
+      const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
       await expect(
         page.getByTestId(`table-data-card_${entityFqn}`)
       ).toBeVisible();
