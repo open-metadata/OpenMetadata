@@ -800,6 +800,18 @@
         <artifactId>httpcore5-h2</artifactId>
         <version>5.4.3</version>
       </dependency>
+      <!--
+        Must stay >= 5.5.2 for as long as httpcore5 above is pinned to the 5.4 line.
+        httpclient5 5.5 is built against httpcore5 5.3.4; on 5.4.x its I/O reactor
+        dispatchers die silently, leaking search connection-pool leases until every
+        request fails with DeadlineTimeoutException. 5.5.2 is the release that
+        "Fixed incompatibility with HttpCore 5.4". Bump both artifacts together.
+      -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.client5</groupId>
+        <artifactId>httpclient5</artifactId>
+        <version>5.5.2</version>
+      </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
