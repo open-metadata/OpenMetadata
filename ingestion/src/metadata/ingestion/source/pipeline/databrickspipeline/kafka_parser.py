@@ -296,9 +296,12 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                 glob_entry = lib.get("glob")
                 include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
                 if include:
+                    # an include without a wildcard names a path rather than selecting
+                    # a set, so it carries no pattern to filter the listing against
+                    pattern = include if is_glob_pattern(include) else None
                     base_path = glob_base_directory(include)
-                    libraries.append(DLTLibrarySource(path=base_path, pattern=include))
-                    logger.info(f"   ✓ Found glob pattern {include}, listing: {base_path}")
+                    libraries.append(DLTLibrarySource(path=base_path, pattern=pattern))
+                    logger.info(f"   ✓ Found glob {include}, listing: {base_path}")
         except Exception as exc:
             logger.debug(f"Failed to process library entry {lib}: {exc}")
             continue

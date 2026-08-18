@@ -549,6 +549,21 @@ class TestGlobExpansion:
     def test_double_star_with_extension_recurses_but_still_filters(self):
         assert self._expand("/tx/**/*.sql") == ["/tx/a.sql", "/tx/archive/old_v1.sql"]
 
+    def test_a_directory_without_a_pattern_takes_everything_below_it(self):
+        """A source_path fallback points at a tree, not one level of it."""
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+
+        library = DLTLibrarySource(path="/tx/")
+        assert library.is_recursive is True
+        assert source._expand_workspace_directory(library) == [
+            "/tx/a.sql",
+            "/tx/notes.py",
+            "/tx/archive/old_v1.sql",
+        ]
+
 
 class TestGlobMatching:
     """`*` stays within a path segment, `**` spans them."""
@@ -639,3 +654,75 @@ class TestQuestionMarkGlob:
     def test_a_concrete_include_is_not_a_pattern(self):
         assert is_glob_pattern("/tx/one.sql") is False
         assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
+
+
+class TestLibraryShapeMatrix:
+    """
+    Every `spec.libraries` shape, end to end from the spec to the selected files.
+    Each row is a shape Databricks can emit, so a change to either the reduction
+    or the matching shows up here rather than in a customer's missing lineage.
+    """
+
+    WORKSPACE: ClassVar[dict] = {
+        "/tx/": [
+            {"object_type": "FILE", "path": "/tx/a.sql"},
+            {"object_type": "FILE", "path": "/tx/n.py"},
+            {"object_type": "DIRECTORY", "path": "/tx/sub"},
+        ],
+        "/tx/sub/": [{"object_type": "FILE", "path": "/tx/sub/d.sql"}],
+    }
+
+    def _select(self, spec):
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        selected = []
+        for library in get_pipeline_libraries(spec):
+            if library.is_directory:
+                selected.extend(source._expand_workspace_directory(library))
+            else:
+                selected.append(library.path)
+        return selected
+
+    def test_notebook_entry_is_read_directly(self):
+        assert self._select({"libraries": [{"notebook": {"path": "/tx/a.sql"}}]}) == ["/tx/a.sql"]
+
+    def test_file_entry_is_read_directly(self):
+        assert self._select({"libraries": [{"file": {"path": "/tx/a.sql"}}]}) == ["/tx/a.sql"]
+
+    def test_recursive_glob_takes_the_tree(self):
+        assert self._select({"libraries": [{"glob": {"include": "/tx/**"}}]}) == [
+            "/tx/a.sql",
+            "/tx/n.py",
+            "/tx/sub/d.sql",
+        ]
+
+    def test_single_level_glob_filters_by_extension(self):
+        assert self._select({"libraries": [{"glob": {"include": "/tx/*.sql"}}]}) == ["/tx/a.sql"]
+
+    def test_recursive_glob_with_extension(self):
+        assert self._select({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]}) == [
+            "/tx/a.sql",
+            "/tx/sub/d.sql",
+        ]
+
+    def test_question_mark_glob_selects_one_character(self):
+        assert self._select({"libraries": [{"glob": {"include": "/tx/?.py"}}]}) == ["/tx/n.py"]
+
+    def test_glob_naming_a_concrete_file_is_read_directly(self):
+        assert self._select({"libraries": [{"glob": {"include": "/tx/one.sql"}}]}) == ["/tx/one.sql"]
+
+    def test_glob_naming_a_bare_directory_takes_the_tree(self):
+        """No wildcard means no filter, so the whole directory is in scope."""
+        assert self._select({"libraries": [{"glob": {"include": "/tx/"}}]}) == [
+            "/tx/a.sql",
+            "/tx/n.py",
+            "/tx/sub/d.sql",
+        ]
+
+    def test_mixed_entries_are_all_collected(self):
+        assert self._select({"libraries": [{"notebook": {"path": "/nb"}}, {"glob": {"include": "/tx/*.sql"}}]}) == [
+            "/nb",
+            "/tx/a.sql",
+        ]

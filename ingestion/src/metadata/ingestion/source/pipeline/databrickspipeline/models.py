@@ -118,8 +118,12 @@ class DLTLibrarySource:
 
     @property
     def is_recursive(self) -> bool:
-        """Only `**` addresses subdirectories, so a `*` pattern stays one level deep."""
-        return bool(self.pattern and "**" in self.pattern)
+        """
+        A directory with no pattern means everything below it, which is what a
+        `source_path` fallback points at. Only a pattern that omits `**` narrows
+        the search to a single level, so `/tx/*.sql` does not reach subdirectories.
+        """
+        return self.pattern is None or "**" in self.pattern
 
 
 @dataclass
