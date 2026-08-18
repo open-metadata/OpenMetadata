@@ -203,7 +203,9 @@ describe('BasicAuthenticator', () => {
     // The authenticator's mount effect must have registered a Renewer
     // function (not undefined, not null) with the coordinator.
     expect(registerRenewer).toHaveBeenCalled();
+
     const registered = registerRenewer.mock.calls[0][0];
+
     expect(typeof registered).toBe('function');
 
     let result: { idToken: string; expiresAt: number } | undefined;

@@ -152,7 +152,9 @@ describe('GenericAuthenticator', () => {
     );
 
     expect(registerRenewer).toHaveBeenCalled();
+
     const registered = registerRenewer.mock.calls[0][0];
+
     expect(typeof registered).toBe('function');
 
     let result: { idToken: string; expiresAt: number } | undefined;
@@ -179,6 +181,7 @@ describe('GenericAuthenticator', () => {
     );
 
     const registered = registerRenewer.mock.calls[0][0];
+
     await expect(registered()).rejects.toThrow(
       'Renew endpoint returned no accessToken'
     );
@@ -193,6 +196,7 @@ describe('GenericAuthenticator', () => {
       </MemoryRouter>
     );
     unmount();
+
     expect(registerRenewer).toHaveBeenCalledWith(null);
   });
 });
