@@ -1266,7 +1266,8 @@ test.describe(
         const statusFilter = page.getByTestId('status-select-filter');
         await statusFilter.getByRole('combobox').click();
         await page
-          .getByRole('option', { name: 'Success', exact: true })
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Success', { exact: true })
           .click();
         await testCaseStatusBySuccess;
 
@@ -1286,7 +1287,10 @@ test.describe(
           }
         );
         await statusFilter.getByRole('combobox').click();
-        await page.getByRole('option', { name: 'Failed', exact: true }).click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Failed', { exact: true })
+          .click();
         await testCaseStatusesBySuccessAndFailed;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
