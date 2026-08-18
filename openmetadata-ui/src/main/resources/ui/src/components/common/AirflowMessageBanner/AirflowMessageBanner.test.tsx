@@ -114,35 +114,45 @@ describe('Test Airflow Message Banner', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Should fall back to a generic message when the status call answered with no reason', () => {
+    it.each([
+      ['empty', ''],
+      ['null', null],
+    ])('Should use the caller fallback when reason is %s', (_label, reason) => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-        reason: '',
+        reason,
         isAirflowAvailable: false,
         isFetchingStatus: false,
         platform: 'unknown',
       }));
-      render(<AirflowMessageBanner />);
+      render(
+        <AirflowMessageBanner unreachableFallbackMessage="agents keep listing" />
+      );
 
       expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
-      expect(
-        screen.getByText('message.pipeline-service-unreachable-agent-actions')
-      ).toBeInTheDocument();
+      expect(screen.getByText('agents keep listing')).toBeInTheDocument();
     });
 
-    it('Should fall back to a generic message when reason is null', () => {
-      (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-        reason: null,
-        isAirflowAvailable: false,
-        isFetchingStatus: false,
-        platform: 'unknown',
-      }));
-      render(<AirflowMessageBanner />);
+    it.each([
+      ['empty', ''],
+      ['null', null],
+    ])(
+      'Should render nothing when reason is %s and no fallback was supplied',
+      (_label, reason) => {
+        // Shared with the connection setup and success screens, which have nothing on screen that
+        // an unreachable-service message would explain.
+        (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+          reason,
+          isAirflowAvailable: false,
+          isFetchingStatus: false,
+          platform: 'unknown',
+        }));
+        render(<AirflowMessageBanner />);
 
-      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
-      expect(
-        screen.getByText('message.pipeline-service-unreachable-agent-actions')
-      ).toBeInTheDocument();
-    });
+        expect(
+          screen.queryByTestId('no-airflow-placeholder')
+        ).not.toBeInTheDocument();
+      }
+    );
 
     it('Should render the banner if platform is not available and reason is not empty', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({

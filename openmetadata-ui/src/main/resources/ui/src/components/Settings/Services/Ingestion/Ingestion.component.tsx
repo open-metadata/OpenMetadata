@@ -157,7 +157,12 @@ const Ingestion: React.FC<IngestionProps> = ({
       {/* Carries the reason the pipeline service cannot be reached. It is the one place that
           explains why the agent controls below are disabled, so the tab keeps listing the agents
           instead of being replaced by a setup guide. */}
-      <AirflowMessageBanner className="tw:mb-4" />
+      <AirflowMessageBanner
+        className="tw:mb-4"
+        unreachableFallbackMessage={t(
+          'message.pipeline-service-unreachable-agent-actions'
+        )}
+      />
 
       {/* `agents` is one page of the list; the Metadata badge count is the service's real total.
           Held back until that list is real — its counts read as "0 agents" otherwise. */}

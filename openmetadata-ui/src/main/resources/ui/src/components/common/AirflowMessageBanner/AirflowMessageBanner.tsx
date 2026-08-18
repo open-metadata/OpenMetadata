@@ -14,15 +14,27 @@ import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { AIRFLOW_HYBRID } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
-const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
-  const { t } = useTranslation();
+interface AirflowMessageBannerProps extends SpaceProps {
+  /**
+   * Shown when the service is unreachable but the status call carried no `reason` — a thrown call
+   * has none. Opt-in and caller-supplied, because what to say depends on what the caller left on
+   * screen: the agent tabs keep their lists with disabled controls and have to explain that, while
+   * the connection setup and success screens have nothing to explain. Omit to keep the original
+   * behaviour of rendering nothing without a `reason`.
+   */
+  unreachableFallbackMessage?: string;
+}
+
+const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
+  className,
+  unreachableFallbackMessage,
+}) => {
   const { reason, isAirflowAvailable, isFetchingStatus, platform } =
     useAirflowStatus();
 
@@ -38,11 +50,11 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
     }
   }
 
-  // A status call that threw carries no reason, and the agent lists below now stay on screen with
-  // their controls disabled — without a fallback that reads as an unexplained dead UI.
-  const message = isEmpty(reason)
-    ? t('message.pipeline-service-unreachable-agent-actions')
-    : reason ?? '';
+  const message = isEmpty(reason) ? unreachableFallbackMessage : reason;
+
+  if (isEmpty(message)) {
+    return null;
+  }
 
   return (
     <Space
@@ -54,7 +66,7 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       <IconRetry className="align-middle" height={24} width={24} />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
-        markdown={message}
+        markdown={message ?? ''}
       />
     </Space>
   );
