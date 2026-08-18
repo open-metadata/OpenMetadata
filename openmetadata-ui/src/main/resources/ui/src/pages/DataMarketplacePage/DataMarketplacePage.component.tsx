@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import { isEmpty } from 'lodash';
-import {
-  CSSProperties,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { CSSProperties, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
 import Loader from '../../components/common/Loader/Loader';
@@ -28,14 +21,18 @@ import AnnouncementsWidgetV2 from '../../components/DataMarketplace/Announcement
 import MarketplaceGreetingBanner from '../../components/DataMarketplace/MarketplaceGreetingBanner/MarketplaceGreetingBanner.component';
 import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
+} from '../../rest/queries/docStoreQuery';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
 
@@ -85,51 +82,41 @@ const DataMarketplacePage = ({
     []
   );
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(() => [
-    ...defaultLayout,
-  ]);
+  const personaFqn = personaDocFqn(selectedPersona);
 
-  const fetchDocument = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      if (!selectedPersona) {
-        setLayout(defaultLayout);
+  const { data: docData, isPending: isDocPending } = useQuery({
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: !!personaFqn,
+    retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
+  });
 
-        return;
-      }
+  const isLoading = !!personaFqn && isDocPending;
 
-      const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
-      const docData = await getDocumentByFQN(pageFQN);
-
-      const pageData = docData.data?.pages?.find(
-        (p: Page) => p.pageType === PageType.DataMarketplace
-      );
-
-      const tabLayout = getLayoutFromCustomizedPage(
-        PageType.DataMarketplace,
-        EntityTabs.OVERVIEW,
-        pageData
-      ) as WidgetConfig[];
-
-      if (!isEmpty(tabLayout)) {
-        setLayout(normalizeLayout(tabLayout));
-      } else if (pageData && !isEmpty(pageData.layout)) {
-        setLayout(normalizeLayout(pageData.layout as WidgetConfig[]));
-      } else {
-        setLayout(defaultLayout);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setLayout(defaultLayout);
-    } finally {
-      setIsLoading(false);
+  const layout = useMemo<Array<WidgetConfig>>(() => {
+    if (!docData || !selectedPersona) {
+      return defaultLayout;
     }
-  }, [selectedPersona, defaultLayout]);
 
-  useEffect(() => {
-    fetchDocument();
-  }, [fetchDocument]);
+    const pageData = docData.data?.pages?.find(
+      (p: Page) => p.pageType === PageType.DataMarketplace
+    );
+
+    const tabLayout = getLayoutFromCustomizedPage(
+      PageType.DataMarketplace,
+      EntityTabs.OVERVIEW,
+      pageData
+    ) as WidgetConfig[];
+
+    if (!isEmpty(tabLayout)) {
+      return normalizeLayout(tabLayout);
+    } else if (pageData && !isEmpty(pageData.layout)) {
+      return normalizeLayout(pageData.layout as WidgetConfig[]);
+    }
+
+    return defaultLayout;
+  }, [docData, selectedPersona, defaultLayout]);
 
   // Depend on the resolved direction, not the i18n instance: the instance
   // reference survives a language change, so memoising on it would keep a stale

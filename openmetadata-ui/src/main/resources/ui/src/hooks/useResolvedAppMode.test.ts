@@ -62,7 +62,12 @@ const seedUser = (opts?: {
           id: USER_NAME,
           name: USER_NAME,
           defaultPersona: personaId
-            ? { id: personaId, name: personaName ?? 'p', type: 'persona' }
+            ? {
+                id: personaId,
+                name: personaName ?? 'p',
+                fullyQualifiedName: personaName ?? 'p',
+                type: 'persona',
+              }
             : undefined,
         } as unknown as ReturnType<
           typeof useApplicationStore.getState
