@@ -3788,7 +3788,6 @@
     "no-dimension-description": "<0>看起來維度結果尚未計算。</0><1>只需執行測試案例<2>管道</2>即可開始分析您的資料維度。</1>",
     "no-domain-assigned-to-entity": "沒有領域指派給 {{entity}}",
     "no-domain-available": "沒有可設定的領域。點擊 <0>{{link}}</0> 以新增領域",
-    "no-domains-yet-desc": "建立您的第一個網域，依業務領域、團隊或功能整理資料產品。",
     "no-entity-activity-message": "{{entity}} 上還沒有任何活動。點擊...開始對話",
     "no-entity-available-with-name": "沒有名稱為 {{name}} 的可用 {{entity}}",
     "no-entity-data-available": "沒有可用的 {{entity}} 資料。",

@@ -3788,7 +3788,6 @@
     "no-dimension-description": "<0>يبدو أن نتائج الأبعاد لم تُحسب بعد.</0><1>ما عليك سوى تشغيل حالة الاختبار <2>pipeline</2> لبدء تحليل أبعاد بياناتك.</1>",
     "no-domain-assigned-to-entity": "لم يتم تعيين نطاقات إلى {{entity}}",
     "no-domain-available": "لا تتوفر نطاقات للتكوين. انقر على <0>{{link}}</0> لإضافة نطاقات",
-    "no-domains-yet-desc": "أنشئ نطاقك الأول لتنظيم منتجات البيانات حسب مجال العمل أو الفريق أو الوظيفة.",
     "no-entity-activity-message": "لا يوجد نشاط على {{entity}} بعد. ابدأ محادثة بالنقر على",
     "no-entity-available-with-name": "لا يتوفر {{entity}} بالاسم",
     "no-entity-data-available": "لا تتوفر بيانات {{entity}}.",

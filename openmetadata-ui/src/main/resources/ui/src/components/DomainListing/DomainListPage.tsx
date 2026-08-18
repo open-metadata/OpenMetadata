@@ -176,7 +176,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         return (
           <div className="tw:relative tw:min-h-70">
             <NoFilteredResultsPlaceholder
-              onClearFilters={() => domainListing.handleSearchChange('')}
+              onClearFilters={() => {
+                domainListing.handleSearchChange('');
+                domainListing.handleFilterChange([]);
+              }}
             />
           </div>
         );
@@ -200,7 +203,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
                   ]
                 : undefined
             }
-            description={t('message.no-domains-yet-desc')}
+            description={t('label.no-domains-yet-description')}
             icon={<Globe01 className="tw:text-fg-brand-primary" />}
             title={t('label.no-domains-yet')}
             variant="blank"

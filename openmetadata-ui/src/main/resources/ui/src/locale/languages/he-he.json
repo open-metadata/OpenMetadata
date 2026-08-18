@@ -3788,7 +3788,6 @@
     "no-dimension-description": "<0>נראה שתוצאות המימדים טרם חושבו.</0><1>פשוט הפעל את <2>צינור</2> מקרה הבדיקה כדי להתחיל לנתח את מימדי הנתונים שלך.</1>",
     "no-domain-assigned-to-entity": "לא הוקצו תחומים ל-{{entity}}",
     "no-domain-available": "לא קיימים תחומים להגדרה. לחץ על <0>{{link}}</0> כדי להוסיף תחומים",
-    "no-domains-yet-desc": "צור את הדומיין הראשון שלך כדי לארגן מוצרי נתונים לפי תחום עסקי, צוות או תפקיד.",
     "no-entity-activity-message": "אין פעילות ב-{{entity}} עדיין. התחל שיחה על ידי לחיצה על ה",
     "no-entity-available-with-name": "אין {{entity}} זמינים בשם",
     "no-entity-data-available": "אין נתוני {{entity}} זמינים.",

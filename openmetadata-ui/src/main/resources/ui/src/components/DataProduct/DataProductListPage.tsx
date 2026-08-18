@@ -282,7 +282,10 @@ const DataProductListPage = ({
         return (
           <div className="tw:relative tw:min-h-70">
             <NoFilteredResultsPlaceholder
-              onClearFilters={() => dataProductListing.handleSearchChange('')}
+              onClearFilters={() => {
+                dataProductListing.handleSearchChange('');
+                dataProductListing.handleFilterChange([]);
+              }}
             />
           </div>
         );

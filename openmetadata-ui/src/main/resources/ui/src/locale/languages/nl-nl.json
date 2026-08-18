@@ -3788,7 +3788,6 @@
     "no-dimension-description": "<0>Het lijkt erop dat de dimensieresultaten nog niet zijn berekend.</0><1>Voer gewoon de testcase <2>pipeline</2> uit om te beginnen met het analyseren van uw gegevensdimensies.</1>",
     "no-domain-assigned-to-entity": "Geen domeinen zijn toegewezen aan {{entity}}",
     "no-domain-available": "Er zijn geen domeinen beschikbaar om te configureren. Klik op <0>{{link}}</0> om domeinen toe te voegen",
-    "no-domains-yet-desc": "Maak uw eerste domein aan om dataproducten te organiseren per bedrijfsgebied, team of functie.",
     "no-entity-activity-message": "Er is nog geen activiteit op de {{entity}}. Start een gesprek door te klikken op de",
     "no-entity-available-with-name": "Geen {{entity}} beschikbaar met de naam",
     "no-entity-data-available": "Geen {{entity}}-data beschikbaar.",
