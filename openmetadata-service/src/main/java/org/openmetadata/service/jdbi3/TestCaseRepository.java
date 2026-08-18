@@ -114,6 +114,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1124,7 +1125,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           (TestCaseResolutionStatusRepository)
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
       AsyncService.getInstance()
-          .execute(
+          .executeDatabaseTask(
+              DatabaseOperation.TEST_CASE_CLEANUP,
+              "resolution-status:" + children.size(),
               () -> {
                 for (CollectionDAO.EntityRelationshipRecord child : children) {
                   try {
@@ -1141,19 +1144,31 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
   }
 
-  private void deleteAllTestCaseResults(String fqn) {
+  @Override
+  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
+    deleteAllTestCaseResults(
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
+  }
+
+  private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
+    if (testCaseFQNs.isEmpty()) {
+      return;
+    }
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     AsyncService.getInstance()
-        .execute(
+        .executeDatabaseTask(
+            DatabaseOperation.TEST_CASE_CLEANUP,
+            "test-results:" + testCaseFQNs.size(),
             () -> {
               try {
-                testCaseResultRepository.deleteAllTestCaseResults(fqn);
+                testCaseResultRepository.deleteAllTestCaseResults(testCaseFQNs);
               } catch (RuntimeException e) {
-                LOG.error("Error deleting test case results for test case {}", fqn, e);
+                LOG.error(
+                    "Error deleting test case results for {} test cases", testCaseFQNs.size(), e);
               }
             });
   }
@@ -1365,14 +1380,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             List.of(testSuiteId),
             TestSuiteRepository.TESTS_REVISION_EXTENSION,
             TestSuiteRepository.getTestsRevisionSchema());
-    Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
+    Map<UUID, Long> testCaseRevisions =
+        getTestSuiteRelationshipRevisions(daoCollection, testCaseIds);
     if (testCaseRevisions.size() != testCaseIds.size()) {
-      throw new IllegalStateException("Failed to persist every test suite relationship revision");
+      throw new IllegalStateException(
+          String.format(
+              "Read back %d of %d test suite relationship revisions for test suite '%s'",
+              testCaseRevisions.size(), testCaseIds.size(), testSuiteId));
     }
     Long relationshipRevision =
-        TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
+        TestSuiteRepository.getTestsRelationshipRevisions(daoCollection, List.of(testSuiteId))
+            .get(testSuiteId);
     if (relationshipRevision == null) {
-      throw new IllegalStateException("Failed to persist the test suite tests revision");
+      throw new IllegalStateException(
+          String.format("Read back no tests revision for test suite '%s'", testSuiteId));
     }
 
     return new LogicalSuiteRelationshipChange(
@@ -1380,10 +1401,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
+    return getTestSuiteRelationshipRevisions(Entity.getCollectionDAO(), testCaseIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction.
+   *
+   * <p>The no-DAO overload resolves {@link Entity#getCollectionDAO()}, which is a mutable global that
+   * the application and the integration-test bootstrap each set to an on-demand DAO over their own
+   * {@link org.jdbi.v3.core.Jdbi}. A repository captures {@code daoCollection} once at construction,
+   * so the two can name different instances — and then a write made on one connection is read back on
+   * another. MySQL pins a REPEATABLE READ snapshot at the transaction's first read and so cannot see
+   * the other connection's later commit at all, which surfaced as this method reporting rows it had
+   * just written as missing. Postgres re-snapshots per statement and hid the same bug.
+   */
+  public static Map<UUID, Long> getTestSuiteRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testCaseIds) {
     if (nullOrEmpty(testCaseIds)) {
       return Map.of();
     }
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
       return Map.of();
     }

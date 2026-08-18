@@ -268,7 +268,15 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await redirectToHomePage(page);
 
-    await waitForLandingPageWidget(page, 'kpi-widget');
+    // `kpi-widget` is a child of the KPI widget, not its layout key. The landing-page helper
+    // keys off the layout key — the testid the widget renders on its wrapper and the one its
+    // DeferredWidget slot is named after — so an inner testid reveals nothing.
+    const kpiWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.KPI'
+    );
+
+    await expect(kpiWidget.getByTestId('kpi-widget')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

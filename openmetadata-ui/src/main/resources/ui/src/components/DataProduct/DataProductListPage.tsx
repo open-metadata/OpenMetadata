@@ -383,7 +383,7 @@ const DataProductListPage = ({
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
           'tw:mb-5': !isAiMode,
         })}
-        variant="elevated">
+        variant={isAiMode ? 'default' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -413,6 +413,7 @@ const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
 
   return (
     <PageLayoutV1
+      className={isAiMode ? 'tw:h-auto!' : undefined}
       fullHeight={isAiMode}
       pageTitle={props.pageTitle}
       variant={isAiMode ? 'compact' : 'default'}>
