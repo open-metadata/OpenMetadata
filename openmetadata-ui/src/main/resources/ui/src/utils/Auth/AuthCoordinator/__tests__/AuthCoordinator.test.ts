@@ -12,6 +12,8 @@
  */
 
 import type { AxiosInstance } from 'axios';
+import { extractDetailsFromToken } from '../../../AuthProvider.util';
+import { getOidcToken } from '../../../SwTokenStorageUtils';
 import { AuthCoordinator } from '../AuthCoordinator';
 
 jest.mock('../../../SwTokenStorageUtils', () => ({
@@ -19,6 +21,33 @@ jest.mock('../../../SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn(() => 'stale-token'),
   setOidcToken: jest.fn(),
 }));
+
+jest.mock('../../../AuthProvider.util', () => ({
+  EXPIRY_THRESHOLD_MILLES: 60_000,
+  extractDetailsFromToken: jest.fn(),
+}));
+
+const mockedGetOidcToken = getOidcToken as jest.MockedFunction<
+  typeof getOidcToken
+>;
+const mockedExtractDetailsFromToken =
+  extractDetailsFromToken as jest.MockedFunction<typeof extractDetailsFromToken>;
+
+// Fires a visibilitychange event with document.visibilityState = 'visible'.
+// AuthCoordinator's VisibilityWatcher listens for this to gate refresh on
+// storage freshness. Returns after microtasks flush so onTabVisible has
+// resolved its async chain.
+const triggerTabFocus = async () => {
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    value: 'visible',
+  });
+  document.dispatchEvent(new Event('visibilitychange'));
+  // Two flushes: onTabVisible awaits getOidcToken, then dispatches the
+  // conditional branch; give both microtask ticks a chance to run.
+  await Promise.resolve();
+  await Promise.resolve();
+};
 
 // Minimal axios stand-in: exposes the `rejected` handler registered via
 // `interceptors.response.use` so tests can simulate a 401 without a real
@@ -199,5 +228,76 @@ describe('AuthCoordinator', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  // These three tests pin down the "should we refresh on tab focus?"
+  // decision inside AuthCoordinator.onTabVisible. Regressing any one of
+  // them re-introduces the "refresh on every tab focus" issue that was
+  // explicitly flagged in review — a signed-out user should never see a
+  // silent-refresh call fire just from switching tabs.
+  describe('tab visibility gating', () => {
+    it('does NOT call the renewer when storage has no token (signed-out user)', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('');
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+
+      expect(renewer).not.toHaveBeenCalled();
+      expect(mockedExtractDetailsFromToken).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call the renewer when the stored token is still fresh', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('valid-jwt');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 600, // 10 min away
+        isExpired: false,
+        timeoutExpiry: 540_000,
+      });
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+
+      expect(renewer).not.toHaveBeenCalled();
+    });
+
+    it('fires exactly one renewer call even when the tab is re-focused rapidly during an in-flight refresh', async () => {
+      // Renewer never resolves during the test so we can hammer the
+      // visibility handler while the first refresh is still in flight —
+      // any additional tab focuses should join the existing inflight
+      // promise via ensureFreshToken()'s de-dup guard.
+      const renewer = jest.fn(
+        () =>
+          new Promise<{ idToken: string; expiresAt: number }>(() => {
+            /* never resolves */
+          })
+      );
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValue('expired-jwt');
+      mockedExtractDetailsFromToken.mockReturnValue({
+        exp: Math.floor(Date.now() / 1000) - 60, // 60s past expiry
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+      await triggerTabFocus();
+      await triggerTabFocus();
+
+      expect(renewer).toHaveBeenCalledTimes(1);
+    });
   });
 });
