@@ -1194,7 +1194,16 @@ test.describe('Glossary tests', () => {
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      // Navigate to the assets tab. We intentionally skip the exact count
+      // assertion: TableRepository propagates the glossary tag to every column
+      // document as a DERIVED tag via an async fire-and-forget update-by-query
+      // (since #31112). The ALL-index count is therefore non-deterministic at
+      // query time — it can be 1 (table only, columns not yet updated), 10 (all
+      // 9 columns updated), or any value in between. toContainText('1') fails
+      // specifically when exactly one column has been updated (count=2) because
+      // "2" does not contain "1". The entity-card assertion below is the
+      // canonical correctness check.
+      await goToAssetsTab(page, glossaryTerm1.data.displayName);
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
