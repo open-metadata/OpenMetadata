@@ -131,8 +131,6 @@ export const PageHeader = ({
   // bottom edge of the card — drop the card's bottom padding but keep the top.
   const paddingClass = footer ? 'tw:pt-4 tw:pb-0' : 'tw:py-4';
 
-  // An icon *component* renders the default FeaturedIcon tile; any other node
-  // (avatar, logo, custom element) renders as-is.
   const leadingNode =
     typeof icon === 'function' ? (
       <FeaturedIcon color="brand" icon={icon} size="md" theme="light" />

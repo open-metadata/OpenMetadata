@@ -12,10 +12,21 @@
  */
 import { render, waitFor } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentTitle } from './document-title';
 
+// `mock`-prefixed so vitest allows referencing it inside the hoisted factory.
+let mockBrandValue: string;
+
+vi.mock('@/i18n/useCoreTranslation', () => ({
+  useCoreTranslation: () => ({ t: () => mockBrandValue }),
+}));
+
 describe('DocumentTitle', () => {
+  beforeEach(() => {
+    mockBrandValue = 'OpenMetadata';
+  });
+
   it('sets document.title to the given title with the brand suffix', async () => {
     render(
       <HelmetProvider>
@@ -23,7 +34,19 @@ describe('DocumentTitle', () => {
       </HelmetProvider>
     );
 
-    await waitFor(() => expect(document.title).toContain('Explore | '));
+    await waitFor(() => expect(document.title).toBe('Explore | OpenMetadata'));
+  });
+
+  it('omits the suffix when brandName is not interpolated', async () => {
+    mockBrandValue = '{{brandName}}';
+
+    render(
+      <HelmetProvider>
+        <DocumentTitle title="Explore" />
+      </HelmetProvider>
+    );
+
+    await waitFor(() => expect(document.title).toBe('Explore'));
   });
 
   it('renders no visible DOM of its own', () => {
