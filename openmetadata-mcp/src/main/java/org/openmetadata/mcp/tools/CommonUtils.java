@@ -6,17 +6,22 @@ import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class CommonUtils {
@@ -115,14 +120,56 @@ public class CommonUtils {
   }
 
   /**
+   * Re-authorizes the update leg of a {@code createOrUpdate} as {@link MetadataOperation#EDIT_ALL}
+   * against the entity that already exists at this fully qualified name.
+   *
+   * <p>The {@code create_*} tools authorize {@link MetadataOperation#CREATE} against a {@code
+   * CreateResourceContext} for the new entity and then call {@code EntityRepository.createOrUpdate},
+   * which updates in place when the name is taken. A caller holding Create but not Edit could
+   * therefore overwrite an entity owned by somebody else, discarding its description, owners and
+   * tags. The REST layer does not have this gap: {@code EntityResource.createOrUpdate} derives
+   * EDIT_ALL through {@code EntityUtil.createOrUpdateOperation} and authorizes it against the
+   * <em>existing</em> entity, returning 403. This helper restores that parity.
+   *
+   * <p>The upsert semantics are intentional and unchanged — only the authorization leg moves. Call
+   * this after {@code prepareInternal}, which is what resolves the fully qualified name, and before
+   * {@code createOrUpdate}. The existence lookup is deliberate rather than redundant: the tool has
+   * to know whether this call creates or updates <em>before</em> the write, exactly as the REST path
+   * reads the original entity to build its resource context.
+   *
+   * @param entityType the entity type being written, e.g. {@link Entity#TAG}
+   * @param entity the prepared entity, carrying the resolved fully qualified name
+   */
+  public static void authorizeOverwrite(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      String entityType,
+      EntityInterface entity) {
+    String fqn = entity.getFullyQualifiedName();
+    // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at
+    // this name is still updated in place, so it still needs the EDIT_ALL check.
+    boolean overwritesExisting = fqn != null && entityExistsByName(entityType, fqn, Include.ALL);
+    if (overwritesExisting) {
+      OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      ResourceContext<EntityInterface> existing =
+          new ResourceContext<>(entityType, null, fqn, Include.ALL);
+      authorizer.authorize(securityContext, editContext, existing);
+    }
+  }
+
+  /**
    * Returns true when an entity with the given name exists. Only an {@link EntityNotFoundException}
    * counts as "does not exist" — any other failure (DB outage, etc.) propagates so a real infra
    * error is never mislabelled as a missing entity.
    */
   public static boolean entityExistsByName(String entityType, String fqn) {
+    return entityExistsByName(entityType, fqn, Include.NON_DELETED);
+  }
+
+  public static boolean entityExistsByName(String entityType, String fqn, Include include) {
     boolean exists = true;
     try {
-      Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+      Entity.getEntityReferenceByName(entityType, fqn, include);
     } catch (EntityNotFoundException e) {
       exists = false;
     }
