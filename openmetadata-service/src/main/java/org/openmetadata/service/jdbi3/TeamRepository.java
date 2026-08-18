@@ -348,13 +348,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     for (Team team : teams) {
-      List<String> userIds = new ArrayList<>();
-      List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(team.getId());
-      for (EntityRelationshipRecord userRecord : userRecordList) {
-        userIds.add(userRecord.getId().toString());
-      }
-      Set<String> userIdsSet = new HashSet<>(userIds);
-      team.setUserCount(userIdsSet.size());
+      team.setUserCount(countActiveUsers(getUsersRelationshipRecords(team.getId())));
     }
   }
 
@@ -790,15 +784,18 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getUserCount(UUID teamId) {
-    List<String> userIds = new ArrayList<>();
-    List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(teamId);
-    for (EntityRelationshipRecord userRecord : userRecordList) {
-      userIds.add(userRecord.getId().toString());
-    }
-    Set<String> userIdsSet = new HashSet<>(userIds);
-    userIds.clear();
-    userIds.addAll(userIdsSet);
-    return userIds.size();
+    return countActiveUsers(getUsersRelationshipRecords(teamId));
+  }
+
+  /**
+   * Counts distinct, non-deleted members so the count matches what {@link #getUsers(Team)} lists.
+   * Counting the raw relationship records instead would keep counting a member whose user was
+   * soft-deleted/deactivated (its HAS row survives), inflating the count above the visible list.
+   */
+  private int countActiveUsers(List<EntityRelationshipRecord> userRecords) {
+    List<EntityReference> activeUsers =
+        Entity.getEntityRelationshipRepository().getEntityReferences(userRecords, NON_DELETED);
+    return (int) activeUsers.stream().map(EntityReference::getId).distinct().count();
   }
 
   private List<EntityReference> getOwns(Team team) {
