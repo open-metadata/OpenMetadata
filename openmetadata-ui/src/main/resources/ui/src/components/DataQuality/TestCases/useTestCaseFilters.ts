@@ -52,6 +52,7 @@ const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
 
 const MULTI_SELECT_FILTERS = new Set<string>([
   TEST_CASE_FILTERS.platform,
+  TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.tags,
 ]);
 

@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholderAction,
+  MultiSelect,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useListData } from 'react-stately';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
@@ -24,6 +30,7 @@ import {
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
@@ -36,6 +43,15 @@ import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.componen
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
+const TEST_CASE_STATUS_ITEMS: SelectItemType[] = Object.values(
+  TestCaseStatus
+).map((status) => ({
+  id: status,
+  label:
+    TEST_CASE_STATUS_OPTION.find((option) => option.value === status)?.label ??
+    status,
+}));
+
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
@@ -45,6 +61,7 @@ export const TestCases = () => {
     testCaseSummary,
     isTestCaseSummaryLoading,
     form,
+    params,
     searchValue,
     selectedFilter,
     hasActiveFilters,
@@ -72,6 +89,65 @@ export const TestCases = () => {
     handleStatusSubmit,
     extraDropdownContent,
   } = useTestCaseListPage();
+
+  const selectedStatuses = useMemo(() => {
+    const status = params.testCaseStatus;
+
+    if (!status) {
+      return [];
+    }
+
+    return Array.isArray(status) ? status : [status];
+  }, [params.testCaseStatus]);
+  const selectedStatusItems = useListData<SelectItemType>({ initialItems: [] });
+
+  useEffect(() => {
+    // Chart navigation and browser history can update the URL independently of
+    // the selector, so its list model must follow the URL-backed filter state.
+    const selectedStatusSet = new Set<string>(selectedStatuses);
+    selectedStatusItems.items.forEach(({ id }) => {
+      if (!selectedStatusSet.has(String(id))) {
+        selectedStatusItems.remove(id);
+      }
+    });
+
+    const renderedStatusSet = new Set(
+      selectedStatusItems.items.map(({ id }) => id)
+    );
+    selectedStatuses.forEach((status) => {
+      if (!renderedStatusSet.has(status)) {
+        const item = TEST_CASE_STATUS_ITEMS.find(({ id }) => id === status);
+        if (item) {
+          selectedStatusItems.append(item);
+        }
+      }
+    });
+  }, [selectedStatuses, selectedStatusItems]);
+
+  const handleStatusInserted = useCallback(
+    (key: Key) => {
+      const status = Object.values(TestCaseStatus).find(
+        (value) => value === String(key)
+      );
+      if (status && !selectedStatuses.includes(status)) {
+        handleSearchParam('testCaseStatus', [...selectedStatuses, status]);
+      }
+    },
+    [handleSearchParam, selectedStatuses]
+  );
+
+  const handleStatusCleared = useCallback(
+    (key: Key) => {
+      const updatedStatuses = selectedStatuses.filter(
+        (status) => status !== String(key)
+      );
+      handleSearchParam(
+        'testCaseStatus',
+        updatedStatuses.length ? updatedStatuses : undefined
+      );
+    },
+    [handleSearchParam, selectedStatuses]
+  );
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
@@ -174,18 +250,24 @@ export const TestCases = () => {
               </Form.Item>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
-              <Form.Item
-                className="m-0 w-40"
-                label={t('label.status')}
-                name="testCaseStatus">
-                <Select
-                  allowClear
+              <div className="tw:w-64">
+                <MultiSelect
                   data-testid="status-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_STATUS_OPTION}
+                  items={TEST_CASE_STATUS_ITEMS}
+                  label={t('label.status')}
                   placeholder={t('label.status')}
-                />
-              </Form.Item>
+                  selectedItems={selectedStatusItems}
+                  onItemCleared={handleStatusCleared}
+                  onItemInserted={handleStatusInserted}>
+                  {(item) => (
+                    <MultiSelect.Item
+                      id={item.id}
+                      key={item.id}
+                      label={item.label}
+                    />
+                  )}
+                </MultiSelect>
+              </div>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
               <Form.Item

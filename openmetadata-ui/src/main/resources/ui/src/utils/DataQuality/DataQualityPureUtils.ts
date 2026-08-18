@@ -779,7 +779,7 @@ export const getTestCaseListPath = (
 });
 
 export const getTestCaseTabPath = (
-  testCaseStatus: TestCaseStatus,
+  testCaseStatus: TestCaseStatus | TestCaseStatus[],
   filters?: DataQualityDashboardChartFilters
 ) => getTestCaseListPath(filters, { testCaseStatus });
 

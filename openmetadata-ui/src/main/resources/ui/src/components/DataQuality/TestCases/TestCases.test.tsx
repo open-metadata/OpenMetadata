@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -422,6 +423,26 @@ describe('TestCases component', () => {
         );
       });
     });
+
+    it('should display and request every test case status from a multi-value URL', async () => {
+      mockLocation.search =
+        '?testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            testCaseStatus: ['Success', 'Queued'],
+          })
+        );
+      });
+
+      const statusFilter = await screen.findByTestId('status-select-filter');
+
+      expect(statusFilter).toHaveTextContent('label.success');
+      expect(statusFilter).toHaveTextContent('label.queued');
+    });
   });
 
   describe('Filter Interactions', () => {
@@ -445,6 +466,40 @@ describe('TestCases component', () => {
       const statusSelect = await screen.findByTestId('status-select-filter');
 
       expect(statusSelect).toBeInTheDocument();
+    });
+
+    it('should add statuses without replacing the existing selection', async () => {
+      const { rerender } = render(<TestCases />);
+      const statusFilter = await screen.findByTestId('status-select-filter');
+      const combobox = within(statusFilter).getByRole('combobox');
+
+      fireEvent.mouseDown(combobox);
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.success' })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search: 'testCaseStatus%5B%5D=Success',
+        });
+      });
+
+      mockLocation.search = '?testCaseStatus%5B%5D=Success';
+      rerender(<TestCases />);
+      fireEvent.mouseDown(
+        within(await screen.findByTestId('status-select-filter')).getByRole(
+          'combobox'
+        )
+      );
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.queued' })
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search: 'testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued',
+        });
+      });
     });
   });
 
