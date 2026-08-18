@@ -62,7 +62,11 @@ import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityIconWithBg } from './Assets/AssetsUtils';
-import { EntityIconSize, getEntityIcon } from './EntityIconUtils';
+import {
+  ENTITY_ICON_BG_SIZE_MAP,
+  EntityIconSize,
+  getEntityIcon,
+} from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import { getServiceIcon } from './EntityServiceIconUtils';
@@ -72,24 +76,6 @@ import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
-const ENTITY_ICON_BG_SIZE_MAP: Partial<
-  Record<
-    EntityIconSize,
-    {
-      containerProps: { style: { height: string; width: string } };
-      iconProps: { size: EntityIconSize };
-    }
-  >
-> = {
-  [EntityIconSize.Size14]: {
-    containerProps: { style: { height: '22px', width: '22px' } },
-    iconProps: { size: EntityIconSize.Size14 },
-  },
-  [EntityIconSize.Size18]: {
-    containerProps: { style: { height: '32px', width: '32px' } },
-    iconProps: { size: EntityIconSize.Size18 },
-  },
-};
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {

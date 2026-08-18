@@ -162,6 +162,25 @@ export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
   [EntityIconSize.Size32]: 'tw:w-8 tw:h-8',
 };
 
+export const ENTITY_ICON_BG_SIZE_MAP: Partial<
+  Record<
+    EntityIconSize,
+    {
+      containerProps: { className: string };
+      iconProps: { size: EntityIconSize };
+    }
+  >
+> = {
+  [EntityIconSize.Size14]: {
+    containerProps: { className: 'tw:h-5.5 tw:w-5.5 tw:rounded-sm' },
+    iconProps: { size: EntityIconSize.Size14 },
+  },
+  [EntityIconSize.Size18]: {
+    containerProps: { className: 'tw:h-8 tw:w-8 tw:rounded-md' },
+    iconProps: { size: EntityIconSize.Size18 },
+  },
+};
+
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',

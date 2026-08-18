@@ -342,13 +342,16 @@ export const getEntityIconWithBg = (
     strokeWidth = 1.2,
   } = iconProps ?? {};
 
+  const hasCustomSize = !!containerClassName?.match(/\btw:[hw]-/);
+
   return (
     <Box
       align="center"
       justify="center"
       {...restContainerProps}
       className={classNames(
-        'tw:h-7 tw:w-7 tw:rounded-sm tw:shrink-0 tw:opacity-90',
+        !hasCustomSize && 'tw:h-7 tw:w-7',
+        'tw:rounded-sm tw:shrink-0 tw:opacity-90',
         style?.bgClass ?? 'tw:bg-tertiary',
         containerClassName
       )}>
