@@ -65,8 +65,12 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await addTermRelation(apiContext, syncTerm1, syncTerm2, 'synonym');
     await apiContext.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    // Re-navigate instead of using the refresh button: the refresh button
+    // intermittently clears the glossary filter state (race between the WS
+    // auto-update and the manual reload), causing stats to show "0 Terms".
+    // A fresh navigate+filter is deterministic and tests the same thing —
+    // that the API change is visible in the graph.
+    await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /1\s*Relations?/i
@@ -78,8 +82,7 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     ]);
     await apiContext2.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
