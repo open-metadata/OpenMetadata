@@ -10,11 +10,11 @@
 #  limitations under the License.
 """Unit tests for Teradata connection handling (URL building + checks)."""
 
-import sqlite3
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import teradatasql
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
@@ -70,17 +70,12 @@ def test_get_connection_url_with_credentials_and_defaults():
     )
 
 
-class _TeradatasqlError(sqlite3.OperationalError):
-    """Mirror ``teradatasql.OperationalError``.
+class _TeradatasqlError(teradatasql.OperationalError):
+    """The real driver exception type, carrying a real driver message.
 
-    The driver carries no ``.errno``/``.sqlstate``; the codes live in the message,
-    in the shape teradatasql actually emits (captured from a live 20.0 system).
-
-    Subclasses ``sqlite3.OperationalError`` so a plain sqlite engine wraps it into
-    a ``sqlalchemy.exc.DBAPIError`` exactly as production wraps the real driver
-    error. teradatasqlalchemy is an optional extra and is absent from the unit
-    test environment, so the dialect itself cannot be the wrapping vehicle; the
-    classifier reads the message, which is identical either way.
+    teradatasql exposes no ``.errno``/``.sqlstate``: the codes live in the message,
+    in the shape captured from a live 20.0 system. Subclassing the driver's own
+    error means SQLAlchemy wraps it exactly as it wraps a production failure.
     """
 
 
@@ -177,7 +172,8 @@ def test_an_unknown_error_gets_no_diagnosis():
 
 
 def test_a_code_is_not_matched_as_a_bare_number_in_the_message():
-    # 3802 appearing as data (a row count, an id) must not be read as a code.
+    # 3802 appearing as data (a row count, an id) must not be read as a code -
+    # the bracketed form is what the rules match on.
     error = _SqlAlchemyError(_TeradatasqlError("query returned 3802 rows"))
     assert TERADATA_ERRORS.classify(error) is None
 
@@ -258,14 +254,13 @@ def test_get_databases_marks_the_sample_cap_rather_than_implying_an_exact_count(
 
 
 def _engine_failing_with(error: Exception) -> Engine:
-    """An Engine whose DBAPI connect raises ``error``, so SQLAlchemy does the
-    wrapping and the classifier sees the production shape (see
-    ``_TeradatasqlError`` for why the dialect is sqlite rather than teradatasql)."""
+    """A real teradatasql Engine whose DBAPI connect raises ``error``, so SQLAlchemy
+    does the wrapping and the classifier sees the production shape."""
 
     def connect_raises():
         raise error
 
-    return create_engine("sqlite://", poolclass=StaticPool, creator=connect_raises)
+    return create_engine("teradatasql://user:pass@td.example.com:1025/", creator=connect_raises)
 
 
 def _run_against(engine: Engine) -> TestConnectionResult:

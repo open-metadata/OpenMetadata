@@ -16,13 +16,12 @@ Source connection handler
 from __future__ import annotations
 
 import enum
-import re
 from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 
-from metadata.core.connections.test_connection import ErrorPack, check, when
+from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
@@ -32,7 +31,6 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
-from metadata.core.connections.test_connection.classifier import chain_text
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS, probe_or_fail
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
     TeradataConnection as TeradataConnectionConfig,
@@ -51,7 +49,6 @@ from metadata.ingestion.source.database.teradata.queries import TERADATA_GET_DAT
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
-    from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
 
 
@@ -59,31 +56,14 @@ if TYPE_CHECKING:
 # database's own codes, e.g.
 #   [Version 20.0.0.65] [Session 1038] [Teradata Database] [Error 8017]
 #   [SQLState 28000] The UserId, Password or Account is invalid.
-# The driver exposes no ``.errno``/``.sqlstate`` attribute, so both codes have to
-# be read back out of the text - but the codes themselves are stable and
-# locale-independent, unlike the message that follows them.
-_ERROR_CODE = re.compile(r"\[error (\d+)\]")
-_SQL_STATE = re.compile(r"\[sqlstate ([0-9a-z]+)\]")
+# The driver exposes no ``.errno``/``.sqlstate`` attribute, so the rules below key
+# on the bracketed code rather than the prose after it: the codes are stable and
+# locale-independent, and the brackets keep a bare number elsewhere in the message
+# (a row count, an id) from being read as a code.
 
 # The port teradatasql dials when hostPort carries none. The preflight has to
 # probe the same one, or it silently checks the wrong door.
 TERADATA_DEFAULT_PORT = 1025
-
-
-def _codes(pattern: re.Pattern[str], error: BaseException) -> set[str]:
-    return set(pattern.findall(chain_text(error)))
-
-
-def _error(*codes: int) -> Matcher:
-    """Match a Teradata message code, e.g. ``[Error 3802]``."""
-    wanted = {str(code) for code in codes}
-    return lambda error: bool(_codes(_ERROR_CODE, error) & wanted)
-
-
-def _sqlstate(*states: str) -> Matcher:
-    """Match a Teradata SQLState, e.g. ``[SQLState 28000]``."""
-    wanted = {state.lower() for state in states}
-    return lambda error: bool(_codes(_SQL_STATE, error) & wanted)
 
 
 # Only codes whose text has been confirmed against Teradata's own references are
@@ -96,7 +76,7 @@ TERADATA_ERRORS = ErrorPack(
     # on the class rather than 8017 alone means any other rejection Teradata
     # classifies as an authorization failure is covered without enumerating -
     # or guessing at - codes that have not been observed.
-    when(_sqlstate("28000")).diagnose(
+    when(Matchers.contains("[SQLState 28000]")).diagnose(
         "Authentication failed",
         fix="Check the username, password and account, and that the configured logmech "
         "(TD2, LDAP, KRB5, ...) is the one this system expects.",
@@ -109,24 +89,24 @@ TERADATA_ERRORS = ErrorPack(
     # SQL-standard "connection exception" class, so the generic rule stays true
     # for any member of it; Error 493 is the observed hostname-lookup case and is
     # ordered first to keep the sharper wording.
-    when(_error(493)).diagnose(
+    when(Matchers.contains("[Error 493]")).diagnose(
         "Host could not be resolved",
         fix="Check hostPort for typos and that DNS can resolve it from where ingestion runs.",
     ),
-    when(_sqlstate("08000")).diagnose(
+    when(Matchers.contains("[SQLState 08000]")).diagnose(
         "Cannot connect to the Teradata system",
         fix="Check hostPort, that the system is running, and that the network, firewall or "
         "IP allow-list permits the connection from where ingestion runs.",
     ),
-    when(_error(3802)).diagnose(
+    when(Matchers.contains("[Error 3802]")).diagnose(
         "Database not found",
         fix="Verify the referenced database exists and that the user can see it.",
     ),
-    when(_error(3807)).diagnose(
+    when(Matchers.contains("[Error 3807]")).diagnose(
         "Object not found",
         fix="Verify the referenced table or view exists and that the user can see it.",
     ),
-    when(_error(3523)).diagnose(
+    when(Matchers.contains("[Error 3523]")).diagnose(
         "Insufficient privileges",
         fix="Grant the user SELECT on the objects the failing step reads "
         "(the dbc.*VX dictionary views for schema, table and view discovery).",
