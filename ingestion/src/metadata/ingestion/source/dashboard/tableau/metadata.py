@@ -507,6 +507,19 @@ class TableauSource(DashboardServiceSource):
             upstream_column_map = self._build_upstream_column_map(data_model=upstream_data_model)
             for table in datamodel.upstreamTables or []:
                 om_tables = self._get_database_tables(db_service_prefix, table)
+                if not om_tables and not table.name:
+                    # Tableau withholds table and database names from accounts without
+                    # Catalog permissions and leaves only the identifiers, so there is
+                    # nothing left to look the table up by. The GetSourceTables check
+                    # runs at the start of every ingestion as well as from Test Connection,
+                    # and reports the cause once per run, so this only records which data
+                    # models lost their upstream.
+                    logger.debug(
+                        "Could not build lineage for data model [%s]. Tableau did not return a "
+                        "name for its source table [%s].",
+                        model_str(upstream_data_model_entity.fullyQualifiedName),
+                        table.luid or table.id,
+                    )
                 for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
                         table,

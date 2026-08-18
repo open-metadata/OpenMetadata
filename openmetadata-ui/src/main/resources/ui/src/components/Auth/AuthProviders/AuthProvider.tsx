@@ -428,12 +428,12 @@ export const AuthProvider = ({
     setApplicationLoading(true);
     try {
       // Bug 1: on cold-load with an expired token, /loggedInUser 401s and
-      // the axios response interceptor drives a refresh via TokenService.
-      // The real fix for the race between that refresh and the lazy
-      // authenticator's renewer registration lives in
-      // TokenService.fetchNewToken (it now awaits `awaitRenewerReady`),
-      // so this catch just needs to make sure we don't swallow the
-      // recovered response — the interceptor drains the queued request
+      // the AuthCoordinator's axios response interceptor drives a refresh.
+      // Each authenticator registers its renewer from its own mount effect
+      // (see the corresponding *Authenticator.tsx), so the coordinator has
+      // a renewer as soon as the lazy authenticator mounts — no race with
+      // the first 401. This catch just needs to make sure we don't swallow
+      // the recovered response — the interceptor drains the queued request
       // itself and getLoggedInUser resolves normally on success.
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
