@@ -1476,6 +1476,7 @@
     "list": "列表",
     "list-entity": "列出{{entity}}",
     "live": "实时",
+    "live-auto-scroll": "实时自动滚动",
     "live-indexing": "实时索引",
     "load-more": "加载更多",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",
