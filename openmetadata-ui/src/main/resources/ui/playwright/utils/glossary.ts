@@ -974,6 +974,7 @@ const testFilterWithFirstOption = async (
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
     await page.getByTestId('close-btn').click();
+    await page.getByTestId('close-btn').waitFor({ state: 'detached' });
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
@@ -1048,7 +1049,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'MySQL-checkbox',
+    'Mysql-checkbox',
     'mysql'
   );
 
