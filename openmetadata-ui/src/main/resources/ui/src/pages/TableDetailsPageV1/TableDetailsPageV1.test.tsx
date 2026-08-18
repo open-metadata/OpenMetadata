@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -678,5 +681,91 @@ describe('TestDetailsPageV1 component', () => {
       }),
       expect.anything()
     );
+  });
+
+  describe('Queries tab count', () => {
+    const getQueriesTabProps = () =>
+      (TabsLabel as unknown as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+
+    const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
+
+    const renderPage = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      // The count effect keys on fullyQualifiedName, which the shared mock omits —
+      // without it the effect never re-runs once tableDetails resolves.
+      (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          name: 'test',
+          id: '123',
+          fullyQualifiedName: 'fqn',
+          columns: [],
+        })
+      );
+
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      (TabsLabel as unknown as jest.Mock).mockClear();
+      (getQueriesList as jest.Mock).mockClear();
+    });
+
+    it('should render the skeleton instead of a count while the request is in flight', async () => {
+      let resolveCount: (value: { paging: { total: number } }) => void = () =>
+        undefined;
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+
+      await renderPage();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      // Every render so far, not just the latest — one frame with isLoading
+      // false is the placeholder 0 this guards against.
+      expect(getQueriesTabProps()).not.toHaveLength(0);
+      expect(
+        getQueriesTabProps().every((props) => props.isLoading)
+      ).toBeTruthy();
+
+      await act(async () => {
+        resolveCount({ paging: { total: 7 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should fall back to 0 when the count request fails', async () => {
+      (getQueriesList as jest.Mock).mockRejectedValue(new Error('failed'));
+
+      await renderPage();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
+    });
   });
 });

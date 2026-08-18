@@ -124,6 +124,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   const [queryCount, setQueryCount] = useState(0);
+  const [isQueryCountLoading, setIsQueryCountLoading] = useState(true);
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -294,7 +295,11 @@ const TableDetailsPageV1: React.FC = () => {
   };
 
   const fetchQueryCount = async () => {
+    // Tour mode renders a mock without an id — settle the skeleton rather than
+    // leaving it spinning against a count that will never arrive.
     if (!tableDetails?.id) {
+      setIsQueryCountLoading(false);
+
       return;
     }
     try {
@@ -305,6 +310,8 @@ const TableDetailsPageV1: React.FC = () => {
       setQueryCount(response.paging.total);
     } catch {
       setQueryCount(0);
+    } finally {
+      setIsQueryCountLoading(false);
     }
   };
 
@@ -533,6 +540,7 @@ const TableDetailsPageV1: React.FC = () => {
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
+      isQueryCountLoading,
       isTourOpen,
       tablePermissions,
       activeTab,
@@ -564,6 +572,7 @@ const TableDetailsPageV1: React.FC = () => {
     return updatedTabs;
   }, [
     queryCount,
+    isQueryCountLoading,
     isTourOpen,
     tablePermissions,
     activeTab,
@@ -785,6 +794,7 @@ const TableDetailsPageV1: React.FC = () => {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else if (viewBasicPermission) {
       setTableDetails(undefined);
+      setIsQueryCountLoading(true);
       fetchTableDetails();
       getEntityFeedCount();
     }
