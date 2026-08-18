@@ -44,6 +44,10 @@ class LoginClassBase {
 
     return carouselContent;
   }
+
+  public getLoginVideo(): string | undefined {
+    return undefined;
+  }
 }
 
 const loginClassBase = new LoginClassBase();
