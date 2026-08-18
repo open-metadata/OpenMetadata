@@ -519,10 +519,16 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=coll_match.group(1).lower(), schema=db_match.group(1).lower())
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
-        """Wrapper around metadata.get_by_name with in-memory caching."""
+        """Wrapper around metadata.get_by_name with in-memory caching.
+
+        The cache key includes the requested ``fields`` so a call asking for
+        e.g. ``fields=["columns"]`` never gets served a stale response cached
+        by an earlier, differently-fielded call for the same entity.
+        """
         if not hasattr(self, "_entity_cache"):
             return self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
-        key = f"{entity_class.__name__}:{fqn_str}"
+        fields_key = ",".join(sorted(kwargs.get("fields") or []))
+        key = f"{entity_class.__name__}:{fqn_str}:{fields_key}"
         if key not in self._entity_cache:
             result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
             if result is not None:
@@ -829,7 +835,7 @@ class OpenlineageSource(PipelineServiceSource):
             if not resolved:
                 continue
             output_table_fqn = resolved.fqn
-            output_table_entity = self._get_by_name_cached(Table, output_table_fqn)
+            output_table_entity = self._get_by_name_cached(Table, output_table_fqn, fields=["columns"])
             # Tolerate a missing, null, or wrongly typed facets/columnLineage/
             # fields field at any level, mirroring the symlinks-facet
             # defensiveness so a single malformed event never aborts the run.
@@ -851,7 +857,7 @@ class OpenlineageSource(PipelineServiceSource):
                     # bogus 'None.column' identifier downstream.
                     if not input_table_fqn:
                         continue
-                    input_table_entity = self._get_by_name_cached(Table, input_table_fqn)
+                    input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,

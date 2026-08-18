@@ -543,7 +543,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         source_table = self._mock_table_with_columns("first_name", "last_name")
         target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
         mock_get_by_name_cached.side_effect = (
-            lambda entity_class, fqn_str: target_table
+            lambda entity_class, fqn_str, **kwargs: target_table
             if fqn_str == "database.schema.case_test_target"
             else source_table
         )
@@ -656,6 +656,71 @@ class OpenLineageUnitTest(unittest.TestCase):
             }
         }
         self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_requests_columns_field(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """_match_column_name only works if the fetched Table entity actually
+        has its columns populated. Table lookups must explicitly request the
+        'columns' field rather than relying on whatever the default response
+        happens to include."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "hive:///schema.input_table": "database.schema.input_table",
+        }
+        inputs = [{"name": "schema.input_table", "facets": {}, "namespace": "hive://"}]
+        outputs = [
+            {
+                "name": "schema.output_table",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "col": {
+                                "inputFields": [
+                                    {
+                                        "field": "col",
+                                        "namespace": "hive://",
+                                        "name": "schema.input_table",
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ]
+        self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.output_table", fields=["columns"])
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.input_table", fields=["columns"])
+
+    def test_get_by_name_cached_keys_cache_by_requested_fields(self):
+        """A cache entry fetched without 'columns' must not shadow a later
+        lookup for the same entity that explicitly asks for 'columns' - and
+        vice versa. Regression test for a bug where the shared per-event
+        entity cache ignored the requested fields, so a first cache miss for
+        an unfielded call could silently starve a later, differently-fielded
+        call of the data it asked for."""
+        self.open_lineage_source._entity_cache = LRUCache(maxsize=10)
+        bare_table = Mock()
+        full_table = Mock()
+        full_table.columns = [Mock()]
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = lambda entity, fqn_str, **kwargs: (
+                full_table if kwargs.get("fields") == ["columns"] else bare_table
+            )
+
+            first = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t")
+            second = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t", fields=["columns"])
+
+            self.assertIs(first, bare_table)
+            self.assertIs(second, full_table)
+            self.assertEqual(mock_metadata.get_by_name.call_count, 2)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Datasets with no resolvable identity are skipped, not fatal.
