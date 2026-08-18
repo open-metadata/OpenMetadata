@@ -197,6 +197,8 @@
                 <nonFilteredFileExtension>webp</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpg</nonFilteredFileExtension>
                 <nonFilteredFileExtension>jpeg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>mp4</nonFilteredFileExtension>
+                <nonFilteredFileExtension>webm</nonFilteredFileExtension>
                 <nonFilteredFileExtension>js</nonFilteredFileExtension>
                 <nonFilteredFileExtension>css</nonFilteredFileExtension>
               </nonFilteredFileExtensions>
