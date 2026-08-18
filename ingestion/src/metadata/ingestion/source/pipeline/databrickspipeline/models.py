@@ -110,20 +110,23 @@ class DLTLibrarySource:
 
     path: str
     pattern: Optional[str] = None  # noqa: UP045
-
-    @property
-    def is_directory(self) -> bool:
-        """Directories are expanded by listing the workspace, files are read directly."""
-        return self.path.endswith("/")
+    is_directory: bool = False
 
     @property
     def is_recursive(self) -> bool:
         """
-        A directory with no pattern means everything below it, which is what a
-        `source_path` fallback points at. Only a pattern that omits `**` narrows
-        the search to a single level, so `/tx/*.sql` does not reach subdirectories.
+        Whether selecting the sources means descending below `path`.
+
+        With no pattern the whole tree is in scope, which is what a `source_path`
+        points at. Otherwise only the part of the pattern below the base directory
+        matters: `**` spans directories, and a `/` means the pattern names a child
+        directory, as in `/tx/2024_?/file.sql`. A pattern such as `/tx/*.sql`
+        selects within one directory and stops there.
         """
-        return self.pattern is None or "**" in self.pattern
+        if self.pattern is None:
+            return True
+        remainder = self.pattern[len(self.path) :] if self.pattern.startswith(self.path) else self.pattern
+        return "**" in remainder or "/" in remainder
 
 
 @dataclass

@@ -300,7 +300,15 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                     # a set, so it carries no pattern to filter the listing against
                     pattern = include if is_glob_pattern(include) else None
                     base_path = glob_base_directory(include)
-                    libraries.append(DLTLibrarySource(path=base_path, pattern=pattern))
+                    libraries.append(
+                        DLTLibrarySource(
+                            path=base_path,
+                            pattern=pattern,
+                            # a wildcard always reduces to a directory to list, and a
+                            # slash-terminated include names one outright
+                            is_directory=bool(pattern) or include.endswith("/"),
+                        )
+                    )
                     logger.info(f"   ✓ Found glob {include}, listing: {base_path}")
         except Exception as exc:
             logger.debug(f"Failed to process library entry {lib}: {exc}")

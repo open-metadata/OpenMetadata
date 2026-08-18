@@ -752,7 +752,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     if source_path:
                         logger.info(f"   ✓ Found source_path in pipeline spec: {source_path}")
-                        notebook_paths.append(DLTLibrarySource(path=source_path))
+                        # a source path is the root of the pipeline's code, so it is a
+                        # directory whether or not Databricks spells the trailing slash
+                        notebook_paths.append(DLTLibrarySource(path=source_path.rstrip("/") + "/", is_directory=True))
 
                 logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")
                 for idx, library in enumerate(notebook_paths):

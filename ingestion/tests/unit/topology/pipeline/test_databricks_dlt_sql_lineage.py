@@ -430,7 +430,7 @@ class TestGlobNormalisation:
 
     def test_glob_library_keeps_its_pattern_for_filtering(self):
         libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]})
-        assert libraries == [DLTLibrarySource(path="/tx/", pattern="/tx/**/*.sql")]
+        assert libraries == [DLTLibrarySource(path="/tx/", pattern="/tx/**/*.sql", is_directory=True)]
         assert libraries[0].is_directory
         assert libraries[0].is_recursive
 
@@ -449,7 +449,7 @@ class TestGlobNormalisation:
         assert libraries == [
             DLTLibrarySource(path="/repo/nb"),
             DLTLibrarySource(path="/repo/transform.sql"),
-            DLTLibrarySource(path="/repo/tx/", pattern="/repo/tx/**"),
+            DLTLibrarySource(path="/repo/tx/", pattern="/repo/tx/**", is_directory=True),
         ]
 
     def test_missing_or_empty_config_is_safe(self):
@@ -545,6 +545,9 @@ class TestGlobExpansion:
 
     def test_double_star_takes_the_whole_tree(self):
         assert self._expand("/tx/**") == ["/tx/a.sql", "/tx/notes.py", "/tx/archive/old_v1.sql"]
+
+    def test_directory_segment_wildcard_descends(self):
+        assert self._expand("/tx/arch*/*.sql") == ["/tx/archive/old_v1.sql"]
 
     def test_double_star_with_extension_recurses_but_still_filters(self):
         assert self._expand("/tx/**/*.sql") == ["/tx/a.sql", "/tx/archive/old_v1.sql"]
@@ -668,8 +671,10 @@ class TestLibraryShapeMatrix:
             {"object_type": "FILE", "path": "/tx/a.sql"},
             {"object_type": "FILE", "path": "/tx/n.py"},
             {"object_type": "DIRECTORY", "path": "/tx/sub"},
+            {"object_type": "DIRECTORY", "path": "/tx/2024_1"},
         ],
         "/tx/sub/": [{"object_type": "FILE", "path": "/tx/sub/d.sql"}],
+        "/tx/2024_1/": [{"object_type": "FILE", "path": "/tx/2024_1/file.sql"}],
     }
 
     def _select(self, spec):
@@ -696,6 +701,7 @@ class TestLibraryShapeMatrix:
             "/tx/a.sql",
             "/tx/n.py",
             "/tx/sub/d.sql",
+            "/tx/2024_1/file.sql",
         ]
 
     def test_single_level_glob_filters_by_extension(self):
@@ -705,7 +711,12 @@ class TestLibraryShapeMatrix:
         assert self._select({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]}) == [
             "/tx/a.sql",
             "/tx/sub/d.sql",
+            "/tx/2024_1/file.sql",
         ]
+
+    def test_wildcard_in_a_directory_segment_still_descends(self):
+        """`/tx/2024_?/file.sql` names a child directory, so traversal is required."""
+        assert self._select({"libraries": [{"glob": {"include": "/tx/2024_?/file.sql"}}]}) == ["/tx/2024_1/file.sql"]
 
     def test_question_mark_glob_selects_one_character(self):
         assert self._select({"libraries": [{"glob": {"include": "/tx/?.py"}}]}) == ["/tx/n.py"]
@@ -719,6 +730,25 @@ class TestLibraryShapeMatrix:
             "/tx/a.sql",
             "/tx/n.py",
             "/tx/sub/d.sql",
+            "/tx/2024_1/file.sql",
+        ]
+
+    def test_a_source_path_without_a_trailing_slash_is_still_a_directory(self):
+        """Databricks may omit the slash, and the path is a code root either way."""
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+
+        library = DLTLibrarySource(path="/tx", is_directory=True)
+        assert library.is_recursive is True
+        # the listing key is normalised by the producer, so expansion is driven by path
+        library = DLTLibrarySource(path="/tx/", is_directory=True)
+        assert source._expand_workspace_directory(library) == [
+            "/tx/a.sql",
+            "/tx/n.py",
+            "/tx/sub/d.sql",
+            "/tx/2024_1/file.sql",
         ]
 
     def test_mixed_entries_are_all_collected(self):
