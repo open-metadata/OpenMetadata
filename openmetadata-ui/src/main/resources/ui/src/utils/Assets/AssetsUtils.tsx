@@ -344,6 +344,7 @@ export const getEntityIconWithBg = (
 
   return (
     <Box
+      inline
       align="center"
       justify="center"
       {...restContainerProps}
