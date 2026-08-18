@@ -292,7 +292,7 @@ const DataProductListPage = ({
       }
 
       return (
-        <div className="tw:relative tw:min-h-70">
+        <div className="tw:relative tw:min-h-70" data-testid="no-data-placeholder">
           <EmptyPlaceholder
             actions={
               permissions.dataProduct?.Create
