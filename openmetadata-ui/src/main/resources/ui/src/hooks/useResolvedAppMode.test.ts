@@ -47,12 +47,14 @@ const seedUser = (opts?: {
   personaName?: string;
   authenticated?: boolean;
   applicationsLoaded?: boolean;
+  omitPersonaFqn?: boolean;
 }) => {
   const {
     personaId,
     personaName,
     authenticated = true,
     applicationsLoaded = true,
+    omitPersonaFqn = false,
   } = opts ?? {};
   useApplicationStore.setState({
     isAuthenticated: authenticated,
@@ -65,7 +67,9 @@ const seedUser = (opts?: {
             ? {
                 id: personaId,
                 name: personaName ?? 'p',
-                fullyQualifiedName: personaName ?? 'p',
+                ...(omitPersonaFqn
+                  ? {}
+                  : { fullyQualifiedName: personaName ?? 'p' }),
                 type: 'persona',
               }
             : undefined,
@@ -274,6 +278,35 @@ describe('useResolvedAppMode', () => {
     // Should not have written anything, sessionStorage still empty
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     expect(readAppModeSession()).toBeNull();
+  });
+
+  it('does not deadlock when the default persona has no fullyQualifiedName (regression guard)', async () => {
+    // A persona with an id/name but no fullyQualifiedName leaves the
+    // docStore query permanently disabled (personaFqn resolves to null).
+    // hasDefaultPersona must fold that in, or the effect's
+    // `hasDefaultPersona && isPersonaPending` guard would wait forever
+    // on a query that can never settle (React Query v5 keeps a disabled
+    // query's isPending === true), and no app mode would ever be written.
+    seedUser({
+      personaId: 'persona-1',
+      personaName: 'p',
+      omitPersonaFqn: true,
+    });
+    seedRegistry(true);
+    seedUserPref(AI_APP_MODE);
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: AI_APP_MODE,
+        source: 'resolver',
+      });
+    });
+
+    expect(getDocumentByFQN).not.toHaveBeenCalled();
   });
 
   it('falls back to user preference when persona has no appMode', async () => {

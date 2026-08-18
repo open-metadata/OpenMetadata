@@ -101,7 +101,9 @@ describe('DataMarketplacePage component', () => {
     (getDocumentByFQN as jest.Mock).mockRejectedValue({
       response: {
         status: 404,
-        data: { message: `document instance for persona.${mockPersonaName} not found` },
+        data: {
+          message: `document instance for persona.${mockPersonaName} not found`,
+        },
       },
     });
 
@@ -157,5 +159,21 @@ describe('DataMarketplacePage component', () => {
     ).toBeInTheDocument();
     expect(getDocumentByFQN).not.toHaveBeenCalled();
     expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast for a genuine failure (non-404) while still falling back to the default layout', async () => {
+    (getDocumentByFQN as jest.Mock).mockRejectedValue({
+      response: {
+        status: 500,
+        data: { message: 'Internal Server Error' },
+      },
+    });
+
+    renderDataMarketplacePage();
+
+    expect(
+      await screen.findByTestId(defaultLayoutWidgetId)
+    ).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 });

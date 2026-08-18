@@ -163,9 +163,16 @@ export const useResolvedAppMode = (): boolean => {
     return () => clearTimeout(id);
   }, [applicationsLoaded]);
 
-  const hasDefaultPersona = Boolean(defaultPersonaId && defaultPersonaName);
   const personaFqn = personaDocFqn(
     defaultPersonaFqn ? { fullyQualifiedName: defaultPersonaFqn } : null
+  );
+  // Folds `personaFqn` in so this can never disagree with the query's
+  // `enabled` condition below — if it did, a persona with an id/name but
+  // no fullyQualifiedName would leave the query permanently disabled
+  // (`isPending` stays true in React Query v5) while the effect below
+  // keeps waiting on `isPersonaPending`, deadlocking the resolver.
+  const hasDefaultPersona = Boolean(
+    defaultPersonaId && defaultPersonaName && personaFqn
   );
 
   // Persona docs are edited server-side (admin UI). If we cached forever,

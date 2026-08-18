@@ -12,8 +12,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { CSSProperties, ReactNode, useMemo } from 'react';
+import { CSSProperties, ReactNode, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
 import Loader from '../../components/common/Loader/Loader';
@@ -21,6 +22,7 @@ import AnnouncementsWidgetV2 from '../../components/DataMarketplace/Announcement
 import MarketplaceGreetingBanner from '../../components/DataMarketplace/MarketplaceGreetingBanner/MarketplaceGreetingBanner.component';
 import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -33,6 +35,7 @@ import {
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
 
@@ -84,13 +87,31 @@ const DataMarketplacePage = ({
 
   const personaFqn = personaDocFqn(selectedPersona);
 
-  const { data: docData, isPending: isDocPending } = useQuery({
+  const {
+    data: docData,
+    isPending: isDocPending,
+    isError,
+    error,
+  } = useQuery({
     queryKey: docStoreQueryKey(personaFqn ?? ''),
     queryFn: docStoreQueryFn(personaFqn ?? ''),
     enabled: !!personaFqn,
     retry: false,
     staleTime: PERSONA_DOC_STALE_TIME,
   });
+
+  // A 404 just means the persona has no saved customization yet — expected,
+  // falls back to defaultLayout below. Any other failure (5xx, network) is a
+  // genuine problem and should stay visible, matching CustomizablePage's
+  // handling of the same lookup.
+  useEffect(() => {
+    if (
+      isError &&
+      (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
+    ) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [isError, error]);
 
   const isLoading = !!personaFqn && isDocPending;
 
