@@ -18,12 +18,12 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addTermRelation,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-  defined,
 } from '../../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });

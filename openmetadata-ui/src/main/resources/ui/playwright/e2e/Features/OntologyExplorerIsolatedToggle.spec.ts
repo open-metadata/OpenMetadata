@@ -16,13 +16,13 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   addTermRelation,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   navigateAndFilterByGlossary,
   readNodePositions,
   waitForNodeAbsent,
   waitForNodePresent,
-  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -67,7 +67,10 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, defined(toggleGlossary, 'toggleGlossary').responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(toggleGlossary, 'toggleGlossary').responseData.id
+    );
 
     const positions = await readNodePositions(page);
 
@@ -89,10 +92,16 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, defined(toggleGlossary, 'toggleGlossary').responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(toggleGlossary, 'toggleGlossary').responseData.id
+    );
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, defined(toggleTermIso, 'toggleTermIso').responseData.id);
+    await waitForNodeAbsent(
+      page,
+      defined(toggleTermIso, 'toggleTermIso').responseData.id
+    );
 
     const positions = await readNodePositions(page);
 
@@ -114,13 +123,22 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, defined(toggleGlossary, 'toggleGlossary').responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(toggleGlossary, 'toggleGlossary').responseData.id
+    );
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, defined(toggleTermIso, 'toggleTermIso').responseData.id);
+    await waitForNodeAbsent(
+      page,
+      defined(toggleTermIso, 'toggleTermIso').responseData.id
+    );
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodePresent(page, defined(toggleTermIso, 'toggleTermIso').responseData.id);
+    await waitForNodePresent(
+      page,
+      defined(toggleTermIso, 'toggleTermIso').responseData.id
+    );
 
     const positions = await readNodePositions(page);
 

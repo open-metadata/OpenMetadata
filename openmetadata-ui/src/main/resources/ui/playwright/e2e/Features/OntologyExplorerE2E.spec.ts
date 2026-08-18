@@ -107,9 +107,15 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[defined(termProduct, 'termProduct').responseData.id]).toBeDefined();
-    expect(positions[defined(termCategory, 'termCategory').responseData.id]).toBeDefined();
-    expect(positions[defined(termBrand, 'termBrand').responseData.id]).toBeDefined();
+    expect(
+      positions[defined(termProduct, 'termProduct').responseData.id]
+    ).toBeDefined();
+    expect(
+      positions[defined(termCategory, 'termCategory').responseData.id]
+    ).toBeDefined();
+    expect(
+      positions[defined(termBrand, 'termBrand').responseData.id]
+    ).toBeDefined();
   });
 
   test('graph edges contain all four expected relation types', async ({
@@ -257,7 +263,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
 
     const categoryName =
-      defined(termCategory, 'termCategory').responseData.displayName ?? defined(termCategory, 'termCategory').responseData.name;
+      defined(termCategory, 'termCategory').responseData.displayName ??
+      defined(termCategory, 'termCategory').responseData.name;
     await page
       .getByTestId('ontology-graph-search')
       .locator('input')
@@ -265,7 +272,9 @@ test.describe('Ontology Explorer — E2E', () => {
 
     const positions = await readNodePositions(page);
 
-    expect(positions[defined(termCategory, 'termCategory').responseData.id]).toBeDefined();
+    expect(
+      positions[defined(termCategory, 'termCategory').responseData.id]
+    ).toBeDefined();
   });
 
   test('searching for a non-existent term shows the empty state', async ({

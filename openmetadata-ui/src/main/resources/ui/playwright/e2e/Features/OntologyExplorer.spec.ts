@@ -20,13 +20,13 @@ import {
   applyRelationTypeFilter,
   clickFirstGraphNode,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -209,7 +209,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary2, 'glossary2').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary2, 'glossary2').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('ontology-isolated-toggle').click();
 
@@ -220,7 +223,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await applyRelationTypeFilter(page, 'Synonym');
 
@@ -296,7 +302,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await page.getByTestId('zoom-in').click();
@@ -425,7 +434,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -444,7 +456,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -469,7 +484,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -493,7 +511,8 @@ test.describe('Ontology Explorer', () => {
       await expect(outgoing.or(incoming)).toBeVisible({ timeout: 5000 });
 
       const relatedName =
-        defined(term2, 'term2').responseData.displayName ?? defined(term2, 'term2').responseData.name;
+        defined(term2, 'term2').responseData.displayName ??
+        defined(term2, 'term2').responseData.name;
       await expect(
         page
           .getByTestId('entity-summary-panel-container')
@@ -507,7 +526,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('view-mode-select').click();
       await page.getByRole('option', { name: 'Hierarchy' }).click();
@@ -522,7 +544,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const searchInput = page
@@ -545,7 +570,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const searchInput = page
@@ -631,7 +659,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -659,7 +690,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(multiRelGlossary, 'multiRelGlossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(multiRelGlossary, 'multiRelGlossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const edges = await readGraphEdges(page);

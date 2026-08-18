@@ -19,13 +19,13 @@ import {
   applyGlossaryFilter,
   applyRelationTypeFilter,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -168,8 +168,12 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[defined(termRevenue, 'termRevenue').responseData.id]).toBeDefined();
-    expect(positions[defined(termExpense, 'termExpense').responseData.id]).toBeDefined();
+    expect(
+      positions[defined(termRevenue, 'termRevenue').responseData.id]
+    ).toBeDefined();
+    expect(
+      positions[defined(termExpense, 'termExpense').responseData.id]
+    ).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {
@@ -263,7 +267,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
       (e) =>
         (e.from === defined(termA, 'termA').responseData.id &&
           e.to === defined(termB, 'termB').responseData.id) ||
-        (e.from === defined(termB, 'termB').responseData.id && e.to === defined(termA, 'termA').responseData.id)
+        (e.from === defined(termB, 'termB').responseData.id &&
+          e.to === defined(termA, 'termA').responseData.id)
     );
 
     expect(edge).toBeDefined();

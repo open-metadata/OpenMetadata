@@ -20,11 +20,11 @@ import {
   applyMultiGlossaryFilter,
   applyRelationTypeFilter,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   waitForGraphLoaded,
-  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -138,7 +138,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary2, 'glossary2').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary2, 'glossary2').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -156,7 +159,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
   test.describe('Clear All Filters', () => {
     test('should show and clear all filters', async ({ page }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       const clearAll = page.getByTestId('ontology-clear-all-btn');
       await expect(clearAll).toBeVisible();
       await clearAll.click();
@@ -168,7 +174,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
     }) => {
       await waitForGraphLoaded(page);
 
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await applyRelationTypeFilter(page, 'Synonym');
@@ -196,7 +205,9 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('search-dropdown-Glossary').click();
       await expect(page.getByTestId('drop-down-menu')).toBeVisible();
-      await expect(page.getByTestId(defined(glossary, 'glossary').responseData.id)).toBeVisible();
+      await expect(
+        page.getByTestId(defined(glossary, 'glossary').responseData.id)
+      ).toBeVisible();
       await page.getByTestId('close-btn').click();
     });
 
@@ -204,7 +215,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const stats = page.getByTestId('ontology-explorer-stats');
@@ -233,7 +247,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const stats = page.getByTestId('ontology-explorer-stats');
@@ -279,7 +296,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await page.getByRole('tab', { name: 'Data' }).click();
@@ -292,7 +312,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const stats = page.getByTestId('ontology-explorer-stats');
@@ -339,7 +362,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
 
       // Deselect glossary2 — clicks the already-selected ID to uncheck it.
-      await applyMultiGlossaryFilter(page, defined(glossary2, 'glossary2').responseData.id);
+      await applyMultiGlossaryFilter(
+        page,
+        defined(glossary2, 'glossary2').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -353,7 +379,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -371,7 +400,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await applyRelationTypeFilter(page, 'Related To');
@@ -416,7 +448,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await applyRelationTypeFilter(page, 'Synonym');
@@ -426,11 +461,16 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       );
 
       await page.getByTestId('search-dropdown-Glossary').click();
-      await page.getByTestId(defined(glossary, 'glossary').responseData.id).click();
+      await page
+        .getByTestId(defined(glossary, 'glossary').responseData.id)
+        .click();
       await page.getByTestId('update-btn').click();
       await waitForGraphLoaded(page);
 
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -444,7 +484,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary, 'glossary').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary, 'glossary').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const stats = page.getByTestId('ontology-explorer-stats');
@@ -456,7 +499,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, defined(glossary2, 'glossary2').responseData.id);
+      await applyGlossaryFilter(
+        page,
+        defined(glossary2, 'glossary2').responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const stats = page.getByTestId('ontology-explorer-stats');
@@ -476,9 +522,14 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       const searchInput = page
         .getByTestId('drop-down-menu')
         .locator('input[type="text"]');
-      await searchInput.fill(defined(glossary, 'glossary').data.displayName ?? defined(glossary, 'glossary').data.name);
+      await searchInput.fill(
+        defined(glossary, 'glossary').data.displayName ??
+          defined(glossary, 'glossary').data.name
+      );
 
-      await expect(page.getByTestId(defined(glossary, 'glossary').responseData.id)).toBeVisible();
+      await expect(
+        page.getByTestId(defined(glossary, 'glossary').responseData.id)
+      ).toBeVisible();
 
       await page.getByTestId('close-btn').click();
     });
