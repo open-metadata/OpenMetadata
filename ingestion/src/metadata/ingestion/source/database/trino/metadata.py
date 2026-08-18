@@ -123,7 +123,10 @@ def _get_columns(
             "name": record.Column,
             "type": col_type,
             "nullable": True,
-            "comment": record.Comment,
+            # SHOW COLUMNS reports an unset comment as '' rather than NULL, and it reports an
+            # explicit COMMENT '' the same way, so the two are indistinguishable here. Normalize
+            # to None so we don't ingest a blank description that then blocks later updates.
+            "comment": record.Comment or None,
             "system_data_type": record.Type,
         }
         type_str = record.Type.strip().lower()
@@ -171,7 +174,7 @@ def get_table_comment(  # pylint: disable=unused-argument
                     catalog_name=catalog_name, schema_name=schema
                 ),
             )
-        return {"text": self.all_table_comments.get((table_name, schema))}
+        return {"text": self.all_table_comments.get((table_name, schema)) or None}
     except error.TrinoQueryError as exe:
         if exe.error_name in (error.PERMISSION_DENIED,):
             return {"text": None}
