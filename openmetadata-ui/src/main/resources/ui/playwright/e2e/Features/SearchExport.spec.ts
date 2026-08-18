@@ -437,19 +437,34 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     const jobId = await startAsyncExport(page);
 
     await test.step('Jobs tray auto-opens and surfaces the export job', async () => {
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 30_000,
+      const launcherButton = page.getByRole('button', {
+        name: /Background jobs|jobs running/,
       });
+      const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+      // Block until the launcher (job in progress) or the tray (job
+      // completed and auto-opened by the useEffect) is in the DOM.
+      await expect(launcherButton.or(trayPopover)).toBeVisible();
+
+      // Open the tray only if it has not already been auto-opened.
+      // When the job finished fast, the tray is already visible and the
+      // launcher is gone from the DOM — clicking it would throw.
+      if (!(await trayPopover.isVisible())) {
+        await launcherButton.click();
+      }
 
       await expect(page.getByText(/Exporting|Exported/).first()).toBeVisible();
     });
 
     await test.step('Download from the tray serves the job result CSV', async () => {
-      const downloadButton = page
-        .getByRole('button', { name: 'Download' })
-        .first();
+      // Scope to the specific job's tray row so we don't accidentally click
+      // an already-visible Download button from a different completed job
+      // (e.g. "Exported Lineage") whose result URL won't match jobId.
+      const jobRow = page.locator(`[data-testid="csv-job-${jobId}"]`);
+      await expect(jobRow).toBeVisible({ timeout: 90_000 });
 
-      await expect(downloadButton).toBeVisible({ timeout: 90_000 });
+      const downloadButton = jobRow.getByRole('button', { name: 'Download' });
+      await expect(downloadButton).toBeVisible();
 
       const resultResponsePromise = page.waitForResponse(
         (response) =>
