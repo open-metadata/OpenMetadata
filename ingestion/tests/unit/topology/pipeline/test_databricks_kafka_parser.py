@@ -319,14 +319,14 @@ class TestPipelineLibraries(unittest.TestCase):
         pipeline_config = {"libraries": [{"notebook": {"path": "/Workspace/dlt/bronze_pipeline"}}]}
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/Workspace/dlt/bronze_pipeline")
+        self.assertEqual(libraries[0].path, "/Workspace/dlt/bronze_pipeline")
 
     def test_file_library(self):
         """Test file library extraction"""
         pipeline_config = {"libraries": [{"file": {"path": "/Workspace/scripts/etl.py"}}]}
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/Workspace/scripts/etl.py")
+        self.assertEqual(libraries[0].path, "/Workspace/scripts/etl.py")
 
     def test_mixed_libraries(self):
         """Test mixed notebook and file libraries"""
@@ -339,9 +339,10 @@ class TestPipelineLibraries(unittest.TestCase):
         }
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 3)
-        self.assertIn("/nb1", libraries)
-        self.assertIn("/file1.py", libraries)
-        self.assertIn("/nb2", libraries)
+        paths = [library.path for library in libraries]
+        self.assertIn("/nb1", paths)
+        self.assertIn("/file1.py", paths)
+        self.assertIn("/nb2", paths)
 
     def test_empty_libraries(self):
         """Test empty libraries list"""
@@ -373,7 +374,7 @@ class TestPipelineLibraries(unittest.TestCase):
         }
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/nb")
+        self.assertEqual(libraries[0].path, "/nb")
 
 
 class TestDLTTableExtraction(unittest.TestCase):

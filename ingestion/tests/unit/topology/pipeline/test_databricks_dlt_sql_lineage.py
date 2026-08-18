@@ -45,12 +45,14 @@ from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     get_pipeline_libraries,
     glob_base_directory,
+    glob_matches,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
+    DLTLibrarySource,
     DLTTableReference,
 )
 
@@ -425,10 +427,11 @@ class TestGlobNormalisation:
     def test_a_concrete_path_is_left_alone(self):
         assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
 
-    def test_glob_library_is_returned_as_an_expandable_directory(self):
+    def test_glob_library_keeps_its_pattern_for_filtering(self):
         libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**/*.sql"}}]})
-        assert libraries == ["/tx/"]
-        assert libraries[0].endswith("/"), "caller expands only paths ending in /"
+        assert libraries == [DLTLibrarySource(path="/tx/", pattern="/tx/**/*.sql")]
+        assert libraries[0].is_directory
+        assert libraries[0].is_recursive
 
     def test_all_library_shapes_are_collected(self):
         libraries = get_pipeline_libraries(
@@ -442,7 +445,11 @@ class TestGlobNormalisation:
                 ]
             }
         )
-        assert libraries == ["/repo/nb", "/repo/transform.sql", "/repo/tx/"]
+        assert libraries == [
+            DLTLibrarySource(path="/repo/nb"),
+            DLTLibrarySource(path="/repo/transform.sql"),
+            DLTLibrarySource(path="/repo/tx/", pattern="/repo/tx/**"),
+        ]
 
     def test_missing_or_empty_config_is_safe(self):
         assert get_pipeline_libraries({}) == []
@@ -508,3 +515,53 @@ class TestConnectorCaches:
         source.metadata = MagicMock()
         assert source._lookup_table(None) is None
         source.metadata.get_by_name.assert_not_called()
+
+
+class TestGlobExpansion:
+    """
+    A glob selects specific files. Expanding it must not widen the selection, or a
+    pipeline picks up transformations that belong to something else.
+    """
+
+    WORKSPACE: ClassVar[dict] = {
+        "/tx/": [
+            {"object_type": "FILE", "path": "/tx/a.sql"},
+            {"object_type": "FILE", "path": "/tx/notes.py"},
+            {"object_type": "DIRECTORY", "path": "/tx/archive"},
+        ],
+        "/tx/archive/": [{"object_type": "FILE", "path": "/tx/archive/old_v1.sql"}],
+    }
+
+    def _expand(self, pattern):
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        return source._expand_workspace_directory(DLTLibrarySource(path=glob_base_directory(pattern), pattern=pattern))
+
+    def test_single_star_stays_in_the_directory_and_respects_the_extension(self):
+        assert self._expand("/tx/*.sql") == ["/tx/a.sql"]
+
+    def test_double_star_takes_the_whole_tree(self):
+        assert self._expand("/tx/**") == ["/tx/a.sql", "/tx/notes.py", "/tx/archive/old_v1.sql"]
+
+    def test_double_star_with_extension_recurses_but_still_filters(self):
+        assert self._expand("/tx/**/*.sql") == ["/tx/a.sql", "/tx/archive/old_v1.sql"]
+
+
+class TestGlobMatching:
+    """`*` stays within a path segment, `**` spans them."""
+
+    def test_single_star_does_not_cross_a_directory_boundary(self):
+        assert glob_matches("/tx/a.sql", "/tx/*.sql") is True
+        assert glob_matches("/tx/archive/old.sql", "/tx/*.sql") is False
+
+    def test_double_star_spans_directories(self):
+        assert glob_matches("/tx/archive/old.sql", "/tx/**/*.sql") is True
+        assert glob_matches("/tx/a.sql", "/tx/**/*.sql") is True
+
+    def test_extension_is_honoured(self):
+        assert glob_matches("/tx/notes.py", "/tx/*.sql") is False
+
+    def test_an_entry_without_a_pattern_always_matches(self):
+        assert glob_matches("/tx/anything", None) is True

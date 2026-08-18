@@ -19,6 +19,7 @@ import re
 from typing import List, Optional  # noqa: UP035
 
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
+    DLTLibrarySource,
     KafkaSourceConfig,
 )
 from metadata.utils.logger import ingestion_logger
@@ -196,11 +197,12 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
 
 def glob_base_directory(include: str) -> str:
     """
-    Reduce a glob include pattern to the directory the caller should expand.
+    Reduce a glob include pattern to the directory the caller should list.
 
     Everything from the first wildcard onward is dropped, and the result always
-    ends with `/` so the caller expands it instead of exporting it as a single
-    file. `/tx/**`, `/tx/*.sql` and `/tx/**/*.sql` all reduce to `/tx/`.
+    ends with `/`. `/tx/**`, `/tx/*.sql` and `/tx/**/*.sql` all reduce to `/tx/`.
+    The pattern itself is kept on the returned `DLTLibrarySource` so the listing
+    can be filtered back down to what the pattern actually selects.
 
     A pattern with no wildcard is already a concrete path and is returned as is.
     """
@@ -214,14 +216,50 @@ def glob_base_directory(include: str) -> str:
     return base
 
 
-def get_pipeline_libraries(pipeline_config: dict) -> List[str]:  # noqa: UP006
+def glob_matches(path: str, pattern: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Check a workspace path against a Databricks glob include.
+
+    `**` spans directories, `*` and `?` stay inside one segment. `fnmatch` is not
+    used because there `*` also crosses `/`, which would make `/tx/*.sql` match
+    files nested in subdirectories.
+
+    An entry with no pattern matches, so notebook and file libraries pass through.
+    """
+    if not pattern:
+        return True
+
+    regex = []
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if pattern.startswith("**/", index):
+            regex.append("(?:.*/)?")
+            index += 3
+        elif pattern.startswith("**", index):
+            regex.append(".*")
+            index += 2
+        elif char == "*":
+            regex.append("[^/]*")
+            index += 1
+        elif char == "?":
+            regex.append("[^/]")
+            index += 1
+        else:
+            regex.append(re.escape(char))
+            index += 1
+    return re.fullmatch("".join(regex), path) is not None
+
+
+def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006
     """
     Collect the source paths a DLT pipeline declares in `spec.libraries`.
 
     A library entry is one of three shapes, and a pipeline may mix them:
       - `{"notebook": {"path": ...}}`  a workspace notebook
       - `{"file": {"path": ...}}`      a file, used by Git folders and Asset Bundles
-      - `{"glob": {"include": ...}}`   a tree, reduced to the directory to expand
+      - `{"glob": {"include": ...}}`   the directory to expand, plus the pattern
+        its contents must match
 
     Malformed entries are skipped rather than failing the whole pipeline.
     """
@@ -240,7 +278,7 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[str]:  # noqa: UP006
                     continue
                 path = entry.get("path") if isinstance(entry, dict) else entry
                 if path:
-                    libraries.append(path)
+                    libraries.append(DLTLibrarySource(path=path))
                     logger.info(f"   ✓ Found {key}: {path}")
                 break
             else:
@@ -248,8 +286,8 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[str]:  # noqa: UP006
                 include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
                 if include:
                     base_path = glob_base_directory(include)
-                    libraries.append(base_path)
-                    logger.info(f"   ✓ Found glob pattern, using base path: {base_path}")
+                    libraries.append(DLTLibrarySource(path=base_path, pattern=include))
+                    logger.info(f"   ✓ Found glob pattern {include}, listing: {base_path}")
         except Exception as exc:
             logger.debug(f"Failed to process library entry {lib}: {exc}")
             continue

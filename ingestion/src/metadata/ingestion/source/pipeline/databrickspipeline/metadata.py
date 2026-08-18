@@ -64,10 +64,12 @@ from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_kafka_sources,
     get_pipeline_libraries,
+    glob_matches,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
     DBRun,
+    DLTLibrarySource,
     DLTTableReference,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -414,15 +416,24 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._table_lookup_cache.put(table_fqn, self.metadata.get_by_name(entity=Table, fqn=table_fqn))
         return self._table_lookup_cache.get(table_fqn)
 
-    def _expand_workspace_directory(self, path: str, max_depth: int = 5) -> List[str]:  # noqa: UP006
+    def _expand_workspace_directory(
+        self,
+        library: DLTLibrarySource,
+        path: Optional[str] = None,  # noqa: UP045
+        max_depth: int = 5,
+    ) -> List[str]:  # noqa: UP006
         """
-        List the notebooks and files under a workspace directory.
+        List the notebooks and files a library's glob selects.
 
-        The Databricks `workspace/list` API returns immediate children only, so a glob
-        such as `/Repos/project/transformations/**` needs the subdirectories walked
-        explicitly. Depth is capped so an unexpected cycle cannot spin forever.
+        The Databricks `workspace/list` API returns immediate children only, so a
+        recursive `**` include needs the subdirectories walked explicitly. A `*`
+        include stays one level deep, and every candidate is checked against the
+        pattern so a selective include such as `/transformations/*.sql` does not
+        pull in the rest of the directory. Depth is capped so an unexpected cycle
+        cannot spin forever.
         """
         collected = []
+        path = path or library.path
         try:
             objects = self.client.list_workspace_objects(path) or []
             for obj in objects:
@@ -431,13 +442,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 if not obj_path:
                     continue
                 if obj_type in ("NOTEBOOK", "FILE"):
+                    if not glob_matches(obj_path, library.pattern):
+                        logger.debug(f"   ⊗ {obj_path} does not match {library.pattern}")
+                        continue
                     collected.append(obj_path)
                     logger.info(f"   ✓ Found {obj_type.lower()}: {obj_path}")
                 elif obj_type == "DIRECTORY":
+                    if not library.is_recursive:
+                        continue
                     if max_depth <= 0:
                         logger.warning(f"   ⊗ Max depth reached, not descending into {obj_path}")
                         continue
-                    collected.extend(self._expand_workspace_directory(obj_path.rstrip("/") + "/", max_depth - 1))
+                    collected.extend(
+                        self._expand_workspace_directory(library, obj_path.rstrip("/") + "/", max_depth - 1)
+                    )
         except Exception as exc:
             logger.warning(f"   ✗ Could not list directory {path}: {exc}")
             logger.debug(traceback.format_exc())
@@ -754,16 +772,15 @@ class DatabrickspipelineSource(PipelineServiceSource):
             # Expand directories to individual notebook files
             logger.info(f"⟳ Expanding directory paths to individual notebooks...")  # noqa: F541
             expanded_paths = []
-            for path in notebook_paths:
-                # If path ends with /, it's a directory - list all notebooks in it
-                if path.endswith("/"):
-                    found = self._expand_workspace_directory(path)
+            for library in notebook_paths:
+                if library.is_directory:
+                    found = self._expand_workspace_directory(library)
                     if not found:
-                        logger.debug(f"   ⊗ No notebooks found in directory {path}")
+                        logger.debug(f"   ⊗ Nothing matched {library.pattern or library.path}")
                     expanded_paths.extend(found)
                 else:
-                    expanded_paths.append(path)
-                    logger.debug(f"   Direct path: {path}")
+                    expanded_paths.append(library.path)
+                    logger.debug(f"   Direct path: {library.path}")
 
             logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")
 

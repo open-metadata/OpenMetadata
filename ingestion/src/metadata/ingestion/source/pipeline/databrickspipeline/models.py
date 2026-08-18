@@ -99,6 +99,30 @@ class KafkaSourceConfig:
 
 
 @dataclass
+class DLTLibrarySource:
+    """
+    One source location a DLT pipeline declares in `spec.libraries`.
+
+    A notebook or file entry is a concrete path. A glob entry is the directory to
+    expand plus the pattern its contents must match, so a selective include such
+    as `/transformations/*.sql` does not pull in everything under the directory.
+    """
+
+    path: str
+    pattern: Optional[str] = None  # noqa: UP045
+
+    @property
+    def is_directory(self) -> bool:
+        """Directories are expanded by listing the workspace, files are read directly."""
+        return self.path.endswith("/")
+
+    @property
+    def is_recursive(self) -> bool:
+        """Only `**` addresses subdirectories, so a `*` pattern stays one level deep."""
+        return bool(self.pattern and "**" in self.pattern)
+
+
+@dataclass
 class DLTTableReference:
     """
     Where a DLT dataset reference points, once resolved.
