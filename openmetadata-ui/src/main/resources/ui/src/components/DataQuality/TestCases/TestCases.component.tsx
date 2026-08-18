@@ -100,6 +100,7 @@ export const TestCases = () => {
     return Array.isArray(status) ? status : [status];
   }, [params.testCaseStatus]);
   const selectedStatusItems = useListData<SelectItemType>({ initialItems: [] });
+  const selectedStatusKey = selectedStatuses.join(',');
 
   useEffect(() => {
     // Chart navigation and browser history can update the URL independently of
@@ -122,7 +123,10 @@ export const TestCases = () => {
         }
       }
     });
-  }, [selectedStatuses, selectedStatusItems]);
+    // useListData returns a new facade on every render. URL status changes are
+    // the only reason to reconcile it with external state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStatusKey]);
 
   const handleStatusInserted = useCallback(
     (key: Key) => {
