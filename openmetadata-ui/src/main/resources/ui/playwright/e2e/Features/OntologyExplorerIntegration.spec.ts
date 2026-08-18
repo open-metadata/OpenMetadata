@@ -51,7 +51,9 @@ test.describe('Relation Sync with OntologyExplorer', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
+    if (syncGlossary) {
+      await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -114,7 +116,9 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
+    if (hierarchyGlossary) {
+      await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -157,7 +161,9 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
+    if (filterGlossary) {
+      await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -259,14 +265,16 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      crossTerm1,
-      crossTerm3,
-      crossTerm2,
-      crossGlossary1,
-      crossGlossary2
-    );
+    if (crossGlossary1) {
+      await deleteEntities(
+        apiContext,
+        crossTerm1,
+        crossTerm3,
+        crossTerm2,
+        crossGlossary1,
+        crossGlossary2
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -403,8 +411,12 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, spiralTerm, spiralGlossary);
-    await spiralTable.delete(apiContext);
+    if (spiralGlossary) {
+      await deleteEntities(apiContext, spiralTerm, spiralGlossary);
+    }
+    if (spiralTable) {
+      await spiralTable.delete(apiContext);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -466,7 +478,9 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
+    if (dataModeGlossary) {
+      await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 

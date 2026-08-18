@@ -175,24 +175,25 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-
-    await deleteEntities(
-      apiContext,
-      otoSrc,
-      otoDst,
-      otmSrc,
-      otmDst,
-      mtoSrc,
-      mtoDst,
-      mtmSrc,
-      mtmDst,
-      cusSrc,
-      cusDst,
-      relSrc,
-      relDst,
-      glossary
-    );
-
+    // Guard: if beforeEach threw before all assignments, entities may be undefined.
+    if (glossary) {
+      await deleteEntities(
+        apiContext,
+        otoSrc,
+        otoDst,
+        otmSrc,
+        otmDst,
+        mtoSrc,
+        mtoDst,
+        mtmSrc,
+        mtmDst,
+        cusSrc,
+        cusDst,
+        relSrc,
+        relDst,
+        glossary
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 

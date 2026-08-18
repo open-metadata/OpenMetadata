@@ -83,18 +83,21 @@ test.describe('Ontology Explorer', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      term1,
-      term2,
-      glossary,
-      term3,
-      term4,
-      glossary2,
-      multiRelTermA,
-      multiRelTermB,
-      multiRelGlossary
-    );
+    // Guard: if beforeEach threw before all assignments, entities may be undefined.
+    if (glossary) {
+      await deleteEntities(apiContext, term1, term2, glossary);
+    }
+    if (glossary2) {
+      await deleteEntities(apiContext, term3, term4, glossary2);
+    }
+    if (multiRelGlossary) {
+      await deleteEntities(
+        apiContext,
+        multiRelTermA,
+        multiRelTermB,
+        multiRelGlossary
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 

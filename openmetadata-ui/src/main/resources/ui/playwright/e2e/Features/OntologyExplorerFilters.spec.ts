@@ -61,15 +61,13 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      term1,
-      term2,
-      glossary,
-      term3,
-      term4,
-      glossary2
-    );
+    // Guard: if beforeEach threw before all assignments, entities may be undefined.
+    if (glossary) {
+      await deleteEntities(apiContext, term1, term2, glossary);
+    }
+    if (glossary2) {
+      await deleteEntities(apiContext, term3, term4, glossary2);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 

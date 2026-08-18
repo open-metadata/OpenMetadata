@@ -49,13 +49,16 @@ test.beforeEach(async ({ browser }) => {
 
 test.afterEach(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  await deleteEntities(
-    apiContext,
-    toggleTermA,
-    toggleTermB,
-    toggleTermIso,
-    toggleGlossary
-  );
+  // Guard: if beforeEach threw before assignments, entities may be undefined.
+  if (toggleGlossary) {
+    await deleteEntities(
+      apiContext,
+      toggleTermA,
+      toggleTermB,
+      toggleTermIso,
+      toggleGlossary
+    );
+  }
   await disposeApiContext(afterAction, apiContext);
 });
 

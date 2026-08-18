@@ -63,13 +63,15 @@ test.describe('Isolated nodes + relation filter combo', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      connectedTermA,
-      connectedTermB,
-      isolatedTerm,
-      comboGlossary
-    );
+    if (comboGlossary) {
+      await deleteEntities(
+        apiContext,
+        connectedTermA,
+        connectedTermB,
+        isolatedTerm,
+        comboGlossary
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -147,13 +149,15 @@ test.describe('Cross-glossary term hydration', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      termRevenue,
-      termExpense,
-      salesGlossary,
-      financeGlossary
-    );
+    if (salesGlossary) {
+      await deleteEntities(
+        apiContext,
+        termRevenue,
+        termExpense,
+        salesGlossary,
+        financeGlossary
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -215,7 +219,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
+    if (embeddedGlossary) {
+      await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 

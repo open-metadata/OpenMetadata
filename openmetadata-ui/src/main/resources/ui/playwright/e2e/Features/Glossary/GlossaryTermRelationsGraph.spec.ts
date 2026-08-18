@@ -72,19 +72,17 @@ test.beforeEach('Seed test data', async ({ browser }) => {
 
 test.afterEach('Cleanup test data', async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-
-  await deleteEntities(
-    apiContext,
-    termA,
-    termB,
-    termC,
-    termD,
-    termInX,
-    termInY
-  );
-  await glossary.delete(apiContext);
-  await glossaryX.delete(apiContext);
-  await glossaryY.delete(apiContext);
+  // Guard: if beforeEach threw before all assignments, entities may be undefined.
+  // Use optional chaining on direct .delete() calls and if-guards on groups.
+  if (termA) {
+    await deleteEntities(apiContext, termA, termB, termC, termD);
+  }
+  if (termInX) {
+    await deleteEntities(apiContext, termInX, termInY);
+  }
+  await glossary?.delete(apiContext);
+  await glossaryX?.delete(apiContext);
+  await glossaryY?.delete(apiContext);
 
   await disposeApiContext(afterAction, apiContext);
 });

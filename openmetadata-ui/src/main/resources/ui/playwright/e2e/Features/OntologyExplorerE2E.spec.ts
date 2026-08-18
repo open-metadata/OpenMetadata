@@ -82,13 +82,16 @@ test.describe('Ontology Explorer — E2E', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      termProduct,
-      termCategory,
-      termBrand,
-      catalog
-    );
+    // Guard: if beforeEach threw before all assignments, entities may be undefined.
+    if (catalog) {
+      await deleteEntities(
+        apiContext,
+        termProduct,
+        termCategory,
+        termBrand,
+        catalog
+      );
+    }
     await disposeApiContext(afterAction, apiContext);
   });
 
