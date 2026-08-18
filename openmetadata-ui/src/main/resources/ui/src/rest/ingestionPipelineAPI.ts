@@ -19,6 +19,7 @@ import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { AgentType } from '../generated/entity/services/ingestionPipelines/agentType';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -57,6 +58,7 @@ export const getIngestionPipelines = async (data: {
   serviceFilter?: string;
   paging?: Omit<Paging, 'total'>;
   pipelineType?: PipelineType[];
+  agentType?: AgentType;
   provider?: ProviderType;
   testSuite?: string;
   serviceType?: string;

@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
@@ -43,12 +44,14 @@ import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
@@ -101,7 +104,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
-
+  private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -456,11 +459,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return toPipelineStatuses(jsonMap.getOrDefault(fqnHash, List.of()));
   }
 
-  private static List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
-    return jsonValues.stream()
-        .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
-        .filter(Objects::nonNull)
-        .toList();
+  /**
+   * The single conversion point for the `pipelineStatuses` entity field, which both the single-entity
+   * and the bulk read go through, so the stale-queued cutoff has to be applied here as well as in
+   * {@link #listPipelineStatus} or the Agents page would keep showing a run that never started.
+   */
+  private List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
+    List<PipelineStatus> pipelineStatusList =
+        jsonValues.stream()
+            .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
+            .filter(Objects::nonNull)
+            .toList();
+    return dropStaleQueuedStatuses(pipelineStatusList);
   }
 
   public static PipelineStatus latestPipelineStatus(IngestionPipeline ingestionPipeline) {
@@ -919,7 +929,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               effectiveEndTs);
     }
     List<PipelineStatus> pipelineStatusList =
-        JsonUtils.readObjects(jsonResults, PipelineStatus.class);
+        dropStaleQueuedStatuses(JsonUtils.readObjects(jsonResults, PipelineStatus.class));
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList.addAll(
@@ -946,6 +956,66 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return limit;
     }
     return startTs == null && endTs == null ? DEFAULT_RECENT_RUN_LIMIT : null;
+  }
+
+  /**
+   * Records the {@code queued} state of a run the orchestrator has just accepted, so that run
+   * history can show it without polling the orchestrator. Best effort: the run is already going, so
+   * failing to record its queued state must not fail the trigger.
+   */
+  public void recordQueuedPipelineStatus(UriInfo uriInfo, String pipelineFQN, String runId) {
+    if (nullOrEmpty(runId)) {
+      return;
+    }
+    long now = System.currentTimeMillis();
+    PipelineStatus queuedStatus =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(PipelineStatusType.QUEUED)
+            .withStartDate(now)
+            .withTimestamp(now);
+    try {
+      addPipelineStatus(uriInfo, pipelineFQN, queuedStatus);
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Failed to record queued status for pipeline [{}] run [{}]: {}",
+          pipelineFQN,
+          runId,
+          e.getMessage());
+    }
+  }
+
+  private List<PipelineStatus> dropStaleQueuedStatuses(List<PipelineStatus> pipelineStatusList) {
+    return withoutStaleQueuedStatuses(
+        pipelineStatusList, System.currentTimeMillis() - queuedStatusTimeoutMillis());
+  }
+
+  /**
+   * Hides {@code queued} runs recorded before {@code cutoff}. An orchestrator can accept a run and
+   * never start it, and since no worker ever reports on such a run its queued status would
+   * otherwise stay pending in run history forever.
+   */
+  static List<PipelineStatus> withoutStaleQueuedStatuses(
+      List<PipelineStatus> pipelineStatusList, long cutoff) {
+    return pipelineStatusList.stream()
+        .filter(pipelineStatus -> !isStaleQueued(pipelineStatus, cutoff))
+        .toList();
+  }
+
+  private static boolean isStaleQueued(PipelineStatus pipelineStatus, long cutoff) {
+    return PipelineStatusType.QUEUED.equals(pipelineStatus.getPipelineState())
+        && pipelineStatus.getTimestamp() != null
+        && pipelineStatus.getTimestamp() < cutoff;
+  }
+
+  private long queuedStatusTimeoutMillis() {
+    Integer configuredTimeout =
+        Optional.ofNullable(openMetadataApplicationConfig)
+            .map(OpenMetadataApplicationConfig::getPipelineServiceClientConfiguration)
+            .map(PipelineServiceClientConfiguration::getQueuedStatusTimeoutSeconds)
+            .orElse(null);
+    return TimeUnit.SECONDS.toMillis(
+        configuredTimeout == null ? DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS : configuredTimeout);
   }
 
   /* Get the status of the external application by converting the configuration so that it can be
