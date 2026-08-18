@@ -724,7 +724,7 @@ const TableExtensionInput = ({
   return (
     <Box
       aria-invalid={error ? true : undefined}
-      className="tw:gap-1.5"
+      className="tw:gap-1.5 tw:[&_.rdg]:h-64!"
       data-testid={dataTestId}
       direction="col">
       <Box align="center" justify="between">

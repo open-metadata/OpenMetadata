@@ -502,8 +502,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
     await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
+    // Scoped to the cell: the select keeps its overlay mounted after closing, so the
+    // matching dropdown option carries the same testid and an unscoped locator is
+    // ambiguous under strict mode.
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).toBeVisible();
 
     await page
@@ -556,7 +561,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).not.toBeVisible();
   });
 
@@ -604,7 +611,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await page.waitForResponse('api/v1/columns/name/*');
 
     await expect(
-      page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      page
+        .locator(rowSelector)
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
     await page.reload();

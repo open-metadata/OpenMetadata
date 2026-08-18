@@ -32,6 +32,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   dismissTagSuggestions,
@@ -319,10 +320,9 @@ test.describe(
 
         await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
-        await toastNotification(page, 'Test case updated successfully.');
-        await page.getByTestId('alert-bar').waitFor({
-          state: 'detached',
-        });
+        const updateSuccessMessage = 'Test case updated successfully.';
+        await toastNotification(page, updateSuccessMessage);
+        await waitForToastToDisappear(page, updateSuccessMessage);
 
         await page
           .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
@@ -1489,20 +1489,19 @@ test.describe(
         });
 
         await test.step('Test page size dropdown', async () => {
-          await expect(
-            page.locator('[data-testid="page-size-selection-dropdown"]')
-          ).toBeVisible();
+          const pageSizeDropdown = page.getByTestId(
+            'page-size-selection-dropdown'
+          );
+          const pageSizeMenu = page.locator(
+            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
+          );
 
-          await page.click('[data-testid="page-size-selection-dropdown"]');
-
-          // Wait for dropdown menu to be visible
-          await page.locator('.ant-dropdown-menu').waitFor({
-            state: 'visible',
-            timeout: 5000,
-          });
-
-          // Verify dropdown options are visible
-          await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+          await expect(pageSizeDropdown).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
+          // button only runs its preventDefault handler and may not open the menu.
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
         await paginationTable.delete(apiContext);

@@ -57,6 +57,11 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
+jest.mock(
+  '../../../ServiceAgents/components/DeploymentSummaryCard.component',
+  () => jest.fn().mockImplementation(() => <div>DeploymentSummaryCard</div>)
+);
+
 describe('Ingestion', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -77,6 +82,50 @@ describe('Ingestion', () => {
     });
 
     expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
+  });
+
+  it('should not render the error placeHolder while the airflow status is still being fetched', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isAirflowAvailable: false,
+            isFetchingStatus: true,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+  });
+
+  it('should hide the deployment summary card while the agents are loading', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isFetchingStatus: true,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.queryByText('DeploymentSummaryCard')).toBeNull();
+  });
+
+  it('should render the deployment summary card once the status has settled', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
   });
 
   it('should render the AddIngestionButton when create permission is granted', async () => {
