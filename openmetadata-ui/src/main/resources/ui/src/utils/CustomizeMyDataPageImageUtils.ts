@@ -22,9 +22,7 @@ import FollowingImg from '../assets/img/widgets/following-widget.png';
 import KPIImg from '../assets/img/widgets/kpi-widget.png';
 import MyDataImg from '../assets/img/widgets/my-data-widget.png';
 import TotalAssetsImg from '../assets/img/widgets/total-assets-widget.png';
-import {
-  LandingPageWidgetKeys
-} from '../enums/CustomizablePage.enum';
+import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
 // Widget preview screenshots are only needed inside customize/add-widget flows.
