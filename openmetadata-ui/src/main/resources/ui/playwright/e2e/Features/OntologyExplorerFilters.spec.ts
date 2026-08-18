@@ -28,31 +28,38 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const glossary = new Glossary();
-const term1 = new GlossaryTerm(glossary);
-const term2 = new GlossaryTerm(glossary);
+// Per-test isolation: each test owns fresh entities so cross-worker
+// WebSocket delete toasts and shared-state failures cannot occur.
+let glossary!: Glossary;
+let term1!: GlossaryTerm;
+let term2!: GlossaryTerm;
 
-const glossary2 = new Glossary();
-const term3 = new GlossaryTerm(glossary2);
-const term4 = new GlossaryTerm(glossary2);
+let glossary2!: Glossary;
+let term3!: GlossaryTerm;
+let term4!: GlossaryTerm;
 
 test.describe('Ontology Explorer - Filters and Tabs', () => {
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
+    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
-
+    glossary = new Glossary();
+    term1 = new GlossaryTerm(glossary);
+    term2 = new GlossaryTerm(glossary);
+    glossary2 = new Glossary();
+    term3 = new GlossaryTerm(glossary2);
+    term4 = new GlossaryTerm(glossary2);
     await glossary.create(apiContext);
     await term1.create(apiContext);
     await term2.create(apiContext);
     await glossary2.create(apiContext);
     await term3.create(apiContext);
     await term4.create(apiContext);
-
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
-
     await disposeApiContext(afterAction, apiContext);
+    await navigateToOntologyExplorer(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -64,11 +71,6 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       glossary2
     );
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
   });
 
   test.describe('View Mode - Filter Toolbar Select', () => {
@@ -194,6 +196,14 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('search-dropdown-Glossary').click();
       await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+
+      // Search by name to ensure our freshly-created glossary is visible
+      // even if the dropdown paginates (avoids relying on position in the list).
+      const searchInput = page
+        .getByTestId('drop-down-menu')
+        .locator('input[type="text"]');
+      await searchInput.fill(glossary.data.displayName ?? glossary.data.name);
+
       await expect(page.getByTestId(glossary.responseData.id)).toBeVisible();
       await page.getByTestId('close-btn').click();
     });
@@ -423,7 +433,15 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
         '0 Relations'
       );
 
+      // Deselect the glossary: search first to ensure it is visible in the
+      // dropdown regardless of pagination depth.
       await page.getByTestId('search-dropdown-Glossary').click();
+      const dropdownMenu = page.getByTestId('drop-down-menu');
+      await expect(dropdownMenu).toBeVisible();
+      const deselSearchInput = dropdownMenu.locator('input[type="text"]');
+      await deselSearchInput.fill(
+        glossary.data.displayName ?? glossary.data.name
+      );
       await page.getByTestId(glossary.responseData.id).click();
       await page.getByTestId('update-btn').click();
       await waitForGraphLoaded(page);

@@ -30,21 +30,33 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const glossary = new Glossary();
-const term1 = new GlossaryTerm(glossary);
-const term2 = new GlossaryTerm(glossary);
+// Per-test isolation: each test recreates all entities so no cross-test or
+// cross-worker shared state can leak between tests.
+let glossary!: Glossary;
+let term1!: GlossaryTerm;
+let term2!: GlossaryTerm;
 
-const glossary2 = new Glossary();
-const term3 = new GlossaryTerm(glossary2);
-const term4 = new GlossaryTerm(glossary2);
+let glossary2!: Glossary;
+let term3!: GlossaryTerm;
+let term4!: GlossaryTerm;
 
-const multiRelGlossary = new Glossary();
-const multiRelTermA = new GlossaryTerm(multiRelGlossary);
-const multiRelTermB = new GlossaryTerm(multiRelGlossary);
+let multiRelGlossary!: Glossary;
+let multiRelTermA!: GlossaryTerm;
+let multiRelTermB!: GlossaryTerm;
 
 test.describe('Ontology Explorer', () => {
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
+    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
+    glossary = new Glossary();
+    term1 = new GlossaryTerm(glossary);
+    term2 = new GlossaryTerm(glossary);
+    glossary2 = new Glossary();
+    term3 = new GlossaryTerm(glossary2);
+    term4 = new GlossaryTerm(glossary2);
+    multiRelGlossary = new Glossary();
+    multiRelTermA = new GlossaryTerm(multiRelGlossary);
+    multiRelTermB = new GlossaryTerm(multiRelGlossary);
 
     await glossary.create(apiContext);
     await term1.create(apiContext);
@@ -57,18 +69,14 @@ test.describe('Ontology Explorer', () => {
     await multiRelTermB.create(apiContext);
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
-    await addTermRelation(
-      apiContext,
-      multiRelTermA,
-      multiRelTermB,
-      'relatedTo'
-    );
+    await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'relatedTo');
     await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
 
     await disposeApiContext(afterAction, apiContext);
+    await navigateToOntologyExplorer(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -83,11 +91,6 @@ test.describe('Ontology Explorer', () => {
       multiRelGlossary
     );
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
   });
 
   test.describe('Navigation', () => {

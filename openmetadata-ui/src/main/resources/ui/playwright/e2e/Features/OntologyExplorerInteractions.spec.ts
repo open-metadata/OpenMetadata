@@ -30,13 +30,18 @@ import {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Isolated nodes + relation filter combo', () => {
-  const comboGlossary = new Glossary();
-  const connectedTermA = new GlossaryTerm(comboGlossary);
-  const connectedTermB = new GlossaryTerm(comboGlossary);
-  const isolatedTerm = new GlossaryTerm(comboGlossary);
+  // Per-test isolation: each test owns fresh entities.
+  let comboGlossary!: Glossary;
+  let connectedTermA!: GlossaryTerm;
+  let connectedTermB!: GlossaryTerm;
+  let isolatedTerm!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    comboGlossary = new Glossary();
+    connectedTermA = new GlossaryTerm(comboGlossary);
+    connectedTermB = new GlossaryTerm(comboGlossary);
+    isolatedTerm = new GlossaryTerm(comboGlossary);
     await comboGlossary.create(apiContext);
     await connectedTermA.create(apiContext);
     await connectedTermB.create(apiContext);
@@ -48,9 +53,15 @@ test.describe('Isolated nodes + relation filter combo', () => {
       'relatedTo'
     );
     await disposeApiContext(afterAction, apiContext);
+
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+    await applyGlossaryFilter(page, comboGlossary.responseData.id);
+    await waitForGraphLoaded(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -60,14 +71,6 @@ test.describe('Isolated nodes + relation filter combo', () => {
       comboGlossary
     );
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, comboGlossary.responseData.id);
-    await waitForGraphLoaded(page);
   });
 
   test('relation filter with no matching edges shows no-relations state', async ({
@@ -116,22 +119,33 @@ test.describe('Isolated nodes + relation filter combo', () => {
 });
 
 test.describe('Cross-glossary term hydration', () => {
-  const salesGlossary = new Glossary();
-  const financeGlossary = new Glossary();
-  const termRevenue = new GlossaryTerm(salesGlossary);
-  const termExpense = new GlossaryTerm(financeGlossary);
+  // Per-test isolation: each test owns fresh entities.
+  let salesGlossary!: Glossary;
+  let financeGlossary!: Glossary;
+  let termRevenue!: GlossaryTerm;
+  let termExpense!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    salesGlossary = new Glossary();
+    financeGlossary = new Glossary();
+    termRevenue = new GlossaryTerm(salesGlossary);
+    termExpense = new GlossaryTerm(financeGlossary);
     await salesGlossary.create(apiContext);
     await financeGlossary.create(apiContext);
     await termRevenue.create(apiContext);
     await termExpense.create(apiContext);
     await addTermRelation(apiContext, termRevenue, termExpense, 'relatedTo');
     await disposeApiContext(afterAction, apiContext);
+
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+    await applyGlossaryFilter(page, salesGlossary.responseData.id);
+    await waitForGraphLoaded(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -141,14 +155,6 @@ test.describe('Cross-glossary term hydration', () => {
       financeGlossary
     );
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, salesGlossary.responseData.id);
-    await waitForGraphLoaded(page);
   });
 
   test('term from another glossary is hydrated in as a node', async ({
@@ -182,32 +188,35 @@ test.describe('Cross-glossary term hydration', () => {
 });
 
 test.describe('Embedded scope (Relations Graph tab)', () => {
-  const embeddedGlossary = new Glossary();
-  const termA = new GlossaryTerm(embeddedGlossary);
-  const termB = new GlossaryTerm(embeddedGlossary);
-  const termC = new GlossaryTerm(embeddedGlossary);
+  // Per-test isolation: each test owns fresh entities.
+  let embeddedGlossary!: Glossary;
+  let termA!: GlossaryTerm;
+  let termB!: GlossaryTerm;
+  let termC!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    embeddedGlossary = new Glossary();
+    termA = new GlossaryTerm(embeddedGlossary);
+    termB = new GlossaryTerm(embeddedGlossary);
+    termC = new GlossaryTerm(embeddedGlossary);
     await embeddedGlossary.create(apiContext);
     await termA.create(apiContext);
     await termB.create(apiContext);
     await termC.create(apiContext);
     await addTermRelation(apiContext, termA, termB, 'relatedTo');
     await disposeApiContext(afterAction, apiContext);
-  });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
-    await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
     test.slow();
     await termA.visitEntityPage(page);
     await page.getByTestId('relations_graph').click();
     await waitForGraphLoaded(page);
+  });
+
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('ontology explorer is visible in the Relations Graph tab', async ({

@@ -27,19 +27,31 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const glossary = new Glossary();
-const termA = new GlossaryTerm(glossary);
-const termB = new GlossaryTerm(glossary);
-const termC = new GlossaryTerm(glossary);
-const termD = new GlossaryTerm(glossary);
+// Per-test isolation: each test owns fresh entities so no cross-test or
+// cross-worker shared state can cause flakiness.
+let glossary!: Glossary;
+let termA!: GlossaryTerm;
+let termB!: GlossaryTerm;
+let termC!: GlossaryTerm;
+let termD!: GlossaryTerm;
 
-const glossaryX = new Glossary();
-const glossaryY = new Glossary();
-const termInX = new GlossaryTerm(glossaryX);
-const termInY = new GlossaryTerm(glossaryY);
+let glossaryX!: Glossary;
+let glossaryY!: Glossary;
+let termInX!: GlossaryTerm;
+let termInY!: GlossaryTerm;
 
-test.beforeAll('Seed test data', async ({ browser }) => {
+test.beforeEach('Seed test data', async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
+
+  glossary = new Glossary();
+  termA = new GlossaryTerm(glossary);
+  termB = new GlossaryTerm(glossary);
+  termC = new GlossaryTerm(glossary);
+  termD = new GlossaryTerm(glossary);
+  glossaryX = new Glossary();
+  glossaryY = new Glossary();
+  termInX = new GlossaryTerm(glossaryX);
+  termInY = new GlossaryTerm(glossaryY);
 
   await glossary.create(apiContext);
   await termA.create(apiContext);
@@ -58,7 +70,7 @@ test.beforeAll('Seed test data', async ({ browser }) => {
   await disposeApiContext(afterAction, apiContext);
 });
 
-test.afterAll('Cleanup test data', async ({ browser }) => {
+test.afterEach('Cleanup test data', async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
 
   await deleteEntities(

@@ -34,20 +34,28 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const RUN_ID = Math.random().toString(36).slice(2, 8);
 const CUSTOM_OWNS_RELATION = `pw-gp-owns-${RUN_ID}`;
 
-const catalog = new Glossary();
-const termProduct = new GlossaryTerm(catalog);
-const termCategory = new GlossaryTerm(catalog);
-const termBrand = new GlossaryTerm(catalog);
+// Per-test isolation: each test owns fresh entities so no cross-test or
+// cross-worker shared state can occur.
+let catalog!: Glossary;
+let termProduct!: GlossaryTerm;
+let termCategory!: GlossaryTerm;
+let termBrand!: GlossaryTerm;
 
 test.describe('Ontology Explorer — E2E', () => {
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
+    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
+    catalog = new Glossary();
+    termProduct = new GlossaryTerm(catalog);
+    termCategory = new GlossaryTerm(catalog);
+    termBrand = new GlossaryTerm(catalog);
 
     await catalog.create(apiContext);
     await termProduct.create(apiContext);
     await termCategory.create(apiContext);
     await termBrand.create(apiContext);
 
+    // Custom relation type is idempotent — safe to call each beforeEach.
     await addRelationTypeWithCardinality(apiContext, {
       name: CUSTOM_OWNS_RELATION,
       displayName: 'GP Owns',
@@ -65,9 +73,14 @@ test.describe('Ontology Explorer — E2E', () => {
     );
 
     await disposeApiContext(afterAction, apiContext);
+
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+    await applyGlossaryFilter(page, catalog.responseData.id);
+    await waitForGraphLoaded(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -77,14 +90,6 @@ test.describe('Ontology Explorer — E2E', () => {
       catalog
     );
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, catalog.responseData.id);
-    await waitForGraphLoaded(page);
   });
 
   test('stats show 3 terms and 6 relations', async ({ page }) => {

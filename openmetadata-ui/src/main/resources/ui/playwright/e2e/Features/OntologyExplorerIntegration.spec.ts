@@ -33,19 +33,23 @@ import {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Relation Sync with OntologyExplorer', () => {
-  const syncGlossary = new Glossary();
-  const syncTerm1 = new GlossaryTerm(syncGlossary);
-  const syncTerm2 = new GlossaryTerm(syncGlossary);
+  // Per-test isolation: fresh entities per test.
+  let syncGlossary!: Glossary;
+  let syncTerm1!: GlossaryTerm;
+  let syncTerm2!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    syncGlossary = new Glossary();
+    syncTerm1 = new GlossaryTerm(syncGlossary);
+    syncTerm2 = new GlossaryTerm(syncGlossary);
     await syncGlossary.create(apiContext);
     await syncTerm1.create(apiContext);
     await syncTerm2.create(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
     await disposeApiContext(afterAction, apiContext);
@@ -91,12 +95,16 @@ test.describe('Relation Sync with OntologyExplorer', () => {
 });
 
 test.describe('Ontology Explorer - Hierarchy View', () => {
-  const hierarchyGlossary = new Glossary();
-  const parentTerm = new GlossaryTerm(hierarchyGlossary);
-  const childTerm = new GlossaryTerm(hierarchyGlossary);
+  // Per-test isolation: fresh entities per test.
+  let hierarchyGlossary!: Glossary;
+  let parentTerm!: GlossaryTerm;
+  let childTerm!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    hierarchyGlossary = new Glossary();
+    parentTerm = new GlossaryTerm(hierarchyGlossary);
+    childTerm = new GlossaryTerm(hierarchyGlossary);
     await hierarchyGlossary.create(apiContext);
     await parentTerm.create(apiContext);
     await childTerm.create(apiContext);
@@ -104,7 +112,7 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
     await disposeApiContext(afterAction, apiContext);
@@ -126,13 +134,18 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
 });
 
 test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
-  const filterGlossary = new Glossary();
-  const termA = new GlossaryTerm(filterGlossary);
-  const termB = new GlossaryTerm(filterGlossary);
-  const termC = new GlossaryTerm(filterGlossary);
+  // Per-test isolation: fresh entities per test.
+  let filterGlossary!: Glossary;
+  let termA!: GlossaryTerm;
+  let termB!: GlossaryTerm;
+  let termC!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    filterGlossary = new Glossary();
+    termA = new GlossaryTerm(filterGlossary);
+    termB = new GlossaryTerm(filterGlossary);
+    termC = new GlossaryTerm(filterGlossary);
     await filterGlossary.create(apiContext);
     await termA.create(apiContext);
     await termB.create(apiContext);
@@ -142,7 +155,7 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
     await disposeApiContext(afterAction, apiContext);
@@ -217,15 +230,21 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
 });
 
 test.describe('Ontology Explorer - Cross Glossary Edges', () => {
-  const crossGlossary1 = new Glossary();
-  const crossTerm1 = new GlossaryTerm(crossGlossary1);
+  // Per-test isolation: fresh entities per test.
+  let crossGlossary1!: Glossary;
+  let crossTerm1!: GlossaryTerm;
   // crossTerm3 lives in crossGlossary1 but has only a same-glossary relation
-  const crossTerm3 = new GlossaryTerm(crossGlossary1);
-  const crossGlossary2 = new Glossary();
-  const crossTerm2 = new GlossaryTerm(crossGlossary2);
+  let crossTerm3!: GlossaryTerm;
+  let crossGlossary2!: Glossary;
+  let crossTerm2!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    crossGlossary1 = new Glossary();
+    crossTerm1 = new GlossaryTerm(crossGlossary1);
+    crossTerm3 = new GlossaryTerm(crossGlossary1);
+    crossGlossary2 = new Glossary();
+    crossTerm2 = new GlossaryTerm(crossGlossary2);
     await crossGlossary1.create(apiContext);
     await crossTerm1.create(apiContext);
     await crossTerm3.create(apiContext);
@@ -238,7 +257,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
@@ -340,12 +359,16 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 });
 
 test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
-  const spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
-  const spiralTerm = new GlossaryTerm(spiralGlossary);
-  const spiralTable = new TableClass();
+  // Per-test isolation: fresh entities per test.
+  let spiralGlossary!: Glossary;
+  let spiralTerm!: GlossaryTerm;
+  let spiralTable!: TableClass;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
+    spiralTerm = new GlossaryTerm(spiralGlossary);
+    spiralTable = new TableClass();
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);
     await spiralTable.create(apiContext);
@@ -378,7 +401,7 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, spiralTerm, spiralGlossary);
     await spiralTable.delete(apiContext);
@@ -424,12 +447,16 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
 });
 
 test.describe('Ontology Explorer - Data Mode Stats', () => {
-  const dataModeGlossary = new Glossary();
-  const dataTerm1 = new GlossaryTerm(dataModeGlossary);
-  const dataTerm2 = new GlossaryTerm(dataModeGlossary);
+  // Per-test isolation: fresh entities per test.
+  let dataModeGlossary!: Glossary;
+  let dataTerm1!: GlossaryTerm;
+  let dataTerm2!: GlossaryTerm;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+    dataModeGlossary = new Glossary();
+    dataTerm1 = new GlossaryTerm(dataModeGlossary);
+    dataTerm2 = new GlossaryTerm(dataModeGlossary);
     await dataModeGlossary.create(apiContext);
     await dataTerm1.create(apiContext);
     await dataTerm2.create(apiContext);
@@ -437,7 +464,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
     await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
     await disposeApiContext(afterAction, apiContext);

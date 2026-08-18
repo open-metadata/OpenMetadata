@@ -39,26 +39,42 @@ const CUSTOM_RELATION_NAMES = {
   CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
 } as const;
 
+// Per-test isolation: each test owns fresh entities so no cross-test or
+// cross-worker shared state can cause flakiness.
 // Each relation type gets its own isolated source-target pair so no single
 // term accumulates multiple cardinality-constrained relations, which would
 // trigger backend re-validation failures on the second PATCH.
-const glossary = new Glossary();
-const otoSrc = new GlossaryTerm(glossary);
-const otoDst = new GlossaryTerm(glossary);
-const otmSrc = new GlossaryTerm(glossary);
-const otmDst = new GlossaryTerm(glossary);
-const mtoSrc = new GlossaryTerm(glossary);
-const mtoDst = new GlossaryTerm(glossary);
-const mtmSrc = new GlossaryTerm(glossary);
-const mtmDst = new GlossaryTerm(glossary);
-const cusSrc = new GlossaryTerm(glossary);
-const cusDst = new GlossaryTerm(glossary);
-const relSrc = new GlossaryTerm(glossary);
-const relDst = new GlossaryTerm(glossary);
+let glossary!: Glossary;
+let otoSrc!: GlossaryTerm;
+let otoDst!: GlossaryTerm;
+let otmSrc!: GlossaryTerm;
+let otmDst!: GlossaryTerm;
+let mtoSrc!: GlossaryTerm;
+let mtoDst!: GlossaryTerm;
+let mtmSrc!: GlossaryTerm;
+let mtmDst!: GlossaryTerm;
+let cusSrc!: GlossaryTerm;
+let cusDst!: GlossaryTerm;
+let relSrc!: GlossaryTerm;
+let relDst!: GlossaryTerm;
 
 test.describe('Ontology Explorer - Cardinality Labels', () => {
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser, page }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
+
+    glossary = new Glossary();
+    otoSrc = new GlossaryTerm(glossary);
+    otoDst = new GlossaryTerm(glossary);
+    otmSrc = new GlossaryTerm(glossary);
+    otmDst = new GlossaryTerm(glossary);
+    mtoSrc = new GlossaryTerm(glossary);
+    mtoDst = new GlossaryTerm(glossary);
+    mtmSrc = new GlossaryTerm(glossary);
+    mtmDst = new GlossaryTerm(glossary);
+    cusSrc = new GlossaryTerm(glossary);
+    cusDst = new GlossaryTerm(glossary);
+    relSrc = new GlossaryTerm(glossary);
+    relDst = new GlossaryTerm(glossary);
 
     await glossary.create(apiContext);
     await otoSrc.create(apiContext);
@@ -149,9 +165,15 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
 
     await disposeApiContext(afterAction, apiContext);
+
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+    await applyGlossaryFilter(page, glossary.responseData.id);
+    await waitForGraphLoaded(page);
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
 
     await deleteEntities(
@@ -172,14 +194,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     );
 
     await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, glossary.responseData.id);
-    await waitForGraphLoaded(page);
   });
 
   test.describe('Cardinality label map — correct labels per relation type', () => {

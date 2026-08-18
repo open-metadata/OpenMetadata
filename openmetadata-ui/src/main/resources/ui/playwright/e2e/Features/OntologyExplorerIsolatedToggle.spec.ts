@@ -26,24 +26,28 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const toggleGlossary = new Glossary();
-const toggleTermA = new GlossaryTerm(toggleGlossary);
-const toggleTermB = new GlossaryTerm(toggleGlossary);
-const toggleTermIso = new GlossaryTerm(toggleGlossary);
+// Per-test isolation: each test owns fresh entities so no cross-test or
+// cross-worker shared state can cause flakiness.
+let toggleGlossary!: Glossary;
+let toggleTermA!: GlossaryTerm;
+let toggleTermB!: GlossaryTerm;
+let toggleTermIso!: GlossaryTerm;
 
-test.beforeAll(async ({ browser }) => {
+test.beforeEach(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-
+  toggleGlossary = new Glossary();
+  toggleTermA = new GlossaryTerm(toggleGlossary);
+  toggleTermB = new GlossaryTerm(toggleGlossary);
+  toggleTermIso = new GlossaryTerm(toggleGlossary);
   await toggleGlossary.create(apiContext);
   await toggleTermA.create(apiContext);
   await toggleTermB.create(apiContext);
   await toggleTermIso.create(apiContext);
   await addTermRelation(apiContext, toggleTermA, toggleTermB, 'relatedTo');
-
   await disposeApiContext(afterAction, apiContext);
 });
 
-test.afterAll(async ({ browser }) => {
+test.afterEach(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
   await deleteEntities(
     apiContext,
