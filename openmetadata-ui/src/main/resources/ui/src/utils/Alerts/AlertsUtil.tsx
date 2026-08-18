@@ -81,7 +81,6 @@ import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
-import { EntityIconSize } from '../EntityIconUtils';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
@@ -1239,24 +1238,28 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[],
   showIcon?: boolean
 ) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
-        )}
-        {showIcon &&
-          searchClassBase.getEntityIconWithBg(
-            resource ?? '',
-            EntityIconSize.Size14
+  resources.map((resource) => {
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
+
+    return {
+      label: (
+        <div
+          className="d-flex items-center gap-2"
+          data-testid={`${resource}-option`}>
+          {showCheckbox && (
+            <Checkbox checked={selectedResource?.includes(resource)} />
           )}
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
+          {sourceIcon && showIcon && (
+            <div className="d-flex items-center justify-center h-4 w-4">
+              {sourceIcon}
+            </div>
+          )}
+          <span>{getEntityNameLabel(resource ?? '')}</span>
+        </div>
+      ),
+      value: resource ?? '',
+    };
+  });
 
 export const getAlertRecentEventsFilterOptions = () => {
   const filters: MenuProps['items'] = Object.values(
