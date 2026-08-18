@@ -897,8 +897,24 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@v1.5.1
         continue-on-error: true
         with:
-          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
-          version: playwright-chromium-deps-v1
+          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble) are
+          # cached alongside the fonts so `install-deps` finds them already
+          # installed and does zero apt work on cache hit. Without this the
+          # whole matrix goes red when Azure's Ubuntu mirror is down (run
+          # 32157314266: 11 shards timed out at 5 min on `Ign: azure.archive
+          # .ubuntu.com noble InRelease`). Update this list AND bump the
+          # `version:` tag whenever the pinned playwright version rotates to
+          # a new Ubuntu base — see the dep table in
+          # https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2
 
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
@@ -1170,16 +1186,35 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@v1.5.1
         continue-on-error: true
         with:
-          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
-          version: playwright-chromium-deps-v1
+          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble) are
+          # cached alongside the fonts so `install-deps` finds them already
+          # installed and does zero apt work on cache hit. Without this the
+          # whole matrix goes red when Azure's Ubuntu mirror is down (run
+          # 32157314266: 11 shards timed out at 5 min on `Ign: azure.archive
+          # .ubuntu.com noble InRelease`). Update this list AND bump the
+          # `version:` tag whenever the pinned playwright version rotates to
+          # a new Ubuntu base — see the dep table in
+          # https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2
 
-      # `install-deps` is `apt-get install` under the hood — on a cache miss
-      # or slow Ubuntu mirror it can crawl for 10+ min (chromium-17 in run
-      # 32117681137, chromium-02 in run 32124717834). Wrap it with a tight
-      # ceiling so the setup phase can never quietly eat the outer job clock;
-      # if apt is slow, fail fast here with a clean attribution instead of
-      # letting the runner cancel the whole shard 20 min later. 5 min is well
-      # above the healthy ~30 s and still inside the 5-min env blocking gate.
+      # `install-deps` is `apt-get install` under the hood. Every chromium
+      # apt dep is pre-cached by the step above via awalsh128/cache-apt-pkgs
+      # -action, so on a cache hit `install-deps` sees every package already
+      # installed and exits in seconds without hitting the Ubuntu mirror at
+      # all. The `timeout 5m` wrapper is a safety net for the rare cache-miss
+      # case (first run after a `version:` bump, or a fresh runner image) —
+      # if apt is also broken during that window we fail fast with a clean
+      # attribution instead of letting the runner cancel the shard 20 min
+      # later (chromium-17 in run 32117681137, chromium-02 in run
+      # 32124717834, the whole matrix in run 32157314266).
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
