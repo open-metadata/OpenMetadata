@@ -80,14 +80,29 @@ export const checkPersonaInProfile = async (
  */
 export const setPersonaAsDefault = async (page: Page) => {
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('set-as-default-button').click();
 
-  const setAsDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const setAsDefaultButton = page.getByTestId('set-as-default-button');
+  await setAsDefaultButton.waitFor({ state: 'visible' });
+  await setAsDefaultButton.click();
+
+  // The modal testid sits on the 0x0 `.ant-modal-root` wrapper, so wait on the
+  // "Yes" button instead.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  const yesButton = setAsDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
-  await setAsDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so an in-flight GET on /api/v1/personas/* cannot satisfy it.
+  const setAsDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await yesButton.click();
   await setAsDefaultResponse;
 };
 
@@ -144,13 +159,28 @@ export const removePersonaDefault = async (
   await navigateToPersonaWithPagination(page, personaName ?? '');
 
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('remove-default-button').click();
 
-  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const removeDefaultButton = page.getByTestId('remove-default-button');
+  await removeDefaultButton.waitFor({ state: 'visible' });
+  await removeDefaultButton.click();
+
+  // The modal testid sits on the 0x0 `.ant-modal-root` wrapper, so wait on the
+  // "Yes" button instead.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  const yesButton = removeDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
-  await removeDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so an in-flight GET on /api/v1/personas/* cannot satisfy it.
+  const removeDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await yesButton.click();
   await removeDefaultResponse;
 };
