@@ -11,24 +11,19 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import {
-  EmptyPlaceholderAction,
-  MultiSelect,
-} from '@openmetadata/ui-core-components';
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
-import { useCallback, useMemo } from 'react';
-import type { Key } from 'react-aria-components';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_ITEMS,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
@@ -39,8 +34,6 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
-import { getSelectedTestCaseStatuses } from './TestCases.utils';
-import { useSyncedListData } from './useSyncedListData';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 export const TestCases = () => {
@@ -52,7 +45,6 @@ export const TestCases = () => {
     testCaseSummary,
     isTestCaseSummaryLoading,
     form,
-    params,
     searchValue,
     selectedFilter,
     hasActiveFilters,
@@ -80,40 +72,6 @@ export const TestCases = () => {
     handleStatusSubmit,
     extraDropdownContent,
   } = useTestCaseListPage();
-
-  const selectedStatuses = useMemo(
-    () => getSelectedTestCaseStatuses(params.testCaseStatus),
-    [params.testCaseStatus]
-  );
-  const selectedStatusItems = useSyncedListData(
-    selectedStatuses,
-    TEST_CASE_STATUS_ITEMS
-  );
-
-  const handleStatusInserted = useCallback(
-    (key: Key) => {
-      const status = Object.values(TestCaseStatus).find(
-        (value) => value === String(key)
-      );
-      if (status && !selectedStatuses.includes(status)) {
-        handleSearchParam('testCaseStatus', [...selectedStatuses, status]);
-      }
-    },
-    [handleSearchParam, selectedStatuses]
-  );
-
-  const handleStatusCleared = useCallback(
-    (key: Key) => {
-      const updatedStatuses = selectedStatuses.filter(
-        (status) => status !== String(key)
-      );
-      handleSearchParam(
-        'testCaseStatus',
-        updatedStatuses.length ? updatedStatuses : undefined
-      );
-    },
-    [handleSearchParam, selectedStatuses]
-  );
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
@@ -216,24 +174,19 @@ export const TestCases = () => {
               </Form.Item>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
-              <div className="tw:w-64">
-                <MultiSelect
+              <Form.Item
+                className="m-0 w-64"
+                label={t('label.status')}
+                name="testCaseStatus">
+                <Select
+                  allowClear
                   data-testid="status-select-filter"
-                  items={TEST_CASE_STATUS_ITEMS}
-                  label={t('label.status')}
+                  getPopupContainer={getPopupContainer}
+                  mode="multiple"
+                  options={TEST_CASE_STATUS_FILTER_OPTIONS}
                   placeholder={t('label.status')}
-                  selectedItems={selectedStatusItems}
-                  onItemCleared={handleStatusCleared}
-                  onItemInserted={handleStatusInserted}>
-                  {(item) => (
-                    <MultiSelect.Item
-                      id={item.id}
-                      key={item.id}
-                      label={item.label}
-                    />
-                  )}
-                </MultiSelect>
-              </div>
+                />
+              </Form.Item>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
               <Form.Item

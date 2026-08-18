@@ -246,6 +246,9 @@ describe('useTestCaseFilters', () => {
     expect(statusDescriptor?.onSearch).toBeUndefined();
 
     expect(statusDescriptor?.options.length).toBeGreaterThan(0);
+    expect(statusDescriptor?.options).not.toContainEqual(
+      expect.objectContaining({ value: '' })
+    );
     expect(typeDescriptor?.options.length).toBeGreaterThan(0);
     expect(tagsDescriptor?.options).toEqual([]);
     expect(tableDescriptor?.options).toEqual([

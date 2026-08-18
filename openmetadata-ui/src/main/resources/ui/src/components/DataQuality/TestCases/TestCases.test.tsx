@@ -16,7 +16,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -325,6 +324,14 @@ describe('TestCases component', () => {
         await screen.findByTestId('tags-select-filter')
       ).toBeInTheDocument();
     });
+
+    it('should keep the status filter on the Ant Design multi-select', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('status-select-filter')).toHaveClass(
+        'ant-select-multiple'
+      );
+    });
   });
 
   describe('Permission Handling', () => {
@@ -471,12 +478,10 @@ describe('TestCases component', () => {
     it('should add statuses without replacing the existing selection', async () => {
       const { rerender } = render(<TestCases />);
       const statusFilter = await screen.findByTestId('status-select-filter');
-      const combobox = within(statusFilter).getByRole('combobox');
+      const selector = statusFilter.querySelector('.ant-select-selector');
 
-      fireEvent.mouseDown(combobox);
-      fireEvent.click(
-        await screen.findByRole('option', { name: 'label.success' })
-      );
+      fireEvent.mouseDown(selector as Element);
+      fireEvent.click(await screen.findByTitle('label.success'));
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({
@@ -486,14 +491,8 @@ describe('TestCases component', () => {
 
       mockLocation.search = '?testCaseStatus%5B%5D=Success';
       rerender(<TestCases />);
-      fireEvent.mouseDown(
-        within(await screen.findByTestId('status-select-filter')).getByRole(
-          'combobox'
-        )
-      );
-      fireEvent.click(
-        await screen.findByRole('option', { name: 'label.queued' })
-      );
+      fireEvent.mouseDown(selector as Element);
+      fireEvent.click(await screen.findByTitle('label.queued'));
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({
