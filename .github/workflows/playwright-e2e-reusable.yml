@@ -921,17 +921,22 @@ jobs:
       # If it succeeds, all 30+ shards below hit the cache and skip apt
       # entirely; if it fails, we want the whole workflow to stop here with
       # a clean "apt mirror was down" attribution instead of half-executing.
-      # The two attempts and the wider 10-min ceiling are the exception to
+      # The two attempts and the wider ceiling are the exception to
       # the "no retries" rule on shards — retrying a once-per-workflow
       # populator is cheap; retrying on every shard is what we said no to.
-      # The shard-side wrapper stays at a strict 5 min.
+      #
+      # TRANSITIONAL: the per-attempt ceiling is 8 min (matching the shard
+      # side) while `playwright-chromium-deps-v2` is still populating across
+      # branches. Once every merge_group is a cache hit, tighten both
+      # ceilings back to 5 min and drop `environmentAtMostFiveMinutes`'s
+      # threshold from 480 → 300 in evaluate_playwright_performance.py.
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           set -euo pipefail
           install_deps() {
-            timeout --signal=TERM --kill-after=30s 5m \
+            timeout --signal=TERM --kill-after=30s 8m \
               npx playwright install-deps chromium
           }
           if ! install_deps; then
@@ -1227,17 +1232,22 @@ jobs:
       # apt dep is pre-cached by the step above via awalsh128/cache-apt-pkgs
       # -action, so on a cache hit `install-deps` sees every package already
       # installed and exits in seconds without hitting the Ubuntu mirror at
-      # all. The `timeout 5m` wrapper is a safety net for the rare cache-miss
+      # all. The `timeout` wrapper is a safety net for the rare cache-miss
       # case (first run after a `version:` bump, or a fresh runner image) —
       # if apt is also broken during that window we fail fast with a clean
       # attribution instead of letting the runner cancel the shard 20 min
       # later (chromium-17 in run 32117681137, chromium-02 in run
       # 32124717834, the whole matrix in run 32157314266).
+      #
+      # TRANSITIONAL: 8 min while `playwright-chromium-deps-v2` is still
+      # populating. Tighten back to 5 min once every merge_group is a cache
+      # hit and drop the env blocking threshold in
+      # evaluate_playwright_performance.py from 480 → 300 in the same PR.
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          timeout --signal=TERM --kill-after=30s 5m \
+          timeout --signal=TERM --kill-after=30s 8m \
             npx playwright install-deps chromium
           npx playwright install chromium
 
