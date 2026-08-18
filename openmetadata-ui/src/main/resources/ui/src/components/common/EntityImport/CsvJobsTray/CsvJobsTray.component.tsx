@@ -517,6 +517,7 @@ export const CsvJobsTray = () => {
               return (
                 <div
                   className={`csv-jobs-tray-item csv-jobs-tray-item-${variant}`}
+                  data-testid={`csv-job-${job.jobId}`}
                   key={job.jobId}>
                   <div className="csv-jobs-tray-item-row">
                     <span className="csv-jobs-tray-kind-icon">
