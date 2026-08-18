@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Status } from '../../generated/events/testDestinationStatus';
 import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
+import { Status } from '../../generated/events/testDestinationStatus';
 import { getDestinationsWithTestStatus } from './AlertsUtilPure';
 
 const webhookDestination = {
