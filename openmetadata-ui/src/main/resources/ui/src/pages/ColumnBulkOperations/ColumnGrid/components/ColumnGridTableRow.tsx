@@ -17,6 +17,19 @@ import React, { useMemo } from 'react';
 import Loader from '../../../../components/common/Loader/Loader';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
+export interface ColumnGridTableCellProps {
+  /** Column id this content maps to (must match a `tableColumns` id) */
+  columnId: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Slot marker for `ColumnGridTableRow`. Never rendered on its own — the row
+ * reads its `columnId` + `children` to place the content in the matching
+ * `Table.Cell`.
+ */
+const ColumnGridTableCell: React.FC<ColumnGridTableCellProps> = () => null;
+
 interface ColumnGridTableRowProps {
   /** Width percent per column id for fixed column layout */
   columnWidthPercent?: Record<string, string>;
@@ -30,11 +43,8 @@ interface ColumnGridTableRowProps {
   showParentChildColors?: boolean;
   /** Column definitions for Table.Row (id only), used for core Table layout */
   tableColumns: { id: string }[];
-  renderColumnNameCell: (entity: ColumnGridRowData) => React.ReactNode;
-  renderPathCell: (entity: ColumnGridRowData) => React.ReactNode;
-  renderDescriptionCell: (entity: ColumnGridRowData) => React.ReactNode;
-  renderTagsCell: (entity: ColumnGridRowData) => React.ReactNode;
-  renderGlossaryTermsCell: (entity: ColumnGridRowData) => React.ReactNode;
+  /** `ColumnGridTableRow.Cell` slots, one per column id whose content is supplied by the parent */
+  children: React.ReactNode;
 }
 
 const CELL_ELLIPSIS_CLASS = 'tw:min-w-0 tw:w-full tw:overflow-hidden';
@@ -43,8 +53,9 @@ const CHILD_ROW_INDENT_PX = 24;
 const BASE_CELL_PADDING_PX = 24;
 const PARENT_ROW_BG_CLASS = 'tw:bg-gray-100';
 const CHILD_ROW_BG_CLASS = 'tw:bg-gray-50';
+const RECENTLY_UPDATED_BG_CLASS = 'tw:bg-utility-warning-50';
 
-export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
+const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
   columnWidthPercent = {},
   entity,
   isSelected,
@@ -52,13 +63,23 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   isRecentlyUpdated,
   showParentChildColors = false,
   tableColumns,
-  renderColumnNameCell,
-  renderPathCell,
-  renderDescriptionCell,
-  renderTagsCell,
-  renderGlossaryTermsCell,
+  children,
 }) => {
   const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+
+  const cellContentById = useMemo(() => {
+    const map: Record<string, React.ReactNode> = {};
+    React.Children.forEach(children, (child) => {
+      if (
+        React.isValidElement<ColumnGridTableCellProps>(child) &&
+        child.props.columnId
+      ) {
+        map[child.props.columnId] = child.props.children;
+      }
+    });
+
+    return map;
+  }, [children]);
 
   const { rowClassName, cellClassName, rowType } = useMemo(() => {
     const type = isChildRow ? 'child' : 'parent';
@@ -68,10 +89,10 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
         rowType: type,
         rowClassName: classNames(
           'tw:transition-colors',
-          'tw:bg-utility-warning-50',
-          isSelected && 'tw:bg-utility-warning-50'
+          RECENTLY_UPDATED_BG_CLASS,
+          isSelected && RECENTLY_UPDATED_BG_CLASS
         ),
-        cellClassName: classNames('tw:bg-utility-warning-50'),
+        cellClassName: classNames(RECENTLY_UPDATED_BG_CLASS),
       };
     }
 
@@ -97,33 +118,15 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       ),
       cellClassName: classNames(bgClass),
     };
-  }, [
-    isRecentlyUpdated,
-    showParentChildColors,
-    entity.parentId,
-    entity.isStructChild,
-    isSelected,
-  ]);
+  }, [isRecentlyUpdated, showParentChildColors, isChildRow, isSelected]);
 
   const renderCellContent = (columnId: string) => {
-    const content = (() => {
-      switch (columnId) {
-        case 'columnName':
-          return renderColumnNameCell(entity);
-        case 'path':
-          return renderPathCell(entity);
-        case 'description':
-          return renderDescriptionCell(entity);
-        case 'dataType':
-          return entity.dataType || '-';
-        case 'tags':
-          return renderTagsCell(entity);
-        case 'glossaryTerms':
-          return renderGlossaryTermsCell(entity);
-        default:
-          return null;
-      }
-    })();
+    // dataType is static row data; every other cell's content is supplied by
+    // the parent via a ColumnGridTableRow.Cell slot.
+    const content =
+      columnId === 'dataType'
+        ? entity.dataType || '-'
+        : cellContentById[columnId] ?? null;
 
     if (content == null) {
       return null;
@@ -188,3 +191,9 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
     </Table.Row>
   );
 };
+
+export const ColumnGridTableRow =
+  ColumnGridTableRowBase as React.FC<ColumnGridTableRowProps> & {
+    Cell: typeof ColumnGridTableCell;
+  };
+ColumnGridTableRow.Cell = ColumnGridTableCell;
