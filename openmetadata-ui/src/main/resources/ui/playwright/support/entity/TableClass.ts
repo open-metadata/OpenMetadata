@@ -395,9 +395,26 @@ export class TableClass extends EntityClass {
       return;
     }
 
+    // The global-search flow types `searchTerm` into the search box and waits
+    // for the resulting query response. An empty term types nothing, so no
+    // request is ever triggered and the wait burns its full 30s before the test
+    // times out — a hang whose error names the helper, not the cause. Every
+    // route to an FQN above has already been tried, so stop here and say so.
+    const effectiveSearchTerm = searchTerm ?? tableFqn;
+
+    if (!effectiveSearchTerm) {
+      throw new Error(
+        `TableClass.visitEntityPage: cannot resolve a fullyQualifiedName for table "${
+          this.entityResponseData?.name ?? this.entity.name
+        }" (id: ${
+          this.entityResponseData?.id ?? 'unknown'
+        }). Refusing to fall back to global search with an empty term.`
+      );
+    }
+
     await visitEntityPage({
       page,
-      searchTerm: searchTerm ?? tableFqn,
+      searchTerm: effectiveSearchTerm,
       dataTestId: `${
         this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
@@ -581,6 +598,19 @@ export class TableClass extends EntityClass {
         },
       }
     );
+
+    // Only adopt the response body when the PATCH succeeded. An error body
+    // ({code, message}) carries neither id nor fullyQualifiedName, so assigning
+    // it unconditionally erased the table's identity — and every later
+    // visitEntityPage then had nothing to navigate by, surfacing much further
+    // downstream as a 30s search hang rather than as the failed PATCH it was.
+    if (!response.ok()) {
+      throw new Error(
+        `TableClass.patch: PATCH failed with ${response.status()} for table "${
+          this.entityResponseData?.name ?? this.entity.name
+        }": ${await response.text()}`
+      );
+    }
 
     this.entityResponseData = await response.json();
 
