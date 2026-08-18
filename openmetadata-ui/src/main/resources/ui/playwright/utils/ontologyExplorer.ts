@@ -188,10 +188,10 @@ export async function disposeApiContext(
 
 export async function deleteEntities(
   apiContext: APIRequestContext,
-  ...entities: Array<Glossary | GlossaryTerm>
+  ...entities: Array<Glossary | GlossaryTerm | undefined>
 ) {
   for (const entity of entities) {
-    if (entity.responseData?.id) {
+    if (entity?.responseData?.id) {
       await entity.delete(apiContext);
     }
   }

@@ -34,17 +34,16 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const RUN_ID = Math.random().toString(36).slice(2, 8);
 const CUSTOM_OWNS_RELATION = `pw-gp-owns-${RUN_ID}`;
 
-// Per-test isolation: each test owns fresh entities so no cross-test or
-// cross-worker shared state can occur.
-let catalog!: Glossary;
-let termProduct!: GlossaryTerm;
-let termCategory!: GlossaryTerm;
-let termBrand!: GlossaryTerm;
-
 test.describe('Ontology Explorer — E2E', () => {
+  let catalog: Glossary | undefined;
+  let termProduct: GlossaryTerm | undefined;
+  let termCategory: GlossaryTerm | undefined;
+  let termBrand: GlossaryTerm | undefined;
+
   test.beforeEach(async ({ browser, page }) => {
     test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
+
     catalog = new Glossary();
     termProduct = new GlossaryTerm(catalog);
     termCategory = new GlossaryTerm(catalog);
@@ -55,7 +54,6 @@ test.describe('Ontology Explorer — E2E', () => {
     await termCategory.create(apiContext);
     await termBrand.create(apiContext);
 
-    // Custom relation type is idempotent — safe to call each beforeEach.
     await addRelationTypeWithCardinality(apiContext, {
       name: CUSTOM_OWNS_RELATION,
       displayName: 'GP Owns',
@@ -82,7 +80,6 @@ test.describe('Ontology Explorer — E2E', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    // Guard: if beforeEach threw before all assignments, entities may be undefined.
     if (catalog) {
       await deleteEntities(
         apiContext,
@@ -115,9 +112,9 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termProduct.responseData.id]).toBeDefined();
-    expect(positions[termCategory.responseData.id]).toBeDefined();
-    expect(positions[termBrand.responseData.id]).toBeDefined();
+    expect(positions[termProduct!.responseData.id]).toBeDefined();
+    expect(positions[termCategory!.responseData.id]).toBeDefined();
+    expect(positions[termBrand!.responseData.id]).toBeDefined();
   });
 
   test('graph edges contain all four expected relation types', async ({
@@ -164,8 +161,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termCategory.responseData.id].x,
-      positions[termCategory.responseData.id].y
+      positions[termCategory!.responseData.id].x,
+      positions[termCategory!.responseData.id].y
     );
 
     await expect(
@@ -180,8 +177,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termProduct.responseData.id].x,
-      positions[termProduct.responseData.id].y
+      positions[termProduct!.responseData.id].x,
+      positions[termProduct!.responseData.id].y
     );
 
     await expect(
@@ -265,7 +262,7 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
 
     const categoryName =
-      termCategory.responseData.displayName ?? termCategory.responseData.name;
+      termCategory!.responseData.displayName ?? termCategory!.responseData.name;
     await page
       .getByTestId('ontology-graph-search')
       .locator('input')
@@ -273,7 +270,7 @@ test.describe('Ontology Explorer — E2E', () => {
 
     const positions = await readNodePositions(page);
 
-    expect(positions[termCategory.responseData.id]).toBeDefined();
+    expect(positions[termCategory!.responseData.id]).toBeDefined();
   });
 
   test('searching for a non-existent term shows the empty state', async ({

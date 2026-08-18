@@ -26,12 +26,10 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// Per-test isolation: each test owns fresh entities so no cross-test or
-// cross-worker shared state can cause flakiness.
-let toggleGlossary!: Glossary;
-let toggleTermA!: GlossaryTerm;
-let toggleTermB!: GlossaryTerm;
-let toggleTermIso!: GlossaryTerm;
+let toggleGlossary: Glossary | undefined;
+let toggleTermA: GlossaryTerm | undefined;
+let toggleTermB: GlossaryTerm | undefined;
+let toggleTermIso: GlossaryTerm | undefined;
 
 test.beforeEach(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
@@ -39,17 +37,18 @@ test.beforeEach(async ({ browser }) => {
   toggleTermA = new GlossaryTerm(toggleGlossary);
   toggleTermB = new GlossaryTerm(toggleGlossary);
   toggleTermIso = new GlossaryTerm(toggleGlossary);
+
   await toggleGlossary.create(apiContext);
   await toggleTermA.create(apiContext);
   await toggleTermB.create(apiContext);
   await toggleTermIso.create(apiContext);
   await addTermRelation(apiContext, toggleTermA, toggleTermB, 'relatedTo');
+
   await disposeApiContext(afterAction, apiContext);
 });
 
 test.afterEach(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  // Guard: if beforeEach threw before assignments, entities may be undefined.
   if (toggleGlossary) {
     await deleteEntities(
       apiContext,
@@ -67,20 +66,20 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, toggleGlossary!.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[toggleTermIso.responseData.id],
+      positions[toggleTermIso!.responseData.id],
       'isolated term must be visible because showIsolatedNodes defaults to true'
     ).toBeDefined();
     expect(
-      positions[toggleTermA.responseData.id],
+      positions[toggleTermA!.responseData.id],
       'connected term A must also be visible'
     ).toBeDefined();
     expect(
-      positions[toggleTermB.responseData.id],
+      positions[toggleTermB!.responseData.id],
       'connected term B must also be visible'
     ).toBeDefined();
   });
@@ -89,23 +88,23 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, toggleGlossary!.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
+    await waitForNodeAbsent(page, toggleTermIso!.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[toggleTermIso.responseData.id],
+      positions[toggleTermIso!.responseData.id],
       'isolated term must be hidden after toggling showIsolatedNodes OFF'
     ).toBeUndefined();
     expect(
-      positions[toggleTermA.responseData.id],
+      positions[toggleTermA!.responseData.id],
       'connected term A must still be visible'
     ).toBeDefined();
     expect(
-      positions[toggleTermB.responseData.id],
+      positions[toggleTermB!.responseData.id],
       'connected term B must still be visible'
     ).toBeDefined();
   });
@@ -114,18 +113,18 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, toggleGlossary!.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
+    await waitForNodeAbsent(page, toggleTermIso!.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodePresent(page, toggleTermIso.responseData.id);
+    await waitForNodePresent(page, toggleTermIso!.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[toggleTermIso.responseData.id],
+      positions[toggleTermIso!.responseData.id],
       'isolated term must be restored after toggling showIsolatedNodes back ON'
     ).toBeDefined();
   });

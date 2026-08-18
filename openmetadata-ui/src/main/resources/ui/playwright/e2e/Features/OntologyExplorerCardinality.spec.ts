@@ -39,27 +39,23 @@ const CUSTOM_RELATION_NAMES = {
   CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
 } as const;
 
-// Per-test isolation: each test owns fresh entities so no cross-test or
-// cross-worker shared state can cause flakiness.
-// Each relation type gets its own isolated source-target pair so no single
-// term accumulates multiple cardinality-constrained relations, which would
-// trigger backend re-validation failures on the second PATCH.
-let glossary!: Glossary;
-let otoSrc!: GlossaryTerm;
-let otoDst!: GlossaryTerm;
-let otmSrc!: GlossaryTerm;
-let otmDst!: GlossaryTerm;
-let mtoSrc!: GlossaryTerm;
-let mtoDst!: GlossaryTerm;
-let mtmSrc!: GlossaryTerm;
-let mtmDst!: GlossaryTerm;
-let cusSrc!: GlossaryTerm;
-let cusDst!: GlossaryTerm;
-let relSrc!: GlossaryTerm;
-let relDst!: GlossaryTerm;
-
 test.describe('Ontology Explorer - Cardinality Labels', () => {
+  let glossary: Glossary | undefined;
+  let otoSrc: GlossaryTerm | undefined;
+  let otoDst: GlossaryTerm | undefined;
+  let otmSrc: GlossaryTerm | undefined;
+  let otmDst: GlossaryTerm | undefined;
+  let mtoSrc: GlossaryTerm | undefined;
+  let mtoDst: GlossaryTerm | undefined;
+  let mtmSrc: GlossaryTerm | undefined;
+  let mtmDst: GlossaryTerm | undefined;
+  let cusSrc: GlossaryTerm | undefined;
+  let cusDst: GlossaryTerm | undefined;
+  let relSrc: GlossaryTerm | undefined;
+  let relDst: GlossaryTerm | undefined;
+
   test.beforeEach(async ({ browser, page }) => {
+    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
 
     glossary = new Glossary();
@@ -166,7 +162,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
     await disposeApiContext(afterAction, apiContext);
 
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
     await applyGlossaryFilter(page, glossary.responseData.id);
@@ -175,7 +170,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    // Guard: if beforeEach threw before all assignments, entities may be undefined.
     if (glossary) {
       await deleteEntities(
         apiContext,
