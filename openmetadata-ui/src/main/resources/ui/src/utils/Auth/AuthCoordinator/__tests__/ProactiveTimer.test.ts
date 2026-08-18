@@ -71,4 +71,28 @@ describe('ProactiveTimer', () => {
     expect(cb).not.toHaveBeenCalled();
     expect(timer.isScheduled()).toBe(false);
   });
+
+  it('does not schedule when expiresAt is 0 (opaque / undecodable token)', () => {
+    // Guards against a tight refresh loop: an opaque token bubbles up as
+    // `expiresAt = 0` from the renewer, which would otherwise fire the
+    // callback immediately, reschedule, and hammer the IdP.
+    const timer = new ProactiveTimer(60_000);
+    const cb = jest.fn();
+    timer.schedule(0, cb);
+    jest.advanceTimersByTime(1_000_000);
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(timer.isScheduled()).toBe(false);
+  });
+
+  it('does not schedule when expiresAt is negative or NaN', () => {
+    const timer = new ProactiveTimer(60_000);
+    const cb = jest.fn();
+    timer.schedule(-1_000, cb);
+    timer.schedule(Number.NaN, cb);
+    jest.advanceTimersByTime(1_000_000);
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(timer.isScheduled()).toBe(false);
+  });
 });

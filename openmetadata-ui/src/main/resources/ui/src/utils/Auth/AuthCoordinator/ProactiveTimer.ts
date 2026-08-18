@@ -18,6 +18,16 @@ export class ProactiveTimer {
 
   schedule(expiresAt: number, callback: () => void): void {
     this.cancel();
+    // A non-positive `expiresAt` (renewer without an exp claim, an opaque
+    // token, or a decoding failure that fell through to 0 in
+    // `extractDetailsFromToken`) is treated as "no valid expiry" — do not
+    // schedule. Otherwise the timer would fire immediately, the callback
+    // would compute expiresAt=0 again, reschedule, and hammer the IdP in a
+    // tight loop. The next real 401 will still drive the refresh via the
+    // axios interceptor.
+    if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+      return;
+    }
     const delay = Math.max(0, expiresAt - Date.now() - this.bufferMs);
     this.handle = setTimeout(() => {
       this.handle = null;
