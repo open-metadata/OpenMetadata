@@ -11,7 +11,7 @@
 """MSSQL source module"""
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from typing import Iterable, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
@@ -23,6 +23,11 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -37,6 +42,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mssql.constants import (
+    MSSQL_PARTITION_NUMERIC_TYPES,
+    MSSQL_PARTITION_TIME_TYPES,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -48,6 +57,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
+    MSSQL_GET_TABLE_PARTITION_DETAILS,
 )
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
@@ -94,6 +104,15 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
+def _classify_partition_interval_type(column_type: str) -> PartitionIntervalTypes:
+    """Maps a partition column's SQL type to the closest PartitionIntervalTypes value."""
+    if column_type in MSSQL_PARTITION_TIME_TYPES:
+        return PartitionIntervalTypes.TIME_UNIT
+    if column_type in MSSQL_PARTITION_NUMERIC_TYPES:
+        return PartitionIntervalTypes.INTEGER_RANGE
+    return PartitionIntervalTypes.OTHER
+
+
 class MssqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
@@ -110,6 +129,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
+        self.partition_details_map: dict[tuple[str, str], TablePartition] = {}
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -144,6 +164,24 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.stored_procedure_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
+
+    def set_partition_details_map(self) -> None:
+        """
+        Fetches partition details for every partitioned table in the current database.
+        """
+        self.partition_details_map.clear()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_TABLE_PARTITION_DETAILS)).all()
+        for row in results:
+            self.partition_details_map[(row.schema_name, row.table_name)] = TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row.partition_column_name,
+                        intervalType=_classify_partition_interval_type(row.partition_column_type),
+                        interval=None,
+                    )
+                ]
+            )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
@@ -190,6 +228,17 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         )
         return Markdown(description) if description else None
 
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+        """
+        Looks up partition details from the map built by set_partition_details_map.
+        """
+        partition_details = self.partition_details_map.get((schema_name, table_name))
+        if partition_details:
+            return True, partition_details
+        return False, None
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
@@ -212,10 +261,21 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 logger.debug(traceback.format_exc())
                 logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
+    def _load_partition_details_map(self) -> None:
+        """
+        Resets and loads partitioned-table details for the current database.
+        """
+        try:
+            self.set_partition_details_map()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not load MSSQL partition details, continuing without them: %s", exc)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self._load_description_maps()
+            self._load_partition_details_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -236,6 +296,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
                 try:
                     self._load_description_maps()
+                    self._load_partition_details_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:

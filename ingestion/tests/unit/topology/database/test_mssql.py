@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
+    PartitionIntervalTypes,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -864,3 +865,86 @@ class TestMssqlPerDatabaseQueryStore:
         engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
 
         assert engines == [fake_source.engine]
+
+
+class TestMssqlPartitionDetails:
+    """Bulk partition-detail fetch (one query per database, not per table)."""
+
+    @staticmethod
+    def _source(rows):
+        source = MssqlSource.__new__(MssqlSource)
+        source.partition_details_map = {}
+        source.engine = MagicMock()
+        conn = source.engine.connect.return_value.__enter__.return_value
+        conn.execute.return_value.all.return_value = rows
+        return source
+
+    @staticmethod
+    def _row(
+        schema_name="dbo",
+        table_name="SalesPartitioned",
+        partition_column_name="SaleDate",
+        partition_column_type="datetime",
+    ):
+        return types.SimpleNamespace(
+            schema_name=schema_name,
+            table_name=table_name,
+            partition_column_name=partition_column_name,
+            partition_column_type=partition_column_type,
+        )
+
+    def test_partitioned_table_is_found_after_one_bulk_query(self):
+        source = self._source([self._row()])
+
+        source.set_partition_details_map()
+        is_partitioned, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        source.engine.connect.assert_called_once()
+        assert is_partitioned is True
+        assert partition_details.columns[0].columnName == "SaleDate"
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.TIME_UNIT
+        # No field on TablePartition/PartitionColumnDetails can hold boundary
+        # values or RANGE direction, and the UI's PartitionedKeys widget doesn't
+        # render `interval` at all -- matches postgres/cockroach leaving it None.
+        assert partition_details.columns[0].interval is None
+
+    def test_table_absent_from_bulk_result_is_not_partitioned(self):
+        source = self._source([self._row()])
+
+        source.set_partition_details_map()
+        is_partitioned, partition_details = source.get_table_partition_details(
+            table_name="Sales-2024", schema_name="dbo", inspector=None
+        )
+
+        assert (is_partitioned, partition_details) == (False, None)
+
+    def test_numeric_column_maps_to_integer_range(self):
+        source = self._source([self._row(partition_column_name="RegionId", partition_column_type="int")])
+
+        source.set_partition_details_map()
+        _, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.INTEGER_RANGE
+
+    def test_other_typed_column_maps_to_other(self):
+        source = self._source([self._row(partition_column_name="Region", partition_column_type="varchar")])
+
+        source.set_partition_details_map()
+        _, partition_details = source.get_table_partition_details(
+            table_name="SalesPartitioned", schema_name="dbo", inspector=None
+        )
+
+        assert partition_details.columns[0].intervalType == PartitionIntervalTypes.OTHER
+
+    def test_lookup_before_any_bulk_load_finds_nothing(self):
+        source = MssqlSource.__new__(MssqlSource)
+        source.partition_details_map = {}
+
+        assert source.get_table_partition_details(table_name="SalesPartitioned", schema_name="dbo", inspector=None) == (
+            False,
+            None,
+        )
