@@ -700,6 +700,12 @@ class TestMssqlQueryStoreSelection:
         engine = self._engine_with_query_store_state(1, readonly_reason=8)
         assert mssql_dialet.is_query_store_enabled(engine) is False
 
+    def test_query_store_disabled_on_ag_secondary_combined_bits(self):
+        # readonly_reason may have the AG-secondary bit (8) combined with other bits.
+        # e.g. 8 | 4 = 12.  The bitwise check must catch this; equality would not.
+        engine = self._engine_with_query_store_state(1, readonly_reason=12)
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
     def test_query_store_enabled_on_read_write_ag_secondary_false(self):
         # readonly_reason == 0 — normal read-write database, Query Store is usable.
         engine = self._engine_with_query_store_state(2, readonly_reason=0)
