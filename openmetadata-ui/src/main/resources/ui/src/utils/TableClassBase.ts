@@ -38,6 +38,7 @@ import {
 
 export interface TableDetailPageTabProps {
   queryCount: number;
+  isQueryCountLoading: boolean;
   isTourOpen: boolean;
   activeTab: EntityTabs;
   feedCount: FeedCounts;
