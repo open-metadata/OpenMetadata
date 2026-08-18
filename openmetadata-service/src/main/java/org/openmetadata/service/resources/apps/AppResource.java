@@ -1342,6 +1342,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
+        ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+            .recordQueuedPipelineStatus(
+                uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
         return Response.status(response.getCode()).entity(response).build();
       }
     }
