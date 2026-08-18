@@ -21,12 +21,26 @@ interface CapturedWebhookRequest {
 
 // Allow room for validation and retry bursts while keeping receiver state bounded.
 const MAX_CAPTURED_WEBHOOK_REQUESTS = 100;
-const WEBHOOK_RECEIVER_HOST =
-  process.env.PLAYWRIGHT_WEBHOOK_HOST ?? 'localhost';
 const capturedWebhookRequests: CapturedWebhookRequest[] = [];
 let webhookServer: Server | undefined;
 
+export const getWebhookReceiverHost = () => {
+  if (process.env.PLAYWRIGHT_IS_OSS) {
+    return 'localhost';
+  }
+
+  const webhookHost = process.env.PLAYWRIGHT_WEBHOOK_HOST?.trim();
+  if (!webhookHost) {
+    throw new Error(
+      'PLAYWRIGHT_WEBHOOK_HOST must be defined for AUT runs because the OpenMetadata pod cannot reach the Playwright webhook receiver through localhost.'
+    );
+  }
+
+  return webhookHost;
+};
+
 export const startWebhookReceiver = async () => {
+  const webhookReceiverHost = getWebhookReceiverHost();
   const server = createServer((request, response) => {
     let body = '';
 
@@ -66,7 +80,7 @@ export const startWebhookReceiver = async () => {
 
       // CI can advertise the host through which a containerized server reaches this process.
       resolve(
-        `http://${WEBHOOK_RECEIVER_HOST}:${address.port}/observability-alert`
+        `http://${webhookReceiverHost}:${address.port}/observability-alert`
       );
     });
   });

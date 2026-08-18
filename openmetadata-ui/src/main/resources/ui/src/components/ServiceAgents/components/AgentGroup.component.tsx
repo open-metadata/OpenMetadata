@@ -25,6 +25,9 @@ import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
 import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
+import AgentCardSkeleton from './AgentCardSkeleton.component';
+
+const DEFAULT_SKELETON_COUNT = 3;
 
 interface AgentGroupProps {
   addAgentSlot?: ReactNode;
@@ -36,8 +39,15 @@ interface AgentGroupProps {
   descKey: string;
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
+  /**
+   * First load only. The list is empty until the caller knows whether there are
+   * any agents, and rendering `emptyPlaceholder` in that window claims "none
+   * exist" before that is known — show placeholder cards instead.
+   */
+  isLoading?: boolean;
   /** Disables the refresh button and swaps its icon for a spinner while a refetch is in flight. */
   isRefreshing?: boolean;
+  skeletonCount?: number;
   titleKey: string;
   onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
@@ -57,7 +67,9 @@ const AgentGroup: FC<AgentGroupProps> = ({
   descKey,
   emptyPlaceholder,
   icon,
+  isLoading = false,
   isRefreshing,
+  skeletonCount = DEFAULT_SKELETON_COUNT,
   onAction,
   onLogs,
   onRefresh,
@@ -67,6 +79,51 @@ const AgentGroup: FC<AgentGroupProps> = ({
 }) => {
   const { t } = useTranslation();
   const runningCount = agents.filter((a) => a.status === 'running').length;
+
+  const renderAgents = () => {
+    if (isLoading) {
+      return (
+        <div
+          aria-busy
+          aria-label={t('label.loading')}
+          aria-live="polite"
+          className="tw:grid tw:gap-2.5"
+          data-testid="agent-group-skeleton"
+          role="status">
+          {Array.from({ length: skeletonCount }, (_, index) => (
+            <AgentCardSkeleton key={`agent-card-skeleton-${index}`} />
+          ))}
+        </div>
+      );
+    }
+
+    if (agents.length === 0 && emptyPlaceholder) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
+          data-testid="agent-group-empty-placeholder">
+          {emptyPlaceholder}
+        </Box>
+      );
+    }
+
+    return (
+      <div className="tw:grid tw:gap-2.5">
+        {agents.map((agent) => (
+          <AgentCard
+            agent={agent}
+            allowedActions={allowedActions}
+            key={agent.id}
+            permissions={agentPermissions?.[agent.fqn]}
+            onAction={onAction}
+            onLogs={onLogs}
+            onRun={onRun}
+            onRunDetails={onRunDetails}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card
@@ -131,28 +188,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
             </Button>
           ))}
       </Box>
-      {agents.length === 0 && emptyPlaceholder ? (
-        <Box
-          className="tw:relative tw:min-h-80 tw:w-full"
-          data-testid="agent-group-empty-placeholder">
-          {emptyPlaceholder}
-        </Box>
-      ) : (
-        <div className="tw:grid tw:gap-2.5">
-          {agents.map((agent) => (
-            <AgentCard
-              agent={agent}
-              allowedActions={allowedActions}
-              key={agent.id}
-              permissions={agentPermissions?.[agent.fqn]}
-              onAction={onAction}
-              onLogs={onLogs}
-              onRun={onRun}
-              onRunDetails={onRunDetails}
-            />
-          ))}
-        </div>
-      )}
+      {renderAgents()}
     </Card>
   );
 };
