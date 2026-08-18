@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import teradatasql
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
@@ -70,12 +69,14 @@ def test_get_connection_url_with_credentials_and_defaults():
     )
 
 
-class _TeradatasqlError(teradatasql.OperationalError):
-    """The real driver exception type, carrying a real driver message.
+class _TeradatasqlError(Exception):
+    """Stands in for ``teradatasql.OperationalError``, carrying a real driver message.
 
     teradatasql exposes no ``.errno``/``.sqlstate``: the codes live in the message,
-    in the shape captured from a live 20.0 system. Subclassing the driver's own
-    error means SQLAlchemy wraps it exactly as it wraps a production failure.
+    in the shape captured from a live 20.0 system. The error pack reads that text
+    and nothing else, so the exception's own type and DBAPI lineage are immaterial
+    - which keeps this module importable, and every classifier test runnable,
+    without the optional ``teradata`` extra installed.
     """
 
 
@@ -254,13 +255,17 @@ def test_get_databases_marks_the_sample_cap_rather_than_implying_an_exact_count(
 
 
 def _engine_failing_with(error: Exception) -> Engine:
-    """A real teradatasql Engine whose DBAPI connect raises ``error``, so SQLAlchemy
-    does the wrapping and the classifier sees the production shape."""
+    """An Engine whose connect raises ``error``, so the runner sees a failing gate.
+
+    The dialect is incidental: run_sql wraps whatever connect raises into a
+    CheckError, and the assertions are on the resulting step result, not on how
+    SQLAlchemy wrapped the cause.
+    """
 
     def connect_raises():
         raise error
 
-    return create_engine("teradatasql://user:pass@td.example.com:1025/", creator=connect_raises)
+    return create_engine("sqlite://", poolclass=StaticPool, creator=connect_raises)
 
 
 def _run_against(engine: Engine) -> TestConnectionResult:
