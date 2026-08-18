@@ -916,11 +916,29 @@ jobs:
             libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
           version: playwright-chromium-deps-v2
 
+      # This is the ONE step per workflow that populates the apt cache
+      # (`playwright-chromium-deps-v2`, above) for every downstream shard.
+      # If it succeeds, all 30+ shards below hit the cache and skip apt
+      # entirely; if it fails, we want the whole workflow to stop here with
+      # a clean "apt mirror was down" attribution instead of half-executing.
+      # The two attempts and the wider 10-min ceiling are the exception to
+      # the "no retries" rule on shards — retrying a once-per-workflow
+      # populator is cheap; retrying on every shard is what we said no to.
+      # The shard-side wrapper stays at a strict 5 min.
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
-          npx playwright install-deps chromium
+          set -euo pipefail
+          install_deps() {
+            timeout --signal=TERM --kill-after=30s 5m \
+              npx playwright install-deps chromium
+          }
+          if ! install_deps; then
+            echo "::warning::install-deps chromium failed on first attempt; sleeping 15s and retrying once before failing the workflow" >&2
+            sleep 15
+            install_deps
+          fi
           npx playwright install chromium
 
       - name: Seed reusable Playwright auth and entity state
