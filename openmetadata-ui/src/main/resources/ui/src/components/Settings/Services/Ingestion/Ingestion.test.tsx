@@ -64,7 +64,11 @@ jest.mock(
 );
 
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
-  jest.fn().mockImplementation(() => <div>AirflowMessageBanner</div>)
+  jest
+    .fn()
+    .mockImplementation(({ unreachableFallbackMessage }) => (
+      <div data-fallback={unreachableFallbackMessage}>AirflowMessageBanner</div>
+    ))
 );
 
 // `Ingestion` takes the status as a prop, but the agent controls below it read the same status from
@@ -88,6 +92,19 @@ describe('Ingestion', () => {
       isFetchingStatus: false,
       platform: 'airflow',
     }));
+  });
+
+  it('should give the banner a fallback message for a status call that carries no reason', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    // The fallback is opt-in, so a call site that forgets it silently loses the only explanation
+    // for why the agent controls below are disabled.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-fallback',
+      'message.pipeline-service-unreachable-agent-actions'
+    );
   });
 
   it('should keep listing the agents when the pipeline service is unavailable', async () => {

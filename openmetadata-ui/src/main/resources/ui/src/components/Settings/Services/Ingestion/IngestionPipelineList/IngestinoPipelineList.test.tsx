@@ -23,7 +23,11 @@ import {
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 jest.mock('../../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
-  jest.fn().mockImplementation(() => <p>AirflowMessageBanner</p>)
+  jest
+    .fn()
+    .mockImplementation(({ unreachableFallbackMessage }) => (
+      <p data-fallback={unreachableFallbackMessage}>AirflowMessageBanner</p>
+    ))
 );
 
 jest.mock(
@@ -129,7 +133,12 @@ describe('IngestionPipelineList', () => {
     fireEvent.click(screen.getByText('rowSelection'));
 
     expect(screen.getByTestId('bulk-re-deploy-button')).toBeDisabled();
-    expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
+    // The fallback is opt-in — without it a thrown status call leaves the disabled button
+    // unexplained.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-fallback',
+      'message.pipeline-service-unreachable-agent-actions'
+    );
   });
 
   it('should not call deployIngestionPipelineById after bulk deploy button click without pipeline selection', async () => {
