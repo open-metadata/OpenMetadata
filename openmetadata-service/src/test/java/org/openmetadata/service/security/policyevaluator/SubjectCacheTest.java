@@ -204,6 +204,20 @@ public class SubjectCacheTest {
   }
 
   @Test
+  void testRemoteTeamWriteDropsAllUserContexts() {
+    // A team's defaultPersona reaches users as inheritedPersonas, and membership/hierarchy edits
+    // change which teams contribute — all of which arrive as a TEAM message, not a PERSONA one.
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
   void testRemoteUnrelatedWriteLeavesUserContextWarm() {
     SubjectCache.getUserContext("testUser");
     clearInvocations(userRepository);
