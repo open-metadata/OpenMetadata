@@ -224,7 +224,7 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
                   className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"
                   key={option.key}>
                   <Checkbox
-                    data-testid={`${option.key}-checkbox`}
+                    data-testid={`${option.label}-checkbox`}
                     isSelected={isOptionSelected(option)}
                     label={
                       option.icon ? (
