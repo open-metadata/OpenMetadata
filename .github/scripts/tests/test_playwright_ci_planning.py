@@ -1855,17 +1855,10 @@ def test_performance_enforcement_reports_convergence_without_failing(
     assert performance["targetsMet"] is False
     assert performance["blockingTargetsMet"] is True
     assert performance["convergenceTargetsMet"] is False
-    # `environmentAtMostFiveMinutes` and `shardsAtMostThirtyMinutesBeforeUpload`
-    # are convergence observations now (see the module docstring in
-    # evaluate_playwright_performance.py). They pass here (no counters set on
-    # the phase fixtures → 0 s) but must appear in the convergence dict so
-    # the summary renderer can still surface them as observations.
     assert performance["convergenceTargets"] == {
         "commonShardSkewAtMostFifteenPercent": False,
         "requestsPerAttemptBelowTwoHundred": False,
         "atMostOneAppBootPerUIScenario": False,
-        "environmentAtMostFiveMinutes": True,
-        "shardsAtMostThirtyMinutesBeforeUpload": True,
     }
 
 
@@ -1900,17 +1893,12 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
             }
         )
     )
-    # Setup phase blew past 5 min AND playwright test wall-clock blew past
-    # 25 min. Only the second one is blocking now (the first is a convergence
-    # observation — a slow apt cache or fixture download shouldn't fail the
-    # run when playwright itself ran inside its wrapper).
     phase_file.write_text(
         json.dumps(
             {
-                "shardId": "chromium-01",
                 "lane": "chromium",
                 "environmentSeconds": 301,
-                "executionSeconds": 1501,
+                "executionSeconds": 1,
             }
         )
     )
@@ -1936,18 +1924,9 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
     with pytest.raises(
         SystemExit,
         match="Blocking Playwright performance targets not met: "
-        "executionAtMostTwentyFiveMinutes",
+        "environmentAtMostFiveMinutes",
     ):
         evaluator.main()
-
-    performance = json.loads(output.read_text())
-    # 301 s > 300 s target, but env is convergence-only now.
-    assert performance["convergenceTargets"]["environmentAtMostFiveMinutes"] is False
-    assert (
-        performance["blockingTargets"]["executionAtMostTwentyFiveMinutes"]
-        is False
-    )
-    assert "environmentAtMostFiveMinutes" not in performance["blockingTargets"]
 
 
 def test_outcome_classifier_reads_include_matrix():

@@ -942,19 +942,19 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # The blocking signal for a shard is the 25-minute `timeout` wrapper
-    # around `npx playwright test` (line ~1140) — playwright test wall-clock
-    # is what we actually gate on in evaluate_playwright_performance.py.
-    # The job clock only exists so a hung runner doesn't burn the org's
-    # concurrency slot indefinitely; it must therefore stay well above the
-    # worst plausible setup+test+upload sum. Run 32117681137's chromium-17
-    # is the trigger: `npx playwright install-deps chromium` took ~10 min
-    # (apt cache miss) instead of ~30 s, tests then finished at 21.1 m, and
-    # the 35-min job clock cancelled the shard exactly as the last test
-    # passed. 50 min absorbs a ~15 min setup spike + 25 min inner wrapper +
-    # ~5-8 min upload without cancelling a run whose tests themselves ran
-    # inside budget.
-    timeout-minutes: 50
+    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
+    # timeout wrapper (line ~1140) + ~5-8 min for setup (env, node, browser,
+    # bundle verify) and teardown/artifact upload. 30 min was tight enough
+    # that slow shards were being cancelled by the job clock while playwright
+    # itself still had time on the inner wrapper; 35 gives real headroom.
+    #
+    # This ceiling only works when the sub-budgets it composes actually hold.
+    # `Install Playwright Browsers` (line ~1113) carries its own `timeout 5m`
+    # for exactly this reason — a slow apt mirror there previously ate 10 min
+    # silently, since `PW_ENVIRONMENT_SECONDS` was recorded before that step
+    # ran, so the 5-min env blocking target couldn't fire. Keep those inner
+    # timeouts in sync when adjusting this outer ceiling.
+    timeout-minutes: 35
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1067,12 +1067,6 @@ jobs:
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
           install-test-dependencies: "false"
 
-      - name: Record environment setup duration
-        run: |
-          finished_at=$(date +%s)
-          echo "PW_ENVIRONMENT_FINISHED_AT=$finished_at" >> "$GITHUB_ENV"
-          echo "PW_ENVIRONMENT_SECONDS=$((finished_at - PW_ENVIRONMENT_STARTED_AT))" >> "$GITHUB_ENV"
-
       - name: Setup Node.js
         id: setup-node
         uses: actions/setup-node@v5
@@ -1106,11 +1100,19 @@ jobs:
           packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
           version: playwright-chromium-deps-v1
 
+      # `install-deps` is `apt-get install` under the hood — on a cache miss
+      # or slow Ubuntu mirror it can crawl for 10+ min (chromium-17 in run
+      # 32117681137, chromium-02 in run 32124717834). Wrap it with a tight
+      # ceiling so the setup phase can never quietly eat the outer job clock;
+      # if apt is slow, fail fast here with a clean attribution instead of
+      # letting the runner cancel the whole shard 20 min later. 5 min is well
+      # above the healthy ~30 s and still inside the 5-min env blocking gate.
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          npx playwright install-deps chromium
+          timeout --signal=TERM --kill-after=30s 5m \
+            npx playwright install-deps chromium
           npx playwright install chromium
 
       - name: Verify the restored authenticated application bundle
@@ -1120,6 +1122,18 @@ jobs:
           PLAYWRIGHT_IS_OSS: "true"
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
         run: npx playwright test --project=bundle-smoke --reporter=line
+
+      # Recorded AFTER every setup step (fixture restore, node, yarn, browser
+      # install, bundle-smoke) so the 5-min `environmentAtMostFiveMinutes`
+      # blocking gate actually measures the full setup phase. Previously this
+      # ran right after "Setup Openmetadata Test Environment", so a 10-min
+      # `install-deps` blowup was invisible to the env gate and only surfaced
+      # as a runner-clock cancellation.
+      - name: Record environment setup duration
+        run: |
+          finished_at=$(date +%s)
+          echo "PW_ENVIRONMENT_FINISHED_AT=$finished_at" >> "$GITHUB_ENV"
+          echo "PW_ENVIRONMENT_SECONDS=$((finished_at - PW_ENVIRONMENT_STARTED_AT))" >> "$GITHUB_ENV"
 
       - name: Run Playwright tests
         id: run-tests

@@ -16,16 +16,6 @@ CONVERGENCE_TARGET_NAMES = frozenset(
         "commonShardSkewAtMostFifteenPercent",
         "requestsPerAttemptBelowTwoHundred",
         "atMostOneAppBootPerUIScenario",
-        # Setup/upload phases were previously blocking; a slow apt cache or
-        # fixture download on a single hosted runner (see chromium-17 in run
-        # 32117681137, where `npx playwright install-deps chromium` took
-        # ~10 min instead of ~30 s) could cancel the whole matrix even when
-        # every playwright test itself ran within its wrapper. The blocking
-        # signal is now the playwright test wall-clock only
-        # (`executionAtMostTwentyFiveMinutes`); setup/upload phases stay
-        # visible as convergence observations.
-        "environmentAtMostFiveMinutes",
-        "shardsAtMostThirtyMinutesBeforeUpload",
     }
 )
 
@@ -113,11 +103,23 @@ def classify_targets(
 # specific shard(s) that exceeded the threshold (per the phase artifacts) so
 # the merge-queue error and the PR summary are useful without the raw log.
 BLOCKING_TARGET_DETAILS: dict[str, dict[str, Any]] = {
+    "environmentAtMostFiveMinutes": {
+        "label": "Environment setup",
+        "phase_field": "environmentSeconds",
+        "unit": "s",
+        "threshold": 300,
+    },
     "executionAtMostTwentyFiveMinutes": {
         "label": "Maximum shard execution",
         "phase_field": "executionSeconds",
         "unit": "s",
         "threshold": 1500,
+    },
+    "shardsAtMostThirtyMinutesBeforeUpload": {
+        "label": "Maximum shard-job elapsed before upload",
+        "phase_field": "elapsedBeforeUploadSeconds",
+        "unit": "s",
+        "threshold": 1800,
     },
 }
 

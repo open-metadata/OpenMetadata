@@ -471,7 +471,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
   if (performance) {
     const performanceRows = [
       {
-        classification: 'Convergence',
+        classification: 'Blocking',
         metric: 'Environment setup',
         observed: `${displayMetric(performanceMetrics.maxEnvironmentSeconds)} s`,
         target: '≤ 300 s',
@@ -485,7 +485,7 @@ async function renderPlaywrightSummary({ github, context, core }) {
         passed: performanceTargets.executionAtMostTwentyFiveMinutes,
       },
       {
-        classification: 'Convergence',
+        classification: 'Blocking',
         metric: 'Maximum shard-job elapsed before upload',
         observed: `${displayMetric(performanceMetrics.maxElapsedBeforeUploadSeconds)} s`,
         target: '≤ 1,800 s',
