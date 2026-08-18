@@ -868,6 +868,14 @@ public class ElasticSearchClient implements SearchClient {
                   org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
+
+              // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+              // pipeline by default. Rest5Client / elasticsearch-java's transport also
+              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // so leaving both enabled makes the second pass run on already-inflated bytes
+              // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
+              // transport layer and let the ES client own decompression.
+              httpAsyncClientBuilder.disableContentCompression();
             });
 
         restClientBuilder.setRequestConfigCallback(
