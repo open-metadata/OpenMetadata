@@ -88,21 +88,61 @@ describe('CrossTabLock (Web Locks path)', () => {
     jest.useFakeTimers();
   });
 
-  it('runs the work when lock is available', async () => {
+  it('runs the work as leader when lock is available', async () => {
     const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
     const result = await lock.runExclusive(async () => 42);
 
-    expect(result).toBe(42);
+    expect(result).toEqual({ role: 'leader', value: 42 });
   });
 
-  it('returns follower-waited when the lock is held elsewhere and notifyDone arrives', async () => {
+  it('follower receives leader payload when notifyDone carries it', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    held.add(TEST_LOCK_NAME);
+    const payload = { idToken: 'from-leader', expiresAt: 12_345 };
+    const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 500 });
+    setTimeout(() => lock.notifyDone(payload), 20);
+
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: { type: 'done', payload },
+    });
+  });
+
+  it('follower receives failed message so it can attempt its own refresh', async () => {
     const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
     held.add(TEST_LOCK_NAME);
     const p = lock.runExclusive(async () => 42, { waitTimeoutMs: 500 });
-    // simulate leader completion
-    setTimeout(() => lock.notifyDone(), 20);
+    setTimeout(() => lock.notifyFailed('boom'), 20);
 
-    await expect(p).resolves.toBe('follower-waited');
+    await expect(p).resolves.toEqual({
+      role: 'follower',
+      message: { type: 'failed', reason: 'boom' },
+    });
+  });
+
+  it('runExclusive broadcasts failed when the leader work throws', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    // Each new BroadcastChannel() in the local mock creates an independent
+    // listener set, so listen on the lock's own channel — the mock's
+    // postMessage self-delivers to same-instance listeners.
+    const received: unknown[] = [];
+    (
+      lock as unknown as {
+        channel: {
+          addEventListener: (t: string, cb: (e: MessageEvent) => void) => void;
+        };
+      }
+    ).channel.addEventListener('message', (event: MessageEvent) => {
+      received.push(event.data);
+    });
+
+    await expect(
+      lock.runExclusive(async () => {
+        throw new Error('renewer blew up');
+      })
+    ).rejects.toThrow('renewer blew up');
+
+    expect(received).toEqual([{ type: 'failed', reason: 'renewer blew up' }]);
   });
 
   it('throws LockTimeoutError if the leader never notifies', async () => {

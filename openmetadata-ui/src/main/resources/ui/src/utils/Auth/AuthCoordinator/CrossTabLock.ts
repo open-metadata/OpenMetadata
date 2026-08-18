@@ -20,6 +20,14 @@ export class LockTimeoutError extends Error {
 
 const DEFAULT_WAIT_TIMEOUT_MS = 10_000;
 
+export type LockDoneMessage = { type: 'done'; payload?: unknown };
+export type LockFailedMessage = { type: 'failed'; reason?: string };
+export type LockMessage = LockDoneMessage | LockFailedMessage;
+
+export type LockResult<T> =
+  | { role: 'leader'; value: T }
+  | { role: 'follower'; message: LockMessage };
+
 export class CrossTabLock {
   private readonly channel: BroadcastChannel;
 
@@ -27,17 +35,23 @@ export class CrossTabLock {
     this.channel = new BroadcastChannel(channelName);
   }
 
+  // Runs `work` under an exclusive cross-tab lock. The leader broadcast is NOT
+  // sent from here — the caller is responsible for persisting any side-effects
+  // (e.g. `setOidcToken`) and then calling `notifyDone(payload)` so followers
+  // never observe a `done` signal before the fresh token is on disk.
+  // If `work` throws, followers are notified with `failed` so they can attempt
+  // their own refresh instead of waiting out the full timeout.
   async runExclusive<T>(
     work: () => Promise<T>,
     options: { waitTimeoutMs?: number } = {}
-  ): Promise<T | 'follower-waited'> {
+  ): Promise<LockResult<T>> {
     const waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
     const locks = (navigator as unknown as { locks?: LockManager }).locks;
     if (!locks) {
-      return this.runWithoutWebLocks(work);
+      return { role: 'leader', value: await this.runWithoutWebLocks(work) };
     }
     let acquired = false;
-    let result: T | 'follower-waited' = 'follower-waited';
+    let leaderValue: T | undefined;
     await locks.request(
       this.lockName,
       { mode: 'exclusive', ifAvailable: true },
@@ -46,31 +60,42 @@ export class CrossTabLock {
           return;
         }
         acquired = true;
-        result = await work();
-        this.channel.postMessage({ type: 'done' });
+        try {
+          leaderValue = await work();
+        } catch (err) {
+          this.channel.postMessage({
+            type: 'failed',
+            reason: err instanceof Error ? err.message : String(err),
+          } as LockFailedMessage);
+
+          throw err;
+        }
       }
     );
-    if (!acquired) {
-      await this.waitForDone(waitTimeoutMs);
+    if (acquired) {
+      return { role: 'leader', value: leaderValue as T };
     }
+    const message = await this.waitForMessage(waitTimeoutMs);
 
-    return result;
+    return { role: 'follower', message };
   }
 
-  notifyDone(): void {
-    this.channel.postMessage({ type: 'done' });
+  notifyDone(payload?: unknown): void {
+    this.channel.postMessage({ type: 'done', payload } as LockDoneMessage);
   }
 
-  private async runWithoutWebLocks<T>(
-    work: () => Promise<T>
-  ): Promise<T | 'follower-waited'> {
+  notifyFailed(reason?: string): void {
+    this.channel.postMessage({ type: 'failed', reason } as LockFailedMessage);
+  }
+
+  private async runWithoutWebLocks<T>(work: () => Promise<T>): Promise<T> {
     return await work();
     // NOTE: Safari-private-mode without Web Locks falls back to per-tab
     // execution. The document expected volume is low enough that a rare
     // double-refresh in this environment is accepted (spec §5.3).
   }
 
-  private waitForDone(timeoutMs: number): Promise<void> {
+  private waitForMessage(timeoutMs: number): Promise<LockMessage> {
     return new Promise((resolve, reject) => {
       // `timer` and `onMessage` reference each other (timeout cleans up the
       // listener, the listener clears the timer), so one must be declared
@@ -81,10 +106,11 @@ export class CrossTabLock {
         reject(new LockTimeoutError());
       }, timeoutMs);
       const onMessage = (event: MessageEvent) => {
-        if (event.data?.type === 'done') {
+        const data = event.data as LockMessage | undefined;
+        if (data?.type === 'done' || data?.type === 'failed') {
           clearTimeout(timer);
           this.channel.removeEventListener('message', onMessage);
-          resolve();
+          resolve(data);
         }
       };
       this.channel.addEventListener('message', onMessage);

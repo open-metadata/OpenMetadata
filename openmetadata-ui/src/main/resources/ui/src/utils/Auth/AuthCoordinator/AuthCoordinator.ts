@@ -12,8 +12,12 @@
  */
 
 import type { AxiosInstance } from 'axios';
-import { setOidcToken } from '../../SwTokenStorageUtils';
-import { CrossTabLock } from './CrossTabLock';
+import {
+  EXPIRY_THRESHOLD_MILLES,
+  extractDetailsFromToken,
+} from '../../AuthProvider.util';
+import { getOidcToken, setOidcToken } from '../../SwTokenStorageUtils';
+import { CrossTabLock, LockTimeoutError } from './CrossTabLock';
 import { TypedEventBus } from './eventBus';
 import { ProactiveTimer } from './ProactiveTimer';
 import { RefreshQueue } from './RefreshQueue';
@@ -30,10 +34,6 @@ type IsRefreshable = (status: number, url: string, body: unknown) => boolean;
 
 const LOCK_NAME = 'om-refresh';
 const CHANNEL_NAME = 'om-auth';
-// Same-tab guard: a follower that just woke from a cross-tab lock wait
-// re-reads the token the leader wrote and reschedules a short recheck rather
-// than trusting it has the leader's real expiry (which it never received).
-const FOLLOWER_RECHECK_MS = 60_000;
 // AuthProvider's mount effect (fetchAuthConfig round-trip + lazy authenticator
 // chunk) registers the renewer asynchronously, while initializeAuthState can
 // call ensureFreshToken() synchronously on cold load right after mount. Wait
@@ -105,7 +105,7 @@ export class AuthCoordinator {
     );
     this.visibility.start(
       () => {
-        this.ensureFreshToken().catch(() => undefined);
+        this.onTabVisible().catch(() => undefined);
       },
       () => this.timer.cancel()
     );
@@ -141,6 +141,38 @@ export class AuthCoordinator {
     this.visibility.stop();
   }
 
+  // When the tab regains visibility, browsers may have throttled or suspended
+  // the proactive renewal timer, so we must re-check freshness ourselves.
+  // Refresh only when the stored token is expired or within the pre-expiry
+  // buffer; otherwise reschedule the timer with the correct remaining time.
+  // Blindly calling ensureFreshToken() on every focus hits the IdP even when
+  // the token is still valid.
+  private async onTabVisible(): Promise<void> {
+    try {
+      const token = await getOidcToken();
+      if (!token) {
+        return;
+      }
+      const { exp, isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+      if (
+        isExpired ||
+        (typeof timeoutExpiry === 'number' && timeoutExpiry <= 0)
+      ) {
+        await this.ensureFreshToken();
+
+        return;
+      }
+      if (typeof exp === 'number' && exp > 0) {
+        this.timer.schedule(exp * 1000, () => {
+          this.ensureFreshToken().catch(() => undefined);
+        });
+      }
+    } catch {
+      // Storage read errors fall through: the next real 401 will drive the
+      // refresh via the axios interceptor.
+    }
+  }
+
   private async awaitRenewer(
     timeoutMs = RENEWER_WAIT_TIMEOUT_MS
   ): Promise<void> {
@@ -164,23 +196,51 @@ export class AuthCoordinator {
     if (!renewer) {
       throw new Error('No renewer registered');
     }
-    try {
-      const result = await this.lock.runExclusive<RenewResult>(async () =>
-        renewer()
-      );
-      if (result === 'follower-waited') {
-        return this.recoverFromFollowerWait();
-      }
-      await setOidcToken(result.idToken);
-      this.bus.emit('refreshed', {
-        expiresAt: result.expiresAt,
-        idToken: result.idToken,
-      });
-      this.timer.schedule(result.expiresAt, () => {
-        this.ensureFreshToken().catch(() => undefined);
-      });
 
-      return result.idToken;
+    let outcome;
+    try {
+      outcome = await this.lock.runExclusive<RenewResult>(() => renewer());
+    } catch (err) {
+      // Follower timed out waiting for the leader (slow IdP, leader tab
+      // closed mid-refresh, missed broadcast). Attempt our own refresh
+      // rather than force-logging the user out.
+      if (err instanceof LockTimeoutError) {
+        return this.doLocalRefresh(renewer);
+      }
+      // Leader's own renewer threw. `runExclusive` already broadcast
+      // `failed` to followers; propagate the failure here.
+      const reason = err instanceof Error ? err.message : String(err);
+      this.bus.emit('refresh-failed', { reason });
+
+      throw err;
+    }
+
+    if (outcome.role === 'follower') {
+      const message = outcome.message;
+      if (message.type === 'done' && this.isRenewResult(message.payload)) {
+        return this.applyRefreshed(message.payload);
+      }
+
+      // Leader broadcast 'failed' (or 'done' without a usable payload) —
+      // try our own refresh rather than logging the user out.
+      return this.doLocalRefresh(renewer);
+    }
+
+    const result = outcome.value;
+    // Persist BEFORE broadcasting so a sibling tab that immediately reads
+    // storage can never observe the old expired token behind a fresh 'done'.
+    await setOidcToken(result.idToken);
+    this.lock.notifyDone(result);
+
+    return this.applyRefreshed(result);
+  }
+
+  private async doLocalRefresh(renewer: Renewer): Promise<string> {
+    try {
+      const result = await renewer();
+      await setOidcToken(result.idToken);
+
+      return this.applyRefreshed(result);
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       this.bus.emit('refresh-failed', { reason });
@@ -189,20 +249,30 @@ export class AuthCoordinator {
     }
   }
 
-  private async recoverFromFollowerWait(): Promise<string> {
-    // Sibling tab did the work; storage should now hold the fresh token.
-    // Re-read via the same storage helper the app uses. Imported dynamically
-    // to keep this rarely-hit branch out of the module's static import graph.
-    const { getOidcToken } = await import('../../SwTokenStorageUtils');
-    const token = await getOidcToken();
-    if (!token) {
-      throw new Error('Follower woke without a token');
-    }
-    this.timer.schedule(Date.now() + FOLLOWER_RECHECK_MS, () => {
+  private applyRefreshed(result: RenewResult): string {
+    this.bus.emit('refreshed', {
+      expiresAt: result.expiresAt,
+      idToken: result.idToken,
+    });
+    this.timer.schedule(result.expiresAt, () => {
       this.ensureFreshToken().catch(() => undefined);
     });
 
-    return token;
+    return result.idToken;
+  }
+
+  private isRenewResult(value: unknown): value is RenewResult {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const v = value as { idToken?: unknown; expiresAt?: unknown };
+
+    return (
+      typeof v.idToken === 'string' &&
+      v.idToken.length > 0 &&
+      typeof v.expiresAt === 'number' &&
+      v.expiresAt > Date.now() - EXPIRY_THRESHOLD_MILLES
+    );
   }
 
   private async pumpQueue(axios: AxiosInstance): Promise<void> {
