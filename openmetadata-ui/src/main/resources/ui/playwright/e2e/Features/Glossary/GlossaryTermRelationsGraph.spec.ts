@@ -23,6 +23,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
+  defined,
 } from '../../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -89,7 +90,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -101,7 +102,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -111,7 +112,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const positions = await readNodePositions(page);
 
     expect(
-      positions[termA!.responseData.id],
+      positions[defined(termA, 'termA').responseData.id],
       'termA (the viewed term) must be present as a node in the graph'
     ).toBeDefined();
   });
@@ -120,7 +121,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -130,7 +131,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const positions = await readNodePositions(page);
 
     expect(
-      positions[termB!.responseData.id],
+      positions[defined(termB, 'termB').responseData.id],
       'termB (directly related via relatedTo) must appear as a node'
     ).toBeDefined();
   });
@@ -139,7 +140,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -147,8 +148,8 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await waitForGraphLoaded(page);
 
     const edges = await readGraphEdges(page);
-    const aId = termA!.responseData.id;
-    const bId = termB!.responseData.id;
+    const aId = defined(termA, 'termA').responseData.id;
+    const bId = defined(termB, 'termB').responseData.id;
 
     const edge = edges.find(
       (e) =>
@@ -169,7 +170,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -178,16 +179,16 @@ test.describe('Glossary Term — Relations Graph tab', () => {
 
     const positions = await readNodePositions(page);
     const edges = await readGraphEdges(page);
-    const aId = termA!.responseData.id;
-    const bId = termB!.responseData.id;
-    const dId = termD!.responseData.id;
+    const aId = defined(termA, 'termA').responseData.id;
+    const bId = defined(termB, 'termB').responseData.id;
+    const dId = defined(termD, 'termD').responseData.id;
 
     expect(
-      positions[termB!.responseData.id],
+      positions[defined(termB, 'termB').responseData.id],
       'termB (relatedTo termA) must appear as a node'
     ).toBeDefined();
     expect(
-      positions[termD!.responseData.id],
+      positions[defined(termD, 'termD').responseData.id],
       'termD (seeAlso from termA) must appear as a node'
     ).toBeDefined();
 
@@ -218,7 +219,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termInX!.visitEntityPage(page);
+    await defined(termInX, 'termInX').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -228,7 +229,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const positions = await readNodePositions(page);
 
     expect(
-      positions[termInY!.responseData.id],
+      positions[defined(termInY, 'termInY').responseData.id],
       'termInY (from a different glossary) must appear as a node when it is related to termInX'
     ).toBeDefined();
   });
@@ -238,7 +239,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
   }) => {
     test.slow();
     await redirectToHomePage(page);
-    await termInX!.visitEntityPage(page);
+    await defined(termInX, 'termInX').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -246,8 +247,8 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await waitForGraphLoaded(page);
 
     const edges = await readGraphEdges(page);
-    const xId = termInX!.responseData.id;
-    const yId = termInY!.responseData.id;
+    const xId = defined(termInX, 'termInX').responseData.id;
+    const yId = defined(termInY, 'termInY').responseData.id;
 
     const hasEdge = edges.some(
       (e) =>
@@ -264,7 +265,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -274,16 +275,16 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const positions = await readNodePositions(page);
 
     expect(
-      positions[termC!.responseData.id],
+      positions[defined(termC, 'termC').responseData.id],
       'termC has no relation to termA and must NOT appear in the graph'
     ).toBeUndefined();
 
     expect(
-      positions[termA!.responseData.id],
+      positions[defined(termA, 'termA').responseData.id],
       'termA (the viewed term) must be present'
     ).toBeDefined();
     expect(
-      positions[termB!.responseData.id],
+      positions[defined(termB, 'termB').responseData.id],
       'termB (directly related to termA) must be present'
     ).toBeDefined();
   });
@@ -292,7 +293,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termC!.visitEntityPage(page);
+    await defined(termC, 'termC').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -303,7 +304,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const edges = await readGraphEdges(page, 0);
 
     expect(
-      positions[termC!.responseData.id],
+      positions[defined(termC, 'termC').responseData.id],
       'termC (the viewed term) must still appear as a node even with no relations'
     ).toBeDefined();
     expect(
@@ -317,7 +318,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
   }) => {
     test.slow();
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -325,7 +326,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await waitForGraphLoaded(page);
 
     const positions = await readNodePositions(page);
-    const bPos = positions[termB!.responseData.id];
+    const bPos = positions[defined(termB, 'termB').responseData.id];
     expect(bPos, 'termB must be present as a node').toBeDefined();
 
     await page.mouse.click(bPos.x, bPos.y);
@@ -339,7 +340,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
@@ -349,16 +350,16 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     const searchInput = page
       .getByTestId('ontology-graph-search')
       .locator('input');
-    await searchInput.fill(termB!.data.name);
+    await searchInput.fill(defined(termB, 'termB').data.name);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[termB!.responseData.id],
+      positions[defined(termB, 'termB').responseData.id],
       'termB matches the search query and must be visible'
     ).toBeDefined();
     expect(
-      positions[termA!.responseData.id],
+      positions[defined(termA, 'termA').responseData.id],
       'termA is a direct neighbour of termB and must also be visible'
     ).toBeDefined();
 
@@ -374,7 +375,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
   }) => {
     test.slow();
     await redirectToHomePage(page);
-    await termA!.visitEntityPage(page);
+    await defined(termA, 'termA').visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
     await page.getByRole('tab', { name: 'Relations Graph' }).click();

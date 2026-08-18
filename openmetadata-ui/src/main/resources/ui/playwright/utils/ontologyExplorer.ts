@@ -186,6 +186,15 @@ export async function disposeApiContext(
   }
 }
 
+
+export function defined<T>(val: T | undefined, name: string): T {
+  if (val === undefined) {
+    throw new Error(`${name} is undefined — beforeEach may not have completed`);
+  }
+
+  return val;
+}
+
 export async function deleteEntities(
   apiContext: APIRequestContext,
   ...entities: Array<Glossary | GlossaryTerm | undefined>

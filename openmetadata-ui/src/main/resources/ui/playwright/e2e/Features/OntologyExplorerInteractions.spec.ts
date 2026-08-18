@@ -25,6 +25,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
+  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -167,18 +168,18 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termRevenue!.responseData.id]).toBeDefined();
-    expect(positions[termExpense!.responseData.id]).toBeDefined();
+    expect(positions[defined(termRevenue, 'termRevenue').responseData.id]).toBeDefined();
+    expect(positions[defined(termExpense, 'termExpense').responseData.id]).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === termRevenue!.responseData.id &&
-          e.to === termExpense!.responseData.id) ||
-        (e.from === termExpense!.responseData.id &&
-          e.to === termRevenue!.responseData.id)
+        (e.from === defined(termRevenue, 'termRevenue').responseData.id &&
+          e.to === defined(termExpense, 'termExpense').responseData.id) ||
+        (e.from === defined(termExpense, 'termExpense').responseData.id &&
+          e.to === defined(termRevenue, 'termRevenue').responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -249,9 +250,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termA!.responseData.id]).toBeDefined();
-    expect(positions[termB!.responseData.id]).toBeDefined();
-    expect(positions[termC!.responseData.id]).toBeUndefined();
+    expect(positions[defined(termA, 'termA').responseData.id]).toBeDefined();
+    expect(positions[defined(termB, 'termB').responseData.id]).toBeDefined();
+    expect(positions[defined(termC, 'termC').responseData.id]).toBeUndefined();
   });
 
   test('edge between the term and its neighbour is present', async ({
@@ -260,9 +261,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === termA!.responseData.id &&
-          e.to === termB!.responseData.id) ||
-        (e.from === termB!.responseData.id && e.to === termA!.responseData.id)
+        (e.from === defined(termA, 'termA').responseData.id &&
+          e.to === defined(termB, 'termB').responseData.id) ||
+        (e.from === defined(termB, 'termB').responseData.id && e.to === defined(termA, 'termA').responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -272,8 +273,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termB!.responseData.id].x,
-      positions[termB!.responseData.id].y
+      positions[defined(termB, 'termB').responseData.id].x,
+      positions[defined(termB, 'termB').responseData.id].y
     );
 
     await expect(

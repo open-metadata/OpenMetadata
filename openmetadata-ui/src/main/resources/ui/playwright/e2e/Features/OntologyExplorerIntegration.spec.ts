@@ -28,6 +28,7 @@ import {
   navigateToOntologyExplorer,
   readNodePositions,
   waitForGraphLoaded,
+  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -61,7 +62,7 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, syncGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(syncGlossary, 'syncGlossary').responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
@@ -75,19 +76,19 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     // Re-navigate instead of the refresh button: the refresh button
     // intermittently clears the glossary filter state (race between the WS
     // auto-update and the manual reload), causing stats to show "0 Terms".
-    await navigateAndFilterByGlossary(page, syncGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(syncGlossary, 'syncGlossary').responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /1\s*Relations?/i
     );
 
     const apiContext2 = await getAuthContext(await getToken(page));
-    await syncTerm1!.patch(apiContext2, [
+    await defined(syncTerm1, 'syncTerm1').patch(apiContext2, [
       { op: 'remove', path: '/relatedTerms/0' },
     ]);
     await apiContext2.dispose();
 
-    await navigateAndFilterByGlossary(page, syncGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(syncGlossary, 'syncGlossary').responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
@@ -129,7 +130,7 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
   test('should display terms with narrower relation in Hierarchy view', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, hierarchyGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(hierarchyGlossary, 'hierarchyGlossary').responseData.id);
 
     await page.getByTestId('view-mode-select').click();
     await page.getByRole('option', { name: 'Hierarchy' }).click();
@@ -174,7 +175,7 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
   test('filtering by relatedTo should show only terms connected by that relation and hide others', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(filterGlossary, 'filterGlossary').responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       '3 Terms'
@@ -190,15 +191,15 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).toHaveProperty(termA!.responseData.id);
-    expect(positions).toHaveProperty(termB!.responseData.id);
-    expect(positions).not.toHaveProperty(termC!.responseData.id);
+    expect(positions).toHaveProperty(defined(termA, 'termA').responseData.id);
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).not.toHaveProperty(defined(termC, 'termC').responseData.id);
   });
 
   test('filtering by synonym should show only terms connected by synonym and hide others', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(filterGlossary, 'filterGlossary').responseData.id);
 
     await applyRelationTypeFilter(page, 'Synonym');
 
@@ -210,15 +211,15 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).not.toHaveProperty(termA!.responseData.id);
-    expect(positions).toHaveProperty(termB!.responseData.id);
-    expect(positions).toHaveProperty(termC!.responseData.id);
+    expect(positions).not.toHaveProperty(defined(termA, 'termA').responseData.id);
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).toHaveProperty(defined(termC, 'termC').responseData.id);
   });
 
   test('clearing relation type filter should restore all connected nodes', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(filterGlossary, 'filterGlossary').responseData.id);
 
     await applyRelationTypeFilter(page, 'Synonym');
 
@@ -233,9 +234,9 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).toHaveProperty(termA!.responseData.id);
-    expect(positions).toHaveProperty(termB!.responseData.id);
-    expect(positions).toHaveProperty(termC!.responseData.id);
+    expect(positions).toHaveProperty(defined(termA, 'termA').responseData.id);
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).toHaveProperty(defined(termC, 'termC').responseData.id);
   });
 });
 
@@ -291,8 +292,8 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     await applyMultiGlossaryFilter(
       page,
-      crossGlossary1!.responseData.id,
-      crossGlossary2!.responseData.id
+      defined(crossGlossary1, 'crossGlossary1').responseData.id,
+      defined(crossGlossary2, 'crossGlossary2').responseData.id
     );
     await waitForGraphLoaded(page);
 
@@ -314,15 +315,15 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     await applyMultiGlossaryFilter(
       page,
-      crossGlossary1!.responseData.id,
-      crossGlossary2!.responseData.id
+      defined(crossGlossary1, 'crossGlossary1').responseData.id,
+      defined(crossGlossary2, 'crossGlossary2').responseData.id
     );
     await waitForGraphLoaded(page);
 
     // In overview mode crossTerm3 should be visible (has a same-glossary edge).
     const overviewPositions = await readNodePositions(page);
     expect(
-      overviewPositions[crossTerm3!.responseData.id],
+      overviewPositions[defined(crossTerm3, 'crossTerm3').responseData.id],
       'crossTerm3 must be visible in Overview mode'
     ).toBeDefined();
 
@@ -334,17 +335,17 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     // crossTerm3 only has a same-glossary edge and must not appear.
     expect(
-      crossPositions[crossTerm3!.responseData.id],
+      crossPositions[defined(crossTerm3, 'crossTerm3').responseData.id],
       'crossTerm3 (same-glossary-only) must NOT appear in Cross Glossary view'
     ).toBeUndefined();
 
     // crossTerm1 and crossTerm2 share a cross-glossary edge and must appear.
     expect(
-      crossPositions[crossTerm1!.responseData.id],
+      crossPositions[defined(crossTerm1, 'crossTerm1').responseData.id],
       'crossTerm1 (has a cross-glossary edge) must be visible'
     ).toBeDefined();
     expect(
-      crossPositions[crossTerm2!.responseData.id],
+      crossPositions[defined(crossTerm2, 'crossTerm2').responseData.id],
       'crossTerm2 (has a cross-glossary edge) must be visible'
     ).toBeDefined();
   });
@@ -429,7 +430,7 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
   }) => {
     test.slow();
 
-    await navigateAndFilterByGlossary(page, spiralGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(spiralGlossary, 'spiralGlossary').responseData.id);
 
     const assetCountsResponse = page.waitForResponse(
       (res) =>
@@ -456,7 +457,7 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
     );
     await clickDataModeAssetBadge(
       page,
-      spiralTerm!.responseData.fullyQualifiedName
+      defined(spiralTerm, 'spiralTerm').responseData.fullyQualifiedName
     );
     await searchResponse;
   });
@@ -491,7 +492,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test('Data mode stats do not show Data Assets when no assets are tagged', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, dataModeGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(dataModeGlossary, 'dataModeGlossary').responseData.id);
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);
@@ -504,7 +505,7 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test('switching back from Data to Model mode restores stats', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, dataModeGlossary!.responseData.id);
+    await navigateAndFilterByGlossary(page, defined(dataModeGlossary, 'dataModeGlossary').responseData.id);
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);
