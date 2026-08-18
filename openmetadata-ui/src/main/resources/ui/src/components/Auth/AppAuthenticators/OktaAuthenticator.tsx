@@ -77,12 +77,11 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       return '';
     };
 
-    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
-    // Task 11). Kept alongside renewToken until every authenticator is
-    // migrated and the old TokenService path is deleted. Reads the raw
-    // Tokens shape directly instead of going through the tokenManager/
-    // setOidcToken side effects renewToken performs — the AuthCoordinator
-    // owns storage now.
+    // Bridges to the AuthCoordinator Renewer contract. Reads the raw Tokens
+    // shape directly instead of going through setOidcToken (the AuthCoordinator
+    // owns app-side storage now), but must still hand the renewed set to
+    // Okta's own tokenManager so subsequent SDK reads/renewals don't see the
+    // expired tokens.
     const getRenewer = useCallback(
       (): Renewer => async () => {
         const tokens = await oktaAuth.token.renewTokens();
@@ -90,6 +89,8 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         if (!tokens.idToken?.idToken) {
           throw new Error('Okta renewal returned no idToken');
         }
+
+        oktaAuth.tokenManager.setTokens(tokens);
 
         return {
           idToken: tokens.idToken.idToken,
