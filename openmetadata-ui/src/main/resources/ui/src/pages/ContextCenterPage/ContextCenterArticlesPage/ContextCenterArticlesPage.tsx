@@ -66,12 +66,14 @@ import {
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   getKnowledgePageByFqn,
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -102,6 +104,8 @@ const ContextCenterArticlesPage = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [debouncedArticleSearchQuery, setDebouncedArticleSearchQuery] =
+    useState('');
   const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
   const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
 
@@ -123,6 +127,15 @@ const ContextCenterArticlesPage = () => {
       showErrorToast(error as AxiosError);
     }
   }, []);
+
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedArticleSearchQuery(articleSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [articleSearchQuery]);
 
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
@@ -177,6 +190,9 @@ const ContextCenterArticlesPage = () => {
           tags,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         knowledgeCenterPageRef.current?.addKnowledgePage(response);
         knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         showSuccessToast(
@@ -349,7 +365,7 @@ const ContextCenterArticlesPage = () => {
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
-        searchQuery={articleSearchQuery}
+        searchQuery={debouncedArticleSearchQuery}
         onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
@@ -360,7 +376,7 @@ const ContextCenterArticlesPage = () => {
     isRightPanelOpen,
     permissions,
     isPermissionsLoading,
-    articleSearchQuery,
+    debouncedArticleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,

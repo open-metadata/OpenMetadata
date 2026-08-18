@@ -40,6 +40,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   serviceDetails,
   ingestionPipelineList,
   airflowInformation,
+  isLoading,
   isCollateAgentLoading,
   collateAgentsList,
   collateAgentPagingInfo,
@@ -85,10 +86,15 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
-  const { isAirflowAvailable, platform } = useMemo(
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
+
+  // The pipeline fetch is gated on the airflow status, so the agent list is only meaningful
+  // once both have settled. Until then the widgets show placeholder cards rather than an
+  // empty state that would read as "this service has no agents".
+  const isAgentsLoading = isFetchingStatus || Boolean(isLoading);
 
   const showAddAgent = useMemo(
     () =>
@@ -114,9 +120,16 @@ const Ingestion: React.FC<IngestionProps> = ({
     [decodedServiceFQN, serviceCategory, tab, navigate]
   );
 
+  // Keyed off the rendered list rather than the raw route param, which is absent on the default
+  // sub-tab — refreshing must never ask for the list the user cannot see.
   const handleRefresh = useCallback(
-    () => refreshAgentsList(subTab as ServiceAgentSubTabs),
-    [refreshAgentsList, subTab]
+    () =>
+      refreshAgentsList(
+        isCollateSubTabSelected
+          ? ServiceAgentSubTabs.COLLATE_AI
+          : ServiceAgentSubTabs.METADATA
+      ),
+    [refreshAgentsList, isCollateSubTabSelected]
   );
 
   const subTabItems = useMemo(() => {
@@ -143,13 +156,22 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   }, [agentCounts, t]);
 
-  if (!isAirflowAvailable) {
+  // Only once the status call has answered — `isAirflowAvailable` is seeded `false`, so
+  // checking it alone flashes the setup guide on every load.
+  if (!isFetchingStatus && !isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
   }
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      <DeploymentSummaryCard agents={agents} />
+      {/* `agents` is one page of the list; the Metadata badge count is the service's real total.
+          Held back until that list is real — its counts read as "0 agents" otherwise. */}
+      {!isAgentsLoading && (
+        <DeploymentSummaryCard
+          agents={agents}
+          totalAgents={agentCounts?.[ServiceAgentSubTabs.METADATA]}
+        />
+      )}
 
       {isCollateAIWidgetSupported && (
         <Tabs
@@ -166,6 +188,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           collateAgentPagingInfo={collateAgentPagingInfo}
           collateAgentsList={collateAgentsList}
           isCollateAgentLoading={isCollateAgentLoading}
+          isLoading={isFetchingStatus}
           serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           workflowStartAt={workflowStartAt}
@@ -176,6 +199,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         <MetadataAgentsView
           agents={agents}
           ingestionPipelineList={ingestionPipelineList}
+          isLoading={isAgentsLoading}
+          isRefreshing={isLoading}
           serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           serviceName={decodedServiceFQN}

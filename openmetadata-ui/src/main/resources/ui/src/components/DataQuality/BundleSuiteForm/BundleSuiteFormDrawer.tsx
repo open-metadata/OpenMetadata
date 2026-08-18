@@ -269,6 +269,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       <AiFormModal
         cancelTestId="cancel-button"
         headerActions={headerActions}
+        isSubmitting={form.formState.isSubmitting}
         open={open}
         submitTestId="submit-button"
         subtitle={t('message.page-sub-header-for-data-quality')}

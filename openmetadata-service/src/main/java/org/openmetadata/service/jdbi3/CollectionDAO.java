@@ -2448,6 +2448,19 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN test_case tc ON er.toId = tc.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (tc.deleted = false OR tc.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedTestCasesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -10290,6 +10303,14 @@ public interface CollectionDAO {
         "DELETE FROM data_quality_data_time_series WHERE entityFQNHash = :testCaseFQNHash AND extension = 'testCase.testCaseResult'")
     void deleteAll(@BindFQN("testCaseFQNHash") String entityFQNHash);
 
+    @SqlUpdate(
+        "DELETE FROM data_quality_data_time_series WHERE entityFQNHash IN (<testCaseFQNHashes>) AND extension = 'testCase.testCaseResult'")
+    void deleteAllBatchInternal(@BindListFQN("testCaseFQNHashes") List<String> entityFQNHashes);
+
+    default void deleteAllBatch(List<String> entityFQNs) {
+      EntityDAO.updateInChunks(entityFQNs, this::deleteAllBatchInternal);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO data_quality_data_time_series(entityFQNHash, extension, jsonSchema, json, incidentId) "
@@ -11033,6 +11054,14 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash = :testCaseFQNHash")
     void deleteAll(@BindFQN("testCaseFQNHash") String testCaseFQN);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash IN (<testCaseFQNHashes>)")
+    void deleteAllBatchInternal(@BindListFQN("testCaseFQNHashes") List<String> testCaseFQNs);
+
+    default void deleteAllBatch(List<String> testCaseFQNs) {
+      EntityDAO.updateInChunks(testCaseFQNs, this::deleteAllBatchInternal);
+    }
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
@@ -13556,8 +13585,9 @@ public interface CollectionDAO {
       // Insert failed due to conflict - check if existing lock is expired
       SearchReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        // Lock is expired, delete it and retry once
-        delete(lockKey);
+        // Keep the cleanup conditional on expiration. Another server may replace the stale row
+        // between this read and the delete, and an unconditional key delete would remove its lock.
+        deleteExpiredLocks(System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }
@@ -14778,6 +14808,50 @@ public interface CollectionDAO {
     List<String> listByOwnersAndDomains(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
+        @Bind("domainJson") String domainJson,
+        @BindList("domainIds") List<String> domainIds,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    // Relationship.FOLLOWS ordinal = 11. Only users follow entities, so unlike ownership there is
+    // no team leg to this query.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowers(
+        @Bind("userId") String userId, @Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND JSON_OVERLAPS(domains, :domainJson) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
+                + "WHERE domain_id IN (<domainIds>)) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowersAndDomains(
+        @Bind("userId") String userId,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,
