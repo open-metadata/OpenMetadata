@@ -752,11 +752,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
                     if source_path:
                         logger.info(f"   ✓ Found source_path in pipeline spec: {source_path}")
-                        notebook_paths.append(source_path)
+                        notebook_paths.append(DLTLibrarySource(path=source_path))
 
                 logger.info(f"✓ Total notebook paths found: {len(notebook_paths)}")
-                for idx, path in enumerate(notebook_paths):
-                    logger.info(f"   {idx + 1}. {path}")
+                for idx, library in enumerate(notebook_paths):
+                    logger.info(f"   {idx + 1}. {library.pattern or library.path}")
             except Exception as exc:
                 logger.error(f"✗ Failed to fetch pipeline config for {pipeline_id}: {exc}")
                 logger.debug(traceback.format_exc())

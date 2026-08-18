@@ -195,6 +195,16 @@ def _extract_option(config_block: str, option_name: str, variables: dict = None)
     return None
 
 
+# The wildcards a Databricks glob include may use. Shared so that the directory
+# reduction and the matcher always agree on what makes a pattern a pattern.
+GLOB_WILDCARDS = ("*", "?")
+
+
+def is_glob_pattern(include: str) -> bool:
+    """True when the include selects a set of files rather than naming one."""
+    return any(wildcard in include for wildcard in GLOB_WILDCARDS)
+
+
 def glob_base_directory(include: str) -> str:
     """
     Reduce a glob include pattern to the directory the caller should list.
@@ -206,9 +216,10 @@ def glob_base_directory(include: str) -> str:
 
     A pattern with no wildcard is already a concrete path and is returned as is.
     """
-    if "*" not in include:
+    if not is_glob_pattern(include):
         return include
-    base = include.split("*", 1)[0]
+    first_wildcard = min(include.index(w) for w in GLOB_WILDCARDS if w in include)
+    base = include[:first_wildcard]
     if not base.endswith("/"):
         # a partial segment such as "/tx/staging*" leaves "/tx/staging", whose
         # directory is the widest thing that is certain to contain the matches

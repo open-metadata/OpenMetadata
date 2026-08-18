@@ -46,6 +46,7 @@ from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     get_pipeline_libraries,
     glob_base_directory,
     glob_matches,
+    is_glob_pattern,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
@@ -565,3 +566,76 @@ class TestGlobMatching:
 
     def test_an_entry_without_a_pattern_always_matches(self):
         assert glob_matches("/tx/anything", None) is True
+
+
+class TestLibraryListIsHomogeneous:
+    """
+    Every entry the connector collects must be a DLTLibrarySource. A raw string
+    slipping in reaches `library.is_directory` and kills lineage for that pipeline,
+    so the spec shapes that produce entries are each covered here.
+    """
+
+    @staticmethod
+    def _libraries_for(spec):
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        client = MagicMock()
+        client.get_pipeline_details.return_value = {"pipeline_id": "p", "spec": spec}
+        client.list_workspace_objects.return_value = []
+        client.export_notebook_source.return_value = ""
+        client.get_table_lineage.return_value = []
+        client.get_column_lineage.return_value = []
+        source.client = client
+        source.metadata = MagicMock()
+        source._databricks_services_cached = True
+        source._databricks_services = [DB_SERVICE]
+
+        seen = []
+        original = DatabrickspipelineSource._expand_workspace_directory
+
+        def record(self, library, path=None, max_depth=5):
+            seen.append(library)
+            return original(self, library, path, max_depth)
+
+        with patch.object(DatabrickspipelineSource, "_expand_workspace_directory", record):
+            pipeline_entity = MagicMock()
+            pipeline_entity.id.root = uuid.uuid4()
+            list(source._yield_kafka_lineage(DataBrickPipelineDetails(pipeline_id="p", name="demo"), pipeline_entity))
+        return seen
+
+    def test_configuration_source_path_is_modelled(self):
+        """A pipeline with no libraries falls back to spec.configuration.source_path."""
+        seen = self._libraries_for({"catalog": CATALOG, "schema": SCHEMA, "configuration": {"source_path": "/src/"}})
+        assert seen and all(isinstance(library, DLTLibrarySource) for library in seen)
+
+    def test_development_source_path_is_modelled(self):
+        seen = self._libraries_for({"catalog": CATALOG, "schema": SCHEMA, "development": {"source_path": "/dev/"}})
+        assert seen and all(isinstance(library, DLTLibrarySource) for library in seen)
+
+    def test_every_library_shape_yields_the_model(self):
+        libraries = get_pipeline_libraries(
+            {
+                "libraries": [
+                    {"notebook": {"path": "/nb"}},
+                    {"file": {"path": "/f.sql"}},
+                    {"glob": {"include": "/tx/**"}},
+                ]
+            }
+        )
+        assert all(isinstance(library, DLTLibrarySource) for library in libraries)
+
+
+class TestQuestionMarkGlob:
+    """`?` is a wildcard, so it must reduce to a directory like `*` does."""
+
+    def test_question_mark_include_is_treated_as_a_pattern(self):
+        assert is_glob_pattern("/tx/file_?.sql") is True
+        assert glob_base_directory("/tx/file_?.sql") == "/tx/"
+
+    def test_question_mark_matches_exactly_one_character(self):
+        assert glob_matches("/tx/file_1.sql", "/tx/file_?.sql") is True
+        assert glob_matches("/tx/file_10.sql", "/tx/file_?.sql") is False
+
+    def test_a_concrete_include_is_not_a_pattern(self):
+        assert is_glob_pattern("/tx/one.sql") is False
+        assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
