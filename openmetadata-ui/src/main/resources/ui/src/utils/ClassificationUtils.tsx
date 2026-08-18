@@ -218,8 +218,28 @@ export const getTagsTableColumn = ({
 export const getClassificationExtraDropdownContent = (
   showDisableOption: boolean,
   isClassificationDisabled: boolean,
-  handleEnableDisableClassificationClick: () => void
+  handleEnableDisableClassificationClick: () => void,
+  showEditOption = false,
+  handleEditClassificationClick: () => void = () => undefined
 ) => [
+  ...(showEditOption
+    ? [
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('label.update-entity', {
+                entity: t('label.classification'),
+              })}
+              icon={EditIcon}
+              id="edit-classification"
+              name={t('label.edit')}
+            />
+          ),
+          key: 'edit-classification-button',
+          onClick: handleEditClassificationClick,
+        },
+      ]
+    : []),
   ...(showDisableOption
     ? [
         {

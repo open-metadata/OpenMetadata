@@ -101,6 +101,11 @@ export default defineConfig({
         // per-test beforeEach (which deletes all intake forms) from racing against
         // the domain intake form this spec creates in beforeAll.
         '**/IntakeFormCustomPropertyFields.spec.ts',
+        // IntakeForm.spec.ts sets required intake-form fields that cause other
+        // chromium tests (e.g. DomainDataProductsWidgets) to fail with 400 when
+        // they create domains or data products. Isolate it post-chromium so those
+        // parallel tests never see active required fields.
+        '**/IntakeForm.spec.ts',
       ],
     },
     {
@@ -194,6 +199,18 @@ export default defineConfig({
       testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    // IntakeForm.spec.ts has a per-test beforeEach that deletes ALL intake forms.
+    // While active, its required fields break parallel chromium tests that create
+    // domains or data products (400 errors). Running after IntakeFormCustomPropertyFields
+    // ensures both isolation from those parallel tests and no deletion-race with
+    // IntakeFormCustomPropertyFields's beforeAll-created form.
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium', 'IntakeFormCustomPropertyFields'],
       fullyParallel: false,
     },
   ],

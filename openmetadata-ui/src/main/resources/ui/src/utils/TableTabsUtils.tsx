@@ -150,6 +150,7 @@ const PartitionedKeys = withSuspenseFallback(
 
 export const getTableDetailPageBaseTabs = ({
   queryCount,
+  isQueryCountLoading,
   isTourOpen,
   tablePermissions,
   activeTab,
@@ -242,6 +243,7 @@ export const getTableDetailPageBaseTabs = ({
           count={queryCount}
           id={EntityTabs.TABLE_QUERIES}
           isActive={activeTab === EntityTabs.TABLE_QUERIES}
+          isLoading={isQueryCountLoading}
           name={get(
             labelMap,
             EntityTabs.TABLE_QUERIES,

@@ -314,6 +314,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -327,7 +331,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -1713,8 +1719,11 @@ export enum EventTypeFilter {
  */
 export interface ExecutorConfiguration {
     /**
-     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for new jobs.
+     * The interval in milliseconds to acquire async jobs. Default: 10 seconds. Kept low enough
+     * that user-facing workflow tasks (e.g. approval tasks) advance without waiting a full 60s
+     * polling cycle, while polling the DB less aggressively than the 2.0 default of 1 second.
+     * The acquire query is a bounded, indexed lookup, so this pickup interval is cheap even
+     * when idle.
      */
     asyncJobAcquisitionInterval?: number;
     /**
@@ -1740,8 +1749,9 @@ export interface ExecutorConfiguration {
      */
     tasksDuePerAcquisition?: number;
     /**
-     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
-     * how often Flowable polls for scheduled jobs.
+     * The interval in milliseconds to acquire timer jobs. Default: 5 seconds. Timer jobs
+     * (due-date escalations, etc.) are less latency-sensitive than async jobs but still benefit
+     * from quick pickup.
      */
     timerJobAcquisitionInterval?: number;
 }

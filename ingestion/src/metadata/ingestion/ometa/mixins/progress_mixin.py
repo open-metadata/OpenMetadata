@@ -24,6 +24,16 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
+RESPONSE_BODY_LOG_LIMIT = 500
+
+
+def error_detail(exc: Exception) -> str:
+    """Truncated server response body for a failed request, empty when unavailable."""
+    body = getattr(getattr(exc, "response", None), "text", None)
+    if not body:
+        return ""
+    return f" - response: {body.strip()[:RESPONSE_BODY_LOG_LIMIT]}"
+
 
 class OMetaProgressMixin:
     """
@@ -54,7 +64,7 @@ class OMetaProgressMixin:
                 update.model_dump(mode="json", exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send progress update: {exc}")
+            logger.debug("Failed to send progress update: %s%s", exc, error_detail(exc))
 
     def send_operation_metrics_batch(
         self, pipeline_fqn: str, run_id: str, batch: OperationMetricsBatch
@@ -74,7 +84,9 @@ class OMetaProgressMixin:
                 batch.model_dump(mode="json", exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send operation metrics batch: {exc}")
+            logger.debug(
+                "Failed to send operation metrics batch: %s%s", exc, error_detail(exc)
+            )
 
     def get_progress_state(
         self, pipeline_fqn: str, run_id: str
@@ -99,5 +111,5 @@ class OMetaProgressMixin:
                 return ProgressUpdate.model_validate(response)
             return None
         except Exception as exc:
-            logger.debug(f"Failed to get progress state: {exc}")
+            logger.debug("Failed to get progress state: %s%s", exc, error_detail(exc))
             return None

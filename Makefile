@@ -109,6 +109,10 @@ snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies
 	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
 	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
+.PHONY: docker-base-image-cve-test
+docker-base-image-cve-test:  ## Assert the ingestion-base image is free of the five Debian 12 OS CVEs and its driver stack still loads. Usage: make docker-base-image-cve-test IMAGE=<tag>
+	./ingestion/tests/docker/base_image_cve_test.sh $(IMAGE)
+
 .PHONY: snyk-ingestion-base-slim-report
 snyk-ingestion-base-slim-report:
 	@echo "Validating Ingestion Slim Container"
@@ -142,8 +146,8 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:local
 
-.PHONY: build-ingestion-base-slim-local
-build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+.PHONY: build-ingestion-slim-local
+build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base-slim:local --build-arg INGESTION_DEPENDENCY=slim
 

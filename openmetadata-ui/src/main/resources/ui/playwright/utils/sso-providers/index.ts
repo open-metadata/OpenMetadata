@@ -27,6 +27,10 @@ export interface ProviderHelper {
     page: Page,
     credentials: ProviderCredentials
   ) => Promise<void>;
+  // OIDC authorize `response_type` the browser must request. Set only for
+  // providers that exercise the front-channel oidc-client UserManager (public
+  // clients); asserted on the IdP redirect as the #29597 regression guard.
+  expectedResponseType?: string;
 }
 
 export const getProviderHelper = (providerType: string): ProviderHelper => {

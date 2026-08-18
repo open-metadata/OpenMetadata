@@ -13,6 +13,11 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
+import glob
+import os
+import re
+import warnings
+
 from datamodel_code_generator.imports import Import
 
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
@@ -41,7 +46,34 @@ UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
-args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(" ")
+# OpenMetadata uses `format` as its own vocabulary rather than only the JSON Schema standard one:
+# the UI form builder picks a widget from it (`FormBuilder.tsx` maps "queryBuilder" to
+# QueryBuilderWidget, "password" to a masked input), and the rest are semantic hints for readers and
+# for the Java/TS generators. datamodel-code-generator only knows the standard formats, so it warns
+# and falls back to the base type -- which is exactly the behaviour we want here.
+#
+# Silence only the vocabulary we own, so a genuinely new or misspelled format still surfaces.
+# Changing these in the schemas is NOT a safe cleanup: `format` drives UI widget selection.
+KNOWN_CUSTOM_FORMATS = (
+    "int64",
+    "json",
+    "queryBuilder",
+    "string",
+    "timezone",
+    "URI",
+    "url",
+    "utc-millisec",
+)
+warnings.filterwarnings(
+    "ignore",
+    message=rf"format of '(?:{'|'.join(map(re.escape, KNOWN_CUSTOM_FORMATS))})' not understood",
+    category=UserWarning,
+)
+
+# `--formatters` is passed explicitly because the external formatters (black, isort) are about to
+# become opt-in upstream. Naming them keeps today's output shape, which the post-processing below
+# depends on: SOURCE_CONFIG_BLOCK matches black's parenthesised-annotation layout.
+args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member --formatters black isort".split(" ")
 
 main(args)
 

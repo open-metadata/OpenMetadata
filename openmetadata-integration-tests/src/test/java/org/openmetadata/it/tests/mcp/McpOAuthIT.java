@@ -75,6 +75,7 @@ public class McpOAuthIT extends McpTestBase {
     JsonNode metadata = OBJECT_MAPPER.readTree(response.body());
     assertThat(metadata.has("resource")).isTrue();
     assertThat(metadata.has("authorization_servers")).isTrue();
+    assertThat(metadata.has("resource_signing_alg_values_supported")).isFalse();
   }
 
   @Test

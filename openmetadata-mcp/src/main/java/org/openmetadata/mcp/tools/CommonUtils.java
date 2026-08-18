@@ -59,6 +59,22 @@ public class CommonUtils {
     return teamsOrUsers;
   }
 
+  /**
+   * Custom properties for the entity being created, as {@code {propertyName: value}}, or null when
+   * the caller supplied none. Returned rather than set on the request because {@code CreateEntity}
+   * exposes no {@code setExtension}; each tool assigns it on its own concrete request type.
+   */
+  public static Object extension(Map<String, Object> params) {
+    Object raw = params.get("extension");
+    if (raw != null && !(raw instanceof Map)) {
+      throw new IllegalArgumentException(
+          "Parameter 'extension' must be an object mapping custom property names to values."
+              + " Received: "
+              + raw);
+    }
+    return raw;
+  }
+
   public static String principal(CatalogSecurityContext securityContext) {
     return securityContext.getUserPrincipal().getName();
   }
