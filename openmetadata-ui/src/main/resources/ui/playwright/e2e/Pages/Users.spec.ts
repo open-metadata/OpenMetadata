@@ -982,19 +982,32 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify no default persona tag exists
+    // Scope to the user's own personas: a system-wide default persona still
+    // renders here as a fallback.
     const finalPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
 
-    await expect(
-      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
-    ).not.toBeVisible();
+    for (const personaName of [
+      persona1.responseData.displayName,
+      persona2.responseData.displayName,
+    ]) {
+      const userPersonaLabel = finalPersonaLabels.filter({
+        hasText: personaName,
+      });
 
-    // Verify there are no selected nor a default persona
-    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+      // Asserted first so the negative checks below cannot pass against a
+      // label that never rendered.
+      await expect(userPersonaLabel).toBeVisible();
 
-    await expect(checkedRadios).toHaveCount(0);
+      await expect(
+        userPersonaLabel.locator('[data-testid="default-persona-tag"]')
+      ).not.toBeVisible();
+
+      await expect(
+        userPersonaLabel.locator('input[type="radio"]')
+      ).not.toBeChecked();
+    }
   });
 });
 
