@@ -1476,6 +1476,7 @@
     "list": "รายการ",
     "list-entity": "รายการ {{entity}}",
     "live": "สด",
+    "live-auto-scroll": "การเลื่อนอัตโนมัติแบบสด",
     "live-indexing": "การจัดทำดัชนีแบบเรียลไทม์",
     "load-more": "โหลดเพิ่มเติม",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",
