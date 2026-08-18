@@ -5,38 +5,41 @@ from typing import Optional, Union
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.source.database.databricks.auth import (
+    get_data_diff_connection_dict,
+)
+from metadata.utils import fqn
 
 
 class DatabricksBaseTableParameter(BaseTableParameter):
-    """Base class for Databricks-based table parameter setters"""
+    """Base class for Databricks-based table parameter setters.
+
+    data_diff resolves a two-part ``schema.table`` path against the connection's
+    catalog, so each side needs the catalog and schema of its own table.
+    """
 
     @classmethod
     def _get_service_connection_config(
         cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:
-        """Build connection URL for Databricks-based connections"""
+        """Build a data-diff connection dict from the connector auth config."""
         if not service_connection_config:
             return None
+        return get_data_diff_connection_dict(service_connection_config)
 
-        scheme = getattr(service_connection_config, "scheme", "databricks")
-        # Handle enum values properly
-        if hasattr(scheme, "value"):
-            scheme = scheme.value
-
-        host_port = getattr(service_connection_config, "hostPort", "localhost:443")
-        token = getattr(service_connection_config, "token", "")
-        token_value = (
-            token.get_secret_value()
-            if hasattr(token, "get_secret_value")
-            else str(token)
-        )
-
-        # Include httpPath if available (required for data_diff library)
-        http_path = getattr(service_connection_config, "httpPath", "")
-        if http_path:
-            # Ensure http_path starts with /
-            if not http_path.startswith("/"):
-                http_path = "/" + http_path
-            return f"{scheme}://:{token_value}@{host_port}{http_path}"
-        return f"{scheme}://:{token_value}@{host_port}"
+    def get_data_diff_url(
+        self,
+        db_service: DatabaseService,
+        table_fqn: str,
+        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
+    ) -> Union[str, dict]:  # noqa: UP007
+        source_url = super().get_data_diff_url(db_service, table_fqn, override_url)
+        if isinstance(source_url, dict):
+            # Work on a copy to avoid mutating a dict that might be reused
+            source_url = dict(source_url)
+            _, catalog, schema, _ = fqn.split(table_fqn)
+            source_url["catalog"] = catalog
+            source_url["schema"] = schema
+        return source_url

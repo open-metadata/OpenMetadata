@@ -49,3 +49,31 @@ DELETE FROM entity_relationship
 WHERE fromEntity = 'dataProduct'
   AND toEntity = 'tableColumn'
   AND relation IN (23, 24);
+
+-- Offer Table Diff on Databricks, Unity Catalog and AzureSQL.
+-- tableDiff.json gained these three services, but test definitions are seed data and
+-- initializeEntity() skips a row that already exists, so an upgraded deployment keeps the old
+-- 10-service list and the Add Test form never offers Table Diff on those connectors.
+-- One statement per service so a customised list keeps its other entries, and each is a no-op
+-- once its service is present. An empty list already means "every service", so leave it alone
+-- rather than narrowing it to three.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'Databricks')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('Databricks'));
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'UnityCatalog')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('UnityCatalog'));
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedServices', 'AzureSQL')
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.supportedServices')) = 'ARRAY'
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.supportedServices')) > 0
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.supportedServices'), JSON_QUOTE('AzureSQL'));
