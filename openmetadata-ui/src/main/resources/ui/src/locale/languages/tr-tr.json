@@ -1476,6 +1476,7 @@
     "list": "Liste",
     "list-entity": "{{entity}} Listesi",
     "live": "Canlı",
+    "live-auto-scroll": "Canlı otomatik kaydırma",
     "live-indexing": "Canlı Endeksleme",
     "load-more": "Daha Fazla Yükle",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",
