@@ -282,8 +282,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     Team after = client.teams().get(teamId, "users,userCount");
     int visibleMembers = after.getUsers() == null ? 0 : after.getUsers().size();
-    assertEquals(
-        0, visibleMembers, "Soft-deleted member must not appear in the team's users list");
+    assertEquals(0, visibleMembers, "Soft-deleted member must not appear in the team's users list");
     assertEquals(
         visibleMembers,
         after.getUserCount(),

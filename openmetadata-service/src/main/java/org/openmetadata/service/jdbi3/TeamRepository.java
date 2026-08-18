@@ -347,9 +347,16 @@ public class TeamRepository extends EntityRepository<Team> {
       return;
     }
 
+    Map<UUID, List<EntityRelationshipRecord>> recordsByTeam = new HashMap<>();
+    List<EntityRelationshipRecord> allRecords = new ArrayList<>();
     for (Team team : teams) {
-      team.setUserCount(countActiveUsers(getUsersRelationshipRecords(team.getId())));
+      List<EntityRelationshipRecord> records = getUsersRelationshipRecords(team.getId());
+      recordsByTeam.put(team.getId(), records);
+      allRecords.addAll(records);
     }
+    Set<UUID> activeUserIds = resolveActiveUserIds(allRecords);
+    teams.forEach(
+        team -> team.setUserCount(countDistinct(recordsByTeam.get(team.getId()), activeUserIds)));
   }
 
   private void fetchAndSetOwns(List<Team> teams, Fields fields) {
@@ -784,18 +791,32 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getUserCount(UUID teamId) {
-    return countActiveUsers(getUsersRelationshipRecords(teamId));
+    List<EntityRelationshipRecord> records = getUsersRelationshipRecords(teamId);
+    return countDistinct(records, resolveActiveUserIds(records));
   }
 
   /**
-   * Counts distinct, non-deleted members so the count matches what {@link #getUsers(Team)} lists.
-   * Counting the raw relationship records instead would keep counting a member whose user was
-   * soft-deleted/deactivated (its HAS row survives), inflating the count above the visible list.
+   * Resolves the ids of the non-deleted members among the given relationship records, using the
+   * same {@code NON_DELETED} resolution {@link #getUsers(Team)} uses. Counting the raw records
+   * instead would keep counting a member whose user was soft-deleted/deactivated (its HAS row
+   * survives), inflating the count above the visible list. Batched so listing many teams stays a
+   * single resolution rather than one per team.
    */
-  private int countActiveUsers(List<EntityRelationshipRecord> userRecords) {
-    List<EntityReference> activeUsers =
-        Entity.getEntityRelationshipRepository().getEntityReferences(userRecords, NON_DELETED);
-    return (int) activeUsers.stream().map(EntityReference::getId).distinct().count();
+  private Set<UUID> resolveActiveUserIds(List<EntityRelationshipRecord> userRecords) {
+    return Entity.getEntityRelationshipRepository()
+        .getEntityReferences(userRecords, NON_DELETED)
+        .stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private int countDistinct(List<EntityRelationshipRecord> records, Set<UUID> activeUserIds) {
+    return (int)
+        records.stream()
+            .map(EntityRelationshipRecord::getId)
+            .distinct()
+            .filter(activeUserIds::contains)
+            .count();
   }
 
   private List<EntityReference> getOwns(Team team) {
