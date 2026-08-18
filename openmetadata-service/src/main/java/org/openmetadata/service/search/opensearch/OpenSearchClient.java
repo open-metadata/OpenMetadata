@@ -102,10 +102,6 @@ import software.amazon.awssdk.regions.Region;
 public class OpenSearchClient implements SearchClient {
   private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
 
-  // How long a caller waits for a connection from the pool. HC5 defaults this to 3 minutes,
-  // so a saturated pool blocks a Jetty thread that long before failing. Fail fast instead.
-  private static final Timeout CONNECTION_REQUEST_TIMEOUT = Timeout.ofSeconds(10);
-
   private volatile boolean isClientAvailable;
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
