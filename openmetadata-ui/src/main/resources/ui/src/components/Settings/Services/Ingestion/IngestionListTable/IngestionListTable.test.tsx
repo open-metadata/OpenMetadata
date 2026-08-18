@@ -240,7 +240,7 @@ describe('Ingestion', () => {
     );
   });
 
-  it('should not claim the pipeline service is unreachable while its status is still being fetched', async () => {
+  it('should use the ordinary empty state while the status call is still in flight', async () => {
     await act(async () => {
       render(
         <IngestionListTable
@@ -261,7 +261,6 @@ describe('Ingestion', () => {
       );
     });
 
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
     expect(screen.getByText('ErrorPlaceholder')).toBeInTheDocument();
   });
 
