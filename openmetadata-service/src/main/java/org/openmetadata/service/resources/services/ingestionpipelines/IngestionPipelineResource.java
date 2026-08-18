@@ -59,6 +59,7 @@ import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,6 +69,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -236,15 +238,25 @@ public class IngestionPipelineResource
   /**
    * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
    * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
+   *
+   * <p>Deriving the workflow type is part of the lookup, not a precondition of it: an application
+   * pipeline can reach here with no `appConfig` to read the type from, and that has to fall back to
+   * the generic create permission like any other unrecognized type rather than fail the request.
    */
   private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
-    String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+    MetadataOperation operation = CREATE;
     try {
-      return MetadataOperation.valueOf(
-          String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase()));
+      String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+      operation =
+          MetadataOperation.valueOf(
+              String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase(Locale.ROOT)));
     } catch (IllegalArgumentException | NullPointerException e) {
-      return CREATE;
+      LOG.debug(
+          "No specific create operation for ingestion pipeline [{}], falling back to {}",
+          ingestionPipeline.getName(),
+          CREATE);
     }
+    return operation;
   }
 
   @GET
@@ -289,6 +301,13 @@ public class IngestionPipelineResource
           @QueryParam("pipelineType")
           String pipelineType,
       @Parameter(
+              description =
+                  "Filter Ingestion Pipelines by agent type. Expands to the set of `pipelineType` "
+                      + "values that make up the group, and is intersected with `pipelineType` when both are given.",
+              schema = @Schema(implementation = AgentType.class))
+          @QueryParam("agentType")
+          AgentType agentType,
+      @Parameter(
               description = "Filter Ingestion Pipelines by service Type",
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
@@ -328,7 +347,8 @@ public class IngestionPipelineResource
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("pipelineType", pipelineType)
+            .addQueryParam(
+                "pipelineType", AgentTypeResolver.resolvePipelineTypes(agentType, pipelineType))
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
@@ -1458,7 +1478,11 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    repository.recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   private void decryptOrNullify(
