@@ -18,9 +18,9 @@ import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/context-center.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
+import { ReactComponent as ContextCenterWidgetIcon } from '../../../assets/svg/widget/context-center.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
@@ -185,7 +185,7 @@ const KnowledgeCenterWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<KnowledgeCenterWidgetIcon height={22} width={22} />}
+        icon={<ContextCenterWidgetIcon height={24} width={24} />}
         isEditView={isEditView}
         title={t('label.context-center')}
         widgetKey={widgetKey}
