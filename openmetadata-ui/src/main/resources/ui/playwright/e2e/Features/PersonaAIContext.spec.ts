@@ -1657,9 +1657,9 @@ test.describe.serial('Persona AI Context', () => {
       await adminPage.getByTestId('add-context-condition').click();
       // After one addRule([]) there are 2 delete buttons (the existing owners
       // rule-group's inner rule + the newly added rule).
-      await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
-        2
-      );
+      await expect(
+        adminPage.getByTestId('delete-condition-button')
+      ).toHaveCount(2);
 
       const firstField = drawer.locator('.rule--field .ant-select').first();
       await firstField.waitFor({ state: 'visible' });
@@ -1687,9 +1687,9 @@ test.describe.serial('Persona AI Context', () => {
       // instead of the new empty slot, overwriting alpha with beta.
       await adminPage.getByTestId('add-context-condition').click();
       // 3 delete buttons: owners inner rule + alpha rule + new empty rule.
-      await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
-        3
-      );
+      await expect(
+        adminPage.getByTestId('delete-condition-button')
+      ).toHaveCount(3);
 
       const secondField = drawer.locator('.rule--field .ant-select').last();
       await selectOption(adminPage, secondField, 'Description', true);
