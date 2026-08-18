@@ -501,7 +501,7 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
 
     Returns False when:
     - Query Store is OFF or in ERROR state.
-    - The connected database is a readable AG secondary (readonly_reason == 8).
+    - The connected database is a readable AG secondary (readonly_reason has the AG-secondary bit set).
       On SQL Server < 2025 the replica's Query Store contains only the primary's
       captured workload; ingesting it would silently replace the secondary's usage
       and lineage with the primary's.
@@ -513,7 +513,7 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
             if row is not None:
                 actual_state, readonly_reason = row[0], row[1]
-                is_ag_secondary = readonly_reason == _QS_READONLY_REASON_AG_SECONDARY
+                is_ag_secondary = bool(readonly_reason & _QS_READONLY_REASON_AG_SECONDARY)
                 enabled = (
                     actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
                     and not is_ag_secondary
@@ -521,7 +521,7 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 if is_ag_secondary:
                     logger.info(
                         "MSSQL query history: Query Store is READ-ONLY because this database "
-                        "is a readable AG secondary (readonly_reason=8). The replica's Query "
+                        "is a readable AG secondary (readonly_reason AG-secondary bit set). The replica's Query "
                         "Store contains the primary's workload. Falling back to plan-cache DMVs."
                     )
         except Exception as exc:
