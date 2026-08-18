@@ -29,6 +29,7 @@ import { Column } from '../../../../generated/entity/data/table';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
@@ -93,9 +94,10 @@ const LineageSearchSelect = () => {
                 <RightOutlined className="text-grey-muted text-xss" />
               </div>
               <div className="d-flex items-center gap-1 ">
-                <div className="flex-center w-4 h-4 text-base-color">
-                  {searchClassBase.getEntityIcon(node.entityType ?? '')}
-                </div>
+                {searchClassBase.getEntityIconWithBg(
+                  node.entityType ?? '',
+                  EntityIconSize.Size14
+                )}
                 <Typography.Text>{getEntityName(column)}</Typography.Text>
               </div>
             </div>

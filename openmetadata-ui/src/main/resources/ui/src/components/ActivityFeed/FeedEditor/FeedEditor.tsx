@@ -49,6 +49,7 @@ import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
@@ -173,16 +174,16 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = searchClassBase.getEntityIcon(item.type ?? '');
-
-        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
+        const iconString = ReactDOMServer.renderToString(
+          searchClassBase.getEntityIconWithBg(item.type ?? '', EntityIconSize.Size14)
+        );
 
         const typeSpan = !breadcrumbEle
           ? `<span class="text-grey-muted text-xs">${item.type}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${iconString}</div>
+          ${iconString}
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">

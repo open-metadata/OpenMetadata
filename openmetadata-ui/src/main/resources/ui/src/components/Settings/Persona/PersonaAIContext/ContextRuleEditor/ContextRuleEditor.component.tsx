@@ -54,10 +54,8 @@ import {
   PersonaContextRulePreview,
   previewPersonaAIContextRule,
 } from '../../../../../rest/PersonaAPI';
-import {
-  EntityIconSize,
-  getEntityIcon,
-} from '../../../../../utils/EntityIconUtils';
+import { EntityIconSize } from '../../../../../utils/EntityIconUtils';
+import searchClassBase from '../../../../../utils/SearchClassBase';
 import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
@@ -183,7 +181,7 @@ export const ContextRuleEditor = ({
       [...PERSONA_CONTEXT_ASSET_TYPES, ...PERSONA_CONTEXT_KNOWLEDGE_TYPES].map(
         (type) => ({
           id: type,
-          icon: getEntityIcon(type, '', {}, EntityIconSize.Size16),
+          icon: searchClassBase.getEntityIconWithBg(type, EntityIconSize.Size14),
           label: t(PERSONA_CONTEXT_ENTITY_LABEL_KEYS[type]),
           supportingText: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
             type as EntityType
