@@ -15,7 +15,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
   expandSchemaInExploreTree,
@@ -228,7 +231,7 @@ test.describe(
       expect(filteredCount).toBeLessThan(unfilteredCount);
     });
 
-    test('result-card breadcrumb collapses a deep path and expands on click', async ({
+    test('every result-card breadcrumb links to its hierarchy destination', async ({
       page,
     }) => {
       test.slow();
@@ -241,18 +244,61 @@ test.describe(
       await searchRes;
       await waitForAllLoadersToDisappear(page);
 
-      // The middle crumbs are collapsed into a clickable "…" menu — the trail
+      const card = page.getByTestId(
+        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+      );
+      const breadcrumb = card.getByRole('list', { name: 'Breadcrumb' });
+      const serviceLink = breadcrumb.getByRole('link', {
+        name: table.serviceResponseData.name,
+      });
+      const schemaLink = breadcrumb.getByRole('link', {
+        name: table.schemaResponseData.name,
+      });
+
+      await expect(serviceLink).toHaveAttribute(
+        'href',
+        `/service/databaseServices/${getEncodedFqn(
+          table.serviceResponseData.name
+        )}`
+      );
+      await expect(schemaLink).toHaveAttribute(
+        'href',
+        `/databaseSchema/${getEncodedFqn(
+          table.schemaResponseData.fullyQualifiedName
+        )}`
+      );
+
+      // The middle crumb is collapsed into a clickable "…" menu — the trail
       // stays compact (first / … / last) instead of spanning the whole card.
-      const collapseButton = page
-        .getByRole('button', { name: 'Show hidden breadcrumbs' })
-        .first();
+      const collapseButton = breadcrumb.getByRole('button', {
+        name: 'Show hidden breadcrumbs',
+      });
       await expect(collapseButton).toBeVisible();
 
-      // Clicking the "…" reveals the hidden middle crumbs.
       await collapseButton.click();
-      await expect(
-        page.getByRole('menu', { name: 'Hidden breadcrumbs' })
-      ).toBeVisible();
+      const hiddenBreadcrumbs = page.getByRole('menu', {
+        name: 'Hidden breadcrumbs',
+      });
+      const databaseLink = hiddenBreadcrumbs.getByRole('menuitemradio', {
+        name: table.databaseResponseData.name,
+      });
+
+      await expect(databaseLink).toHaveAttribute(
+        'href',
+        `/database/${getEncodedFqn(
+          table.databaseResponseData.fullyQualifiedName
+        )}`
+      );
+
+      await page.keyboard.press('Escape');
+      await schemaLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/databaseSchema/${getEncodedFqn(
+            table.schemaResponseData.fullyQualifiedName
+          )}$`
+        )
+      );
     });
 
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
