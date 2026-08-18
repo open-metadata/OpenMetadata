@@ -117,7 +117,12 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     if (hierarchyGlossary) {
-      await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
+      await deleteEntities(
+        apiContext,
+        childTerm,
+        parentTerm,
+        hierarchyGlossary
+      );
     }
     await disposeApiContext(afterAction, apiContext);
   });
