@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import KPIImg from '../assets/img/kpi.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
-import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import ActivityFeedImg from '../assets/img/widgets/activity-feed-widget.png';
 import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
 import CuratedAssetsImg from '../assets/img/widgets/curated-assets.png';
@@ -21,22 +19,18 @@ import DataAssetsImg from '../assets/img/widgets/data-assets-widget.png';
 import DataProductsImg from '../assets/img/widgets/data-products-widget.png';
 import DomainsImg from '../assets/img/widgets/domains-widget.png';
 import FollowingImg from '../assets/img/widgets/following-widget.png';
-import KPISmallImg from '../assets/img/widgets/kpi-widget.png';
+import KPIImg from '../assets/img/widgets/kpi-widget.png';
 import MyDataImg from '../assets/img/widgets/my-data-widget.png';
 import TotalAssetsImg from '../assets/img/widgets/total-assets-widget.png';
 import {
-  LandingPageWidgetKeys,
-  WidgetWidths,
+  LandingPageWidgetKeys
 } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
 // Widget preview screenshots are only needed inside customize/add-widget flows.
 // Keeping them out of CustomizeMyDataPageClassBase avoids preloading these
 // image modules when /my-data only needs layout defaults.
-export const getMyDataWidgetImageFromKey = (
-  widgetKey: string,
-  size?: number
-): string => {
+export const getMyDataWidgetImageFromKey = (widgetKey: string): string => {
   switch (widgetKey) {
     case LandingPageWidgetKeys.ACTIVITY_FEED: {
       return ActivityFeedImg;
@@ -51,17 +45,9 @@ export const getMyDataWidgetImageFromKey = (
       return MyDataImg;
     }
     case LandingPageWidgetKeys.KPI: {
-      if (size === WidgetWidths.small) {
-        return KPISmallImg;
-      }
-
       return KPIImg;
     }
     case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
-      if (size === WidgetWidths.medium) {
-        return TotalAssetsMediumImg;
-      }
-
       return TotalAssetsImg;
     }
     case LandingPageWidgetKeys.FOLLOWING: {
