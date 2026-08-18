@@ -132,7 +132,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
-import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1726,26 +1725,7 @@ public class TableRepository extends EntityRepository<Table> {
   protected void entitySpecificCleanup(String deletedBy, Table table) {
     deleteResidualTestCases(table, deletedBy);
     deleteResidualExecutableTestSuite(table, deletedBy);
-  }
-
-  @Override
-  protected void postDelete(Table table, boolean hardDelete) {
-    super.postDelete(table, hardDelete);
-    if (hardDelete) {
-      AsyncService.getInstance().execute(() -> deleteProfilerDataSafely(table));
-    }
-  }
-
-  private void deleteProfilerDataSafely(Table table) {
-    try {
-      deleteProfilerData(table);
-    } catch (RuntimeException exception) {
-      LOG.error(
-          "Failed to purge profiler data for hard-deleted table {}. "
-              + "The orphaned time-series cleanup will retry it.",
-          table.getFullyQualifiedName(),
-          exception);
-    }
+    deleteProfilerData(table);
   }
 
   /**

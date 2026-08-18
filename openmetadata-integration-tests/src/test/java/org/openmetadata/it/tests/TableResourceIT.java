@@ -2011,7 +2011,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(table.getId().toString());
 
-    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+    assertProfilerRowsDeleted(tableFqn, columnFqn);
 
     Table recreated = createEntity(createRequest);
     assertEquals(
@@ -2083,7 +2083,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
     client.databaseSchemas().delete(schema.getId().toString(), params);
 
-    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+    assertProfilerRowsDeleted(tableFqn, columnFqn);
   }
 
   /**
@@ -2113,14 +2113,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(table.getId().toString());
 
-    Awaitility.await("column profile history is drained")
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () ->
-                assertEquals(
-                    0,
-                    countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
-                    "Purge must keep batching until the column profile history is drained"));
+    assertEquals(
+        0,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Purge must keep batching until the column profile history is drained");
   }
 
   /**
@@ -2159,14 +2155,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     hardDeleteEntity(shrunkTable.getId().toString());
 
-    Awaitility.await("dropped column profiles are purged")
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () ->
-                assertEquals(
-                    0,
-                    countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION),
-                    "Hard delete must purge column profiles of columns dropped before the delete"));
+    assertEquals(
+        0,
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION),
+        "Hard delete must purge column profiles of columns dropped before the delete");
   }
 
   @Test
@@ -2295,24 +2287,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                     .one());
   }
 
-  private void awaitProfilerRowsDeleted(String tableFqn, String columnFqn) {
-    Awaitility.await("profiler data is purged for " + tableFqn)
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              assertEquals(
-                  0,
-                  countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
-                  "Hard delete must purge table profile rows");
-              assertEquals(
-                  0,
-                  countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
-                  "Hard delete must purge column profile rows");
-              assertEquals(
-                  0,
-                  countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
-                  "Hard delete must purge system profile rows");
-            });
+  private void assertProfilerRowsDeleted(String tableFqn, String columnFqn) {
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+        "Hard delete must purge table profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Hard delete must purge column profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+        "Hard delete must purge system profile rows");
   }
 
   // ===================================================================
