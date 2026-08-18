@@ -24,6 +24,8 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
+import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 
 export default [
   // Base recommended configs
@@ -100,6 +102,8 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-imports': openMetadataImports,
+      'openmetadata-performance': openMetadataPerformance,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -292,7 +296,7 @@ export default [
 
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
       // backlog at the time of writing; they only go down.
-      'react-hooks/exhaustive-deps': 'warn', // 1694 across 595 files
+      'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
       'jsx-a11y/control-has-associated-label': 'warn', // 146
       'jsx-a11y/click-events-have-key-events': 'warn', // 89
       'jsx-a11y/no-static-element-interactions': 'warn', // 87
@@ -334,16 +338,45 @@ export default [
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 23
-      'react/jsx-no-constructed-context-values': 'warn', // 1
-      'react/no-unstable-nested-components': 'warn', // 1
+      'react/no-array-index-key': 'warn', // 93 across 59 files
+      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
+      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
       '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // Import architecture and request fan-out. These are warnings while the
+      // measured legacy backlog is worked down; they are reporting-only and do
+      // not rewrite source under --fix.
+      'openmetadata-imports/no-api-calls-in-iteration': 'warn',
+      'openmetadata-imports/no-circular-imports': 'warn',
+      'openmetadata-imports/no-cross-page-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-impure-pure-utils': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'warn',
+      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-lower-layer-page-imports': 'warn',
+      'openmetadata-imports/no-rest-ui-imports': 'warn',
+      'openmetadata-imports/review-sequential-api-calls': 'warn',
+
+      // Repository-specific performance invariants. These rules have no
+      // existing backlog and are reporting-only, so they can block without
+      // rewriting files under --fix.
+      'openmetadata-performance/require-suspense-fallback': 'error',
+      'openmetadata-performance/no-unbounded-module-cache': 'error',
 
       // NOT enabled: react/jsx-no-useless-fragment. It auto-fixes, so at any
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  // Route modules must preserve page-level code splitting. Type-only imports
+  // remain allowed because they do not create a runtime bundle edge.
+  {
+    files: ['src/components/AppRouter/**/*.{ts,tsx}'],
+    rules: {
+      'openmetadata-performance/no-eager-page-imports': 'error',
     },
   },
 
@@ -405,6 +438,54 @@ export default [
       '@typescript-eslint/no-unused-expressions': 'warn',
       'prefer-const': 'off',
 
+      // Playwright must not import application code from `src/`.
+      //
+      // Playwright runs in plain Node with no bundler, no CSS pipeline and no
+      // i18n bootstrap. A single import of an app util drags the whole app
+      // dependency graph into the test process, e.g.:
+      //
+      //   IncidentManager.spec.ts
+      //     -> playwright/utils/incidentManager        (playwright util)
+      //       -> src/utils/StringUtils                 (app util)
+      //         -> src/utils/i18next/LocalUtil         (app i18n bootstrap)
+      //           -> @openmetadata/ui-core-components  (the whole component library)
+      //
+      // Two exceptions, both dependency-free by construction:
+      //   • src/generated/**  — code-generated schema types/enums; they are the
+      //     API contract the tests build request payloads from, and generated
+      //     files only ever reference other generated files.
+      //   • src/enums/**      — leaf enum modules with no imports of their own.
+      //
+      // Anything else (utils, context, components, rest, hooks, pages) must be
+      // duplicated under playwright/ instead — see playwright/utils/dateTime.ts
+      // and playwright/support/entity/Entity.interface.ts for the pattern.
+      // Type-only imports are restricted too: an `import type` that later loses
+      // its `type` keyword silently reintroduces the runtime dependency.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              // A `group` of ['**/src/**', '!**/src/generated/**'] does NOT
+              // work here: `group` uses gitignore semantics, which cannot
+              // re-include a path whose parent directory is already excluded.
+              // The negative lookahead is what actually carves out the two
+              // allowed subtrees.
+              regex: '(^|/)src/(?!generated/|enums/)',
+              message:
+                'Playwright tests must not import app code from src/ — it pulls the app dependency graph (i18n, @openmetadata/ui-core-components) into the test process. Only src/generated/** and src/enums/** are allowed; duplicate anything else under playwright/.',
+            },
+          ],
+          paths: [
+            {
+              name: '@openmetadata/ui-core-components',
+              message:
+                'The component library must never be imported by Playwright tests — it is browser-only React code with no place in a Node test process.',
+            },
+          ],
+        },
+      ],
+
       // Playwright rules — blocking (error): zero existing violations, prevent regressions
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
@@ -451,6 +532,16 @@ export default [
             'Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.',
         },
       ],
+    },
+  },
+
+  // Test fixtures use literal and repeated strings as selectors and controlled inputs,
+  // so production-facing string rules create noise without protecting user-visible copy.
+  {
+    files: ['src/**/*.test.{ts,tsx}'],
+    rules: {
+      'i18next/no-literal-string': 'off',
+      'sonarjs/no-duplicate-string': 'off',
     },
   },
 

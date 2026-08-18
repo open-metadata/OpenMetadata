@@ -36,7 +36,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -51,6 +51,15 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../rest/userAPI', () => ({
   getLoggedInUser: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUser: jest.fn().mockImplementation(() => Promise.resolve()),
+  getUserPreferences: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ preferences: [] })),
+}));
+
+jest.mock('../../../rest/settingConfigAPI', () => ({
+  getAppConfiguration: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ defaultAppMode: null })),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -493,5 +502,74 @@ describe('Test axios response interceptor', () => {
 
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
+  });
+
+  it('should refresh the token and retry a normal 401 request', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'retried' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('newToken');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Expired token!' },
+      },
+      config: {
+        url: '/tables/name/foo',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    const result = await errorHandler?.(mockError);
+
+    // The queued request is retried with the refreshed token, never left parked.
+    expect(mockRefreshToken).toHaveBeenCalled();
+    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+    expect(result).toEqual({ data: 'retried' });
+  });
+
+  it('should refresh loggedInUser on an unknown signing-key 401, not only on expiry', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'ok' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('newToken');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: {
+          message:
+            'Not Authorized! Token signing key not found in configured public keys',
+        },
+      },
+      config: {
+        url: '/users/loggedInUser',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    const result = await errorHandler?.(mockError);
+
+    // IdP key-rotation 401 on the polled endpoint must refresh + retry, not log out.
+    expect(mockRefreshToken).toHaveBeenCalled();
+    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+    expect(result).toEqual({ data: 'ok' });
   });
 });

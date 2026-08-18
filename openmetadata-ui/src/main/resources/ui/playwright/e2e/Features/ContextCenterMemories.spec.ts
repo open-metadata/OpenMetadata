@@ -75,6 +75,11 @@ test.describe(
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        linkedTable.entityResponseData.fullyQualifiedName,
+        'table_search_index'
+      );
 
       // dataConsumerPage is a per-test fixture and isn't resolved inside
       // beforeAll, so open a page against the same storage state directly.
@@ -1280,7 +1285,9 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /faq/i }).click();
+        const faqOption = page.getByRole('option', { name: /faq/i });
+        await faqOption.click();
+        await faqOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)
@@ -1317,7 +1324,9 @@ test.describe(
         await editVisibilityBtn.click();
 
         await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        const privateOption = page.getByRole('option', { name: /private/i });
+        await privateOption.click();
+        await privateOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)

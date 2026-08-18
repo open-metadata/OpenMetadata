@@ -460,3 +460,40 @@ SET json = jsonb_set(
 WHERE serviceType = 'DatabricksPipeline'
   AND json #> '{connection,config,token}' IS NOT NULL
   AND NOT jsonb_exists(json #> '{connection,config}', 'authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX IF NOT EXISTS idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    PRIMARY KEY (userId)
+);

@@ -12,8 +12,10 @@
  */
 
 import { expect, Locator, Page, test } from '@playwright/test';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -242,6 +244,46 @@ test.describe('Connection config layout', () => {
     ]) {
       await expectConnectorConnectionForm(page, connectorName);
     }
+  });
+
+  test('should scroll the form when the wheel is over the blank margin beside it', async ({
+    page,
+  }) => {
+    // On a wide screen the form is capped at max-w-screen-lg and centred, leaving a blank strip on
+    // either side. Those strips belong to the panel, which must own the scroll — when the centred
+    // body owned it instead, wheeling over them did nothing.
+    // Wide enough to leave the blank margins, short enough that the connector grid overflows.
+    await page.setViewportSize({ width: 1920, height: 700 });
+    await openAddDatabaseServicePage(page);
+
+    const panel = page.locator('.resizable-first-panel');
+    const formBody = panel.locator('> div').first();
+    const panelBox = await getBox(panel);
+    const formBox = await getBox(formBody);
+    const marginWidth =
+      panelBox.x + panelBox.width - (formBox.x + formBox.width);
+    const overflow = await panel.evaluate(
+      (element) => element.scrollHeight - element.clientHeight
+    );
+
+    expect(
+      marginWidth,
+      'no blank margin to test at this width'
+    ).toBeGreaterThan(40);
+    expect(
+      overflow,
+      'the panel is not the scroll port, so the margins cannot scroll'
+    ).toBeGreaterThan(0);
+
+    await page.mouse.move(
+      formBox.x + formBox.width + marginWidth / 2,
+      panelBox.y + panelBox.height / 2
+    );
+    await page.mouse.wheel(0, 600);
+
+    await expect
+      .poll(() => panel.evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
   });
 
   test('should align nested sample data storage config fields without overlap', async ({
@@ -534,6 +576,7 @@ test.describe('Connection config layout', () => {
     }
 
     await page.locator('#service-name').fill('pw-snowflake-auth-payload');
+    await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
     await expect(page.getByTestId('connection-schema-loader')).toBeHidden({
       timeout: 10000,
     });
@@ -599,6 +642,8 @@ test.describe('Connection config layout', () => {
     await tableSection
       .getByRole('button', { name: 'Show equivalent regex' })
       .click();
-    await expect(tableSection.getByText('includes += orders')).toBeVisible();
+    await expect(
+      tableSection.getByText('includes += .*orders.*')
+    ).toBeVisible();
   });
 });
