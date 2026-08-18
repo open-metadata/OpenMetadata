@@ -19,7 +19,6 @@ import {
   addTermRelation,
   applyGlossaryFilter,
   createApiContext,
-  deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readCardinalityMap,
@@ -55,7 +54,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
   let relDst: GlossaryTerm | undefined;
 
   test.beforeEach(async ({ browser, page }) => {
-    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
 
     glossary = new Glossary();
@@ -73,18 +71,20 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     relDst = new GlossaryTerm(glossary);
 
     await glossary.create(apiContext);
-    await otoSrc.create(apiContext);
-    await otoDst.create(apiContext);
-    await otmSrc.create(apiContext);
-    await otmDst.create(apiContext);
-    await mtoSrc.create(apiContext);
-    await mtoDst.create(apiContext);
-    await mtmSrc.create(apiContext);
-    await mtmDst.create(apiContext);
-    await cusSrc.create(apiContext);
-    await cusDst.create(apiContext);
-    await relSrc.create(apiContext);
-    await relDst.create(apiContext);
+    await Promise.all([
+      otoSrc.create(apiContext),
+      otoDst.create(apiContext),
+      otmSrc.create(apiContext),
+      otmDst.create(apiContext),
+      mtoSrc.create(apiContext),
+      mtoDst.create(apiContext),
+      mtmSrc.create(apiContext),
+      mtmDst.create(apiContext),
+      cusSrc.create(apiContext),
+      cusDst.create(apiContext),
+      relSrc.create(apiContext),
+      relDst.create(apiContext),
+    ]);
 
     // Add all custom relation types in a single batch RMW to minimise the
     // conflict window with concurrent parallel workers. Five sequential
@@ -171,22 +171,7 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     if (glossary) {
-      await deleteEntities(
-        apiContext,
-        otoSrc,
-        otoDst,
-        otmSrc,
-        otmDst,
-        mtoSrc,
-        mtoDst,
-        mtmSrc,
-        mtmDst,
-        cusSrc,
-        cusDst,
-        relSrc,
-        relDst,
-        glossary
-      );
+      await glossary.delete(apiContext);
     }
     await disposeApiContext(afterAction, apiContext);
   });

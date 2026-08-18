@@ -19,14 +19,13 @@ import {
   addTermRelation,
   applyGlossaryFilter,
   createApiContext,
-  deleteEntities,
+  defined,
   disposeApiContext,
   navigateToOntologyExplorer,
   readCardinalityMap,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-  defined,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -42,7 +41,6 @@ test.describe('Ontology Explorer — E2E', () => {
   let termBrand: GlossaryTerm | undefined;
 
   test.beforeEach(async ({ browser, page }) => {
-    test.slow();
     const { apiContext, afterAction } = await createApiContext(browser);
 
     catalog = new Glossary();
@@ -51,9 +49,11 @@ test.describe('Ontology Explorer — E2E', () => {
     termBrand = new GlossaryTerm(catalog);
 
     await catalog.create(apiContext);
-    await termProduct.create(apiContext);
-    await termCategory.create(apiContext);
-    await termBrand.create(apiContext);
+    await Promise.all([
+      termProduct.create(apiContext),
+      termCategory.create(apiContext),
+      termBrand.create(apiContext),
+    ]);
 
     await addRelationTypeWithCardinality(apiContext, {
       name: CUSTOM_OWNS_RELATION,
@@ -82,13 +82,7 @@ test.describe('Ontology Explorer — E2E', () => {
   test.afterEach(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
     if (catalog) {
-      await deleteEntities(
-        apiContext,
-        termProduct,
-        termCategory,
-        termBrand,
-        catalog
-      );
+      await catalog.delete(apiContext);
     }
     await disposeApiContext(afterAction, apiContext);
   });
