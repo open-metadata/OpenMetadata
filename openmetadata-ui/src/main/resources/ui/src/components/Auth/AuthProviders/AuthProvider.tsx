@@ -38,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -62,6 +65,9 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
+  readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
   setAppDefaultMode,
@@ -158,9 +164,49 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
+  // Skip the boot-time write when this tab already has a signal that
+  // `useResolvedAppMode` will resolve authoritatively — the resolver is
+  // the single source of truth once it has persona + registry
+  // information, and writing to the session tuple here poisons the
+  // subsequent resolve. Two signals count:
+  //
+  //   1. A session tuple this tab already owns (returning tab, or a
+  //      manual toggle earlier in this tab).
+  //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
+  //      sibling tab's active mode carries into a newly-opened tab.
+  //      Once we write `DEFAULT_APP_MODE` here, the resolver's session-
+  //      tuple check is satisfied by our write and it never consults
+  //      the hint, so a cmd+click from an AI tab silently boots the new
+  //      tab into Classic.
+  // A returning tab (a `'manual'` or `'resolver'` tuple from a prior
+  // resolve) or a fresh tab that inherits an active hint from a
+  // sibling — leave both alone. `useResolvedAppMode` treats these as
+  // sticky and returns without rewriting. A `'boot'` tuple from an
+  // earlier auth cycle is NOT sticky and should be re-resolved, so
+  // don't skip on that.
+  const existingSession = readAppModeSession();
+  if (existingSession?.mode && existingSession.source !== 'boot') {
+    return;
+  }
+  const hint = readAppModeHint();
+  if (isAppModeHintFresh(hint) && hint?.mode) {
+    return;
+  }
+
   const userPref =
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
-  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
+
+  // Provisional boot write — persona isn't known synchronously (its
+  // docStore doc is fetched by `useResolvedAppMode`), so we compute
+  // the best guess from what IS available (userPref, appDefault) and
+  // mark it `source: 'boot'`. The async resolver is allowed to
+  // override this tuple once it has the persona-doc result and the
+  // route registry has settled. The `writeHint` call inside
+  // `writeAppMode` is skipped for `'boot'` writes so a provisional
+  // guess doesn't leak to sibling tabs as an authoritative hint.
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault), null, {
+    source: 'boot',
+  });
 };
 
 let requestInterceptor: number | null = null;
@@ -171,6 +217,12 @@ let pendingRequests: {
   reject: (reason?: unknown) => void;
   config: InternalAxiosRequestConfig<unknown>;
 }[] = [];
+
+// True while THIS tab is driving a token refresh and draining `pendingRequests`.
+// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
+// refresh can never leave this tab's queued 401s without a driver to settle
+// them — the bug that hung the UI on a spinner.
+let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -378,6 +430,14 @@ export const AuthProvider = ({
   const getLoggedInUserDetails = async () => {
     setApplicationLoading(true);
     try {
+      // Bug 1: on cold-load with an expired token, /loggedInUser 401s and
+      // the axios response interceptor drives a refresh via TokenService.
+      // The real fix for the race between that refresh and the lazy
+      // authenticator's renewer registration lives in
+      // TokenService.fetchNewToken (it now awaits `awaitRenewerReady`),
+      // so this catch just needs to make sure we don't swallow the
+      // recovered response — the interceptor drains the queued request
+      // itself and getLoggedInUser resolves normally on success.
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
         setCurrentUser(res);
@@ -434,15 +494,18 @@ export const AuthProvider = ({
     }
   };
 
-  useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
+  // Renewer registration for TokenService moved into each authenticator's
+  // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
+  // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
+  // Auth0Authenticator). The previous ref-deps effect here
+  // (`[authenticatorRef.current?.renewIdToken]`) never re-ran after the
+  // lazy authenticator finished loading because ref changes don't
+  // schedule re-renders — so on cold-load the first 401 raced ahead of
+  // the registration and TokenService.refreshToken() returned null
+  // without ever firing the `/api/v1/auth/refresh` HTTP call.
+  // `updateRefreshSuccessCallback(startTokenExpiryTimer)` is registered
+  // from the main mount effect below because that timer callback lives
+  // in this component's closure.
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness
@@ -470,7 +533,15 @@ export const AuthProvider = ({
         );
 
         if (isExpired || timeoutExpiry <= 0) {
-          tokenService.current?.refreshToken();
+          const newToken = await tokenService.current?.refreshToken();
+          // Post-refresh reauth: if the user was bounced to signin by an
+          // earlier failed call, a successful refresh must re-run the
+          // loggedInUser flow to flip isAuthenticated back to true.
+          // Reading via getState() avoids the stale closure of the
+          // mount-only useEffect.
+          if (newToken && !useApplicationStore.getState().isAuthenticated) {
+            await getLoggedInUserDetails();
+          }
         } else {
           startTokenExpiryTimer();
         }
@@ -644,67 +715,61 @@ export const AuthProvider = ({
             if (
               UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
               (error.config.url === '/users/loggedInUser' &&
-                !error.response.data.message.includes('Expired token!'))
+                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
+                  (error.response.data?.message ?? '').includes(authError)
+                ))
             ) {
               throw error;
             }
             handleStoreProtectedRedirectPath();
 
-            // If 401 error and refresh is not in progress, trigger the refresh
-            if (tokenService.current?.isTokenUpdateInProgress()) {
-              // If refresh is in progress, queue the request
-              return new Promise((resolve, reject) => {
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
-              });
-            } else {
-              // Start the refresh process
-              return new Promise((resolve, reject) => {
-                // Add this request to the pending queue
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
+            // Queue the failed request, then ensure exactly one refresh drives
+            // the queue in THIS tab. Every 401 lands in pendingRequests; the
+            // first arrival starts the refresh and, once it settles, ALWAYS
+            // drains the queue — retry with the new token, or reject + log out.
+            // Nothing is left parked. The previous code queued behind a
+            // cross-tab localStorage flag that no in-tab driver would clear,
+            // hanging the request (and the UI spinner) indefinitely.
+            return new Promise((resolve, reject) => {
+              pendingRequests.push({ resolve, reject, config: error.config });
+              if (isRefreshDriverActive) {
+                return;
+              }
+              isRefreshDriverActive = true;
 
-                // Reject every queued 401'd request with the given error and
-                // clear the queue. Called on any path where the refresh does
-                // not yield a new token (null-return or thrown error) so the
-                // callers don't hang waiting for a retry that will never come.
-                const rejectPending = (rejectionError: unknown) => {
-                  pendingRequests.forEach(({ reject }) =>
-                    reject(rejectionError)
+              const drainPendingRequests = (hasNewToken: boolean) => {
+                const queued = pendingRequests;
+                pendingRequests = [];
+                isRefreshDriverActive = false;
+                if (hasNewToken) {
+                  queued.forEach(
+                    ({ resolve: onResolve, reject: onReject, config }) =>
+                      axiosClient
+                        .request(config)
+                        .then(onResolve)
+                        .catch(onReject)
                   );
-                  pendingRequests = [];
-                };
+                } else {
+                  queued.forEach(({ reject: onReject }) => onReject(error));
+                }
+              };
 
-                // Refresh the token and retry the requests in the queue
-                tokenService.current
-                  .refreshToken()
-                  .then(async (token) => {
-                    if (token) {
-                      // Retry the pending requests
-                      await initializeAxiosInterceptors();
-                      pendingRequests.forEach(({ resolve, reject, config }) => {
-                        axiosClient.request(config).then(resolve).catch(reject);
-                      });
-
-                      // Clear the queue after retrying
-                      pendingRequests = [];
-                    } else {
-                      rejectPending(error);
-                      resetUserDetails(true);
-                    }
-                  })
-                  .catch((refreshError) => {
-                    rejectPending(refreshError);
+              tokenService.current
+                .refreshToken()
+                .then(async (token) => {
+                  if (token) {
+                    await initializeAxiosInterceptors();
+                    drainPendingRequests(true);
+                  } else {
+                    drainPendingRequests(false);
                     resetUserDetails(true);
-                  });
-              });
-            }
+                  }
+                })
+                .catch(() => {
+                  drainPendingRequests(false);
+                  resetUserDetails(true);
+                });
+            });
           }
         }
 
@@ -856,6 +921,10 @@ export const AuthProvider = ({
     fetchAuthConfig();
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
+    // Timer restart after a successful cross-tab refresh — the callback
+    // itself lives in this component's closure, so we register it here
+    // rather than from each authenticator.
+    tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
 
     return cleanup;
   }, []);

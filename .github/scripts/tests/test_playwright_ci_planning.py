@@ -2010,10 +2010,10 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci-postgresql:", 1
+        "  playwright-ci:", 1
     )[0]
 
     assert "searchClusterAlias: $searchClusterAlias" in fixture_builder
@@ -2028,7 +2028,7 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
 
 def test_planner_discovers_oss_only_specs():
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     planner_job = workflow.split("  plan-playwright:", 1)[1].split(
         "  restore-playwright-fixture:", 1
@@ -2149,6 +2149,75 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     )
 
 
+def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    source_path = (
+        tmp_path / selector.UI_ROOT / "src/components/OntologyExplorer/view.ts"
+    )
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text("export const view = {};\n")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "OntologyExplorer.spec.ts").write_text(
+        "test('ontology', () => undefined);\n"
+    )
+    (spec_dir / "OntologyExplorerRdf.spec.ts").write_text(
+        "test('rdf', () => undefined);\n"
+    )
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": [
+                    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+                ],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": [
+                            f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
+                        ],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text(f"{source_path.relative_to(tmp_path)}\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == [
+        {
+            "projects": ["chromium"],
+            "spec": "playwright/e2e/Features/OntologyExplorer.spec.ts",
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     "spec",
     [
@@ -2248,8 +2317,15 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
+    # The playwright-summary job lives in the postgres PR caller (not the
+    # reusable) so branch protection can require its unprefixed check name.
+    # The paths-filter that watches render_playwright_summary.cjs still
+    # lives in the reusable's check-changes job.
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    reusable = (
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
     summary_job = workflow.split("  playwright-summary:", 1)[1]
@@ -2271,7 +2347,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
         "\n      - name:", 1
     )[0]
     assert len(summary_script) < 21_000
-    assert "- '.github/scripts/render_playwright_summary.cjs'" in workflow
+    assert "- '.github/scripts/render_playwright_summary.cjs'" in reusable
     assert "'${{ github.run_id }}'" not in summary_helper
     assert "process.env.GITHUB_RUN_ID" in summary_helper
     assert "zero-attempt; reason unknown" in summary_helper

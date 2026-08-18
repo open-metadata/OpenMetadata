@@ -12,61 +12,80 @@
  */
 
 import { lazy, type ComponentType } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { WidgetCommonProps } from '../pages/CustomizablePage/CustomizablePage.interface';
 
-const KnowledgeCenterWidget = lazy(
-  () =>
-    import(
-      '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget'
-    )
-);
-const MyFeedWidget = lazy(() =>
-  import('../components/MyData/FeedWidget/FeedWidget.component').then((m) => ({
-    default: m.MyFeedWidget,
-  }))
-);
-const MyDataWidget = lazy(() =>
-  import('../components/MyData/MyDataWidget/MyDataWidget.component').then(
-    (m) => ({ default: m.MyDataWidget })
+const KnowledgeCenterWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/KnowledgeCenter/KnowledgeCenterWidget/KnowledgeCenterWidget'
+      )
   )
-);
-const FollowingWidget = lazy(
-  () => import('../components/MyData/RightSidebar/FollowingWidget')
-);
-const CuratedAssetsWidget = lazy(
-  () =>
-    import(
-      '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget'
+) as ComponentType<WidgetCommonProps>;
+const MyFeedWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/MyData/FeedWidget/FeedWidget.component').then(
+      (m) => ({
+        default: m.MyFeedWidget,
+      })
     )
-);
-const DataAssetsWidget = lazy(
-  () =>
-    import(
-      '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component'
+  )
+) as ComponentType<WidgetCommonProps>;
+const MyDataWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/MyData/MyDataWidget/MyDataWidget.component').then(
+      (m) => ({ default: m.MyDataWidget })
     )
-);
-const DataProductsWidget = lazy(
-  () =>
-    import(
-      '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component'
-    )
-);
-const DomainsWidget = lazy(
-  () => import('../components/MyData/Widgets/DomainsWidget/DomainsWidget')
-);
-const KPIWidget = lazy(
-  () => import('../components/MyData/Widgets/KPIWidget/KPIWidget.component')
-);
-const MyTaskWidget = lazy(
-  () => import('../components/MyData/Widgets/MyTaskWidget/MyTaskWidget')
-);
-const TotalDataAssetsWidget = lazy(
-  () =>
-    import(
-      '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component'
-    )
-);
+  )
+) as ComponentType<WidgetCommonProps>;
+const FollowingWidget = withSuspenseFallback(
+  lazy(() => import('../components/MyData/RightSidebar/FollowingWidget'))
+) as ComponentType<WidgetCommonProps>;
+const CuratedAssetsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DataAssetsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DataProductsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const DomainsWidget = withSuspenseFallback(
+  lazy(() => import('../components/MyData/Widgets/DomainsWidget/DomainsWidget'))
+) as ComponentType<WidgetCommonProps>;
+const KPIWidget = withSuspenseFallback(
+  lazy(
+    () => import('../components/MyData/Widgets/KPIWidget/KPIWidget.component')
+  )
+) as ComponentType<WidgetCommonProps>;
+const MyTaskWidget = withSuspenseFallback(
+  lazy(() => import('../components/MyData/Widgets/MyTaskWidget/MyTaskWidget'))
+) as ComponentType<WidgetCommonProps>;
+const TotalDataAssetsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
 
 // This registry is intentionally isolated from the layout class base. The
 // class base is imported for sizing/defaults on /my-data, while widget chunks

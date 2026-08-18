@@ -62,6 +62,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
   TooltipBoundary,
@@ -104,25 +105,48 @@ const TestSummaryTooltipContent = ({
   viewBox,
 }: Readonly<TestSummaryTooltipContentProps>) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const activeTooltipAnchorX = activeTooltip?.anchor.x;
+  const activeTooltipAnchorY = activeTooltip?.anchor.y;
+  const activeTooltipPayload = activeTooltip?.payload;
+  const viewBoxHeight = viewBox?.height;
+  const viewBoxWidth = viewBox?.width;
+  const viewBoxX = viewBox?.x;
+  const viewBoxY = viewBox?.y;
+  const tooltipBoundary = useMemo(() => {
+    const boundary: CartesianViewBox = {
+      height: viewBoxHeight,
+      width: viewBoxWidth,
+      x: viewBoxX,
+      y: viewBoxY,
+    };
+
+    return isTestSummaryTooltipBoundary(boundary) ? boundary : undefined;
+  }, [viewBoxHeight, viewBoxWidth, viewBoxX, viewBoxY]);
 
   useLayoutEffect(() => {
-    if (
-      !activeTooltip ||
-      !viewBox ||
-      !isTestSummaryTooltipBoundary(viewBox) ||
-      !contentRef.current
-    ) {
+    if (!activeTooltipPayload || !tooltipBoundary || !contentRef.current) {
       return;
     }
 
     const { height, width } = contentRef.current.getBoundingClientRect();
 
-    if (height > 0 && width > 0 && viewBox.height > 0 && viewBox.width > 0) {
+    if (
+      height > 0 &&
+      width > 0 &&
+      tooltipBoundary.height > 0 &&
+      tooltipBoundary.width > 0
+    ) {
       // Resolve collision before paint so the incident link never visibly
       // moves away from a pointer approaching the tooltip.
-      onMeasure({ height, width }, viewBox);
+      onMeasure({ height, width }, tooltipBoundary);
     }
-  }, [activeTooltip, onMeasure, viewBox]);
+  }, [
+    activeTooltipAnchorX,
+    activeTooltipAnchorY,
+    activeTooltipPayload,
+    onMeasure,
+    tooltipBoundary,
+  ]);
 
   return (
     <div ref={contentRef}>
@@ -187,10 +211,7 @@ function TestSummaryGraph({
           tooltipSize,
         });
 
-        if (
-          currentTooltip.position.x === position.x &&
-          currentTooltip.position.y === position.y
-        ) {
+        if (isSameTooltipPosition(currentTooltip.position, position)) {
           return currentTooltip;
         }
 

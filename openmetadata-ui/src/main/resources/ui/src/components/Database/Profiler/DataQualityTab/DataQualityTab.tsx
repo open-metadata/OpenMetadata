@@ -84,7 +84,7 @@ const COLUMN_LAYOUT: Record<
   table: { minWidth: 300, maxWidth: 360 },
   column: { minWidth: 110 },
   incident: { minWidth: 130 },
-  actions: { minWidth: 90, fixed: 'right' },
+  actions: { minWidth: 136, maxWidth: 136, fixed: 'right' },
 };
 
 // Per-column min-widths give the table an intrinsic width so the core Table's
@@ -554,7 +554,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     ];
 
     return (
-      <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
+      <div className="tw:flex tw:w-full tw:items-center tw:justify-end tw:gap-5">
         {dimensions.length > 0 && (
           <Tooltip
             placement="top"
