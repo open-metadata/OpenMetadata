@@ -15,6 +15,7 @@ import { Check } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ListBoxItem as AriaListBoxItem } from 'react-aria-components';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
@@ -43,7 +44,8 @@ const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
       {(state) => (
         <>
           <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
-            {type && searchClassBase.getEntityIconWithBg(type)}
+            {type &&
+              searchClassBase.getEntityIconWithBg(type, EntityIconSize.Size16)}
 
             <Box
               align="center"

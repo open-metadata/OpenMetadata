@@ -175,6 +175,10 @@ export const ENTITY_ICON_BG_SIZE_MAP: Partial<
     containerProps: { className: 'tw:h-5.5 tw:w-5.5 tw:rounded-sm' },
     iconProps: { size: EntityIconSize.Size14 },
   },
+  [EntityIconSize.Size16]: {
+    containerProps: { className: 'tw:h-7 tw:w-7 tw:rounded-sm' },
+    iconProps: { size: EntityIconSize.Size16 },
+  },
   [EntityIconSize.Size18]: {
     containerProps: { className: 'tw:h-8 tw:w-8 tw:rounded-md' },
     iconProps: { size: EntityIconSize.Size18 },
