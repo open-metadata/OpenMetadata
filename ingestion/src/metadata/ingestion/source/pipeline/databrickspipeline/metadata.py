@@ -68,10 +68,12 @@ from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
     DBRun,
+    DLTTableReference,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = ingestion_logger()
 
@@ -101,8 +103,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self._databricks_services_cached = False
         self._databricks_services: List[str] = []  # noqa: UP006
 
-        self._table_lookup_cache = {}
-        self._dlt_table_cache = {}
+        # bounded so a large workspace cannot grow these without limit
+        self._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
+        self._dlt_table_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -403,6 +406,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
             return []
 
+    def _lookup_table(self, table_fqn: Optional[str]) -> Optional[Table]:  # noqa: UP045
+        """Resolve a table FQN, caching both hits and misses."""
+        if not table_fqn:
+            return None
+        if table_fqn not in self._table_lookup_cache:
+            self._table_lookup_cache.put(table_fqn, self.metadata.get_by_name(entity=Table, fqn=table_fqn))
+        return self._table_lookup_cache.get(table_fqn)
+
     def _expand_workspace_directory(self, path: str, max_depth: int = 5) -> List[str]:  # noqa: UP006
         """
         List the notebooks and files under a workspace directory.
@@ -437,9 +448,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         table_name: str,
         catalog: Optional[str],  # noqa: UP045
         schema: Optional[str],  # noqa: UP045
-    ) -> Tuple[Optional[str], Optional[str], str]:  # noqa: UP006, UP045
+    ) -> DLTTableReference:
         """
-        Split a dataset reference into (catalog, schema, table).
+        Resolve a dataset reference to the catalog, schema and table it points at.
 
         SQL transformations reference upstreams either bare (`order_totals`, a sibling
         dataset in the same pipeline) or qualified (`catalog.schema.table`). The Python
@@ -449,11 +460,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         parts = [part.strip() for part in (table_name or "").split(".") if part.strip()]
         if len(parts) >= 3:
-            return parts[-3], parts[-2], parts[-1]
+            return DLTTableReference(catalog=parts[-3], schema=parts[-2], table=parts[-1])
         if len(parts) == 2:
-            return catalog, parts[0], parts[1]
+            return DLTTableReference(catalog=catalog, schema=parts[0], table=parts[1])
         # the cleaned token, so stray whitespace or dots never reach the FQN
-        return catalog, schema, parts[0] if parts else ""
+        return DLTTableReference(catalog=catalog, schema=schema, table=parts[0] if parts else "")
 
     def _find_dlt_table(self, table_name: str, catalog: Optional[str], schema: Optional[str]) -> Optional[Table]:  # noqa: UP045
         """
@@ -473,13 +484,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
             Table entity if found, None otherwise
         """
         try:
-            catalog, schema, table_name = self._qualify_dlt_table_name(table_name, catalog, schema)
+            reference = self._qualify_dlt_table_name(table_name, catalog, schema)
+            catalog, schema, table_name = reference.catalog, reference.schema, reference.table
 
             # Check cache first to avoid duplicate API calls
             cache_key = f"{catalog}.{schema}.{table_name}"
             if cache_key in self._dlt_table_cache:
                 logger.debug(f"DLT table found in cache: {cache_key}")
-                return self._dlt_table_cache[cache_key]
+                return self._dlt_table_cache.get(cache_key)
 
             logger.debug(f"Searching for DLT table: catalog={catalog}, schema={schema}, table={table_name}")
 
@@ -519,7 +531,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         logger.info(f"Found DLT table with FQN: {table_fqn}")
                         # Cache the found table
                         cache_key = f"{catalog}.{schema}.{table_name}"
-                        self._dlt_table_cache[cache_key] = table
+                        self._dlt_table_cache.put(cache_key, table)
                         return table
 
                 except Exception as exc:
@@ -546,7 +558,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         logger.info(f"Found DLT table with FQN (lowercase): {table_fqn}")
                         # Cache the found table
                         cache_key = f"{catalog}.{schema}.{table_name}"
-                        self._dlt_table_cache[cache_key] = table
+                        self._dlt_table_cache.put(cache_key, table)
                         return table
 
                 except Exception as exc:
@@ -563,7 +575,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         )
         # Cache None to avoid repeated lookups for non-existent tables
         cache_key = f"{catalog}.{schema}.{table_name}"
-        self._dlt_table_cache[cache_key] = None
+        self._dlt_table_cache.put(cache_key, None)
         return None
 
     def _find_kafka_topic(self, topic_name: str) -> Optional[Topic]:  # noqa: UP045
@@ -1133,15 +1145,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             service_name=dbservicename,
                         )
 
-                        # Check cache first, then fetch if not cached
-                        if from_table_fqn not in self._table_lookup_cache:
-                            self._table_lookup_cache[from_table_fqn] = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=from_table_fqn,
-                            )
-
-                        from_entity = self._table_lookup_cache[from_table_fqn]
-
+                        from_entity = self._lookup_table(from_table_fqn)
                         if from_entity is None:
                             continue
 
@@ -1155,15 +1159,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             service_name=dbservicename,
                         )
 
-                        # Check cache first, then fetch if not cached
-                        if to_table_fqn not in self._table_lookup_cache:
-                            self._table_lookup_cache[to_table_fqn] = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=to_table_fqn,
-                            )
-
-                        to_entity = self._table_lookup_cache[to_table_fqn]
-
+                        to_entity = self._lookup_table(to_table_fqn)
                         if to_entity is None:
                             continue
 
@@ -1211,5 +1207,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 )
             )
         finally:
-            # Clear pipeline-specific caches to free memory
-            logger.debug("Clearing table lookup caches for pipeline")
+            # entity lookups stay cached across pipelines on purpose: the same tables
+            # recur, and the caches are bounded. They are released in close().
+            logger.debug("Finished pipeline lineage extraction")

@@ -99,6 +99,21 @@ class KafkaSourceConfig:
 
 
 @dataclass
+class DLTTableReference:
+    """
+    Where a DLT dataset reference points, once resolved.
+
+    A reference is written either bare (`orders`, a sibling dataset in the same
+    pipeline) or qualified (`catalog.schema.orders`). Both forms resolve into
+    these three named parts, so callers never index into a positional tuple.
+    """
+
+    catalog: Optional[str]  # noqa: UP045
+    schema: Optional[str]  # noqa: UP045
+    table: str
+
+
+@dataclass
 class DLTTableDependency:
     """
     One dataset declared by a DLT pipeline, plus what it reads from.

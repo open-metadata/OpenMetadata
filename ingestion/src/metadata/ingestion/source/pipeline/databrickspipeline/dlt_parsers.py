@@ -12,15 +12,15 @@
 """
 Dataset dependency extraction for Delta Live Tables pipelines.
 
-A DLT pipeline is authored in exactly one language, so each language gets a parser
-registered under `dlt_parser_registry`. A parser declares whether it recognises a
-piece of source (`handles`) and turns it into `DLTTableDependency` records
-(`extract`). Adding another language means adding one class here, with no edits to
-the dispatch in `extract_dlt_table_dependencies`.
+A DLT pipeline is authored in exactly one language. Each language is a parser that
+says whether it recognises a piece of source (`handles`) and turns it into
+`DLTTableDependency` records (`extract`).
+
+Adding a language means writing one parser and listing it in `DLT_PARSERS`.
 """
 
 import re
-from typing import Any, List, Optional, Protocol  # noqa: UP035
+from typing import Any, List, Optional, Protocol, Type  # noqa: UP035
 
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     KAFKA_STREAM_PATTERN,
@@ -29,12 +29,9 @@ from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DLTTableDependency,
 )
-from metadata.utils.dispatch import enum_register
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-dlt_parser_registry = enum_register()
 
 
 def _unique(names) -> List[str]:  # noqa: UP006
@@ -44,10 +41,6 @@ def _unique(names) -> List[str]:  # noqa: UP006
 
 class DltSourceParser(Protocol):
     """Contract every DLT language parser implements."""
-
-    # Lower runs first. Parsers whose marker cannot appear in another language claim
-    # a lower number, so detection never depends on registration order.
-    priority: int
 
     @staticmethod
     def handles(source_code: str) -> bool:
@@ -71,17 +64,13 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
     if not source_code:
         return []
 
-    parsers = sorted(
-        dlt_parser_registry.registry.items(),
-        key=lambda item: getattr(item[1], "priority", 100),
-    )
-    for name, parser in parsers:
+    for parser in DLT_PARSERS:
         try:
             if parser.handles(source_code):
-                logger.debug(f"Parsing DLT source with the {name} parser")
+                logger.debug(f"Parsing DLT source with {parser.__name__}")
                 return parser.extract(source_code)
         except Exception as exc:
-            logger.warning(f"DLT {name} parser failed, trying the next one: {exc}")
+            logger.warning(f"{parser.__name__} failed, trying the next parser: {exc}")
             continue
 
     logger.debug("No DLT parser recognised this source")
@@ -121,7 +110,6 @@ SQL_TABLE_VALUED_FUNCTIONS = frozenset({"stream", "read_files", "cloud_files", "
 SQL_FUNCTION_CALL_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
 
-@dlt_parser_registry.add("sql")
 class SqlDltParser:
     """
     Parser for DLT pipelines whose transformations are `.sql` files.
@@ -130,10 +118,6 @@ class SqlDltParser:
     delegated to the shared `LineageParser` so dialect handling, query masking and
     timeouts behave the same as everywhere else in the ingestion framework.
     """
-
-    # Runs after Python, because these keywords can also appear inside a string
-    # literal in a Python notebook that calls spark.sql(...)
-    priority = 20
 
     @staticmethod
     def handles(source_code: str) -> bool:
@@ -253,7 +237,6 @@ S3_PATH_PATTERN = re.compile(
 )
 
 
-@dlt_parser_registry.add("python")
 class PythonDltParser:
     """
     Parser for DLT pipelines written against the Python API.
@@ -262,9 +245,6 @@ class PythonDltParser:
     other through `dlt.read` and `dlt.read_stream`. External reads are recognised
     for Kafka and S3 so the caller can attach topic and storage lineage.
     """
-
-    # A `@dlt.` decorator is unambiguous, so this is checked before SQL
-    priority = 10
 
     @staticmethod
     def handles(source_code: str) -> bool:
@@ -534,3 +514,9 @@ class PythonDltParser:
             logger.warning(f"Error extracting DLT table dependencies: {exc}")
 
         return dependencies
+
+
+# Checked in order. Python comes first because a `@dlt.` decorator is unambiguous,
+# while the SQL keywords can also appear inside a string literal in a Python
+# notebook that calls spark.sql(...).
+DLT_PARSERS: List[Type[DltSourceParser]] = [PythonDltParser, SqlDltParser]  # noqa: UP006

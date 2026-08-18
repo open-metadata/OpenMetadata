@@ -28,11 +28,18 @@ import uuid
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
+from ingestion.tests.unit.topology.pipeline.test_databricks_pipeline import (
+    mock_databricks_config,
+)
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
+    DLT_PARSERS,
     PythonDltParser,
-    dlt_parser_registry,
+    SqlDltParser,
     extract_dlt_table_dependencies,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
@@ -44,6 +51,7 @@ from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
+    DLTTableReference,
 )
 
 DB_SERVICE = "databricks_pipeline_test"
@@ -175,8 +183,19 @@ class TestSqlDltPipelineLineage:
 
     @classmethod
     def _build_source(cls):
-        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
-            source = DatabrickspipelineSource(None, None)
+        """
+        Build the source through its real `create()`, patching only the external
+        boundary. Nothing about the connector's internals (caches included) is
+        assembled here, so an implementation change cannot leave this test
+        asserting against a shape production no longer uses.
+        """
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+            source = DatabrickspipelineSource.create(
+                mock_databricks_config["source"],
+                OpenMetadataWorkflowConfig.model_validate(
+                    mock_databricks_config
+                ).workflowConfig.openMetadataServerConfig,
+            )
 
         client = MagicMock()
         client.get_pipeline_details.return_value = {
@@ -195,8 +214,6 @@ class TestSqlDltPipelineLineage:
         client.get_column_lineage.return_value = []
         source.client = client
 
-        source._table_lookup_cache = {}
-        source._dlt_table_cache = {}
         source._databricks_services_cached = True
         source._databricks_services = [DB_SERVICE]
 
@@ -278,8 +295,9 @@ class TestSqlDltPipelineLineage:
 class TestParserDispatch:
     """The registry must pick the right language, whatever the source contains."""
 
-    def test_both_languages_are_registered(self):
-        assert set(dlt_parser_registry.registry) == {"python", "sql"}
+    def test_python_is_checked_before_sql(self):
+        """Order is the dispatch rule, so it is asserted rather than assumed."""
+        assert [PythonDltParser, SqlDltParser] == DLT_PARSERS
 
     def test_python_wins_over_embedded_sql(self):
         """A Python notebook that builds SQL strings must not be read as SQL."""
@@ -373,40 +391,28 @@ class TestSqlDltEdgeCases:
 class TestQualifyDltTableName:
     """Resolution of a dataset reference against the pipeline's target."""
 
+    @staticmethod
+    def _resolve(name):
+        return DatabrickspipelineSource._qualify_dlt_table_name(name, "cat", "sch")
+
     def test_bare_name_uses_the_pipeline_target(self):
-        assert DatabrickspipelineSource._qualify_dlt_table_name("orders", "cat", "sch") == ("cat", "sch", "orders")
+        assert self._resolve("orders") == DLTTableReference(catalog="cat", schema="sch", table="orders")
 
     def test_two_part_name_overrides_only_the_schema(self):
-        assert DatabrickspipelineSource._qualify_dlt_table_name("other.orders", "cat", "sch") == (
-            "cat",
-            "other",
-            "orders",
-        )
+        assert self._resolve("other.orders") == DLTTableReference(catalog="cat", schema="other", table="orders")
 
     def test_three_part_name_overrides_both(self):
-        assert DatabrickspipelineSource._qualify_dlt_table_name("c2.s2.orders", "cat", "sch") == (
-            "c2",
-            "s2",
-            "orders",
-        )
+        assert self._resolve("c2.s2.orders") == DLTTableReference(catalog="c2", schema="s2", table="orders")
 
     def test_extra_qualifiers_keep_the_last_three_parts(self):
-        assert DatabrickspipelineSource._qualify_dlt_table_name("x.c2.s2.orders", "cat", "sch") == (
-            "c2",
-            "s2",
-            "orders",
-        )
+        assert self._resolve("x.c2.s2.orders") == DLTTableReference(catalog="c2", schema="s2", table="orders")
 
     def test_empty_name_falls_back_to_the_pipeline_target(self):
-        assert DatabrickspipelineSource._qualify_dlt_table_name("", "cat", "sch") == ("cat", "sch", "")
+        assert self._resolve("") == DLTTableReference(catalog="cat", schema="sch", table="")
 
     def test_surrounding_whitespace_and_stray_dots_are_stripped(self):
         for raw in ("  orders  ", "orders.", ".orders"):
-            assert DatabrickspipelineSource._qualify_dlt_table_name(raw, "cat", "sch") == (
-                "cat",
-                "sch",
-                "orders",
-            )
+            assert self._resolve(raw) == DLTTableReference(catalog="cat", schema="sch", table="orders")
 
 
 class TestGlobNormalisation:
@@ -456,3 +462,49 @@ class TestSqlUpstreamHygiene:
         """A dataset may legitimately be named `range`, so filter on call form."""
         assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range")["m"].depends_on == ["range"]
         assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range(1, 10)")["m"].depends_on == []
+
+
+class TestConnectorCaches:
+    """
+    The connector's entity caches are part of its contract, so they are asserted
+    against the real object rather than a stub. CLAUDE.md requires every cache to
+    be bounded.
+    """
+
+    @staticmethod
+    def _real_source():
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+            return DatabrickspipelineSource.create(
+                mock_databricks_config["source"],
+                OpenMetadataWorkflowConfig.model_validate(
+                    mock_databricks_config
+                ).workflowConfig.openMetadataServerConfig,
+            )
+
+    def test_entity_caches_are_bounded(self):
+        source = self._real_source()
+        for cache in (source._table_lookup_cache, source._dlt_table_cache):
+            assert hasattr(cache, "capacity"), "caches must be bounded, not plain dicts"
+            assert cache.capacity > 0
+
+    def test_cache_evicts_beyond_capacity(self):
+        source = self._real_source()
+        capacity = source._dlt_table_cache.capacity
+        for index in range(capacity + 10):
+            source._dlt_table_cache.put(f"cat.sch.table_{index}", None)
+        assert len(source._dlt_table_cache) == capacity
+
+    def test_lookup_caches_misses_so_absent_tables_are_asked_for_once(self):
+        source = self._real_source()
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.return_value = None
+
+        assert source._lookup_table("svc.cat.sch.missing") is None
+        assert source._lookup_table("svc.cat.sch.missing") is None
+        assert source.metadata.get_by_name.call_count == 1
+
+    def test_lookup_of_an_unbuildable_fqn_never_reaches_the_server(self):
+        source = self._real_source()
+        source.metadata = MagicMock()
+        assert source._lookup_table(None) is None
+        source.metadata.get_by_name.assert_not_called()
