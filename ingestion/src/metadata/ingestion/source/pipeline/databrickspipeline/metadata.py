@@ -775,14 +775,21 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.info(f"⟳ Expanding directory paths to individual notebooks...")  # noqa: F541
             expanded_paths = []
             for library in notebook_paths:
-                if library.is_directory:
-                    found = self._expand_workspace_directory(library)
-                    if not found:
-                        logger.debug(f"   ⊗ Nothing matched {library.pattern or library.path}")
-                    expanded_paths.extend(found)
-                else:
+                if library.is_directory is False:
                     expanded_paths.append(library.path)
                     logger.debug(f"   Direct path: {library.path}")
+                    continue
+
+                found = self._expand_workspace_directory(library)
+                if found:
+                    expanded_paths.extend(found)
+                elif library.is_directory is None:
+                    # the spec did not say what this is and nothing listed under it,
+                    # so it names a single source rather than a directory
+                    expanded_paths.append(library.path)
+                    logger.debug(f"   Direct path: {library.path}")
+                else:
+                    logger.debug(f"   ⊗ Nothing matched {library.pattern or library.path}")
 
             logger.info(f"✓ Total notebooks to process: {len(expanded_paths)}")
 

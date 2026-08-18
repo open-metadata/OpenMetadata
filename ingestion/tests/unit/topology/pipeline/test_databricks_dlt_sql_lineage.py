@@ -756,3 +756,49 @@ class TestLibraryShapeMatrix:
             "/nb",
             "/tx/a.sql",
         ]
+
+
+class TestUnknownDirectoryness:
+    """
+    A glob include with neither a wildcard nor a trailing slash could name a file
+    or a directory. The spec does not say, so the workspace decides rather than a
+    guess about the string's shape.
+    """
+
+    WORKSPACE: ClassVar[dict] = {
+        "/repo/transformations": [{"object_type": "FILE", "path": "/repo/transformations/a.sql"}],
+    }
+
+    def _select(self, include):
+        with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
+            source = DatabrickspipelineSource(None, None)
+        source.client = MagicMock()
+        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        selected = []
+        for library in get_pipeline_libraries({"libraries": [{"glob": {"include": include}}]}):
+            if library.is_directory is False:
+                selected.append(library.path)
+                continue
+            found = source._expand_workspace_directory(library)
+            if found:
+                selected.extend(found)
+            elif library.is_directory is None:
+                selected.append(library.path)
+        return selected
+
+    def test_the_spec_leaves_a_slashless_include_unknown(self):
+        library = get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/transformations"}}]})[0]
+        assert library.is_directory is None
+
+    def test_a_slashless_directory_is_listed(self):
+        assert self._select("/repo/transformations") == ["/repo/transformations/a.sql"]
+
+    def test_a_slashless_file_is_read_directly(self):
+        """Nothing lists under a file, so it falls back to being read as one."""
+        assert self._select("/repo/one.sql") == ["/repo/one.sql"]
+
+    def test_a_wildcard_include_is_known_to_be_a_directory(self):
+        assert get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/**"}}]})[0].is_directory is True
+
+    def test_a_slash_terminated_include_is_known_to_be_a_directory(self):
+        assert get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/"}}]})[0].is_directory is True

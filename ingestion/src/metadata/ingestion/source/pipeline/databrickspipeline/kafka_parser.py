@@ -305,8 +305,10 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                             path=base_path,
                             pattern=pattern,
                             # a wildcard always reduces to a directory to list, and a
-                            # slash-terminated include names one outright
-                            is_directory=bool(pattern) or include.endswith("/"),
+                            # slash-terminated include names one outright. Anything else
+                            # is unknowable from the string, so it is left to the caller
+                            # to settle by listing it.
+                            is_directory=True if pattern or include.endswith("/") else None,
                         )
                     )
                     logger.info(f"   ✓ Found glob {include}, listing: {base_path}")

@@ -110,7 +110,10 @@ class DLTLibrarySource:
 
     path: str
     pattern: Optional[str] = None  # noqa: UP045
-    is_directory: bool = False
+    # True and False come from the spec. None means it did not say, which happens
+    # for a glob include carrying neither a wildcard nor a trailing slash, and is
+    # settled by listing the path rather than by guessing from its shape.
+    is_directory: Optional[bool] = False  # noqa: UP045
 
     @property
     def is_recursive(self) -> bool:
