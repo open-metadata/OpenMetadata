@@ -16,7 +16,8 @@ Utils module to define overrided sqlalchamy methods
 import re
 import traceback
 
-from sqlalchemy import sql, text, util
+from sqlalchemy import select, sql, text, util
+from sqlalchemy.dialects.oracle import dictionary
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
 from sqlalchemy.engine import reflection
 from sqlalchemy.exc import DatabaseError
@@ -412,6 +413,179 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
     return constraint_data  # noqa: RET504
+
+
+def _prepare_constraint_args(self, connection, table_name, schema, **kw):
+    dblink = kw.get("dblink", "")
+    if dblink and not dblink.startswith("@"):
+        dblink = f"@{dblink}"
+
+    if kw.get("oracle_resolve_synonyms", False):
+        rows = list(
+            self._get_synonyms(
+                connection,
+                schema,
+                [table_name],
+                dblink,
+                info_cache=kw.get("info_cache"),
+            )
+        )
+        if rows:
+            row = rows[0]
+            table_name = self.denormalize_name(row.table_name)
+            schema = self.denormalize_name(row.table_owner)
+            if row.db_link:
+                dblink = row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+        else:
+            table_name = self.denormalize_name(table_name)
+            schema = self.denormalize_name(schema or self.default_schema_name)
+    else:
+        table_name = self.denormalize_name(table_name)
+        schema = self.denormalize_name(schema or self.default_schema_name)
+
+    return table_name, schema, dblink
+
+
+@reflection.cache
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    """Reflect a primary key from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    constrained_columns = []
+    constraint_name = None
+    for row in constraint_data:
+        if row[1] == "P":
+            constraint_name = constraint_name or self.normalize_name(row[0])
+            constrained_columns.append(self.normalize_name(row[2]))
+
+    return {"constrained_columns": constrained_columns, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    """Reflect unique constraints from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    unique_constraints = {}
+    for row in constraint_data:
+        if row[1] != "U":
+            continue
+        constraint_name = self.normalize_name(row[0])
+        index_name = self.normalize_name(row[10])
+        constraint = unique_constraints.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "column_names": [],
+                "duplicates_index": constraint_name if index_name == constraint_name else None,
+            },
+        )
+        constraint["column_names"].append(self.normalize_name(row[2]))
+
+    return list(unique_constraints.values())
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    """Reflect foreign keys from the selected Oracle catalog."""
+    requested_schema = schema
+    resolve_synonyms = kw.get("oracle_resolve_synonyms", False)
+    owner = self.denormalize_name(requested_schema or self.default_schema_name)
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    foreign_keys = {}
+    remote_owners = set()
+    for row in constraint_data:
+        if row[1] != "R":
+            continue
+
+        constraint_name = self.normalize_name(row[0])
+        local_column = self.normalize_name(row[2])
+        remote_table = self.normalize_name(row[3])
+        remote_column = self.normalize_name(row[4])
+        remote_owner_name = row[5]
+        remote_owner = self.normalize_name(remote_owner_name)
+        if remote_owner_name is not None:
+            remote_owners.add(remote_owner_name)
+
+        if remote_table is None:
+            util.warn(
+                f"Got 'None' querying 'table_name' from {_get_table_prefix(self)}_CONS_COLUMNS{dblink}; "
+                "does the user have proper rights to the table?"
+            )
+            continue
+
+        foreign_key = foreign_keys.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "constrained_columns": [],
+                "referred_schema": None,
+                "referred_table": remote_table,
+                "referred_columns": [],
+                "options": {},
+            },
+        )
+        if resolve_synonyms:
+            foreign_key["_ref_schema"] = remote_owner
+        if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
+            foreign_key["referred_schema"] = remote_owner
+        if row[9] != "NO ACTION":
+            foreign_key["options"]["ondelete"] = row[9]
+        foreign_key["constrained_columns"].append(local_column)
+        foreign_key["referred_columns"].append(remote_column)
+
+    if resolve_synonyms and remote_owners:
+        query = select(
+            dictionary.all_synonyms.c.owner,
+            dictionary.all_synonyms.c.table_name,
+            dictionary.all_synonyms.c.table_owner,
+            dictionary.all_synonyms.c.synonym_name,
+        ).where(dictionary.all_synonyms.c.owner.in_(remote_owners))
+        rows = self._execute_reflection(connection, query, dblink, returns_long=False).mappings()
+        synonyms = {
+            (
+                self.normalize_name(row["owner"]),
+                self.normalize_name(row["table_name"]),
+            ): (row["table_owner"], row["synonym_name"])
+            for row in rows
+        }
+
+        for foreign_key in foreign_keys.values():
+            key = (foreign_key.pop("_ref_schema"), foreign_key["referred_table"])
+            remote_owner, synonym_name = synonyms.get(key, (None, None))
+            if synonym_name:
+                foreign_key["referred_table"] = self.normalize_name(synonym_name)
+                if requested_schema is not None or remote_owner != owner:
+                    foreign_key["referred_schema"] = self.normalize_name(remote_owner)
+                else:
+                    foreign_key["referred_schema"] = None
+
+    return list(foreign_keys.values())
 
 
 # ---------------------------------------------------------------------------
