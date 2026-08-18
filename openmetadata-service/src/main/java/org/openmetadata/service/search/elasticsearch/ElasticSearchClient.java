@@ -1184,7 +1184,7 @@ public class ElasticSearchClient implements SearchClient {
       sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
     }
     // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
-    // from/size pagination cannot miss/duplicate hits when the primary sort field is non-unique.
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is not unique.
     // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
     // indices.id_field_data.enabled=true at the cluster level.
     sortOptions.add(
