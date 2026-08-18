@@ -60,6 +60,9 @@ test.describe('Relation Sync with OntologyExplorer', () => {
   test('should reflect relation add and remove in the graph', async ({
     page,
   }) => {
+    // Three full navigateAndFilterByGlossary calls (each up to 60 s internally)
+    // easily exceed the default 60 s budget. Triple it.
+    test.slow();
     await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
