@@ -1655,6 +1655,12 @@ test.describe.serial('Persona AI Context', () => {
 
     await test.step('fill first condition: Description Contains "alpha"', async () => {
       await adminPage.getByTestId('add-context-condition').click();
+      // After one addRule([]) there are 2 delete buttons (the existing owners
+      // rule-group's inner rule + the newly added rule).
+      await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
+        2
+      );
+
       const firstField = drawer.locator('.rule--field .ant-select').first();
       await firstField.waitFor({ state: 'visible' });
       await selectOption(adminPage, firstField, 'Description', true);
@@ -1662,10 +1668,14 @@ test.describe.serial('Persona AI Context', () => {
       const firstOp = drawer.locator('.rule--operator .ant-select').first();
       await firstOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, firstOp, 'Contains', false);
-      await drawer
+      const alphaInput = drawer
         .locator('.rule--widget--TEXT input[type="text"]')
-        .first()
-        .fill('alpha');
+        .first();
+      await alphaInput.fill('alpha');
+      // Blur to commit the value to the RAQB immutable tree before adding the
+      // second rule; without this the conjunction change may fire before the
+      // debounced tree update and lose "alpha".
+      await alphaInput.press('Tab');
     });
 
     await test.step('add second condition, fill it, then switch connector to OR', async () => {
@@ -1676,9 +1686,10 @@ test.describe.serial('Persona AI Context', () => {
       // nested OR group and causes .last() to target the original alpha rule
       // instead of the new empty slot, overwriting alpha with beta.
       await adminPage.getByTestId('add-context-condition').click();
-      await expect(
-        adminPage.getByTestId('delete-condition-button')
-      ).toHaveCount(2);
+      // 3 delete buttons: owners inner rule + alpha rule + new empty rule.
+      await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
+        3
+      );
 
       const secondField = drawer.locator('.rule--field .ant-select').last();
       await selectOption(adminPage, secondField, 'Description', true);
@@ -1686,10 +1697,12 @@ test.describe.serial('Persona AI Context', () => {
       const secondOp = drawer.locator('.rule--operator .ant-select').last();
       await secondOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, secondOp, 'Contains', false);
-      await drawer
+      const betaInput = drawer
         .locator('.rule--widget--TEXT input[type="text"]')
-        .last()
-        .fill('beta');
+        .last();
+      await betaInput.fill('beta');
+      // Blur to commit before the conjunction change fires.
+      await betaInput.press('Tab');
 
       // Only now change the root conjunction to OR — this just flips the
       // conjunction on the existing two-rule group without any structural
