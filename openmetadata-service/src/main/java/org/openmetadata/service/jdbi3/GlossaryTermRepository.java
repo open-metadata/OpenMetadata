@@ -510,77 +510,94 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * Performs validation during CSV import (both dry-run and actual import).
-   * Checks for circular self-references and move-to-child scenarios to prevent import issues.
-   * This validation runs before entity creation/update to catch logical errors early.
+   * Performs validation during batch import (CSV dry-run/import and RDF import) before the entity is
+   * created or updated. A row identifies a term by (parent, name), so the row's own place in the
+   * hierarchy is always below its declared parent. The only way a row can still name a bad parent is
+   * if it resolves to an already existing term - see {@link #findMovedTermForImport} - that sits at
+   * or above that parent, which would move the term under itself or under one of its descendants.
    */
   public void validateForDryRun(
       GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
     if (entity.getParent() == null) {
       return;
     }
-
-    // Check if term name matches parent name (catches CSV import circular reference)
-    // Example: parent name = "term1", term name = "term1" indicates self-reference
-    if (entity.getName() != null
-        && entity.getParent().getName() != null
-        && entity.getName().equals(entity.getParent().getName())) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Invalid hierarchy: Term '%s' cannot be its own parent",
-              entity.getParent().getFullyQualifiedName()));
-    }
-
-    // Check for move-to-child scenario: does an existing term with the same name
-    // exist that would be moved under its own descendant?
     String newParentFqn = entity.getParent().getFullyQualifiedName();
-
-    // First, check in-memory dryRunCreatedEntities for terms created earlier in this batch
-    // This avoids redundant DB calls for large batch imports
-    GlossaryTerm existingTerm = findTermByNameInBatch(entity, dryRunCreatedEntities);
-
-    // If not found in batch, check DB for pre-existing terms
-    if (existingTerm == null) {
-      String existingTermString =
-          daoCollection
-              .glossaryTermDAO()
-              .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                  entity.getGlossary().getFullyQualifiedName(), entity.getName());
-      if (existingTermString != null && !existingTermString.isEmpty()) {
-        existingTerm = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
-      }
+    GlossaryTerm existingTerm = findMovedTermForImport(entity, dryRunCreatedEntities);
+    if (existingTerm == null || newParentFqn == null) {
+      return;
     }
-
-    if (existingTerm != null && existingTerm.getFullyQualifiedName() != null) {
-      String existingFqn = existingTerm.getFullyQualifiedName();
-      // If the new parent's FQN starts with the existing term's FQN,
-      // then we're trying to move the term under its own descendant
-      if (FullyQualifiedName.isParent(newParentFqn, existingFqn)) {
-        throw new IllegalArgumentException(invalidGlossaryTermMove(existingFqn, newParentFqn));
-      }
+    String existingFqn = existingTerm.getFullyQualifiedName();
+    if (isSelfOrAncestorOf(existingFqn, newParentFqn)) {
+      throw new IllegalArgumentException(invalidGlossaryTermMove(existingFqn, newParentFqn));
     }
   }
 
-  /** Find a term with the same name in the current batch (dryRunCreatedEntities). */
-  private GlossaryTerm findTermByNameInBatch(
+  /**
+   * Resolve the existing term that a batch-import row refers to when no term carries the row's own
+   * FQN. Such a row may be moving a term to a new parent, which changes the term's FQN, so fall back
+   * to matching the term by its name within the glossary.
+   *
+   * <p>Term names are unique per parent, not per glossary, so the fallback only holds when the name
+   * picks out a single term and that term is neither the row's declared parent nor one of its
+   * ancestors: a row for name 'a' under parent 'g.a' describes a new term 'g.a.a', not a move of
+   * 'g.a' under itself.
+   */
+  private GlossaryTerm findMovedTermForImport(
       GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
-    if (dryRunCreatedEntities == null || dryRunCreatedEntities.isEmpty()) {
-      return null;
+    // Terms created earlier in this batch are checked first to avoid a DB call per row
+    List<GlossaryTerm> matches = findTermsByNameInBatch(entity, dryRunCreatedEntities);
+    if (matches.isEmpty()) {
+      matches =
+          findTermsByNameInGlossary(entity.getGlossary().getFullyQualifiedName(), entity.getName());
+    }
+    if (matches.size() != 1) {
+      return null; // Name is unknown, or shared by several terms - the row describes a new term
+    }
+    GlossaryTerm match = matches.getFirst();
+    return isSelfOrAncestorOf(match.getFullyQualifiedName(), getParentFqn(entity)) ? null : match;
+  }
+
+  /** Terms with the given name in the given glossary, at any level of its hierarchy. */
+  private List<GlossaryTerm> findTermsByNameInGlossary(String glossaryFqn, String termName) {
+    return daoCollection
+        .glossaryTermDAO()
+        .getGlossaryTermsByNameAndGlossaryIgnoreCase(glossaryFqn, termName)
+        .stream()
+        .filter(json -> !nullOrEmpty(json))
+        .map(json -> JsonUtils.readValue(json, GlossaryTerm.class))
+        .toList();
+  }
+
+  /** Terms with the same name in the current batch (dryRunCreatedEntities). */
+  private List<GlossaryTerm> findTermsByNameInBatch(
+      GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
+    if (nullOrEmpty(dryRunCreatedEntities)) {
+      return List.of();
     }
     String glossaryFqn = entity.getGlossary().getFullyQualifiedName();
     String termName = entity.getName().toLowerCase();
 
-    // Search through batch for a term with the same name in the same glossary
-    for (GlossaryTerm batchTerm : dryRunCreatedEntities.values()) {
-      if (batchTerm.getGlossary() != null
-          && batchTerm.getGlossary().getFullyQualifiedName() != null
-          && batchTerm.getGlossary().getFullyQualifiedName().equals(glossaryFqn)
-          && batchTerm.getName() != null
-          && batchTerm.getName().toLowerCase().equals(termName)) {
-        return batchTerm;
-      }
-    }
-    return null;
+    return dryRunCreatedEntities.values().stream()
+        .filter(
+            batchTerm ->
+                batchTerm.getGlossary() != null
+                    && glossaryFqn.equals(batchTerm.getGlossary().getFullyQualifiedName())
+                    && batchTerm.getName() != null
+                    && batchTerm.getName().toLowerCase().equals(termName))
+        .toList();
+  }
+
+  /** FQN of the term's parent - the glossary itself for a term at the root of the glossary. */
+  private static String getParentFqn(GlossaryTerm term) {
+    return term.getParent() != null
+        ? term.getParent().getFullyQualifiedName()
+        : term.getGlossary().getFullyQualifiedName();
+  }
+
+  private static boolean isSelfOrAncestorOf(String fqn, String otherFqn) {
+    return fqn != null
+        && otherFqn != null
+        && (fqn.equals(otherFqn) || FullyQualifiedName.isParent(otherFqn, fqn));
   }
 
   @Override
@@ -1621,7 +1638,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               term.getFullyQualifiedName()));
     }
 
-    // Check by FQN to catch cases where UUIDs might differ (e.g., CSV import with new UUID)
+    // Check by FQN to catch cases where UUIDs might differ (e.g., CSV import with new UUID).
+    // Only the FQN identifies a term - a term may share its name with its parent, in which case it
+    // is a distinct term nested under it (parent 'g.a' with child 'g.a.a').
     if (term.getFullyQualifiedName() != null
         && term.getParent().getFullyQualifiedName() != null
         && term.getFullyQualifiedName().equals(term.getParent().getFullyQualifiedName())) {
@@ -1631,15 +1650,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               term.getFullyQualifiedName()));
     }
 
-    // Check if term name matches parent name (catches CSV import circular reference)
-    // Example: parent name = "term1", term name = "term1" indicates self-reference
-    if (term.getName() != null
-        && term.getParent().getName() != null
-        && term.getName().equals(term.getParent().getName())) {
+    // A term cannot be moved under one of its own descendants
+    if (term.getFullyQualifiedName() != null
+        && term.getParent().getFullyQualifiedName() != null
+        && FullyQualifiedName.isParent(
+            term.getParent().getFullyQualifiedName(), term.getFullyQualifiedName())) {
       throw new IllegalArgumentException(
-          String.format(
-              "Invalid hierarchy: Term '%s' cannot be its own parent",
-              term.getParent().getFullyQualifiedName()));
+          invalidGlossaryTermMove(
+              term.getFullyQualifiedName(), term.getParent().getFullyQualifiedName()));
     }
 
     // Check for circular references by traversing the entire parent chain in the database
@@ -2019,34 +2037,41 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  /**
+   * A term is identified by its FQN, so its name only has to be unique among its siblings - the
+   * children of its parent term, or the terms at the root of the glossary. The same name may be
+   * reused under a different parent, including under a parent carrying that same name.
+   */
   private void checkDuplicateTerms(GlossaryTerm entity) {
-    int count =
-        daoCollection
-            .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName());
-    if (count > 0) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.duplicateGlossaryTerm(
-              entity.getName(), entity.getGlossary().getFullyQualifiedName()));
-    }
+    checkDuplicateSiblingTerm(entity, null);
   }
 
   private void checkDuplicateTermsForUpdate(GlossaryTerm original, GlossaryTerm updated) {
     if (!original.getName().equals(updated.getName())) {
-      int count =
-          daoCollection
-              .glossaryTermDAO()
-              .getGlossaryTermCountIgnoreCaseExcludingId(
-                  updated.getGlossary().getFullyQualifiedName(),
-                  updated.getName(),
-                  original.getId().toString());
-      if (count > 0) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.duplicateGlossaryTerm(
-                updated.getName(), updated.getGlossary().getFullyQualifiedName()));
-      }
+      checkDuplicateSiblingTerm(updated, original.getId());
     }
+  }
+
+  private void checkDuplicateSiblingTerm(GlossaryTerm entity, UUID excludeId) {
+    String parentFqn = getParentFqn(entity);
+    boolean duplicate =
+        findTermsByNameInGlossary(entity.getGlossary().getFullyQualifiedName(), entity.getName())
+            .stream()
+            .filter(term -> excludeId == null || !excludeId.equals(term.getId()))
+            .anyMatch(term -> isChildOf(term.getFullyQualifiedName(), parentFqn));
+    if (duplicate) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.duplicateGlossaryTerm(entity.getName(), parentFqn));
+    }
+  }
+
+  /** True when fqn names a direct child of parentFqn. */
+  private static boolean isChildOf(String fqn, String parentFqn) {
+    if (fqn == null || parentFqn == null) {
+      return false;
+    }
+    String actualParentFqn = FullyQualifiedName.getParentFQN(fqn);
+    return actualParentFqn != null && actualParentFqn.equalsIgnoreCase(parentFqn);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -2756,14 +2781,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // locating the term by (glossary, name) combination.
     if (original == null) {
       try {
-        String existingTermString =
-            Entity.getCollectionDAO()
-                .glossaryTermDAO()
-                .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                    updated.getGlossary().getFullyQualifiedName(), updated.getName());
-        if (existingTermString != null && !existingTermString.isEmpty()) {
-          original = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
-        }
+        original = findMovedTermForImport(updated, null);
       } catch (Exception ignored) {
       }
     }
@@ -2785,15 +2803,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // A glossary term may have been moved to a different parent causing its FQN to change. So check
     // with name field
-    String existingTermJson =
-        daoCollection
-            .glossaryTermDAO()
-            .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName());
-    if (existingTermJson != null && !existingTermJson.isEmpty()) {
-      return JsonUtils.readValue(existingTermJson, GlossaryTerm.class);
-    }
-    return null;
+    return findMovedTermForImport(entity, null);
   }
 
   @Override

@@ -6031,30 +6031,11 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash);
 
-    @SqlQuery(
-        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
-    int getGlossaryTermCountIgnoreCase(
-        @BindConcat(
-                value = "glossaryHash",
-                parts = {":fqnhash", ".%"},
-                hash = true)
-            String fqnhash,
-        @Bind("termName") String termName);
-
-    @SqlQuery(
-        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName) AND id != :excludeId")
-    int getGlossaryTermCountIgnoreCaseExcludingId(
-        @BindConcat(
-                value = "glossaryHash",
-                parts = {":fqnhash", ".%"},
-                hash = true)
-            String fqnhash,
-        @Bind("termName") String termName,
-        @Bind("excludeId") String excludeId);
-
+    // Terms are unique by FQN, so the same name may occur more than once in a glossary (under
+    // different parents). Callers get every match and pick by hierarchy.
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
-    String getGlossaryTermByNameAndGlossaryIgnoreCase(
+    List<String> getGlossaryTermsByNameAndGlossaryIgnoreCase(
         @BindConcat(
                 value = "glossaryHash",
                 parts = {":fqnhash", ".%"},

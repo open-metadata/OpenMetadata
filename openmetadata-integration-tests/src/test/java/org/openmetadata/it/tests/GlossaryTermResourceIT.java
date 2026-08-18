@@ -320,6 +320,120 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals("Updated description", updated.getDescription());
   }
 
+  /**
+   * A term is identified by its FQN, so a child term may carry the same name as its parent - the two
+   * are distinct terms, 'glossary.a' and 'glossary.a.a'.
+   */
+  @Test
+  void post_childGlossaryTermWithParentName_200_OK(TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
+    String termName = ns.prefix("selfNamed");
+
+    GlossaryTerm parentTerm =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(termName)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Parent term"));
+
+    GlossaryTerm childTerm =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(termName)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(parentTerm.getFullyQualifiedName())
+                .withDescription("Child term carrying its parent's name"));
+
+    assertNotEquals(parentTerm.getId(), childTerm.getId());
+    assertEquals(parentTerm.getId(), childTerm.getParent().getId());
+    assertEquals(
+        parentTerm.getFullyQualifiedName() + "." + termName, childTerm.getFullyQualifiedName());
+
+    // Both terms remain retrievable under their own FQN
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertEquals(
+        parentTerm.getId(),
+        client.glossaryTerms().getByName(parentTerm.getFullyQualifiedName()).getId());
+    assertEquals(
+        childTerm.getId(),
+        client.glossaryTerms().getByName(childTerm.getFullyQualifiedName()).getId());
+  }
+
+  /** The same term name may be reused under different parents - the FQNs stay distinct. */
+  @Test
+  void post_sameTermNameUnderDifferentParents_200_OK(TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
+    String childName = ns.prefix("balance");
+
+    GlossaryTerm firstParent =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("account"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("First parent term"));
+    GlossaryTerm secondParent =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("loan"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Second parent term"));
+
+    GlossaryTerm firstChild =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(childName)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(firstParent.getFullyQualifiedName())
+                .withDescription("Balance of an account"));
+    GlossaryTerm secondChild =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(childName)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(secondParent.getFullyQualifiedName())
+                .withDescription("Balance of a loan"));
+
+    assertNotEquals(firstChild.getId(), secondChild.getId());
+    assertEquals(
+        firstParent.getFullyQualifiedName() + "." + childName, firstChild.getFullyQualifiedName());
+    assertEquals(
+        secondParent.getFullyQualifiedName() + "." + childName,
+        secondChild.getFullyQualifiedName());
+  }
+
+  /** Sibling terms must still have unique names - two children of the same parent collide. */
+  @Test
+  void post_duplicateTermUnderSameParent_4xx(TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
+    String childName = ns.prefix("duplicateChild");
+
+    GlossaryTerm parentTerm =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("duplicateChildParent"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Parent term"));
+
+    createEntity(
+        new CreateGlossaryTerm()
+            .withName(childName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parentTerm.getFullyQualifiedName())
+            .withDescription("Child term"));
+
+    CreateGlossaryTerm duplicate =
+        new CreateGlossaryTerm()
+            .withName(childName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parentTerm.getFullyQualifiedName())
+            .withDescription("Duplicate child term");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(duplicate),
+        "Creating two terms with the same name under one parent should fail");
+  }
+
   @Test
   void test_glossaryTermNameUniquenessWithinGlossary(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();

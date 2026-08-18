@@ -1850,7 +1850,7 @@ test.describe('Glossary tests', () => {
         await glossaryTermResponse;
 
         await expect(page.locator('#name_help')).toHaveText(
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.data.name}' glossary.`
+          `A term with the name '${glossaryTerm2.data.name}' already exists under '${glossary1.data.name}'.`
         );
       });
     } finally {
@@ -1901,7 +1901,7 @@ test.describe('Glossary tests', () => {
       await glossaryTermResponse;
 
       await expect(page.locator('#name_help')).toHaveText(
-        `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
+        `A term with the name '${glossaryTerm2.data.name}' already exists under '${glossary1.responseData.fullyQualifiedName}'.`
       );
     });
   });
