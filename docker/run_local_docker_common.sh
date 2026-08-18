@@ -575,8 +575,29 @@ run_local_docker_main() {
     sample_data_validation_failed=false
     validation_timeout_seconds="${VALIDATION_TIMEOUT_SECONDS:-300}"
 
-    docker exec -i openmetadata_ingestion \
-      timeout --kill-after=10s "$validation_timeout_seconds" python - < docker/validate_compose.py || {
+    # docker exec starts a process in the container's own environment — the
+    # VALIDATE_COMPOSE_* exports above (and in run_local_docker_rdf.sh) do NOT
+    # cross the boundary unless forwarded explicitly. Without this the validator
+    # silently fell back to its module defaults, capping the wait at 150s while
+    # the RDF lane believed it had granted 600s.
+    validate_compose_retry_interval="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
+    # Leave the inner deadline below the outer `timeout` so we exit with the
+    # validator's own diagnostics instead of being SIGTERMed mid-report.
+    validate_compose_timeout=$(( validation_timeout_seconds > 60 ? validation_timeout_seconds - 30 : validation_timeout_seconds ))
+
+    validate_compose_env=(
+      -e "VALIDATE_COMPOSE_TIMEOUT_SECONDS=${validate_compose_timeout}"
+      -e "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=${validate_compose_retry_interval}"
+    )
+    # An explicit retry count still wins over the timeout-derived deadline.
+    if [ -n "${VALIDATE_COMPOSE_MAX_RETRIES:-}" ]; then
+      validate_compose_env+=(-e "VALIDATE_COMPOSE_MAX_RETRIES=${VALIDATE_COMPOSE_MAX_RETRIES}")
+    fi
+
+    docker exec -i \
+      "${validate_compose_env[@]}" \
+      openmetadata_ingestion \
+      timeout --kill-after=10s "$validation_timeout_seconds" python -u - < docker/validate_compose.py || {
       local exit_code=$?
       sample_data_validation_failed=true
       if [ $exit_code -eq 124 ]; then
