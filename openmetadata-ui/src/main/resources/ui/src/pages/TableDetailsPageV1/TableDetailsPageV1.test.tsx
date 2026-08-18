@@ -850,5 +850,89 @@ describe('TestDetailsPageV1 component', () => {
         )
       );
     });
+
+    it('should ignore a stale response for a table the user returned to', async () => {
+      // Same entityId for both A requests, so they can only be told apart by
+      // request order — keyed by call index, not by id.
+      const resolvers: Array<(value: { paging: { total: number } }) => void> =
+        [];
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+      const tableFor = (id: string) => ({
+        name: `test-${id}`,
+        id,
+        fullyQualifiedName: `fqn-${id}`,
+        columns: [],
+      });
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      (getTableDetailsByFQN as jest.Mock).mockImplementation((fqn: string) =>
+        Promise.resolve(tableFor(fqn === 'fqn-b' ? 'b' : 'a'))
+      );
+
+      const goTo = async (
+        fqn: string,
+        rerender?: (ui: React.ReactElement) => void
+      ) => {
+        (useParams as jest.Mock).mockReturnValue({ fqn, tab: 'schema' });
+        const ui = (
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+        let result: ReturnType<typeof render> | undefined;
+
+        await act(async () => {
+          if (rerender) {
+            rerender(ui);
+          } else {
+            result = render(ui);
+          }
+        });
+
+        return result;
+      };
+
+      const { rerender } = (await goTo('fqn-a'))!;
+
+      await waitFor(() => expect(resolvers).toHaveLength(1));
+
+      await goTo('fqn-b', rerender);
+
+      await waitFor(() => expect(resolvers).toHaveLength(2));
+
+      await goTo('fqn-a', rerender);
+
+      await waitFor(() => expect(resolvers).toHaveLength(3));
+
+      // The first request for table A resolves only now — after the user left A and
+      // came back, so a newer request for the same id is already in flight.
+      await act(async () => {
+        resolvers[0]({ paging: { total: 7 } });
+      });
+
+      expect(getLatestQueriesTabProps()).toEqual(
+        expect.objectContaining({ isLoading: true })
+      );
+      expect(getLatestQueriesTabProps()?.count).not.toBe(7);
+
+      await act(async () => {
+        resolvers[2]({ paging: { total: 3 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 3, isLoading: false })
+        )
+      );
+    });
   });
 });

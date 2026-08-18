@@ -125,10 +125,11 @@ const TableDetailsPageV1: React.FC = () => {
 
   const [queryCount, setQueryCount] = useState(0);
   const [isQueryCountLoading, setIsQueryCountLoading] = useState(true);
-  // Table whose query count is currently in flight. Navigating between tables leaves the
-  // previous request running, and its late response would otherwise clear this table's
-  // skeleton and paint the previous table's count.
-  const queryCountRequestIdRef = useRef<string>();
+  // Sequence number of the newest query-count request. Navigating away leaves the previous
+  // request running, and its late response would otherwise clear this table's skeleton and
+  // paint a stale count. A counter rather than the table id, because A -> B -> A gives two
+  // concurrent requests for the same id and only the newest may settle the badge.
+  const queryCountRequestSeqRef = useRef(0);
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -302,27 +303,27 @@ const TableDetailsPageV1: React.FC = () => {
     // Tour mode renders a mock without an id — settle the skeleton rather than
     // leaving it spinning against a count that will never arrive.
     if (!tableDetails?.id) {
-      queryCountRequestIdRef.current = undefined;
+      queryCountRequestSeqRef.current += 1;
       setIsQueryCountLoading(false);
 
       return;
     }
 
-    const requestedId = tableDetails.id;
-    queryCountRequestIdRef.current = requestedId;
+    queryCountRequestSeqRef.current += 1;
+    const requestSeq = queryCountRequestSeqRef.current;
     setIsQueryCountLoading(true);
 
     try {
       const response = await getQueriesList({
         limit: 0,
-        entityId: requestedId,
+        entityId: tableDetails.id,
       });
-      if (queryCountRequestIdRef.current === requestedId) {
+      if (queryCountRequestSeqRef.current === requestSeq) {
         setQueryCount(response.paging.total);
         setIsQueryCountLoading(false);
       }
     } catch {
-      if (queryCountRequestIdRef.current === requestedId) {
+      if (queryCountRequestSeqRef.current === requestSeq) {
         setQueryCount(0);
         setIsQueryCountLoading(false);
       }
@@ -810,7 +811,7 @@ const TableDetailsPageV1: React.FC = () => {
       setTableDetails(undefined);
       // Invalidate any in-flight count before the new table's request starts, so a
       // response for the table we just left cannot settle this table's badge.
-      queryCountRequestIdRef.current = undefined;
+      queryCountRequestSeqRef.current += 1;
       setIsQueryCountLoading(true);
       fetchTableDetails();
       getEntityFeedCount();
