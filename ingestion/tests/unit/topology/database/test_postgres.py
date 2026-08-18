@@ -949,11 +949,7 @@ class TestPostgresCommonMappings(TestCase):
         self.assertEqual(data_type, "STRING")
 
     def test_relkind_map_includes_materialized_view(self):
-        """RELKIND_MAP must map 'm' to MaterializedView so that materialized views
-        discovered by query_table_names_and_types are classified correctly.
-        Fixes issue #31515: materialized views were absent from OpenMetadata because
-        'r' was excluded from POSTGRES_GET_TABLE_NAMES and missing from RELKIND_MAP.
-        """
+        """RELKIND_MAP must map 'm' to MaterializedView for consistent type resolution."""
         from metadata.generated.schema.entity.data.table import TableType
         from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
 
@@ -964,16 +960,60 @@ class TestPostgresCommonMappings(TestCase):
             msg="RELKIND_MAP['m'] must map to TableType.MaterializedView",
         )
 
-    def test_postgres_get_table_names_includes_materialized_view_relkind(self):
-        """POSTGRES_GET_TABLE_NAMES must include 'm' in the relkind filter so that
-        materialized views are enumerated during metadata ingestion.
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """
+        includeViews=True, includeTables=False: materialized views must be emitted as
+        MaterializedView, not omitted.
+
+        Regression for #31515: the old approach placed matview discovery in the table
+        path (POSTGRES_GET_TABLE_NAMES), so when includeTables=False the matview was
+        silently absent.  The correct fix overrides query_view_names_and_types() to
+        combine get_view_names() and get_materialized_view_names().
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.generated.schema.entity.data.table import TableType
+        from metadata.ingestion.source.database.common_db_source import TableNameAndType
+
+        source = self.postgres_source
+
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.return_value = ["my_matview"]
+
+        original_inspector = source.inspector
+        source.inspector = mock_inspector
+        try:
+            results = list(source.query_view_names_and_types("public"))
+        finally:
+            source.inspector = original_inspector
+
+        names = {r.name: r.type_ for r in results}
+        self.assertIn("regular_view", names)
+        self.assertEqual(names["regular_view"], TableType.View)
+        self.assertIn("my_matview", names)
+        self.assertEqual(names["my_matview"], TableType.MaterializedView)
+
+    def test_matview_not_emitted_when_include_views_false(self):
+        """
+        includeTables=True, includeViews=False: materialized views must NOT appear.
+
+        The old approach (adding 'm' to POSTGRES_GET_TABLE_NAMES) caused matviews to
+        be ingested whenever includeTables=True, even when includeViews=False.
+        The correct fix places matview discovery inside query_view_names_and_types()
+        so the includeViews flag controls it correctly.
         """
         from metadata.ingestion.source.database.postgres.queries import (
             POSTGRES_GET_TABLE_NAMES,
         )
 
-        self.assertIn(
+        # When the view path is not taken (includeViews=False), materialized views
+        # must not leak in through the table query.
+        self.assertNotIn(
             "'m'",
             POSTGRES_GET_TABLE_NAMES,
-            msg="POSTGRES_GET_TABLE_NAMES must filter on relkind 'm' to include materialized views",
+            msg=(
+                "POSTGRES_GET_TABLE_NAMES must NOT include 'm': matview discovery "
+                "belongs in query_view_names_and_types so includeViews=False excludes them"
+            ),
         )
