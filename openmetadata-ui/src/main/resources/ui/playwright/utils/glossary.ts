@@ -943,7 +943,9 @@ const testFilterWithSpecificOption = async (
     const aggregateResponse = page.waitForResponse(
       '/api/v1/search/aggregate?*'
     );
-    await page.getByRole('textbox', { name: 'Search Service Type...' }).fill(searchText);
+    await page
+      .getByRole('textbox', { name: 'Search Service Type...' })
+      .fill(searchText);
     await aggregateResponse;
   }
 
