@@ -1476,6 +1476,7 @@
     "list": "Lista",
     "list-entity": "Listar {{entity}}",
     "live": "Ao Vivo",
+    "live-auto-scroll": "Deslocamento automático em direto",
     "live-indexing": "Indexação em direto",
     "load-more": "Carregar Mais",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",

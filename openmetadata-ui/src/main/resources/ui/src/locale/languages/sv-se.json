@@ -1476,6 +1476,7 @@
     "list": "Lista",
     "list-entity": "Lista {{entity}}",
     "live": "Live",
+    "live-auto-scroll": "Automatisk rullning i realtid",
     "live-indexing": "Live-indexering",
     "load-more": "Läs in mer",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",

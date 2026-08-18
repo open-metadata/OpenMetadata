@@ -1476,6 +1476,7 @@
     "list": "רשימה",
     "list-entity": "רשימת {{entity}}",
     "live": "שידור חי",
+    "live-auto-scroll": "גלילה אוטומטית חיה",
     "live-indexing": "אינדוקס בזמן אמת",
     "load-more": "טען עוד",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",

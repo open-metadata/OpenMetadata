@@ -1476,6 +1476,7 @@
     "list": "Список",
     "list-entity": "Список объектов «{{entity}}»",
     "live": "Процесс",
+    "live-auto-scroll": "Автопрокрутка в реальном времени",
     "live-indexing": "Индексация в реальном времени",
     "load-more": "Загрузить больше",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",
