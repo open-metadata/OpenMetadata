@@ -13,8 +13,8 @@
 
 export { authCoordinator, AuthCoordinator } from './AuthCoordinator';
 export type {
-  Renewer,
-  RenewResult,
   RefreshedPayload,
   RefreshFailedPayload,
+  Renewer,
+  RenewResult,
 } from './types';
