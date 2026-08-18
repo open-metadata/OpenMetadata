@@ -18,7 +18,7 @@ import {
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Globe01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -174,13 +174,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <NoFilteredResultsPlaceholder
-            onClearFilters={() => domainListing.handleSearchChange('')}
-          />
+          <div className="tw:relative tw:min-h-70">
+            <NoFilteredResultsPlaceholder
+              onClearFilters={() => domainListing.handleSearchChange('')}
+            />
+          </div>
         );
       }
 
       return (
+        <div className='tw:relative tw:min-h-70'>
         <EmptyPlaceholder
           actions={
             permissions.domain?.Create
@@ -198,9 +201,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
               : undefined
           }
           description={t('message.no-domains-yet-desc')}
+          icon={<Globe01 className="tw:text-fg-brand-primary" />}
           title={t('label.no-domains-yet')}
           variant="blank"
         />
+        </div>
       );
     }
 

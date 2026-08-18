@@ -20,7 +20,7 @@ import {
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01, Plus } from '@untitledui/icons';
+import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
@@ -280,13 +280,16 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
+          <div className='tw:relative tw:min-h-70'>
           <NoFilteredResultsPlaceholder
             onClearFilters={() => dataProductListing.handleSearchChange('')}
           />
+          </div>
         );
       }
 
       return (
+        <div className='tw:relative tw:min-h-70'>
         <EmptyPlaceholder
           actions={
             permissions.dataProduct?.Create
@@ -304,9 +307,11 @@ const DataProductListPage = ({
               : undefined
           }
           description={t('label.no-data-products-yet-description')}
+          icon={<Package className="tw:text-fg-brand-primary" />}
           title={t('label.no-data-products-yet')}
           variant="blank"
         />
+        </div>
       );
     }
 
