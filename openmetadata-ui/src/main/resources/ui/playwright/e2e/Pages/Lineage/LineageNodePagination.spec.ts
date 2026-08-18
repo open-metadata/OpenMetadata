@@ -65,8 +65,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
       table2.create(apiContext),
     ]);
 
-    table1Fqn = get(table1Response, 'entity.fullyQualifiedName');
-    table2Fqn = get(table2Response, 'entity.fullyQualifiedName');
+    table1Fqn = get(table1Response, 'entity.fullyQualifiedName', '');
+    table2Fqn = get(table2Response, 'entity.fullyQualifiedName', '');
 
     await connectEdgeBetweenNodesViaAPI(
       apiContext,
@@ -81,10 +81,10 @@ test.describe.serial('Test pagination in column level lineage', () => {
     );
 
     const table1ColumnFqn = table1Response.entity.columns?.map(
-      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+      (col) => col.fullyQualifiedName
     ) as string[];
     const table2ColumnFqn = table2Response.entity.columns?.map(
-      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+      (col) => col.fullyQualifiedName
     ) as string[];
 
     await test.step('Add edges between T1-P1 and T2-P1', async () => {
