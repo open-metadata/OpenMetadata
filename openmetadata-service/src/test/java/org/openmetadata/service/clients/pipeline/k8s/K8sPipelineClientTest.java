@@ -27,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.kubernetes.client.openapi.ApiException;
@@ -76,8 +77,6 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -223,6 +222,10 @@ class K8sPipelineClientTest {
     assertTrue(createdJob.getMetadata().getName().startsWith("om-job-test-pipeline-"));
     assertEquals(
         "test-pipeline", createdJob.getMetadata().getLabels().get("app.kubernetes.io/pipeline"));
+    assertEquals(
+        createdJob.getMetadata().getLabels().get("app.kubernetes.io/run-id"),
+        response.getRunId(),
+        "The run ID must be reported back so the server can record the queued status");
   }
 
   @Test
@@ -718,64 +721,12 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void testGetQueuedPipelineStatusReturnsOnlyQueuedJobs() throws Exception {
+  void testGetQueuedPipelineStatusCostsNoApiCall() {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
-
-    V1Job queuedWithRunId =
-        new V1Job()
-            .metadata(
-                new V1ObjectMeta()
-                    .name("queued-with-run-id")
-                    .labels(Map.of("app.kubernetes.io/run-id", "run-1"))
-                    .creationTimestamp(OffsetDateTime.parse("2026-03-09T10:15:30Z")));
-    V1Job queuedWithoutRunId =
-        new V1Job()
-            .metadata(
-                new V1ObjectMeta()
-                    .name("queued-without-run-id")
-                    .creationTimestamp(OffsetDateTime.parse("2026-03-09T10:16:30Z")))
-            .status(new V1JobStatus().active(0).succeeded(0).failed(0));
-    V1Job activeJob =
-        new V1Job()
-            .metadata(new V1ObjectMeta().name("active-job"))
-            .status(new V1JobStatus().active(1));
-    V1Job deletingJob =
-        new V1Job()
-            .metadata(
-                new V1ObjectMeta()
-                    .name("deleting-job")
-                    .deletionTimestamp(OffsetDateTime.parse("2026-03-09T10:17:30Z")))
-            .status(new V1JobStatus().active(0).succeeded(0).failed(0));
-
-    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
-    when(listJobRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listJobRequest);
-    when(listJobRequest.execute())
-        .thenReturn(
-            new V1JobList()
-                .items(List.of(queuedWithRunId, queuedWithoutRunId, activeJob, deletingJob)));
-
-    List<PipelineStatus> queuedStatuses = client.getQueuedPipelineStatus(pipeline);
-
-    assertEquals(2, queuedStatuses.size());
-    assertEquals("run-1", queuedStatuses.get(0).getRunId());
-    assertEquals(PipelineStatusType.QUEUED, queuedStatuses.get(0).getPipelineState());
-    assertEquals("queued-without-run-id", queuedStatuses.get(1).getRunId());
-    assertEquals(
-        queuedWithRunId.getMetadata().getCreationTimestamp().toInstant().toEpochMilli(),
-        queuedStatuses.get(0).getStartDate());
-  }
-
-  @Test
-  void testGetQueuedPipelineStatusHandlesApiFailure() throws Exception {
-    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
-
-    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
-    when(listJobRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
-        .thenReturn(listJobRequest);
-    when(listJobRequest.execute()).thenThrow(new ApiException(500, "boom"));
 
     assertTrue(client.getQueuedPipelineStatus(pipeline).isEmpty());
+
+    verifyNoInteractions(batchApi);
   }
 
   @Test
