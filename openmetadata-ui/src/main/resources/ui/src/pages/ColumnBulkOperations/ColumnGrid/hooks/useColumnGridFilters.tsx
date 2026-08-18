@@ -24,7 +24,6 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { EntityIconSize } from '../../../../utils/TableUtils';
 import {
   ADDITIONAL_FILTER_KEYS,
   COLUMN_GRID_FILTERS,
@@ -116,11 +115,10 @@ export const useColumnGridFilters = (
         options: f.options.map((opt) => ({
           ...opt,
           icon:
-            searchClassBase.getEntityIcon(
+            searchClassBase.getEntityIconWithBg(
               getCanonicalEntityType(opt.key),
-              '',
-              {},
-              EntityIconSize.Size16
+              { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
+              { size: 12 }
             ) ?? undefined,
         })),
       };

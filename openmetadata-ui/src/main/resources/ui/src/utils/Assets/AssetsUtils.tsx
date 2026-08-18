@@ -329,10 +329,10 @@ export interface EntityIconProps {
 export const getEntityIconWithBg = (
   entityType?: string,
   containerProps?: HTMLAttributes<HTMLSpanElement>,
-  iconProps?: EntityIconProps
+  iconProps?: EntityIconProps,
+  mapper: typeof ENTITY_ICON_MAPPER = ENTITY_ICON_MAPPER
 ) => {
-  const style =
-    ENTITY_ICON_MAPPER[entityType ?? ''] ?? ENTITY_ICON_MAPPER['default'];
+  const style = mapper[entityType ?? ''] ?? mapper['default'];
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};

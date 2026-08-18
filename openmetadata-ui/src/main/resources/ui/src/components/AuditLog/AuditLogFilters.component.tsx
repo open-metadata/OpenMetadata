@@ -38,7 +38,6 @@ import { getCanonicalEntityType } from '../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';
-import { EntityIconSize } from '../../utils/TableUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -109,11 +108,10 @@ const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
     key: o.value,
     label: o.label,
     icon:
-      searchClassBase.getEntityIcon(
+      searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(o.value),
-        '',
-        {},
-        EntityIconSize.Size16
+        { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
+        { size: 12 }
       ) ?? undefined,
   }));
 

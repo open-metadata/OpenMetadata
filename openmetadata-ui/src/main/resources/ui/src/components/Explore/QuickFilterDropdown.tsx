@@ -228,10 +228,10 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
                     isSelected={isOptionSelected(option)}
                     label={
                       option.icon ? (
-                        <span className="tw:flex tw:items-center tw:gap-1.5">
+                        <div className="tw:flex tw:items-center tw:gap-1.5">
                           {option.icon}
                           {option.label}
-                        </span>
+                        </div>
                       ) : (
                         option.label
                       )

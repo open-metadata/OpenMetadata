@@ -23,9 +23,28 @@ import {
   SlashCircle01,
 } from '@untitledui/icons';
 import React from 'react';
+import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
+import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
+import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
+import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
+import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
 import { ReactComponent as FolderIcon } from '../assets/svg/common/folder.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
+import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as AIFrameworkControl } from '../assets/svg/entity/ai-framework-control.svg';
@@ -669,6 +688,126 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
     borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
     icon: TestDefinition,
+  },
+  [EntityType.BOT]: {
+    iconClass: 'tw:text-utility-gray-600',
+    bgClass: 'tw:bg-utility-gray-50',
+    borderClass: 'tw:border-utility-gray-200',
+    icon: BotIcon,
+  },
+  [EntityType.TEAM]: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: TeamIcon,
+  },
+  [EntityType.APPLICATION]: {
+    iconClass: 'tw:text-utility-purple-600',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: ApplicationIcon,
+  },
+  [EntityType.PERSONA]: {
+    iconClass: 'tw:text-utility-orange-600',
+    bgClass: 'tw:bg-utility-orange-50',
+    borderClass: 'tw:border-utility-orange-200',
+    icon: PersonaIcon,
+  },
+  [EntityType.ROLE]: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: RoleIcon,
+  },
+  [EntityType.POLICY]: {
+    iconClass: 'tw:text-utility-indigo-600',
+    bgClass: 'tw:bg-utility-indigo-50',
+    borderClass: 'tw:border-utility-indigo-200',
+    icon: PolicyIcon,
+  },
+  [EntityType.EVENT_SUBSCRIPTION]: {
+    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
+    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
+    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    icon: EventSubscriptionIcon,
+  },
+  [EntityType.USER]: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: UserIcon,
+  },
+  [EntityType.ALERT]: {
+    iconClass: 'tw:text-utility-error-600',
+    bgClass: 'tw:bg-utility-error-50',
+    borderClass: 'tw:border-utility-error-200',
+    icon: AlertIcon,
+  },
+  [EntityType.KPI]: {
+    iconClass: 'tw:text-utility-success-600',
+    bgClass: 'tw:bg-utility-success-50',
+    borderClass: 'tw:border-utility-success-200',
+    icon: KPIIcon,
+  },
+  tagCategory: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: Classification,
+  },
+  announcement: {
+    iconClass: 'tw:text-utility-warning-600',
+    bgClass: 'tw:bg-utility-warning-50',
+    borderClass: 'tw:border-utility-warning-200',
+    icon: AnnouncementIcon,
+  },
+  conversation: {
+    iconClass: 'tw:text-utility-gray-600',
+    bgClass: 'tw:bg-utility-gray-50',
+    borderClass: 'tw:border-utility-gray-200',
+    icon: ConversationIcon,
+  },
+  task: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: TaskIcon,
+  },
+  dataQuality: {
+    iconClass: 'tw:text-utility-success-600',
+    bgClass: 'tw:bg-utility-success-50',
+    borderClass: 'tw:border-utility-success-200',
+    icon: DataQualityIcon,
+  },
+  services: {
+    iconClass: 'tw:text-utility-purple-600',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: ServicesIcon,
+  },
+  automator: {
+    iconClass: 'tw:text-utility-purple-600',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: AutomatorBotIcon,
+  },
+  notification: {
+    iconClass: 'tw:text-utility-orange-600',
+    bgClass: 'tw:bg-utility-orange-50',
+    borderClass: 'tw:border-utility-orange-200',
+    icon: NotificationIcon,
+  },
+  location: {
+    iconClass: 'tw:text-utility-gray-600',
+    bgClass: 'tw:bg-utility-gray-50',
+    borderClass: 'tw:border-utility-gray-200',
+    icon: LocationIcon,
+  },
+  Governance: {
+    iconClass: 'tw:text-utility-indigo-600',
+    bgClass: 'tw:bg-utility-indigo-50',
+    borderClass: 'tw:border-utility-indigo-200',
+    icon: GovernanceIcon,
   },
   default: {
     iconClass: 'tw:text-quaternary',

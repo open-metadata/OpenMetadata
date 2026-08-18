@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import type { ComponentType } from 'react';
+import type { ComponentType, HTMLAttributes } from 'react';
 import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
@@ -61,6 +61,10 @@ import {
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import {
+  EntityIconProps,
+  getEntityIconWithBg,
+} from './Assets/AssetsUtils';
 import { EntityIconSize, getEntityIcon } from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -855,6 +859,23 @@ class SearchClassBase {
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
     return [];
+  }
+
+  public getEntityIconMapper(): typeof ENTITY_ICON_MAPPER {
+    return ENTITY_ICON_MAPPER;
+  }
+
+  public getEntityIconWithBg(
+    entityType?: string,
+    containerProps?: HTMLAttributes<HTMLSpanElement>,
+    iconProps?: EntityIconProps
+  ) {
+    return getEntityIconWithBg(
+      entityType,
+      containerProps,
+      iconProps,
+      this.getEntityIconMapper()
+    );
   }
 
   public getIndexGroupLabel(index: string) {

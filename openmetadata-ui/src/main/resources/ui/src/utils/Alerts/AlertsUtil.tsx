@@ -1238,28 +1238,25 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[],
   showIcon?: boolean
 ) =>
-  resources.map((resource) => {
-    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
-
-    return {
-      label: (
-        <div
-          className="d-flex items-center gap-2"
-          data-testid={`${resource}-option`}>
-          {showCheckbox && (
-            <Checkbox checked={selectedResource?.includes(resource)} />
+  resources.map((resource) => ({
+    label: (
+      <div
+        className="d-flex items-center gap-2"
+        data-testid={`${resource}-option`}>
+        {showCheckbox && (
+          <Checkbox checked={selectedResource?.includes(resource)} />
+        )}
+        {showIcon &&
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
+            { size: 12 }
           )}
-          {sourceIcon && showIcon && (
-            <div className="d-flex items-center justify-center h-4 w-4">
-              {sourceIcon}
-            </div>
-          )}
-          <span>{getEntityNameLabel(resource ?? '')}</span>
-        </div>
-      ),
-      value: resource ?? '',
-    };
-  });
+        <span>{getEntityNameLabel(resource ?? '')}</span>
+      </div>
+    ),
+    value: resource ?? '',
+  }));
 
 export const getAlertRecentEventsFilterOptions = () => {
   const filters: MenuProps['items'] = Object.values(

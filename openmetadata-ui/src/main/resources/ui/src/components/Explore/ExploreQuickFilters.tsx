@@ -34,7 +34,6 @@ import {
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
-import { EntityIconSize } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -73,11 +72,10 @@ const addEntityTypeIcons = (
   return opts.map((opt) => ({
     ...opt,
     icon:
-      searchClassBase.getEntityIcon(
+      searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(opt.key),
-        '',
-        {},
-        EntityIconSize.Size16
+        { style: { height: '20px', width: '20px' }, className: 'tw:rounded-sm' },
+        { size: 12 }
       ) ?? undefined,
   }));
 };
