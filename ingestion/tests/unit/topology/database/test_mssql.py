@@ -603,6 +603,48 @@ class TestMssqlForeignKeyReferredDatabase:
         assert key["referred_columns"] == ["id", "region"]
 
 
+class TestMssqlUniqueConstraints:
+    """``get_unique_constraints`` used to be a NotImplementedError stub, so every
+    named UNIQUE constraint was silently dropped instead of reflected.
+    """
+
+    @staticmethod
+    def _row(constraint_name, column_name):
+        values = {"CONSTRAINT_NAME": constraint_name, "COLUMN_NAME": column_name}
+
+        class _Mapping:
+            def __getitem__(self, key):
+                return values.get(getattr(key, "key", key))
+
+        return _Mapping()
+
+    def _unique_constraints(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_unique_constraints(MSDialect(), connection, "Products", schema="dbo")
+
+    def test_single_column_constraint_is_reflected(self):
+        constraints = self._unique_constraints([self._row("UQ_Products_SKU", "SKU")])
+
+        assert constraints == [{"name": "UQ_Products_SKU", "column_names": ["SKU"]}]
+
+    def test_multi_column_constraint_is_grouped(self):
+        constraints = self._unique_constraints(
+            [
+                self._row("UQ_OrderLines_OrderProduct", "OrderID"),
+                self._row("UQ_OrderLines_OrderProduct", "ProductID"),
+            ]
+        )
+
+        assert constraints == [{"name": "UQ_OrderLines_OrderProduct", "column_names": ["OrderID", "ProductID"]}]
+
+    def test_no_constraints_returns_empty_list(self):
+        assert self._unique_constraints([]) == []
+
+
 class TestMssqlTemporalPeriodColumns:
     """``get_columns`` must reflect SYSTEM_TIME period columns.
 
