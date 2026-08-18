@@ -15,8 +15,8 @@ import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { createAdminApiContext } from '../utils/admin';
 import { redirectToHomePage } from '../utils/common';
-import { performAdminLogin } from '../utils/admin';
 import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
@@ -160,13 +160,14 @@ export function buildMalformedRdfGraphJson(
   };
 }
 
-// Creates an admin API context without opening a browser page.
-// A full browser page would establish a WebSocket connection as admin, which
-// means the backend's entity-deleted broadcasts would appear as toasts on every
-// other admin test page running in parallel. Using performAdminLogin (API-only)
-// avoids that extra WS subscriber while still allowing admin CRUD operations.
-export async function createApiContext(browser: Browser) {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+// Creates a fresh admin API context for suite-level setup and teardown.
+// Using createAdminApiContext (instead of a full browser page) avoids opening
+// an extra WebSocket-connected admin session, which would cause the backend's
+// entity-deleted broadcasts to appear as toasts on every other parallel worker's
+// admin page. Each suite gets its own owned context; afterAction disposes it —
+// the worker-shared context is never touched.
+export async function createApiContext(_browser: Browser) {
+  const { apiContext, afterAction } = await createAdminApiContext();
 
   return { apiContext, afterAction };
 }
@@ -175,10 +176,12 @@ export async function disposeApiContext(
   afterActionOrPage: (() => Promise<void>) | Page,
   apiContext: APIRequestContext
 ) {
-  await apiContext.dispose();
   if (typeof afterActionOrPage === 'function') {
+    // afterAction from createAdminApiContext already disposes apiContext and the
+    // login context — do not call apiContext.dispose() separately here.
     await afterActionOrPage();
   } else {
+    await apiContext.dispose();
     await afterActionOrPage.close();
   }
 }
