@@ -10836,7 +10836,10 @@ public class WorkflowDefinitionResourceIT {
                       ]
                     },
                     "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open"
                   },
                   "input": ["relatedEntity"],
                   "inputNamespaceMap": {"relatedEntity": "global"},
@@ -10910,9 +10913,22 @@ public class WorkflowDefinitionResourceIT {
             .orElseThrow(
                 () -> new AssertionError("Task with expected reviewer assignee not found"));
 
-    // /resolve on transitionId=approve returns 200 (findTransition's runtime fallback fills in
-    // the default approve/reject pair when the row's availableTransitions is empty) and Flowable
-    // routes the signal (redeployed BPMN's approve/reject edge conditions match the id).
+    // Empty transitionMetadata on the userApprovalTask node triggers
+    // resolveTransitionsForStage's default fallback at CreateTask time, so the task row must
+    // carry the default approve/reject pair.
+    assertEquals(
+        2,
+        task.getAvailableTransitions().size(),
+        "userApprovalTask with empty transitionMetadata must project approve/reject");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "approve".equals(t.getId())),
+        "availableTransitions must contain default 'approve'");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "reject".equals(t.getId())),
+        "availableTransitions must contain default 'reject'");
+
+    // /resolve on transitionId=approve returns 200 and Flowable routes the signal (redeployed
+    // BPMN's approve/reject edge conditions match the projected id).
     OpenMetadataClient reviewerClient =
         SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
     org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
