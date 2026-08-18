@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
@@ -125,6 +125,10 @@ const TableDetailsPageV1: React.FC = () => {
 
   const [queryCount, setQueryCount] = useState(0);
   const [isQueryCountLoading, setIsQueryCountLoading] = useState(true);
+  // Table whose query count is currently in flight. Navigating between tables leaves the
+  // previous request running, and its late response would otherwise clear this table's
+  // skeleton and paint the previous table's count.
+  const queryCountRequestIdRef = useRef<string>();
 
   const [loading, setLoading] = useState(!isTourOpen);
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
@@ -298,20 +302,30 @@ const TableDetailsPageV1: React.FC = () => {
     // Tour mode renders a mock without an id — settle the skeleton rather than
     // leaving it spinning against a count that will never arrive.
     if (!tableDetails?.id) {
+      queryCountRequestIdRef.current = undefined;
       setIsQueryCountLoading(false);
 
       return;
     }
+
+    const requestedId = tableDetails.id;
+    queryCountRequestIdRef.current = requestedId;
+    setIsQueryCountLoading(true);
+
     try {
       const response = await getQueriesList({
         limit: 0,
-        entityId: tableDetails.id,
+        entityId: requestedId,
       });
-      setQueryCount(response.paging.total);
+      if (queryCountRequestIdRef.current === requestedId) {
+        setQueryCount(response.paging.total);
+        setIsQueryCountLoading(false);
+      }
     } catch {
-      setQueryCount(0);
-    } finally {
-      setIsQueryCountLoading(false);
+      if (queryCountRequestIdRef.current === requestedId) {
+        setQueryCount(0);
+        setIsQueryCountLoading(false);
+      }
     }
   };
 
@@ -794,6 +808,9 @@ const TableDetailsPageV1: React.FC = () => {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else if (viewBasicPermission) {
       setTableDetails(undefined);
+      // Invalidate any in-flight count before the new table's request starts, so a
+      // response for the table we just left cannot settle this table's badge.
+      queryCountRequestIdRef.current = undefined;
       setIsQueryCountLoading(true);
       fetchTableDetails();
       getEntityFeedCount();

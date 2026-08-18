@@ -12,7 +12,7 @@
  */
 import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -764,6 +764,89 @@ describe('TestDetailsPageV1 component', () => {
       await waitFor(() =>
         expect(getLatestQueriesTabProps()).toEqual(
           expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
+    });
+
+    it('should ignore a late count response for a table the user already left', async () => {
+      const resolvers: Record<
+        string,
+        (value: { paging: { total: number } }) => void
+      > = {};
+      (getQueriesList as jest.Mock).mockImplementation(
+        ({ entityId }: { entityId: string }) =>
+          new Promise((resolve) => {
+            resolvers[entityId] = resolve;
+          })
+      );
+      const tableFor = (id: string) => ({
+        name: `test-${id}`,
+        id,
+        fullyQualifiedName: `fqn-${id}`,
+        columns: [],
+      });
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+      (getTableDetailsByFQN as jest.Mock).mockImplementation((fqn: string) =>
+        Promise.resolve(tableFor(fqn === 'fqn-b' ? 'b' : 'a'))
+      );
+      (useParams as jest.Mock).mockReturnValue({ fqn: 'fqn-a', tab: 'schema' });
+
+      let rerender: (ui: React.ReactElement) => void = () => undefined;
+
+      await act(async () => {
+        ({ rerender } = render(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        ));
+      });
+
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: 'a',
+        })
+      );
+
+      (useParams as jest.Mock).mockReturnValue({ fqn: 'fqn-b', tab: 'schema' });
+
+      await act(async () => {
+        rerender(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: 'b',
+        })
+      );
+
+      // Table A's request resolves only now, after the user moved to table B.
+      await act(async () => {
+        resolvers.a({ paging: { total: 7 } });
+      });
+
+      expect(getLatestQueriesTabProps()).toEqual(
+        expect.objectContaining({ isLoading: true })
+      );
+      expect(getLatestQueriesTabProps()?.count).not.toBe(7);
+
+      await act(async () => {
+        resolvers.b({ paging: { total: 3 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 3, isLoading: false })
         )
       );
     });
