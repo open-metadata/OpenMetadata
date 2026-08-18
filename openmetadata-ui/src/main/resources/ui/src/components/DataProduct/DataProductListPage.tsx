@@ -15,20 +15,19 @@ import {
   Avatar,
   Box,
   Card,
+  EmptyPlaceholder,
   Input,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
+import { Globe01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -43,8 +42,7 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
-  LIST_EMPTY_STATE_CLASS,
-  NAME_CELL_CLIP_CLASS,
+  NAME_CELL_CLIP_CLASS
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -53,10 +51,10 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
@@ -282,27 +280,32 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          <NoFilteredResultsPlaceholder
+            onClearFilters={() => dataProductListing.handleSearchChange('')}
           />
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="data-product-add-button"
-          buttonTitle={t('label.add-entity', {
-            entity: t('label.data-product'),
-          })}
-          className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-          heading={t('message.no-data-message', {
-            entity: t('label.data-product-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={openDrawer}
+        <EmptyPlaceholder
+          actions={
+            permissions.dataProduct?.Create
+              ? [
+                  {
+                    color: 'primary',
+                    iconLeading: Plus,
+                    key: 'add-data-product',
+                    label: t('label.add-entity', {
+                      entity: t('label.data-product'),
+                    }),
+                    onPress: openDrawer,
+                  },
+                ]
+              : undefined
+          }
+          description={t('label.no-data-products-yet-description')}
+          title={t('label.no-data-products-yet')}
+          variant="blank"
         />
       );
     }
@@ -355,6 +358,7 @@ const DataProductListPage = ({
     dataProductListing.currentPage,
     dataProductListing.totalPages,
     dataProductListing.handlePageChange,
+    dataProductListing.handleSearchChange,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,

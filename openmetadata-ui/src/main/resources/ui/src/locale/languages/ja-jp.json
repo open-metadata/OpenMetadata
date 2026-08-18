@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>ディメンション結果がまだ計算されていないようです。</0><1>テストケースの<2>パイプライン</2>を実行して、データディメンションの分析を開始してください。</1>",
     "no-domain-assigned-to-entity": "{{entity}} に割り当てられているドメインはありません",
     "no-domain-available": "設定可能なドメインがありません。<0>{{link}}</0> をクリックしてドメインを追加してください。",
+    "no-domains-yet-desc": "最初のドメインを作成して、データプロダクトをビジネスエリア、チーム、または機能別に整理しましょう。",
     "no-entity-activity-message": "{{entity}} にアクティビティがまだありません。以下をクリックして会話を開始してください：",
     "no-entity-available-with-name": "指定された名前の {{entity}} は存在しません",
     "no-entity-data-available": "{{entity}} に関するデータはありません。",

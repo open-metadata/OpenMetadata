@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>차원 결과가 아직 계산되지 않은 것 같습니다.</0><1>테스트 케이스 <2>파이프라인</2>을 실행하여 데이터 차원 분석을 시작하세요.</1>",
     "no-domain-assigned-to-entity": "{{entity}}에 할당된 도메인이 없습니다",
     "no-domain-available": "구성할 수 있는 도메인이 없습니다. 도메인을 추가하려면 <0>{{link}}</0>를 클릭하세요",
+    "no-domains-yet-desc": "첫 번째 도메인을 생성하여 비즈니스 영역, 팀 또는 기능별로 데이터 제품을 구성하세요.",
     "no-entity-activity-message": "아직 {{entity}}에 대한 활동이 없습니다. 다음을 클릭하여 대화를 시작하세요",
     "no-entity-available-with-name": "{{entity}} 이름으로 사용 가능한 항목이 없습니다",
     "no-entity-data-available": "사용 가능한 {{entity}} 데이터가 없습니다.",

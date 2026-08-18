@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>Parece que los resultados de las dimensiones aún no se han calculado.</0><1>Simplemente ejecute la <2>canalización</2> del caso de prueba para comenzar a analizar las dimensiones de sus datos.</1>",
     "no-domain-assigned-to-entity": "No se han asignado dominios a {{entity}}",
     "no-domain-available": "No hay dominios disponibles para configurar. Haz clic en <0>{{link}}</0> para agregar dominios",
+    "no-domains-yet-desc": "Crea tu primer dominio para organizar los productos de datos por área de negocio, equipo o función.",
     "no-entity-activity-message": "Todavía no hay actividad en {{entity}}. Inicia una conversación haciendo clic en",
     "no-entity-available-with-name": "No hay {{entity}} disponible con el nombre",
     "no-entity-data-available": "No hay datos disponibles de {{entity}}.",

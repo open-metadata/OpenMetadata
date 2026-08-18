@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>به نظر می‌رسد که نتایج بُعد هنوز محاسبه نشده‌اند.</0><1>به سادگی <2>خط لوله</2> مورد آزمایش را اجرا کنید تا تجزیه و تحلیل ابعاد داده‌های خود را شروع کنید.</1>",
     "no-domain-assigned-to-entity": "هیچ دامنه‌ای به {{entity}} اختصاص داده نشده است.",
     "no-domain-available": "هیچ دامنه‌ای برای پیکربندی در دسترس نیست. برای افزودن دامنه‌ها کلیک کنید <0>{{link}}</0>.",
+    "no-domains-yet-desc": "Crie seu primeiro domínio para organizar produtos de dados por área de negócio, equipe ou função.",
     "no-entity-activity-message": "هنوز هیچ فعالیتی در {{entity}} وجود ندارد. با کلیک روی آن مکالمه‌ای را شروع کنید.",
     "no-entity-available-with-name": "هیچ {{entity}} با این نام در دسترس نیست.",
     "no-entity-data-available": "هیچ داده‌ای برای {{entity}} موجود نیست.",

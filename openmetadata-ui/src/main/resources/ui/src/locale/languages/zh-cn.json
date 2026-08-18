@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>看起来维度结果尚未计算。</0><1>只需运行测试用例<2>管道</2>即可开始分析您的数据维度。</1>",
     "no-domain-assigned-to-entity": "没有为{{entity}}分配任何域",
     "no-domain-available": "没有可供配置的域, 点击<0>{{link}}</0>添加域",
+    "no-domains-yet-desc": "创建您的第一个域，按业务领域、团队或职能组织数据产品。",
     "no-entity-activity-message": "{{entity}}上还没有任何活动, 单击开始对话",
     "no-entity-available-with-name": "名称为{{entity}}不可用",
     "no-entity-data-available": "没有可用的{{entity}}数据。",

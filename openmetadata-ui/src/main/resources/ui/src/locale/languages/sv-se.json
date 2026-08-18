@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>Det verkar som att dimensionsresultat inte har beräknats ännu.</0><1>Kör helt enkelt testfallets <2>pipeline</2> för att börja analysera dina datadimensioner.</1>",
     "no-domain-assigned-to-entity": "Inga domäner är tilldelade {{entity}}",
     "no-domain-available": "Inga domäner är tillgängliga att konfigurera. Klicka på <0>{{link}}</0> för att lägga till domäner",
+    "no-domains-yet-desc": "Skapa din första domän för att organisera dataprodukter efter affärsområde, team eller funktion.",
     "no-entity-activity-message": "Det finns ingen aktivitet på {{entity}} ännu. Starta en konversation genom att klicka på",
     "no-entity-available-with-name": "Ingen {{entity}} tillgänglig med namnet",
     "no-entity-data-available": "Inga {{entity}}-data tillgängliga.",

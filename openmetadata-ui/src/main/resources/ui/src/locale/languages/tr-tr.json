@@ -3788,6 +3788,7 @@
     "no-dimension-description": "<0>Boyut sonuçlarının henüz hesaplanmadığı görülüyor.</0><1>Veri boyutlarınızı analiz etmeye başlamak için test durumu <2>hattını</2> çalıştırmanız yeterli.</1>",
     "no-domain-assigned-to-entity": "{{entity}} için Atanmış Alan Adı Yok",
     "no-domain-available": "Yapılandırılacak Alan Adı mevcut değil. Alan Adları eklemek için <0>{{link}}</0> tıklayın",
+    "no-domains-yet-desc": "İş alanı, ekip veya işleve göre veri ürünlerini düzenlemek için ilk etki alanınızı oluşturun.",
     "no-entity-activity-message": "{{entity}} üzerinde henüz bir aktivite yok. Şuna tıklayarak bir konuşma başlatın:",
     "no-entity-available-with-name": "{{entity}} mevcut değil",
     "no-entity-data-available": "{{entity}} verisi mevcut değil.",
