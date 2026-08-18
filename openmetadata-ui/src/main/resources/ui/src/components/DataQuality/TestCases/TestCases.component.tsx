@@ -52,6 +52,37 @@ const TEST_CASE_STATUS_ITEMS: SelectItemType[] = Object.values(
     status,
 }));
 
+// MultiSelect owns mutable ListData, while chart navigation and browser history
+// can change the URL independently, so keep its model aligned with URL state.
+const useSyncedListData = (selectedStatuses: TestCaseStatus[]) => {
+  const selectedItems = useListData<SelectItemType>({ initialItems: [] });
+  const selectedStatusKey = selectedStatuses.join(',');
+
+  useEffect(() => {
+    const selectedStatusSet = new Set<string>(selectedStatuses);
+    selectedItems.items.forEach(({ id }) => {
+      if (!selectedStatusSet.has(String(id))) {
+        selectedItems.remove(id);
+      }
+    });
+
+    const renderedStatusSet = new Set(selectedItems.items.map(({ id }) => id));
+    selectedStatuses.forEach((status) => {
+      if (!renderedStatusSet.has(status)) {
+        const item = TEST_CASE_STATUS_ITEMS.find(({ id }) => id === status);
+        if (item) {
+          selectedItems.append(item);
+        }
+      }
+    });
+    // useListData returns a new facade on every render. URL status changes are
+    // the only reason to reconcile it with external state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStatusKey]);
+
+  return selectedItems;
+};
+
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
@@ -99,34 +130,7 @@ export const TestCases = () => {
 
     return Array.isArray(status) ? status : [status];
   }, [params.testCaseStatus]);
-  const selectedStatusItems = useListData<SelectItemType>({ initialItems: [] });
-  const selectedStatusKey = selectedStatuses.join(',');
-
-  useEffect(() => {
-    // Chart navigation and browser history can update the URL independently of
-    // the selector, so its list model must follow the URL-backed filter state.
-    const selectedStatusSet = new Set<string>(selectedStatuses);
-    selectedStatusItems.items.forEach(({ id }) => {
-      if (!selectedStatusSet.has(String(id))) {
-        selectedStatusItems.remove(id);
-      }
-    });
-
-    const renderedStatusSet = new Set(
-      selectedStatusItems.items.map(({ id }) => id)
-    );
-    selectedStatuses.forEach((status) => {
-      if (!renderedStatusSet.has(status)) {
-        const item = TEST_CASE_STATUS_ITEMS.find(({ id }) => id === status);
-        if (item) {
-          selectedStatusItems.append(item);
-        }
-      }
-    });
-    // useListData returns a new facade on every render. URL status changes are
-    // the only reason to reconcile it with external state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStatusKey]);
+  const selectedStatusItems = useSyncedListData(selectedStatuses);
 
   const handleStatusInserted = useCallback(
     (key: Key) => {
