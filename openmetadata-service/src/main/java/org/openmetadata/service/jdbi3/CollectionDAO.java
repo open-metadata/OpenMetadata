@@ -6210,8 +6210,9 @@ public interface CollectionDAO {
      * entity_relationship}, which has {@code json} and {@code deleted} columns of its own.
      */
     default String displayNameSortCondition(ListFilter filter) {
+      // Unqualified: a table prefix on the pipelineType JSON expression reads as a routine call.
       return nullOrEmpty(filter.getQueryParam("serviceType"))
-          ? filter.getCondition(getTableName())
+          ? filter.getCondition()
           : serviceTypeJoinCondition(filter);
     }
 

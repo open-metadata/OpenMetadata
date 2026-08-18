@@ -13,6 +13,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
@@ -104,20 +105,44 @@ class IngestionPipelineSortConditionTest {
 
     String condition = dao().displayNameSortCondition(filter);
 
-    assertEquals(filter.getCondition(TABLE), condition);
+    assertEquals(filter.getCondition(), condition);
     assertTrue(condition.startsWith(WHERE), "expected a WHERE clause, got: " + condition);
     assertEquals(1, countWhereClauses(condition + CURSOR_PREDICATE));
   }
 
   /**
-   * Columns stay table-qualified because the serviceType variant joins {@code entity_relationship},
-   * which has {@code json} and {@code deleted} columns of its own — an unqualified {@code deleted}
-   * is ambiguous and fails at runtime.
+   * Columns stay table-qualified only on the serviceType variant, which joins {@code
+   * entity_relationship} — that table brings its own {@code json} and {@code deleted} columns, so an
+   * unqualified {@code deleted} would be ambiguous and fail at runtime. The plain branch has no join
+   * and must stay unqualified (see the pipelineType regression below).
    */
   @Test
-  void test_displayNameSortCondition_qualifiesColumnsWithTheTableName() {
-    String condition = dao().displayNameSortCondition(new ListFilter(Include.NON_DELETED));
+  void test_displayNameSortCondition_qualifiesColumnsOnlyWhenJoiningForServiceType() {
+    String condition = dao().displayNameSortCondition(filterWithServiceType());
 
     assertTrue(condition.contains(TABLE + "."), "expected qualified columns, got: " + condition);
+  }
+
+  /**
+   * The plain branch sorts a single table, so it must reuse the unqualified {@code getCondition()}
+   * the default listing uses — which resolves {@code pipelineType} against the generated STORED
+   * column. Qualifying it (the old bug) rewrote the filter as {@code
+   * ingestion_pipeline_entity.JSON_UNQUOTE(...)}, which MySQL parses as a routine call and rejects
+   * with "execute command denied ... for routine". The generated column is dialect-safe and indexed.
+   */
+  @Test
+  void test_displayNameSortCondition_filtersPipelineTypeOnTheGeneratedColumnNotJsonExtraction() {
+    ListFilter filter =
+        new ListFilter(Include.NON_DELETED).addQueryParam("pipelineType", "application");
+
+    String condition = dao().displayNameSortCondition(filter);
+
+    assertTrue(
+        condition.contains("pipelineType IN ("),
+        "expected the generated pipelineType column, got: " + condition);
+    assertFalse(
+        condition.contains(TABLE + ".JSON_UNQUOTE"),
+        "must not qualify the JSON extraction onto the table (MySQL routine-call bug): "
+            + condition);
   }
 }

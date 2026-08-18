@@ -127,6 +127,33 @@ public class IngestionPipelineSortIT {
         listDisplayNames(service, "desc"));
   }
 
+  /**
+   * Regression for the {@code pipelineType} + {@code sortField} combination (collate#3919): the
+   * Automations screen calls this endpoint with {@code pipelineType=application}. The ordered query
+   * used to qualify the pipelineType filter onto the table ({@code
+   * ingestion_pipeline_entity.JSON_UNQUOTE(...)}), which MySQL parses as a routine call and rejects
+   * with HTTP 500. It now reuses the unqualified generated column, matching the default listing.
+   *
+   * <p>NOTE: this reproduces the 500 only on a MySQL backend — the qualified Postgres form ({@code
+   * table.json->>'pipelineType'}) is valid SQL, so against Postgres this passes with or without the
+   * fix. The deterministic, dialect-independent guard is {@code
+   * IngestionPipelineSortConditionTest}; this IT is end-to-end coverage.
+   */
+  @Test
+  void test_listSortedByDisplayName_withPipelineTypeFilter(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    createPipeline(service, ns.prefix("pipeline-a"), "zzz-" + ns.prefix("last"));
+    createPipeline(service, ns.prefix("pipeline-z"), "aaa-" + ns.prefix("first"));
+
+    ListParams params = sortParams(service, "asc", 50).addQueryParam("pipelineType", "metadata");
+    ListResponse<IngestionPipeline> response =
+        SdkClients.adminClient().ingestionPipelines().list(params);
+
+    assertEquals(
+        List.of("aaa-" + ns.prefix("first"), "zzz-" + ns.prefix("last")), displayNamesOf(response));
+  }
+
   /** The sort key is COALESCE(NULLIF(displayName,''), name) — it must match getEntityName. */
   @Test
   void test_listSortedByDisplayName_fallsBackToNameWhenDisplayNameAbsent(TestNamespace ns) {
