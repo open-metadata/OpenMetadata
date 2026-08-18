@@ -64,7 +64,7 @@ TARGET_MS = 20 * 60 * 1000
 # ceiling the heaviest shard is predicted at 19.2m, so full-mode planning aborts
 # and every merge-queue run fails before a single test runs. The binding limit
 # is the 25m `timeout` wrapper around `npx playwright test`, against which 21m
-# leaves ~4m; the 35m playwright-ci-postgresql job clock is looser still, since
+# leaves ~4m; the 35m playwright-ci job clock is looser still, since
 # it also has to cover ~5-8m of setup and teardown around that wrapper.
 COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
 EFFICIENCY = 0.85

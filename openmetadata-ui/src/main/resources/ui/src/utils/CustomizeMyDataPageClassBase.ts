@@ -97,6 +97,10 @@ class CustomizeMyDataPageClassBase {
     return undefined;
   }
 
+  public getExcludedWidgetFqns(): string[] {
+    return [];
+  }
+
   public getWidgetsFromKey(
     widgetKey: string
   ): ComponentType<WidgetCommonProps> {
