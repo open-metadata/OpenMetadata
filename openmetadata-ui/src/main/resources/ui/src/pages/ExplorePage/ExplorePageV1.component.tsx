@@ -145,13 +145,12 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortValueChange = (sortVal: string) => {
     navigate({
-      // Built from the route tab rather than `location.pathname`: an object
-      // with only `search` is a *relative* navigation resolved against the
-      // router's current route-match context, which can lag a pushState
-      // fired moments earlier by a different component and land this
-      // update on the wrong page. `getExploreTabPath` sidesteps that
-      // entirely by never reading router location state.
-      pathname: getExploreTabPath(tab),
+      // When tab is present, build the pathname from the route param rather
+      // than `location.pathname`: a search-only navigate is *relative* and can
+      // resolve against a stale route-match context if another component fired
+      // a pushState moments earlier.  When tab is absent (bare /explore route)
+      // there is no stale-context risk so location.pathname is the safe fallback.
+      pathname: tab ? getExploreTabPath(tab) : location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -162,7 +161,7 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortOrderChange = (sortOrderVal: string) => {
     navigate({
-      pathname: getExploreTabPath(tab),
+      pathname: tab ? getExploreTabPath(tab) : location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
@@ -234,14 +233,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleQuickFilterChange = useCallback(
     (quickFilter?: QueryFilterInterface) => {
       navigate({
-        pathname: getExploreTabPath(tab),
+        pathname: tab ? getExploreTabPath(tab) : location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
         }),
       });
     },
-    [parsedSearch, tab]
+    [location.pathname, parsedSearch, tab]
   );
 
   // A tree click may update the browse location AND the Type quick filter
@@ -257,7 +256,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setAdvancedSearchQuickFilters(quickFilter);
       }
       navigate({
-        pathname: getExploreTabPath(tab),
+        pathname: tab ? getExploreTabPath(tab) : location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           browsePath: isEmpty(updatedBrowseFields)
@@ -267,14 +266,14 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
-    [parsedSearch, tab]
+    [location.pathname, parsedSearch, tab]
   );
 
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
     navigate({
-      pathname: getExploreTabPath(tab),
+      pathname: tab ? getExploreTabPath(tab) : location.pathname,
       search: Qs.stringify({
         ...parsedSearch,
         currentPage: 1,
