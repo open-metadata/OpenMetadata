@@ -62,6 +62,14 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
+
 const renderOidcAuthenticator = (ref: React.RefObject<AuthenticatorRef>) =>
   render(
     <MemoryRouter initialEntries={['/some-protected-route']}>
@@ -96,7 +104,7 @@ describe('OidcAuthenticator', () => {
     const ref = createRef<AuthenticatorRef>();
     renderOidcAuthenticator(ref);
 
-    const renewer = ref.current?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     expect(renewer).toBeDefined();
 
@@ -125,7 +133,7 @@ describe('OidcAuthenticator', () => {
     const ref = createRef<AuthenticatorRef>();
     renderOidcAuthenticator(ref);
 
-    const renewer = ref.current?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     let result: { idToken: string; expiresAt: number } | undefined;
     await act(async () => {
@@ -146,7 +154,7 @@ describe('OidcAuthenticator', () => {
     const ref = createRef<AuthenticatorRef>();
     renderOidcAuthenticator(ref);
 
-    const renewer = ref.current?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     await expect(renewer?.()).rejects.toThrow('login_required');
     expect(mockSigninPopup).not.toHaveBeenCalled();
@@ -158,7 +166,7 @@ describe('OidcAuthenticator', () => {
     const ref = createRef<AuthenticatorRef>();
     renderOidcAuthenticator(ref);
 
-    const renewer = ref.current?.getRenewer?.();
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
     await expect(renewer?.()).rejects.toThrow(
       'signinSilent returned no id_token'
