@@ -41,7 +41,7 @@ const termBrand = new GlossaryTerm(catalog);
 
 test.describe('Ontology Explorer — E2E', () => {
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
 
     await catalog.create(apiContext);
     await termProduct.create(apiContext);
@@ -64,11 +64,11 @@ test.describe('Ontology Explorer — E2E', () => {
       CUSTOM_OWNS_RELATION
     );
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       termProduct,
@@ -76,7 +76,7 @@ test.describe('Ontology Explorer — E2E', () => {
       termBrand,
       catalog
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {

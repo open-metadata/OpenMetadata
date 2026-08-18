@@ -38,17 +38,17 @@ test.describe('Relation Sync with OntologyExplorer', () => {
   const syncTerm2 = new GlossaryTerm(syncGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await syncGlossary.create(apiContext);
     await syncTerm1.create(apiContext);
     await syncTerm2.create(apiContext);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('should reflect relation add and remove in the graph', async ({
@@ -93,18 +93,18 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
   const childTerm = new GlossaryTerm(hierarchyGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await hierarchyGlossary.create(apiContext);
     await parentTerm.create(apiContext);
     await childTerm.create(apiContext);
     await addTermRelation(apiContext, parentTerm, childTerm, 'narrower');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('should display terms with narrower relation in Hierarchy view', async ({
@@ -129,20 +129,20 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
   const termC = new GlossaryTerm(filterGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await filterGlossary.create(apiContext);
     await termA.create(apiContext);
     await termB.create(apiContext);
     await termC.create(apiContext);
     await addTermRelation(apiContext, termA, termB, 'relatedTo');
     await addTermRelation(apiContext, termB, termC, 'synonym');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('filtering by relatedTo should show only terms connected by that relation and hide others', async ({
@@ -222,7 +222,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
   const crossTerm2 = new GlossaryTerm(crossGlossary2);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await crossGlossary1.create(apiContext);
     await crossTerm1.create(apiContext);
     await crossTerm3.create(apiContext);
@@ -232,11 +232,11 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await addTermRelation(apiContext, crossTerm1, crossTerm2, 'relatedTo');
     // crossTerm3 <-> crossTerm1: same-glossary edge — must be hidden in Cross Glossary mode
     await addTermRelation(apiContext, crossTerm3, crossTerm1, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       crossTerm1,
@@ -245,7 +245,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
       crossGlossary1,
       crossGlossary2
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('Cross Glossary view should show edges between terms from different glossaries', async ({
@@ -342,7 +342,7 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
   const spiralTable = new TableClass();
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);
     await spiralTable.create(apiContext);
@@ -372,14 +372,14 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
       expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
     }).toPass({ timeout: 60000, intervals: [2000] });
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, spiralTerm, spiralGlossary);
     await spiralTable.delete(apiContext);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('clicking asset count badge in data mode triggers asset search query', async ({
@@ -426,18 +426,18 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   const dataTerm2 = new GlossaryTerm(dataModeGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await dataModeGlossary.create(apiContext);
     await dataTerm1.create(apiContext);
     await dataTerm2.create(apiContext);
     await addTermRelation(apiContext, dataTerm1, dataTerm2, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('Data mode stats do not show Data Assets when no assets are tagged', async ({

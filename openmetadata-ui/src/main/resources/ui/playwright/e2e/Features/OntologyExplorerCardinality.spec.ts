@@ -58,7 +58,7 @@ const relDst = new GlossaryTerm(glossary);
 
 test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
 
     await glossary.create(apiContext);
     await otoSrc.create(apiContext);
@@ -148,11 +148,11 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     );
     await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
 
     await deleteEntities(
       apiContext,
@@ -171,7 +171,7 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       glossary
     );
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {

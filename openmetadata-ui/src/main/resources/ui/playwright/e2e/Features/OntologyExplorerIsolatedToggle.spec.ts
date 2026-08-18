@@ -32,7 +32,7 @@ const toggleTermB = new GlossaryTerm(toggleGlossary);
 const toggleTermIso = new GlossaryTerm(toggleGlossary);
 
 test.beforeAll(async ({ browser }) => {
-  const { page, apiContext } = await createApiContext(browser);
+  const { apiContext, afterAction } = await createApiContext(browser);
 
   await toggleGlossary.create(apiContext);
   await toggleTermA.create(apiContext);
@@ -40,11 +40,11 @@ test.beforeAll(async ({ browser }) => {
   await toggleTermIso.create(apiContext);
   await addTermRelation(apiContext, toggleTermA, toggleTermB, 'relatedTo');
 
-  await disposeApiContext(page, apiContext);
+  await disposeApiContext(afterAction, apiContext);
 });
 
 test.afterAll(async ({ browser }) => {
-  const { page, apiContext } = await createApiContext(browser);
+  const { apiContext, afterAction } = await createApiContext(browser);
   await deleteEntities(
     apiContext,
     toggleTermA,
@@ -52,7 +52,7 @@ test.afterAll(async ({ browser }) => {
     toggleTermIso,
     toggleGlossary
   );
-  await disposeApiContext(page, apiContext);
+  await disposeApiContext(afterAction, apiContext);
 });
 
 test.describe('Ontology Explorer — isolated nodes toggle', () => {

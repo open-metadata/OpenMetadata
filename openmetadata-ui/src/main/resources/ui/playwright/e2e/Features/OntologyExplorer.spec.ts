@@ -44,7 +44,7 @@ const multiRelTermB = new GlossaryTerm(multiRelGlossary);
 
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
 
     await glossary.create(apiContext);
     await term1.create(apiContext);
@@ -65,11 +65,11 @@ test.describe('Ontology Explorer', () => {
     );
     await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       term1,
@@ -82,7 +82,7 @@ test.describe('Ontology Explorer', () => {
       multiRelTermB,
       multiRelGlossary
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {

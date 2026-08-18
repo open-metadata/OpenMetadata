@@ -36,7 +36,7 @@ test.describe('Isolated nodes + relation filter combo', () => {
   const isolatedTerm = new GlossaryTerm(comboGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await comboGlossary.create(apiContext);
     await connectedTermA.create(apiContext);
     await connectedTermB.create(apiContext);
@@ -47,11 +47,11 @@ test.describe('Isolated nodes + relation filter combo', () => {
       connectedTermB,
       'relatedTo'
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       connectedTermA,
@@ -59,7 +59,7 @@ test.describe('Isolated nodes + relation filter combo', () => {
       isolatedTerm,
       comboGlossary
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
@@ -122,17 +122,17 @@ test.describe('Cross-glossary term hydration', () => {
   const termExpense = new GlossaryTerm(financeGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await salesGlossary.create(apiContext);
     await financeGlossary.create(apiContext);
     await termRevenue.create(apiContext);
     await termExpense.create(apiContext);
     await addTermRelation(apiContext, termRevenue, termExpense, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       termRevenue,
@@ -140,7 +140,7 @@ test.describe('Cross-glossary term hydration', () => {
       salesGlossary,
       financeGlossary
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
@@ -188,19 +188,19 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
   const termC = new GlossaryTerm(embeddedGlossary);
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await embeddedGlossary.create(apiContext);
     await termA.create(apiContext);
     await termB.create(apiContext);
     await termC.create(apiContext);
     await addTermRelation(apiContext, termA, termB, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {

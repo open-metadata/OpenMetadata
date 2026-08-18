@@ -38,7 +38,7 @@ const term4 = new GlossaryTerm(glossary2);
 
 test.describe('Ontology Explorer - Filters and Tabs', () => {
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
 
     await glossary.create(apiContext);
     await term1.create(apiContext);
@@ -49,11 +49,11 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+    const { apiContext, afterAction } = await createApiContext(browser);
     await deleteEntities(
       apiContext,
       term1,
@@ -63,7 +63,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       term4,
       glossary2
     );
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
