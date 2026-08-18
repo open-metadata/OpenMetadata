@@ -69,7 +69,12 @@ test.describe('Ontology Explorer', () => {
     await multiRelTermB.create(apiContext);
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
-    await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      multiRelTermA,
+      multiRelTermB,
+      'relatedTo'
+    );
     await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
 
     await disposeApiContext(afterAction, apiContext);
