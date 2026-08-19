@@ -100,6 +100,7 @@ import {
   verifyWorkflowInstanceExists,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
+import { getTableColumnsCount } from '../../utils/table';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -1194,7 +1195,21 @@ test.describe('Glossary tests', () => {
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await page.getByTestId('assets').click();
+      await page
+        .locator('.ant-tabs-tab-active:has-text("Assets")')
+        .waitFor();
+
+      // 1 table + all its flattened columns. Tag propagation to column docs
+      // runs as an async fire-and-forget update-by-query (since #31112), so
+      // the count climbs from 1 to the final value non-deterministically.
+      // Retry for up to 1 minute to let propagation finish.
+      const expectedCount = 1 + getTableColumnsCount(table.children);
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toHaveText(String(expectedCount), { timeout: 60_000 });
+
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
