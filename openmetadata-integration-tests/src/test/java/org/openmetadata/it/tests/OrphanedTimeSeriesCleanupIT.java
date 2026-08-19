@@ -374,7 +374,7 @@ public class OrphanedTimeSeriesCleanupIT {
   }
 
   /**
-   * The hard-delete profiler purge matches an entityFQNHash prefix, and the 2.1.0 migration is what
+   * The hard-delete profiler purge matches an entityFQNHash prefix, and the 2.0.0 migration is what
    * keeps that off a sequential scan. PostgreSQL needs a dedicated text_pattern_ops index because
    * the column's default collation disqualifies the unique index for LIKE-prefix; MySQL needs no
    * migration precisely because entityFQNHash is ascii_bin and leads that unique index. This pins
@@ -389,7 +389,7 @@ public class OrphanedTimeSeriesCleanupIT {
       assertEquals(
           Optional.of(Boolean.TRUE),
           postgresPatternIndexValidity(),
-          "Migration 2.1.0 must leave a valid " + PROFILER_PATTERN_INDEX);
+          "Migration 2.0.0 must leave a valid " + PROFILER_PATTERN_INDEX);
     } else {
       assertEquals(
           Optional.of("entityFQNHash"),
