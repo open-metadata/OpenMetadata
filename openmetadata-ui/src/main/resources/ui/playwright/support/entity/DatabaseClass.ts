@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import {
   assignSingleSelectDomain,
   removeSingleSelectDomain,
@@ -134,28 +135,34 @@ export class DatabaseClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/databases', {
+    const serviceFqn = this.service.name;
+    const databaseFqn = `${serviceFqn}.${this.entity.name}`;
+    const schemaFqn = `${databaseFqn}.${this.schema.name}`;
+
+    const service = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      entityFqn: serviceFqn,
+      data: this.service,
+    });
+    const entity = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create database',
+      createPath: '/api/v1/databases',
+      entityFqn: databaseFqn,
       data: this.entity,
     });
-
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
+    const schema = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      entityFqn: schemaFqn,
       data: this.schema,
     });
-
-    const tableResponse = await apiContext.post('/api/v1/tables', {
+    const table = await createOrFetch(apiContext, {
+      label: 'DatabaseClass.create table',
+      createPath: '/api/v1/tables',
+      entityFqn: `${schemaFqn}.${this.table.name}`,
       data: this.table,
     });
-
-    const service = await serviceResponse.json();
-    const entity = await entityResponse.json();
-    const schema = await schemaResponse.json();
-    const table = await tableResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
@@ -187,7 +194,7 @@ export class DatabaseClass extends EntityClass {
       }
     );
 
-    const entity = await serviceResponse.json();
+    const entity = await okJson(serviceResponse, 'DatabaseClass.patch');
 
     this.entityResponseData = entity;
 

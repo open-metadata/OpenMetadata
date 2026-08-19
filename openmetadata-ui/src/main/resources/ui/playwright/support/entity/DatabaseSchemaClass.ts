@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -67,22 +68,27 @@ export class DatabaseSchemaClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
+    const serviceFqn = this.service.name;
+    const databaseFqn = `${serviceFqn}.${this.database.name}`;
+
+    const service = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      entityFqn: serviceFqn,
+      data: this.service,
+    });
+    const database = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create database',
+      createPath: '/api/v1/databases',
+      entityFqn: databaseFqn,
       data: this.database,
     });
-    const entityResponse = await apiContext.post('/api/v1/databaseSchemas', {
+    const entity = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      entityFqn: `${databaseFqn}.${this.entity.name}`,
       data: this.entity,
     });
-
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -112,7 +118,7 @@ export class DatabaseSchemaClass extends EntityClass {
       }
     );
 
-    const entity = await serviceResponse.json();
+    const entity = await okJson(serviceResponse, 'DatabaseSchemaClass.patch');
 
     this.entityResponseData = entity;
 

@@ -17,6 +17,7 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
+import { okJson } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -55,7 +56,10 @@ export class UserClass {
       '/api/v1/roles/name/DataConsumer'
     );
 
-    const dataConsumerRole = await dataConsumerRoleResponse.json();
+    const dataConsumerRole = await okJson(
+      dataConsumerRoleResponse,
+      'UserClass.create'
+    );
 
     const response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
@@ -143,7 +147,7 @@ export class UserClass {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
       entity: response.body,

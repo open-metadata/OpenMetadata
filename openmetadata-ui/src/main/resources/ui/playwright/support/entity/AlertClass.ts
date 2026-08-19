@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 interface AlertConfig {
@@ -86,7 +87,7 @@ export class AlertClass {
       data: this.alertData,
     });
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'AlertClass.create');
 
     return this.responseData;
   }

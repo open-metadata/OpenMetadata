@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -162,8 +163,14 @@ export class SearchIndexClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'SearchIndexClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'SearchIndexClass.create'
+    );
 
     this.childrenSelectorId =
       this.entityResponseData.fields?.[0]?.fullyQualifiedName ?? '';
@@ -191,7 +198,7 @@ export class SearchIndexClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'SearchIndexClass.patch');
 
     return {
       entity: this.entityResponseData,

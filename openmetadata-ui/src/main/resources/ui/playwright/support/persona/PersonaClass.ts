@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -45,7 +46,7 @@ export class PersonaClass {
     const response = await apiContext.post('/api/v1/personas', {
       data: { ...this.data, users },
     });
-    const data = await response.json();
+    const data = await okJson(response, 'PersonaClass.create');
     this.responseData = data;
 
     return data;
@@ -70,8 +71,8 @@ export class PersonaClass {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'PersonaClass.patch');
 
-    return await response.json();
+    return await okJson(response, 'PersonaClass.patch');
   }
 }

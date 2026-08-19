@@ -12,6 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
@@ -59,7 +60,7 @@ export class SubDomain {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
     });
-    const data = await response.json();
+    const data = await okJson(response, 'SubDomain.create');
     this.responseData = data;
 
     return data;
@@ -96,7 +97,7 @@ export class SubDomain {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'SubDomain.patch');
 
     return {
       entity: this.responseData,

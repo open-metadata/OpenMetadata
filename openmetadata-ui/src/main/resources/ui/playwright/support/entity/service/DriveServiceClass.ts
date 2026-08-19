@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -63,7 +64,7 @@ export class DriveServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'DriveServiceClass.create');
 
     this.entityResponseData = service;
 
@@ -81,7 +82,7 @@ export class DriveServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(serviceResponse, 'DriveServiceClass.patch');
 
     this.entityResponseData = service;
 

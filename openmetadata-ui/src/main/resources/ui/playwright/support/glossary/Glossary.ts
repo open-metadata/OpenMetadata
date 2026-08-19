@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import {
   getRandomFirstName,
   uuid,
@@ -61,17 +62,12 @@ export class Glossary extends EntityClass {
 
   async create(apiContext: APIRequestContext) {
     const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
-    const response = await apiContext.post('/api/v1/glossaries', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'Glossary.create',
+      createPath: '/api/v1/glossaries',
+      entityFqn: this.data.name,
       data: apiData,
     });
-
-    if (!response.ok()) {
-      throw new Error(
-        `Glossary.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
-
-    this.responseData = await response.json();
 
     return this.responseData;
   }
@@ -87,7 +83,7 @@ export class Glossary extends EntityClass {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'Glossary.patch');
   }
 
   get() {

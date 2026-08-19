@@ -12,6 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -50,10 +51,12 @@ export class PolicyClass {
   }
 
   async create(apiContext: APIRequestContext, rules: PolicyRulesType[]) {
-    const response = await apiContext.post('/api/v1/policies', {
+    const data = await createOrFetch(apiContext, {
+      label: 'PoliciesClass.create',
+      createPath: '/api/v1/policies',
+      entityFqn: this.data.name,
       data: { ...this.data, rules },
     });
-    const data = await response.json();
     this.responseData = data;
 
     return data;
@@ -69,7 +72,7 @@ export class PolicyClass {
         },
       }
     );
-    const data = await response.json();
+    const data = await okJson(response, 'PoliciesClass.patch');
     this.responseData = data;
 
     return data;

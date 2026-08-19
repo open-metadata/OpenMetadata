@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -154,8 +155,11 @@ export class TopicClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'TopicClass.create'
+    );
+    this.entityResponseData = await okJson(entityResponse, 'TopicClass.create');
 
     this.childrenSelectorId =
       this.entityResponseData.messageSchema?.schemaFields?.[0]
@@ -184,7 +188,7 @@ export class TopicClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'TopicClass.patch');
 
     return {
       entity: this.entityResponseData,

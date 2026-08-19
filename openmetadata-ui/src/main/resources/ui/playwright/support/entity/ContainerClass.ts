@@ -21,6 +21,7 @@ import {
 } from '../../../src/generated/entity/data/container';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -181,8 +182,14 @@ export class ContainerClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'ContainerClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'ContainerClass.create'
+    );
 
     if (isUndefined(customChildContainer)) {
       const childContainer = {
@@ -244,7 +251,7 @@ export class ContainerClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'ContainerClass.patch');
 
     return {
       entity: this.entityResponseData,

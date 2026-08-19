@@ -26,6 +26,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -94,7 +95,10 @@ export class SpreadsheetClass extends EntityClass {
         data: this.service,
       }
     );
-    this.serviceResponseData = await serviceResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'SpreadsheetClass.create'
+    );
 
     // Create directories
     const entityResponse = await apiContext.post(
@@ -107,7 +111,10 @@ export class SpreadsheetClass extends EntityClass {
         },
       }
     );
-    this.entityResponseData = await entityResponse.json();
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'SpreadsheetClass.create'
+    );
 
     return {
       service: serviceResponse.body,
@@ -132,7 +139,7 @@ export class SpreadsheetClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'SpreadsheetClass.patch');
 
     return {
       entity: this.entityResponseData,

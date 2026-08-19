@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { okJson } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 type ClassificationData = {
@@ -57,7 +58,7 @@ export class ClassificationClass {
       data: this.data,
     });
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'ClassificationClass.create');
 
     return this.responseData;
   }
@@ -72,7 +73,7 @@ export class ClassificationClass {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'ClassificationClass.patch');
 
     return this.responseData;
   }

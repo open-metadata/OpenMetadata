@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -109,8 +110,14 @@ export class PipelineClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'PipelineClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'PipelineClass.create'
+    );
 
     return {
       service: serviceResponse.body,
@@ -135,7 +142,7 @@ export class PipelineClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'PipelineClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -177,10 +184,16 @@ export class PipelineClass extends EntityClass {
       }
     );
 
-    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+    this.ingestionPipelineResponseData = await okJson(
+      ingestionPipelineResponse,
+      'PipelineClass.createIngestionPipeline'
+    );
 
     return {
-      ingestionPipeline: await ingestionPipelineResponse.json(),
+      ingestionPipeline: await okJson(
+        ingestionPipelineResponse,
+        'PipelineClass.createIngestionPipeline'
+      ),
     };
   }
 

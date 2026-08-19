@@ -20,6 +20,7 @@ import {
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -332,7 +333,10 @@ export class TableClass extends EntityClass {
         ...tableData,
       },
     });
-    const entity = await entityResponse.json();
+    const entity = await okJson(
+      entityResponse,
+      'TableClass.createAdditionalTable'
+    );
     this.additionalEntityTableResponseData = [
       ...this.additionalEntityTableResponseData,
       entity,
@@ -416,7 +420,7 @@ export class TableClass extends EntityClass {
       },
     });
 
-    const query = await queryResponse.json();
+    const query = await okJson(queryResponse, 'TableClass.createQuery');
 
     this.queryResponseData.push(query);
 
@@ -530,7 +534,7 @@ export class TableClass extends EntityClass {
       { data: testCaseResult }
     );
 
-    return await testCaseResultResponse.json();
+    return await okJson(testCaseResultResponse, 'TableClass.addTestCaseResult');
   }
 
   async patch({

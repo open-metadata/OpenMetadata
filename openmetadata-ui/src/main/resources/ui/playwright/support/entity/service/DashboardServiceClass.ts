@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../../constant/service';
+import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -59,7 +60,7 @@ export class DashboardServiceClass extends EntityClass {
       data: dashboardData,
     });
 
-    return await response.json();
+    return await okJson(response, 'DashboardServiceClass.createDashboardChild');
   }
 
   async create(
@@ -73,7 +74,10 @@ export class DashboardServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'DashboardServiceClass.create'
+    );
 
     this.entityResponseData = service;
 
@@ -122,7 +126,10 @@ export class DashboardServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'DashboardServiceClass.patch'
+    );
 
     this.entityResponseData = service;
 

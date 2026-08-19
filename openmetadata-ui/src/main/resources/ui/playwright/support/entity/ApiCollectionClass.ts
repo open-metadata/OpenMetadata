@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -210,9 +211,12 @@ export class ApiCollectionClass extends EntityClass {
       data: this.apiEndpoint,
     });
 
-    const service = await serviceResponse.json();
-    const entity = await entityResponse.json();
-    const apiEndpoint = await apiEndpointResponse.json();
+    const service = await okJson(serviceResponse, 'ApiCollectionClass.create');
+    const entity = await okJson(entityResponse, 'ApiCollectionClass.create');
+    const apiEndpoint = await okJson(
+      apiEndpointResponse,
+      'ApiCollectionClass.create'
+    );
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
@@ -236,7 +240,10 @@ export class ApiCollectionClass extends EntityClass {
       }
     );
 
-    const apiCollection = await apiCollectionResponse.json();
+    const apiCollection = await okJson(
+      apiCollectionResponse,
+      'ApiCollectionClass.patch'
+    );
 
     this.entityResponseData = apiCollection;
 

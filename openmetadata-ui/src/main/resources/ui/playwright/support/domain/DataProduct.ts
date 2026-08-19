@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { getEncodedFqn } from '../../utils/entity';
@@ -151,7 +152,7 @@ export class DataProduct extends EntityClass {
       }
     );
 
-    const data = await response.json();
+    const data = await okJson(response, 'DataProduct.addAssets');
     this.responseData = data;
 
     return data;

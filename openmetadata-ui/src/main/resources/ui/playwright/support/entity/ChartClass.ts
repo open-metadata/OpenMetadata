@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import {
   visitEntityPageByFqn,
@@ -101,8 +102,11 @@ export class ChartClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'ChartClass.create'
+    );
+    this.entityResponseData = await okJson(entityResponse, 'ChartClass.create');
 
     return {
       service: serviceResponse.body,
@@ -127,7 +131,7 @@ export class ChartClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'ChartClass.patch');
 
     return {
       entity: this.entityResponseData,

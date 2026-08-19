@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type LearningResourceContext = {
@@ -107,7 +108,7 @@ export class LearningResourceClass {
         },
       }
     );
-    const data = await response.json();
+    const data = await okJson(response, 'LearningResourceClass.patch');
     this.responseData = data;
 
     return data;

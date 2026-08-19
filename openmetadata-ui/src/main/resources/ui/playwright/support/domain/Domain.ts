@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -60,17 +61,12 @@ export class Domain extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/domains', {
+    const data = await createOrFetch(apiContext, {
+      label: 'Domain.create',
+      createPath: '/api/v1/domains',
+      entityFqn: this.data.name,
       data: this.data,
     });
-
-    if (!response.ok()) {
-      throw new Error(
-        `Domain.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
-
-    const data = await response.json();
     this.responseData = data;
 
     return data;
@@ -107,7 +103,7 @@ export class Domain extends EntityClass {
       }
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'Domain.patch');
 
     return {
       entity: this.responseData,

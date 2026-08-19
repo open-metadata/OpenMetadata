@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
+import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -50,7 +51,10 @@ export class MessagingServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'MessagingServiceClass.create'
+    );
 
     this.entityResponseData = service;
 
@@ -68,7 +72,10 @@ export class MessagingServiceClass extends EntityClass {
       }
     );
 
-    const service = await serviceResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'MessagingServiceClass.patch'
+    );
 
     this.entityResponseData = service;
 
