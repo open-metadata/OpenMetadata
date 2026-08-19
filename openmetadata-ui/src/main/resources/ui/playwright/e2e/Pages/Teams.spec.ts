@@ -58,6 +58,7 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
+  openAddTeamModal,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -192,9 +193,7 @@ test.describe('Teams Page', () => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.getByTestId('add-team').waitFor();
-
-      await page.getByTestId('add-team').click();
+      await openAddTeamModal(page);
 
       const newTeamData = await createTeam(page, true);
 
@@ -427,9 +426,7 @@ test.describe('Teams Page', () => {
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.getByTestId('add-team').waitFor();
-
-    await page.getByTestId('add-team').click();
+    await openAddTeamModal(page);
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
