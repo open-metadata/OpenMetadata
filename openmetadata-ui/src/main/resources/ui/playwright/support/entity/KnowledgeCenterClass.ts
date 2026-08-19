@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { okJson } from '../../utils/apiResponse';
 import { navigateToArticle } from '../../utils/KnowledgeCenter';
 import {
   KnowledgeCenterData,
@@ -82,7 +83,7 @@ export class KnowledgeCenterClass {
         data: apiData,
       });
 
-      const pageData = await response.json();
+      const pageData = await okJson(response, 'KnowledgeCenterClass.create');
       this.knowledgePages.push(pageData);
 
       if (i === 0) {

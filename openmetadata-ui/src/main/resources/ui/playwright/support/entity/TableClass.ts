@@ -586,7 +586,7 @@ export class TableClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'TableClass.patch');
 
     return {
       entity: this.entityResponseData,

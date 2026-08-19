@@ -204,7 +204,10 @@ export class ContainerClass extends EntityClass {
         data: childContainer,
       });
 
-      this.childResponseData = await childResponse.json();
+      this.childResponseData = await okJson(
+        childResponse,
+        'ContainerClass.create'
+      );
     } else {
       const childArrayResponseData: ResponseDataType[] = [];
       for (const child of customChildContainer) {
@@ -220,7 +223,9 @@ export class ContainerClass extends EntityClass {
           data: childContainer,
         });
 
-        childArrayResponseData.push(await childResponse.json());
+        childArrayResponseData.push(
+          await okJson(childResponse, 'ContainerClass.create')
+        );
       }
       this.childArrayResponseData = childArrayResponseData;
     }
