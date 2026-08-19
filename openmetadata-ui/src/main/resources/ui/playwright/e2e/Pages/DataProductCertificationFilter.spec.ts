@@ -133,7 +133,6 @@ test.describe(
   'Data Products - Certification filter',
   { tag: '@Governance' },
   () => {
-
     test.beforeAll('Setup certified data products', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
