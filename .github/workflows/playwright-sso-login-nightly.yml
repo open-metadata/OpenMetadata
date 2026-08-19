@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-login-nightly-${{ github.ref }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
