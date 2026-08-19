@@ -269,7 +269,11 @@ def search_table_entities(
                         alias_fqn=alias_fqn,
                     )
                     if alias_entities:
-                        search_cache.put(search_tuple, alias_entities)
+                        # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
+                        # same (service, db, schema, table) tuple as the `search_cache.put` call
+                        # above (line ~251, pre-existing and baselined) -- a real annotation gap,
+                        # not a bug: dict keys accept any hashable value.
+                        search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
                         return alias_entities
 
         except Exception as exc:

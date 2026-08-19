@@ -26,7 +26,7 @@ import hashlib
 import json
 import re
 import traceback
-from typing import Any, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
 
 from metadata.ingestion.ometa.ometa_api import C
 from metadata.utils.logger import utils_logger
@@ -136,7 +136,10 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
     5. Removes volatile EntityReference fields (href, deleted, inherited)
     6. Normalizes schemaDefinition whitespace
     """
-    result = _remove_volatile_fields(data)
+    # _remove_volatile_fields is Union[Dict, List, Any] because it recurses into nested
+    # lists, but called here on a top-level create-request dict it always returns a dict
+    # (see its `isinstance(obj, dict)` branch); cast narrows for the string-keyed lookups below.
+    result = cast("dict[str, Any]", _remove_volatile_fields(data))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])

@@ -591,6 +591,8 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 else None
             )
 
+            table_aliases = self.get_table_aliases(table_name=table_name, schema_name=schema_name)
+
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -617,7 +619,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 owners=self.get_owner_ref(table_name=table_name),
                 locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
                 extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
-                aliases=self.get_table_aliases(table_name=table_name, schema_name=schema_name),
+                aliases=([FullyQualifiedEntityName(alias) for alias in table_aliases] if table_aliases else None),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
