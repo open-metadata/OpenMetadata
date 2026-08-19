@@ -39,8 +39,19 @@ export const getWebhookReceiverHost = () => {
   return webhookHost;
 };
 
+const getWebhookReceiverUrlHost = () => {
+  const host = getWebhookReceiverHost();
+
+  // Docker can advertise the Playwright container's IPv6 address first. An
+  // IPv6 literal must be bracketed when it is used as the host portion of a
+  // URL; without brackets the alert API rejects the destination as malformed.
+  return host.includes(':') && !(host.startsWith('[') && host.endsWith(']'))
+    ? `[${host}]`
+    : host;
+};
+
 export const startWebhookReceiver = async () => {
-  const webhookReceiverHost = getWebhookReceiverHost();
+  const webhookReceiverHost = getWebhookReceiverUrlHost();
   const server = createServer((request, response) => {
     let body = '';
 
