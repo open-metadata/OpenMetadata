@@ -230,10 +230,12 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             <Icon height={18} width={18} />
           </span>
           <div className="tw:flex-1 tw:min-w-0">
+            {/* The ellipsis tooltip already surfaces the full name on hover, so a
+                native `title` here would only stack an OS-styled duplicate that
+                ignores the theme and fires even when the name is not clipped. */}
             <Typography
               ellipsis={{ rows: 1, tooltip: true }}
               size="text-md"
-              title={agent.name}
               weight="bold">
               {agent.name}
             </Typography>
