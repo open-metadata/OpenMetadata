@@ -58,8 +58,7 @@ function AddWidgetTabContent({
         );
       case PageType.LandingPage:
         return customizePageClassBase.getWidgetImageFromKey(
-          widget.fullyQualifiedName,
-          selectedWidgetSize
+          widget.fullyQualifiedName
         );
       default:
         return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(
