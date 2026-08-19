@@ -253,28 +253,27 @@ def search_table_entities(
                 return table_entities
 
             # An alias name resolves to the canonical table it points at
-            if not table_entities:
-                alias_fqn = fqn.build(
-                    metadata,
+            alias_fqn = fqn.build(
+                metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=normalized_db,
+                schema_name=normalized_schema,
+                table_name=table,
+                skip_es_search=True,
+            )
+            if alias_fqn:
+                alias_entities = metadata.es_search_from_alias(
                     entity_type=Table,
-                    service_name=service_name,
-                    database_name=normalized_db,
-                    schema_name=normalized_schema,
-                    table_name=table,
-                    skip_es_search=True,
+                    alias_fqn=alias_fqn,
                 )
-                if alias_fqn:
-                    alias_entities = metadata.es_search_from_alias(
-                        entity_type=Table,
-                        alias_fqn=alias_fqn,
-                    )
-                    if alias_entities:
-                        # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
-                        # same (service, db, schema, table) tuple as the `search_cache.put` call
-                        # above (line ~251, pre-existing and baselined) -- a real annotation gap,
-                        # not a bug: dict keys accept any hashable value.
-                        search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
-                        return alias_entities
+                if alias_entities:
+                    # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
+                    # same (service, db, schema, table) tuple as the `search_cache.put` call
+                    # above (line ~251, pre-existing and baselined) -- a real annotation gap,
+                    # not a bug: dict keys accept any hashable value.
+                    search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
+                    return alias_entities
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
