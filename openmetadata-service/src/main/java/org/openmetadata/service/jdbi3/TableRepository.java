@@ -2369,6 +2369,8 @@ public class TableRepository extends EntityRepository<Table> {
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate(
+          "aliases", () -> recordChange("aliases", original.getAliases(), updated.getAliases()));
+      compareAndUpdate(
           "retentionPeriod",
           () ->
               recordChange(
