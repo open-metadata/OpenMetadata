@@ -133,7 +133,6 @@ test.describe(
   'Data Products - Certification filter',
   { tag: '@Governance' },
   () => {
-    test.slow();
 
     test.beforeAll('Setup certified data products', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -150,18 +149,6 @@ test.describe(
         silverDataProduct,
         silverCertification
       );
-
-      await afterAction();
-    });
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-
-      await goldDataProduct.delete(apiContext);
-      await silverDataProduct.delete(apiContext);
-      await goldCertification.delete(apiContext);
-      await silverCertification.delete(apiContext);
-      await domain.delete(apiContext);
 
       await afterAction();
     });
