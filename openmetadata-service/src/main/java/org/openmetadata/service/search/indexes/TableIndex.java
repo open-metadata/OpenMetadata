@@ -112,7 +112,6 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
     fields.put("columnNamesFuzzy", 3.0f);
-    fields.put("aliases", 5.0f);
     return fields;
   }
 }
