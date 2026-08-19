@@ -29,6 +29,7 @@ import {
 } from '../../utils/common';
 import {
   addAndVerifyWidget,
+  isLandingPageWidgetConfigured,
   removeAndVerifyWidget,
   verifyWidgetEntityNavigation,
   verifyWidgetFooterViewMore,
@@ -564,7 +565,15 @@ test('Following Assets Widget', async ({ page, persona, testUser }) => {
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await waitForLandingPageWidget(page, widgetKey);
+  // A product-specific landing-page fallback is used when a newly-created
+  // persona has no docStore layout yet. That fallback does not always include
+  // Following, so make the widget an explicit test prerequisite instead of
+  // relying on whichever default layout the AUT ships.
+  if (await isLandingPageWidgetConfigured(page, widgetKey)) {
+    await waitForLandingPageWidget(page, widgetKey);
+  } else {
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  }
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
