@@ -28,6 +28,13 @@ for var in SLACK_BOT_USER_OAUTH_TOKEN SLACK_CHANNEL WORKFLOW_NAME CONCLUSION \
 done
 
 queue_branch=$(printf '%s' "$HEAD_BRANCH" | cut -d/ -f2)
+
+# Title and author are best-effort: the PR lookup can fail while the alert is
+# still worth sending, so the message must read correctly without them.
+link_text="#${PR_NUMBER}"
+if [ -n "${PR_TITLE:-}" ]; then
+  link_text="${link_text} ${PR_TITLE}"
+fi
 author_suffix=""
 if [ -n "${PR_AUTHOR:-}" ]; then
   author_suffix=" (@${PR_AUTHOR})"
@@ -35,7 +42,7 @@ fi
 
 text=$(printf '%s\n%s\n%s' \
   "${TEXT_PREFIX:-}:rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
-  "<${REPO_URL}/pull/${PR_NUMBER}|#${PR_NUMBER} ${PR_TITLE:-}>${author_suffix}" \
+  "<${REPO_URL}/pull/${PR_NUMBER}|${link_text}>${author_suffix}" \
   "<${RUN_URL}|Failed run> · <${REPO_URL}/queue/${queue_branch}|Merge queue>")
 
 payload=$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$text" \
