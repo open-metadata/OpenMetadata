@@ -352,7 +352,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     self.context.get().database_schema,
                 )
                 if stored_procedure.name in encrypted_procs:
-                    proc_definition = "-- Unable to fetch code as this is an encrypted stored procedure"
+                    object_label = "function" if stored_procedure.routine_type == "FUNCTION" else "stored procedure"
+                    proc_definition = f"-- Unable to fetch code as this is an encrypted {object_label}"
 
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),

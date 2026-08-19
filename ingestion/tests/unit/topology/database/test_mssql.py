@@ -57,7 +57,9 @@ from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
@@ -483,6 +485,18 @@ class TestUpdateMssqlIschemaNames:
         assert len(results) == 1
         assert results[0].storedProcedureType == StoredProcedureType.Function
 
+    def test_yield_encrypted_function_message_says_function_not_procedure(self):
+        """An encrypted FUNCTION gets a message calling it a function, not a stored procedure."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = {"fn_encrypted"}
+
+        sp = MssqlStoredProcedure(name="fn_encrypted", language="SQL", definition=None, routine_type="FUNCTION")
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.code == "-- Unable to fetch code as this is an encrypted function"
+
     def test_get_encrypted_procedures_caches_per_schema(self):
         """_get_encrypted_procedures queries once per schema and caches"""
         self._setup_stored_procedure_context()
@@ -592,6 +606,31 @@ class TestMssqlGetStoredProceduresQuery:
 
     def test_selects_routine_type_for_downstream_classification(self):
         assert "ROUTINE_TYPE AS routine_type" in MSSQL_GET_STORED_PROCEDURES
+
+
+class TestMssqlGetEncryptedStoredProceduresQuery:
+    """MSSQL_GET_ENCRYPTED_STORED_PROCEDURES must cover the same object types
+    MSSQL_GET_STORED_PROCEDURES can yield (procedures and functions), or an
+    encrypted function silently gets treated as non-encrypted.
+    """
+
+    def test_covers_functions_not_just_procedures(self):
+        assert "sys.procedures" not in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+        assert "sys.objects" in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+        for object_type in ("'P'", "'FN'", "'TF'", "'IF'"):
+            assert object_type in MSSQL_GET_ENCRYPTED_STORED_PROCEDURES
+
+
+class TestMssqlGetStoredProcedureCommentsQuery:
+    """MSSQL_GET_STORED_PROCEDURE_COMMENTS must cover functions too, or a function's
+    MS_Description extended property is silently never looked up.
+    """
+
+    def test_covers_functions_not_just_procedures(self):
+        assert "sys.procedures" not in MSSQL_GET_STORED_PROCEDURE_COMMENTS
+        assert "sys.objects" in MSSQL_GET_STORED_PROCEDURE_COMMENTS
+        for object_type in ("'P'", "'FN'", "'TF'", "'IF'"):
+            assert object_type in MSSQL_GET_STORED_PROCEDURE_COMMENTS
 
 
 class MssqlIdentityColumnTest(TestCase):

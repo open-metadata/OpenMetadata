@@ -160,19 +160,20 @@ LEFT JOIN sys.extended_properties ep
 
 MSSQL_GET_STORED_PROCEDURE_COMMENTS = textwrap.dedent(
     """
-SELECT 
+SELECT
     DB_NAME() AS DATABASE_NAME,
     s.name AS SCHEMA_NAME,
-    p.name AS STORED_PROCEDURE,
+    o.name AS STORED_PROCEDURE,
     CAST(ep.value AS NVARCHAR(MAX)) AS COMMENT
-FROM sys.procedures p
-JOIN sys.schemas s ON p.schema_id = s.schema_id
-LEFT JOIN sys.extended_properties ep 
-    ON ep.major_id = p.object_id 
-    AND ep.minor_id = 0 
+FROM sys.objects o
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+LEFT JOIN sys.extended_properties ep
+    ON ep.major_id = o.object_id
+    AND ep.minor_id = 0
     AND ep.class = 1
-    AND ep.name = 'MS_Description';
-"""  # noqa: W291
+    AND ep.name = 'MS_Description'
+WHERE o.type IN ('P', 'FN', 'TF', 'IF');
+"""
 )
 
 MSSQL_ALL_VIEW_DEFINITIONS = textwrap.dedent(
@@ -349,11 +350,12 @@ JOIN sys.sql_modules l on l.object_id = o.object_id
 
 MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(
     """
-SELECT p.name AS procedure_name
-FROM sys.procedures p
-JOIN sys.schemas s ON s.schema_id = p.schema_id
+SELECT o.name AS procedure_name
+FROM sys.objects o
+JOIN sys.schemas s ON s.schema_id = o.schema_id
 WHERE s.name = :schema_name
-  AND OBJECTPROPERTY(p.object_id, 'IsEncrypted') = 1
+  AND o.type IN ('P', 'FN', 'TF', 'IF')
+  AND OBJECTPROPERTY(o.object_id, 'IsEncrypted') = 1
     """
 )
 
