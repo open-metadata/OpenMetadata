@@ -45,6 +45,14 @@ export const okJson = async <T = any>(
  *
  * `fetchPath` defaults to the conventional `<createPath>/name` lookup; pass it
  * explicitly for the few collections that do not follow that convention.
+ *
+ * Pass `fields` whenever the caller applies relationship mutations after create.
+ * The API returns `null` for any field not asked for, so a bare lookup reports
+ * `domains: null` on an entity that already has a domain, and a caller that then
+ * re-applies its own `add /domains/0` is rejected with `RULE_VIOLATION: Multiple
+ * Domains are not allowed`. Only request fields the collection actually declares
+ * — `policies` and `roles`, for instance, do not accept `domains` and answer an
+ * unknown field with a 400.
  */
 export const createOrFetch = async <T = any>(
   apiContext: APIRequestContext,
@@ -54,15 +62,17 @@ export const createOrFetch = async <T = any>(
     entityFqn: string;
     data: object;
     fetchPath?: string;
+    fields?: string;
   }
 ): Promise<T> => {
-  const { label, createPath, entityFqn, data, fetchPath } = options;
+  const { label, createPath, entityFqn, data, fetchPath, fields } = options;
   const createResponse = await apiContext.post(createPath, { data });
 
   if (createResponse.status() === 409) {
     const lookupPath = fetchPath ?? `${createPath}/name`;
+    const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
     const getResponse = await apiContext.get(
-      `${lookupPath}/${encodeURIComponent(entityFqn)}`
+      `${lookupPath}/${encodeURIComponent(entityFqn)}${query}`
     );
 
     return await okJson<T>(

@@ -236,8 +236,15 @@ export class TableClass extends EntityClass {
     const createResponse = await apiContext.post(createPath, { data });
 
     if (createResponse.status() === 409) {
+      // Ask for the relationship fields. The API answers `null` for anything not
+      // requested, so a bare lookup reports `domains: null` on an entity that
+      // already has a domain — and a caller that then re-applies its own
+      // `add /domains/0` is rejected with `RULE_VIOLATION: Multiple Domains are
+      // not allowed`. All four collections here declare these fields.
       const getResponse = await apiContext.get(
-        `${fetchPath}/${encodeURIComponent(entityFqn)}`
+        `${fetchPath}/${encodeURIComponent(
+          entityFqn
+        )}?fields=domains,owners,tags`
       );
 
       if (!getResponse.ok()) {
