@@ -537,7 +537,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         Alternate fully qualified SQL names that resolve to this table.
 
-        Connectors that expose alias objects (SQL Server and Oracle synonyms)
+        Connectors that expose database-native alternate names for a table
         override this. The list is source-managed: it is recomputed from the
         source on every run and replaces whatever is stored.
         """
