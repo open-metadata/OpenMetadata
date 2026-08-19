@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import argparse
 import glob
 import shutil
 import subprocess
@@ -29,7 +30,20 @@ def run(command: list[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate ingestion models and ANTLR parsers."
+    )
+    parser.add_argument(
+        "--python-only",
+        action="store_true",
+        help="Skip generating the UI JavaScript ANTLR parser.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     print("Running Datamodel Code Generator")
     print("Make sure the dev dependency group is installed first")
 
@@ -48,15 +62,16 @@ def main() -> None:
             *grammar_files,
         ]
     )
-    run(
-        [
-            "antlr4",
-            "-Dlanguage=JavaScript",
-            "-o",
-            str(JS_GENERATED_ROOT),
-            *grammar_files,
-        ]
-    )
+    if not args.python_only:
+        run(
+            [
+                "antlr4",
+                "-Dlanguage=JavaScript",
+                "-o",
+                str(JS_GENERATED_ROOT),
+                *grammar_files,
+            ]
+        )
 
     run([sys.executable, "scripts/check_generated_models.py", "--write"])
 

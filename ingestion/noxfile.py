@@ -61,7 +61,12 @@ def ensure_generated_models(session):
     if result:
         session.log(result.rstrip())
     if result and not result.startswith("Generated models are up to date."):
-        session.run("python", "../scripts/generate_ingestion_models.py", external=True)
+        session.run(
+            "python",
+            "../scripts/generate_ingestion_models.py",
+            "--python-only",
+            external=True,
+        )
 
 
 @nox.session(
