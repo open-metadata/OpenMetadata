@@ -12,7 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { okJson } from '../../utils/apiResponse';
+import { okJson, quoteFqnSegment } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
@@ -52,7 +52,9 @@ export class SubDomain {
       domainType: 'Aggregate',
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
-      parent: domain.responseData.fullyQualifiedName ?? domain.data.name,
+      parent:
+        domain.responseData.fullyQualifiedName ??
+        quoteFqnSegment(domain.data.name),
     };
   }
 

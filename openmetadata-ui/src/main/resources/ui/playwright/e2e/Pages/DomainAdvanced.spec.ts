@@ -321,7 +321,7 @@ test.describe('Subdomain Permissions', () => {
         resources: ['All'],
         operations: ['ViewAll', 'EditDescription'],
         effect: 'allow',
-        condition: `hasDomain('${domain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);
@@ -690,7 +690,7 @@ test.describe('Cross-Domain Access Denial', () => {
         resources: ['All'],
         operations: ['ViewAll'],
         effect: 'allow',
-        condition: `hasDomain('${accessibleDomain.responseData.fullyQualifiedName}')`,
+        condition: 'hasDomain()',
       },
     ];
     await domainPolicy.create(apiContext, domainRule);

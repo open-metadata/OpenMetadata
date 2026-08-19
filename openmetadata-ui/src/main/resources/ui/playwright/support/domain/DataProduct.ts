@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
-import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { getEncodedFqn } from '../../utils/entity';
@@ -152,7 +151,10 @@ export class DataProduct extends EntityClass {
       }
     );
 
-    const data = await okJson(response, 'DataProduct.addAssets');
+    // A 400 here is a bulk-operation report (numberOfRowsFailed and a
+    // failedRequest list), not a transport failure, so the caller inspects the
+    // body rather than having it raised.
+    const data = await response.json();
     this.responseData = data;
 
     return data;
