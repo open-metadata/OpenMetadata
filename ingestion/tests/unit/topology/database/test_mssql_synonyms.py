@@ -226,6 +226,33 @@ class TestSynonymMap:
         synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
         assert synonym_map.is_empty() is False
 
+    def test_lookup_is_case_insensitive_regardless_of_which_case_was_added_first(self):
+        # SQL Server's default collation is case-insensitive, so base_object_name
+        # casing routinely disagrees with the target table's real stored casing.
+        added_mixed_case = SynonymMap()
+        added_mixed_case.add("svc.db.dbo.Orders", "svc.core.dbo.orders_alias")
+        assert added_mixed_case.aliases_for("svc.db.dbo.orders") == ["svc.core.dbo.orders_alias"]
+
+        added_lower_case = SynonymMap()
+        added_lower_case.add("svc.db.dbo.orders", "svc.core.dbo.orders_alias")
+        assert added_lower_case.aliases_for("svc.db.dbo.Orders") == ["svc.core.dbo.orders_alias"]
+
+    def test_aliases_for_retains_original_alias_casing(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.db.dbo.Orders", "svc.core.dbo.CustOrdersAlias")
+
+        # The lookup key is folded, but the stored alias FQN must not be -- OpenMetadata
+        # FQNs are case-preserving, so folding the value would corrupt aliases[].
+        assert synonym_map.aliases_for("svc.db.dbo.orders") == ["svc.core.dbo.CustOrdersAlias"]
+
+    def test_target_consumed_via_differently_cased_lookup_is_not_unresolved(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.db.dbo.Orders", "svc.core.dbo.orders_alias")
+
+        synonym_map.aliases_for("svc.db.dbo.orders")
+
+        assert synonym_map.unresolved() == []
+
     def test_unresolved_cap_bounds_explicit_entries(self):
         synonym_map = SynonymMap(max_entries=2)
 

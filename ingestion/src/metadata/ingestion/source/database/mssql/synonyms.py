@@ -126,6 +126,12 @@ class SynonymMap:
 
     def __init__(self, max_entries: int = MAX_SYNONYM_ENTRIES):
         self._max_entries = max_entries
+        # Keyed on the case-folded target FQN: SQL Server's default collation is
+        # case-insensitive, so `base_object_name` casing routinely disagrees with
+        # the target table's actual stored casing, but the FQNs we compare here
+        # are case-preserving strings. Folding only the key -- never the alias
+        # values stored below -- keeps lookups collation-correct without
+        # mangling what actually lands in aliases[].
         self._targets: dict[str, set[str]] = {}
         self._consumed: set[str] = set()
         self._explicit_unresolved: list[tuple[str, str]] = []
@@ -133,7 +139,8 @@ class SynonymMap:
         self._unresolved_cap_warned = False
 
     def add(self, target_fqn: str, alias_fqn: str) -> bool:
-        if target_fqn not in self._targets and len(self._targets) >= self._max_entries:
+        key = target_fqn.casefold()
+        if key not in self._targets and len(self._targets) >= self._max_entries:
             if not self._cap_warned:
                 logger.warning(
                     f"Synonym map reached its cap of {self._max_entries} targets; "
@@ -141,7 +148,7 @@ class SynonymMap:
                 )
                 self._cap_warned = True
             return False
-        self._targets.setdefault(target_fqn, set()).add(alias_fqn)
+        self._targets.setdefault(key, set()).add(alias_fqn)
         return True
 
     def aliases_for(self, target_fqn: str) -> Optional[list[str]]:  # noqa: UP045
@@ -152,10 +159,11 @@ class SynonymMap:
         it from unresolved() reporting. Meant to be called exactly once per target
         when it is successfully discovered and added to the catalog.
         """
-        aliases = self._targets.get(target_fqn)
+        key = target_fqn.casefold()
+        aliases = self._targets.get(key)
         if not aliases:
             return None
-        self._consumed.add(target_fqn)
+        self._consumed.add(key)
         return sorted(aliases)
 
     def record_unresolved(self, alias_fqn: str, reason: SynonymUnresolvedReason) -> None:
