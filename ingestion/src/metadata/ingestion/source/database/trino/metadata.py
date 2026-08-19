@@ -74,14 +74,15 @@ def _starts_with_type(type_str: str, type_name: str) -> bool:
     return type_str.lower().startswith(type_name)
 
 
-def split_row_field(field_str: str, position: int) -> Tuple[str, str]:  # noqa: UP006
+def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006, UP045
     """
     Split a single Trino ROW field into its (name, type) pair.
 
     Trino allows the field name to be omitted entirely -- `row(bigint, varchar(1))`,
-    which is what any CTAS over a `ROW(...)` constructor produces. Unnamed fields
-    are given a positional name matching Trino's 1-based field access, so `s[1]`
-    reads as `field1`.
+    which is what any CTAS over a `ROW(...)` constructor produces -- so the name is
+    None for an unnamed field, mirroring how the driver's own ROW type models it.
+    Naming is left to `resolve_field_names`, which needs the whole ROW to guarantee
+    uniqueness.
 
     Named fields arrive quoted (`row("a" bigint)`); the quotes are stripped so the
     OpenMetadata child column is `a` rather than `"a"`, preserving the original case.
@@ -94,8 +95,32 @@ def split_row_field(field_str: str, position: int) -> Tuple[str, str]:  # noqa: 
 
     parts = list(datatype.aware_split(field_str, delimiter=" ", maxsplit=1))
     if len(parts) == 1 or _TYPE_CONTINUATION.match(parts[1].strip()):
-        return f"{UNNAMED_FIELD_PREFIX}{position}", field_str
+        return None, field_str
     return parts[0], parts[1].strip()
+
+
+def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
+    """
+    Give every field of one ROW a unique name.
+
+    Unnamed fields are named positionally to match Trino's 1-based field access, so
+    `s[1]` reads as `field1`. Because a ROW may mix unnamed fields with one named
+    literally `fieldN` -- `row(bigint, "field1" varchar)` is valid Trino -- a
+    positional name is suffixed until it is unique. Two children sharing a name
+    would make the nested column FQN ambiguous.
+    """
+    taken = {name for name, _ in fields if name is not None}
+    resolved = []
+    for position, (name, type_str) in enumerate(fields, start=1):
+        if name is None:
+            name = f"{UNNAMED_FIELD_PREFIX}{position}"  # noqa: PLW2901
+            suffix = 1
+            while name in taken:
+                name = f"{UNNAMED_FIELD_PREFIX}{position}_{suffix}"  # noqa: PLW2901
+                suffix += 1
+            taken.add(name)
+        resolved.append((name, type_str))
+    return resolved
 
 
 def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
@@ -137,8 +162,8 @@ def parse_row_data_type(type_str: str) -> str:
     type_name, type_opts = get_type_name_and_opts(type_str)
     final = type_name.lower().replace(ROW_DATA_TYPE, "struct") + "<"
     if type_opts:
-        for position, data_type in enumerate(datatype.aware_split(type_opts) or [], start=1):
-            attr_name, attr_type_str = split_row_field(data_type, position)
+        fields = [split_row_field(field) for field in datatype.aware_split(type_opts) or []]
+        for attr_name, attr_type_str in resolve_field_names(fields):
             if _starts_with_type(attr_type_str, ROW_DATA_TYPE):
                 final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
             elif _starts_with_type(attr_type_str, ARRAY_DATA_TYPE):

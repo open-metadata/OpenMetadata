@@ -24,40 +24,73 @@ from sqlalchemy.sql import sqltypes
 from metadata.ingestion.source.database.trino.metadata import (
     _get_columns,
     parse_row_data_type,
+    resolve_field_names,
     split_row_field,
 )
 
 
 class TestSplitRowField:
-    """Splitting a single ROW field into (name, type)."""
+    """Splitting a single ROW field into (name, type); None name means unnamed."""
 
     @pytest.mark.parametrize(
-        ("field", "position", "expected"),
+        ("field", "expected"),
         [
             # Trino always quotes a named field; the quotes must not leak into
             # the OpenMetadata child column name.
-            ('"a" bigint', 1, ("a", "bigint")),
-            ('"MyField" bigint', 1, ("MyField", "bigint")),
-            ('"my col" bigint', 1, ("my col", "bigint")),
+            ('"a" bigint', ("a", "bigint")),
+            ('"MyField" bigint', ("MyField", "bigint")),
+            ('"my col" bigint', ("my col", "bigint")),
             # An embedded quote is escaped by doubling it.
-            ('"we""ird" bigint', 1, ('we"ird', "bigint")),
-            # Unnamed fields get a positional name matching Trino's 1-based
-            # field access, so `s[2]` reads as `field2`.
-            ("bigint", 1, ("field1", "bigint")),
-            ("varchar(1)", 2, ("field2", "varchar(1)")),
+            ('"we""ird" bigint', ('we"ird', "bigint")),
+            # Unnamed fields.
+            ("bigint", (None, "bigint")),
+            ("varchar(1)", (None, "varchar(1)")),
             # Unnamed fields whose type itself contains spaces.
-            ("timestamp(3) with time zone", 1, ("field1", "timestamp(3) with time zone")),
-            ("interval day to second", 1, ("field1", "interval day to second")),
-            ("double precision", 3, ("field3", "double precision")),
+            ("timestamp(3) with time zone", (None, "timestamp(3) with time zone")),
+            ("interval day to second", (None, "interval day to second")),
+            ("double precision", (None, "double precision")),
             # Named fields whose type contains spaces.
-            ('"ts" timestamp(3) with time zone', 1, ("ts", "timestamp(3) with time zone")),
-            ('"iv" interval day to second', 1, ("iv", "interval day to second")),
+            ('"ts" timestamp(3) with time zone', ("ts", "timestamp(3) with time zone")),
+            ('"iv" interval day to second', ("iv", "interval day to second")),
             # Legacy unquoted form, still parsed as a named field.
-            ("a int", 1, ("a", "int")),
+            ("a int", ("a", "int")),
         ],
     )
-    def test_split(self, field, position, expected):
-        assert split_row_field(field, position) == expected
+    def test_split(self, field, expected):
+        assert split_row_field(field) == expected
+
+
+class TestResolveFieldNames:
+    """Unnamed fields are named positionally, and never collide with a real name."""
+
+    def test_unnamed_fields_get_positional_names(self):
+        fields = [(None, "bigint"), ("b", "varchar"), (None, "int")]
+
+        assert resolve_field_names(fields) == [
+            ("field1", "bigint"),
+            ("b", "varchar"),
+            ("field3", "int"),
+        ]
+
+    @pytest.mark.parametrize(
+        ("fields", "expected_names"),
+        [
+            # A field explicitly named `field1` alongside an unnamed field at
+            # position 1 -- `row(bigint, "field1" varchar)` is valid Trino.
+            ([(None, "bigint"), ("field1", "varchar")], ["field1_1", "field1"]),
+            ([("field2", "varchar"), (None, "bigint")], ["field2", "field2_1"]),
+            # Disambiguation must also dodge an explicit `fieldN_1`.
+            (
+                [(None, "bigint"), ("field1", "varchar"), ("field1_1", "varchar")],
+                ["field1_2", "field1", "field1_1"],
+            ),
+        ],
+    )
+    def test_positional_names_never_collide(self, fields, expected_names):
+        resolved = [name for name, _ in resolve_field_names(fields)]
+
+        assert resolved == expected_names
+        assert len(resolved) == len(set(resolved))
 
 
 class TestParseRowDataType:
@@ -87,6 +120,17 @@ class TestParseRowDataType:
     def test_anonymous_fields_do_not_raise(self):
         """Regression: this used to raise ValueError and drop every column."""
         assert parse_row_data_type("row(bigint, varchar(10))") == "struct<field1:bigint,field2:varchar(10)>"
+
+    @pytest.mark.parametrize(
+        ("type_str", "expected"),
+        [
+            ('row(bigint, "field1" varchar)', "struct<field1_1:bigint,field1:varchar>"),
+            ('row("field2" varchar, bigint)', "struct<field2:varchar,field2_1:bigint>"),
+        ],
+    )
+    def test_positional_name_does_not_shadow_an_explicit_field(self, type_str, expected):
+        """A struct must never end up with two children of the same name."""
+        assert parse_row_data_type(type_str) == expected
 
 
 def _record(column, type_):
