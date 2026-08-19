@@ -190,8 +190,6 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
                   return termsBuilder.aggregations(finalMetricAggregations);
                 });
 
-        // One group-by aggregation per metric. `i` only advances for UNNAMED metrics, so keying on
-        // it collapsed every named metric onto "term_0" and only the last one survived.
         aggregationsMap.put("term_" + groupByAggIndex++, groupByAgg);
       } else {
         aggregationsMap.putAll(metricAggregations);
