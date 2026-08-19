@@ -19,7 +19,7 @@ import {
 } from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -153,31 +153,25 @@ export class SearchIndexClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/searchServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/searchIndexes', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'SearchIndexClass.create',
+      createPath: '/api/v1/services/searchServices',
+      entityFqn: this.service.name,
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'SearchIndexClass.create',
+      createPath: '/api/v1/searchIndexes',
+      entityFqn: `${this.service.name}.${this.entity.name}`,
       data: this.entity,
     });
-
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'SearchIndexClass.create'
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'SearchIndexClass.create'
-    );
 
     this.childrenSelectorId =
       this.entityResponseData.fields?.[0]?.fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 

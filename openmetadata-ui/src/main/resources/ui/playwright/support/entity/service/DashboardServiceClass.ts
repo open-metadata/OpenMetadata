@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../../constant/service';
-import { okJson } from '../../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -67,17 +67,12 @@ export class DashboardServiceClass extends EntityClass {
     apiContext: APIRequestContext,
     customChildDashboards?: { name: string; displayName: string }[]
   ) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/dashboardServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await okJson(
-      serviceResponse,
-      'DashboardServiceClass.create'
-    );
+    const service = await createOrFetch(apiContext, {
+      label: 'DashboardServiceClass.create',
+      createPath: '/api/v1/services/dashboardServices',
+      entityFqn: this.entity.name,
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 

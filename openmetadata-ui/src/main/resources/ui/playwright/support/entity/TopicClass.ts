@@ -19,7 +19,7 @@ import {
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -145,29 +145,26 @@ export class TopicClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/messagingServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/topics', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/services/messagingServices',
+      entityFqn: this.service.name,
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/topics',
+      entityFqn: `${this.service.name}.${this.entity.name}`,
       data: this.entity,
     });
-
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'TopicClass.create'
-    );
-    this.entityResponseData = await okJson(entityResponse, 'TopicClass.create');
 
     this.childrenSelectorId =
       this.entityResponseData.messageSchema?.schemaFields?.[0]
         .fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 

@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -102,28 +102,22 @@ export class MlModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/mlmodelServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/mlmodels', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'MlModelClass.create',
+      createPath: '/api/v1/services/mlmodelServices',
+      entityFqn: this.service.name,
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MlModelClass.create',
+      createPath: '/api/v1/mlmodels',
+      entityFqn: `${this.service.name}.${this.entity.name}`,
       data: this.entity,
     });
 
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'MlModelClass.create'
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'MlModelClass.create'
-    );
-
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 

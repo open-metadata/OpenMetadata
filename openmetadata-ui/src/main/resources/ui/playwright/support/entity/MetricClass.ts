@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -92,17 +92,15 @@ export class MetricClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const entityResponse = await apiContext.post('/api/v1/metrics', {
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MetricClass.create',
+      createPath: '/api/v1/metrics',
+      entityFqn: this.entity.name,
       data: this.entity,
     });
 
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'MetricClass.create'
-    );
-
     return {
-      entity: entityResponse.body,
+      entity: this.entityResponseData,
     };
   }
 

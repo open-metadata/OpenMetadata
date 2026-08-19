@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import { okJson } from '../../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -46,17 +46,12 @@ export class SearchIndexServiceClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/searchServices',
-      {
-        data: this.entity,
-      }
-    );
-
-    const service = await okJson(
-      serviceResponse,
-      'SearchIndexServiceClass.create'
-    );
+    const service = await createOrFetch(apiContext, {
+      label: 'SearchIndexServiceClass.create',
+      createPath: '/api/v1/services/searchServices',
+      entityFqn: this.entity.name,
+      data: this.entity,
+    });
 
     this.entityResponseData = service;
 
