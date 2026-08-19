@@ -244,6 +244,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           {agentLinkProps && (
             <Button
               color="link-color"
+              data-testid="agent-link-button"
               href={agentLinkProps.href}
               iconTrailing={<LinkExternal02 size={12} />}
               target="_blank">
