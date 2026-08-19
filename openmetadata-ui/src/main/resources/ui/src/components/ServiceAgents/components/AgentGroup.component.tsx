@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Card,
+  Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
@@ -24,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
 import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import AgentCard from './AgentCard.component';
 import AgentCardSkeleton from './AgentCardSkeleton.component';
 
@@ -78,6 +80,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   titleKey,
 }) => {
   const { t } = useTranslation();
+  const { isPending: isActionPending } = useAgentActionAvailability();
   const runningCount = agents.filter((a) => a.status === 'running').length;
 
   const renderAgents = () => {
@@ -177,7 +180,20 @@ const AgentGroup: FC<AgentGroupProps> = ({
             />
           </Tooltip>
         )}
-        {addAgentSlot ??
+        {/* Creating an agent deploys it, so the control waits on the pipeline service status the
+            same way the per-card actions do — a placeholder while it is in flight, and the slot's
+            own disabled state once it answers. */}
+        {isActionPending ? (
+          <span
+            aria-busy
+            aria-label={t('label.loading')}
+            aria-live="polite"
+            data-testid="add-agent-skeleton"
+            role="status">
+            <Skeleton height={36} variant="rounded" width={120} />
+          </span>
+        ) : (
+          addAgentSlot ??
           (canCreateAgent && (
             <Button
               color="secondary"
@@ -186,7 +202,8 @@ const AgentGroup: FC<AgentGroupProps> = ({
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>
-          ))}
+          ))
+        )}
       </Box>
       {renderAgents()}
     </Card>

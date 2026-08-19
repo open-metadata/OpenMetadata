@@ -4068,6 +4068,7 @@
     "pipeline-killed-successfully": "{{pipelineName}} 的執行中工作流程已成功終止",
     "pipeline-not-deployed": "管線未部署",
     "pipeline-scheduler-message": "擷取排程器無法回應。請聯繫 {{brandName}} 支援。謝謝。",
+    "pipeline-service-unreachable-agent-actions": "無法連線至管線服務。代理程式及其執行紀錄會依最後記錄的狀態顯示，在服務恢復回應之前，代理程式的操作將無法使用。",
     "pipeline-will-trigger-manually": "管線只會手動觸發。",
     "pipeline-will-triggered-manually": "管線只會手動觸發",
     "platform-insight-description": "了解您服務中可用的元資料，並追蹤主要 KPI 的涵蓋範圍。",
