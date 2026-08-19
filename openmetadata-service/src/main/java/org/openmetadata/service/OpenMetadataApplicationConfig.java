@@ -14,7 +14,6 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
@@ -42,6 +41,7 @@ import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -81,9 +81,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
-
-  @JsonProperty("nlqHybridSearch")
-  private JsonNode nlqHybridSearch;
 
   @JsonProperty("llmConfiguration")
   private LLMConfiguration llmConfiguration;
@@ -216,6 +213,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
       bulkOperationConfiguration = new BulkOperationConfiguration();
     }
     return bulkOperationConfiguration;
+  }
+
+  @JsonProperty("asyncOperations")
+  @Valid
+  private AsyncOperationsConfiguration asyncOperationsConfiguration;
+
+  public AsyncOperationsConfiguration getAsyncOperationsConfiguration() {
+    if (asyncOperationsConfiguration == null) {
+      asyncOperationsConfiguration = new AsyncOperationsConfiguration();
+    }
+    return asyncOperationsConfiguration;
   }
 
   @JsonProperty("qos")

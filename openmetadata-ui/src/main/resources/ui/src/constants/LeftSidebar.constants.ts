@@ -69,6 +69,7 @@ export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
   [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
   '/glossary-term': ROUTES.GLOSSARY,
   '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
+  '/test-case': ROUTES.INCIDENT_MANAGER,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [

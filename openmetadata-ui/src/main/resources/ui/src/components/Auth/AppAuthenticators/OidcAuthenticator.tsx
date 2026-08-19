@@ -17,6 +17,8 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -137,7 +139,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     // Performs silent signIn and returns with IDToken
-    const signInSilently = async () => {
+    const signInSilently = useCallback(async () => {
       try {
         // Token will be coming as silent-callback via an iframe
         await userManager.signinSilent();
@@ -149,7 +151,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         updateAxiosInterceptors();
         TokenService.getInstance().clearRefreshInProgress();
       }
-    };
+    }, [userManager, updateAxiosInterceptors]);
 
     const handleSilentSignInSuccess = async (user: User) => {
       // On success update token in store and update axios interceptors
@@ -177,6 +179,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout: logout,
       renewIdToken: signInSilently,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Google / CustomOidc / AwsCognito public-client flows.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(signInSilently);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [signInSilently]);
 
     const AppWithAuth = getAuthenticator(
       childComponentType,
