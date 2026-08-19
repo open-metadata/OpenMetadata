@@ -13,9 +13,9 @@
 
 import { expect, test } from '@playwright/test';
 import {
-  OntologyExplorerComboData as DC,
-  OntologyExplorerCrossGlossaryData as DX,
-  OntologyExplorerEmbeddedData as DE,
+  OntologyExplorerComboData as ComboData,
+  OntologyExplorerCrossGlossaryData as CrossGlossaryData,
+  OntologyExplorerEmbeddedData as EmbeddedData,
 } from '../../support/entity/OntologyExplorerDataClass';
 import {
   applyGlossaryFilter,
@@ -33,20 +33,20 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Isolated nodes + relation filter combo', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DC.setup(apiContext);
+    await ComboData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DC.teardown(apiContext);
+    await ComboData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, DC.comboGlossary.responseData.id);
+    await applyGlossaryFilter(page, ComboData.comboGlossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -98,20 +98,20 @@ test.describe('Isolated nodes + relation filter combo', () => {
 test.describe('Cross-glossary term hydration', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DX.setup(apiContext);
+    await CrossGlossaryData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DX.teardown(apiContext);
+    await CrossGlossaryData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, DX.salesGlossary.responseData.id);
+    await applyGlossaryFilter(page, CrossGlossaryData.salesGlossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -121,18 +121,18 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[DX.termRevenue.responseData.id]).toBeDefined();
-    expect(positions[DX.termExpense.responseData.id]).toBeDefined();
+    expect(positions[CrossGlossaryData.termRevenue.responseData.id]).toBeDefined();
+    expect(positions[CrossGlossaryData.termExpense.responseData.id]).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === DX.termRevenue.responseData.id &&
-          e.to === DX.termExpense.responseData.id) ||
-        (e.from === DX.termExpense.responseData.id &&
-          e.to === DX.termRevenue.responseData.id)
+        (e.from === CrossGlossaryData.termRevenue.responseData.id &&
+          e.to === CrossGlossaryData.termExpense.responseData.id) ||
+        (e.from === CrossGlossaryData.termExpense.responseData.id &&
+          e.to === CrossGlossaryData.termRevenue.responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -148,18 +148,18 @@ test.describe('Cross-glossary term hydration', () => {
 test.describe('Embedded scope (Relations Graph tab)', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DE.setup(apiContext);
+    await EmbeddedData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await DE.teardown(apiContext);
+    await EmbeddedData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    await DE.termA.visitEntityPage(page);
+    await EmbeddedData.termA.visitEntityPage(page);
     await page.getByTestId('relations_graph').click();
     await waitForGraphLoaded(page);
   });
@@ -188,9 +188,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[DE.termA.responseData.id]).toBeDefined();
-    expect(positions[DE.termB.responseData.id]).toBeDefined();
-    expect(positions[DE.termC.responseData.id]).toBeUndefined();
+    expect(positions[EmbeddedData.termA.responseData.id]).toBeDefined();
+    expect(positions[EmbeddedData.termB.responseData.id]).toBeDefined();
+    expect(positions[EmbeddedData.termC.responseData.id]).toBeUndefined();
   });
 
   test('edge between the term and its neighbour is present', async ({
@@ -199,10 +199,10 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === DE.termA.responseData.id &&
-          e.to === DE.termB.responseData.id) ||
-        (e.from === DE.termB.responseData.id &&
-          e.to === DE.termA.responseData.id)
+        (e.from === EmbeddedData.termA.responseData.id &&
+          e.to === EmbeddedData.termB.responseData.id) ||
+        (e.from === EmbeddedData.termB.responseData.id &&
+          e.to === EmbeddedData.termA.responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -212,8 +212,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[DE.termB.responseData.id].x,
-      positions[DE.termB.responseData.id].y
+      positions[EmbeddedData.termB.responseData.id].x,
+      positions[EmbeddedData.termB.responseData.id].y
     );
 
     await expect(

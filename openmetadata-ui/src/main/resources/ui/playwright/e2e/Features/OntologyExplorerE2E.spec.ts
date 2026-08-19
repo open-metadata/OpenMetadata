@@ -12,7 +12,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerE2EData as D } from '../../support/entity/OntologyExplorerDataClass';
+import { OntologyExplorerE2EData as E2EData } from '../../support/entity/OntologyExplorerDataClass';
 import {
   applyGlossaryFilter,
   createApiContext,
@@ -29,20 +29,20 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Ontology Explorer — E2E', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.setup(apiContext);
+    await E2EData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.teardown(apiContext);
+    await E2EData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, D.catalog.responseData.id);
+    await applyGlossaryFilter(page, E2EData.catalog.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -66,9 +66,9 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[D.termProduct.responseData.id]).toBeDefined();
-    expect(positions[D.termCategory.responseData.id]).toBeDefined();
-    expect(positions[D.termBrand.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termProduct.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termCategory.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termBrand.responseData.id]).toBeDefined();
   });
 
   test('graph edges contain all four expected relation types', async ({
@@ -85,15 +85,15 @@ test.describe('Ontology Explorer — E2E', () => {
 
     expect(types.has('partOf') || types.has('hasPart')).toBe(true);
     expect(types.has('relatedTo')).toBe(true);
-    expect(types.has(D.CUSTOM_OWNS_RELATION)).toBe(true);
+    expect(types.has(E2EData.CUSTOM_OWNS_RELATION)).toBe(true);
   });
 
   test('custom ONE_TO_MANY relation shows "1" at source and "M" at target', async ({
     page,
   }) => {
-    const map = await readCardinalityMap(page, D.CUSTOM_OWNS_RELATION);
+    const map = await readCardinalityMap(page, E2EData.CUSTOM_OWNS_RELATION);
 
-    expect(map[D.CUSTOM_OWNS_RELATION]).toEqual({
+    expect(map[E2EData.CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
       endLabelText: 'M',
     });
@@ -115,8 +115,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[D.termCategory.responseData.id].x,
-      positions[D.termCategory.responseData.id].y
+      positions[E2EData.termCategory.responseData.id].x,
+      positions[E2EData.termCategory.responseData.id].y
     );
 
     await expect(
@@ -131,8 +131,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[D.termProduct.responseData.id].x,
-      positions[D.termProduct.responseData.id].y
+      positions[E2EData.termProduct.responseData.id].x,
+      positions[E2EData.termProduct.responseData.id].y
     );
 
     await expect(
@@ -216,7 +216,7 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
 
     const categoryName =
-      D.termCategory.responseData.displayName ?? D.termCategory.responseData.name;
+      E2EData.termCategory.responseData.displayName ?? E2EData.termCategory.responseData.name;
     await page
       .getByTestId('ontology-graph-search')
       .locator('input')
@@ -224,7 +224,7 @@ test.describe('Ontology Explorer — E2E', () => {
 
     const positions = await readNodePositions(page);
 
-    expect(positions[D.termCategory.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termCategory.responseData.id]).toBeDefined();
   });
 
   test('searching for a non-existent term shows the empty state', async ({
@@ -251,8 +251,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await expect(toggle).toHaveAttribute('data-selected', 'true');
     await page.getByTestId('graph-settings-close').click();
 
-    const map = await readCardinalityMap(page, D.CUSTOM_OWNS_RELATION);
-    expect(map[D.CUSTOM_OWNS_RELATION]).toEqual({
+    const map = await readCardinalityMap(page, E2EData.CUSTOM_OWNS_RELATION);
+    expect(map[E2EData.CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
       endLabelText: 'M',
     });

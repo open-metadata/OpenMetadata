@@ -12,7 +12,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerCardinalityData as D } from '../../support/entity/OntologyExplorerDataClass';
+import { OntologyExplorerCardinalityData as CardinalityData } from '../../support/entity/OntologyExplorerDataClass';
 import {
   applyGlossaryFilter,
   createApiContext,
@@ -28,20 +28,20 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.setup(apiContext);
+    await CardinalityData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.teardown(apiContext);
+    await CardinalityData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, D.glossary.responseData.id);
+    await applyGlossaryFilter(page, CardinalityData.glossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -51,10 +51,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        D.CUSTOM_RELATION_NAMES.ONE_TO_ONE
+        CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE
       );
 
-      expect(cardinalityMap[D.CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
+      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
         startLabelText: '1',
         endLabelText: '1',
       });
@@ -65,10 +65,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        D.CUSTOM_RELATION_NAMES.ONE_TO_MANY
+        CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY
       );
 
-      expect(cardinalityMap[D.CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
+      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
         startLabelText: '1',
         endLabelText: 'M',
       });
@@ -79,10 +79,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        D.CUSTOM_RELATION_NAMES.MANY_TO_ONE
+        CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE
       );
 
-      expect(cardinalityMap[D.CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
+      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
         startLabelText: 'M',
         endLabelText: '1',
       });
@@ -93,10 +93,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        D.CUSTOM_RELATION_NAMES.MANY_TO_MANY
+        CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY
       );
 
-      expect(cardinalityMap[D.CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
+      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
         startLabelText: 'M',
         endLabelText: 'M',
       });
@@ -107,10 +107,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        D.CUSTOM_RELATION_NAMES.CUSTOM_1_M
+        CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M
       );
 
-      expect(cardinalityMap[D.CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
+      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
         startLabelText: '1',
         endLabelText: 'M',
       });
@@ -137,10 +137,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       const relationTypes = new Set(edges.map((e) => e.relationType));
 
       expect(
-        relationTypes.has(D.CUSTOM_RELATION_NAMES.ONE_TO_ONE) ||
-          relationTypes.has(D.CUSTOM_RELATION_NAMES.ONE_TO_MANY) ||
-          relationTypes.has(D.CUSTOM_RELATION_NAMES.MANY_TO_ONE) ||
-          relationTypes.has(D.CUSTOM_RELATION_NAMES.MANY_TO_MANY)
+        relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE) ||
+          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY) ||
+          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE) ||
+          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY)
       ).toBe(true);
     });
 

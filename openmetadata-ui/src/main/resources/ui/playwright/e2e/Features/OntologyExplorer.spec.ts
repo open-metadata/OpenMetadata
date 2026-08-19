@@ -12,7 +12,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerPageData as D } from '../../support/entity/OntologyExplorerDataClass';
+import { OntologyExplorerPageData as PageData } from '../../support/entity/OntologyExplorerDataClass';
 import {
   applyGlossaryFilter,
   applyRelationTypeFilter,
@@ -30,13 +30,13 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.setup(apiContext);
+    await PageData.setup(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createApiContext(browser);
-    await D.teardown(apiContext);
+    await PageData.teardown(apiContext);
     await disposeApiContext(afterAction, apiContext);
   });
 
@@ -154,7 +154,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary2.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary2.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('ontology-isolated-toggle').click();
 
@@ -165,7 +165,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await applyRelationTypeFilter(page, 'Synonym');
 
@@ -241,7 +241,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
 
       await page.getByTestId('zoom-in').click();
@@ -262,8 +262,8 @@ test.describe('Ontology Explorer', () => {
       const searchInput = page
         .getByTestId('ontology-graph-search')
         .locator('input');
-      await searchInput.fill(D.term1.data.name);
-      await expect(searchInput).toHaveValue(D.term1.data.name);
+      await searchInput.fill(PageData.term1.data.name);
+      await expect(searchInput).toHaveValue(PageData.term1.data.name);
     });
 
     test('should clear the search query', async ({ page }) => {
@@ -271,7 +271,7 @@ test.describe('Ontology Explorer', () => {
       const searchInput = page
         .getByTestId('ontology-graph-search')
         .locator('input');
-      await searchInput.fill(D.term1.data.name);
+      await searchInput.fill(PageData.term1.data.name);
       await searchInput.clear();
       await expect(searchInput).toHaveValue('');
     });
@@ -370,7 +370,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -389,7 +389,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
@@ -414,12 +414,12 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
       const positions = await readNodePositions(page);
-      const term1Pos = positions[D.term1.responseData.id];
+      const term1Pos = positions[PageData.term1.responseData.id];
 
       expect(
         term1Pos,
@@ -438,7 +438,7 @@ test.describe('Ontology Explorer', () => {
       await expect(outgoing.or(incoming)).toBeVisible({ timeout: 5000 });
 
       const relatedName =
-        D.term2.responseData.displayName ?? D.term2.responseData.name;
+        PageData.term2.responseData.displayName ?? PageData.term2.responseData.name;
       await expect(
         page
           .getByTestId('entity-summary-panel-container')
@@ -452,7 +452,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('view-mode-select').click();
       await page.getByRole('option', { name: 'Hierarchy' }).click();
@@ -467,36 +467,36 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
 
       const searchInput = page
         .getByTestId('ontology-graph-search')
         .locator('input');
-      await searchInput.fill(D.term1.data.name);
+      await searchInput.fill(PageData.term1.data.name);
 
       const positions = await readNodePositions(page);
       expect(
         positions,
         'term1 must be visible — it matches the search query'
-      ).toHaveProperty(D.term1.responseData.id);
+      ).toHaveProperty(PageData.term1.responseData.id);
       expect(
         positions,
         'term2 must be visible — it is a direct neighbour of term1'
-      ).toHaveProperty(D.term2.responseData.id);
+      ).toHaveProperty(PageData.term2.responseData.id);
     });
 
     test('should restore all nodes when the search query is cleared', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
 
       const searchInput = page
         .getByTestId('ontology-graph-search')
         .locator('input');
-      await searchInput.fill(D.term1.data.name);
+      await searchInput.fill(PageData.term1.data.name);
       // Search does not re-run layout, so read existing positions without clearing.
       const filteredCount = Object.keys(await readNodePositions(page)).length;
 
@@ -576,12 +576,12 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.glossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
       const positions = await readNodePositions(page);
-      const term1Pos = positions[D.term1.responseData.id];
+      const term1Pos = positions[PageData.term1.responseData.id];
 
       expect(
         term1Pos,
@@ -604,12 +604,12 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, D.multiRelGlossary.responseData.id);
+      await applyGlossaryFilter(page, PageData.multiRelGlossary.responseData.id);
       await waitForGraphLoaded(page);
 
       const edges = await readGraphEdges(page);
-      const fromId = D.multiRelTermA.responseData.id;
-      const toId = D.multiRelTermB.responseData.id;
+      const fromId = PageData.multiRelTermA.responseData.id;
+      const toId = PageData.multiRelTermB.responseData.id;
 
       const edgesForPair = edges.filter(
         (e) =>

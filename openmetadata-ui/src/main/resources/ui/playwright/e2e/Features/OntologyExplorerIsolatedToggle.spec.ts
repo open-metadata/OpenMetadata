@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerIsolatedToggleData as D } from '../../support/entity/OntologyExplorerDataClass';
+import { OntologyExplorerIsolatedToggleData as ToggleData } from '../../support/entity/OntologyExplorerDataClass';
 import {
   createApiContext,
   disposeApiContext,
@@ -25,13 +25,13 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  await D.setup(apiContext);
+  await ToggleData.setup(apiContext);
   await disposeApiContext(afterAction, apiContext);
 });
 
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  await D.teardown(apiContext);
+  await ToggleData.teardown(apiContext);
   await disposeApiContext(afterAction, apiContext);
 });
 
@@ -40,20 +40,20 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[D.toggleTermIso.responseData.id],
+      positions[ToggleData.toggleTermIso.responseData.id],
       'isolated term must be visible because showIsolatedNodes defaults to true'
     ).toBeDefined();
     expect(
-      positions[D.toggleTermA.responseData.id],
+      positions[ToggleData.toggleTermA.responseData.id],
       'connected term A must also be visible'
     ).toBeDefined();
     expect(
-      positions[D.toggleTermB.responseData.id],
+      positions[ToggleData.toggleTermB.responseData.id],
       'connected term B must also be visible'
     ).toBeDefined();
   });
@@ -62,23 +62,23 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, D.toggleTermIso.responseData.id);
+    await waitForNodeAbsent(page, ToggleData.toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[D.toggleTermIso.responseData.id],
+      positions[ToggleData.toggleTermIso.responseData.id],
       'isolated term must be hidden after toggling showIsolatedNodes OFF'
     ).toBeUndefined();
     expect(
-      positions[D.toggleTermA.responseData.id],
+      positions[ToggleData.toggleTermA.responseData.id],
       'connected term A must still be visible'
     ).toBeDefined();
     expect(
-      positions[D.toggleTermB.responseData.id],
+      positions[ToggleData.toggleTermB.responseData.id],
       'connected term B must still be visible'
     ).toBeDefined();
   });
@@ -87,18 +87,18 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, D.toggleTermIso.responseData.id);
+    await waitForNodeAbsent(page, ToggleData.toggleTermIso.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodePresent(page, D.toggleTermIso.responseData.id);
+    await waitForNodePresent(page, ToggleData.toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[D.toggleTermIso.responseData.id],
+      positions[ToggleData.toggleTermIso.responseData.id],
       'isolated term must be restored after toggling showIsolatedNodes back ON'
     ).toBeDefined();
   });
