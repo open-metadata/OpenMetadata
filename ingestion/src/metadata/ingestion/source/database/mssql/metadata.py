@@ -157,9 +157,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_CHECK_CONSTRAINTS)).all()
         for row in results:
-            self.check_constraint_columns_map.setdefault((row.schema_name, row.table_name), set()).add(
-                row.column_name
-            )
+            self.check_constraint_columns_map.setdefault((row.schema_name, row.table_name), set()).add(row.column_name)
 
     def get_columns_and_constraints(self, schema_name, table_name, db_name, inspector, table_type=None):
         """
