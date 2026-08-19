@@ -19,12 +19,15 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -32,6 +35,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -225,15 +229,14 @@ public class DomainIsolationIT {
   // additionally exercised by playwright DomainIsolation/DomainTaskIsolation.spec.ts.
 
   @Test
-  void test_incidentListing_restrictedUserSeesOnlyOwnDomainIncidents(TestNamespace ns)
-      throws Exception {
+  void test_incidents_restrictedUserSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
       String p = ns.shortPrefix();
       Domain ownDomain = createDomain(admin, p + "_d1", cleanup);
       Domain foreignDomain = createDomain(admin, p + "_d2", cleanup);
-      DatabaseSchema schema = createSchema(ns, cleanup);
+      DatabaseSchema schema = createShortNamedSchema(admin, p, cleanup);
       Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
       Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
 
@@ -334,6 +337,36 @@ public class DomainIsolationIT {
     Domain domain = admin.domains().create(create);
     cleanup.push(() -> admin.domains().delete(domain.getId().toString()));
     return domain;
+  }
+
+  /**
+   * Creating a test case implicitly creates a test suite whose name is the table's FQN plus a
+   * suffix. {@link #createSchema} derives its service, database and schema names from the
+   * namespace, which embeds the test method name at every level, and the resulting test suite name
+   * overflows its column. Short names keep the FQN well inside the limit.
+   */
+  private DatabaseSchema createShortNamedSchema(
+      OpenMetadataClient admin, String prefix, Deque<Runnable> cleanup) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    cleanup.push(
+        () ->
+            admin
+                .databases()
+                .delete(
+                    database.getId().toString(),
+                    Map.of("recursive", "true", "hardDelete", "true")));
+    return admin
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(prefix + "_sch")
+                .withDatabase(database.getFullyQualifiedName()));
   }
 
   private DatabaseSchema createSchema(TestNamespace ns, Deque<Runnable> cleanup) {
