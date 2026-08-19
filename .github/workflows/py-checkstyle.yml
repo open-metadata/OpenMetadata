@@ -83,19 +83,11 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Setup Python 3.10
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Setup Python environment
+        uses: ./.github/actions/setup-python-environment
         with:
           python-version: '3.10'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-
-      - name: Install Ruff
-        run: |
-          uv venv env --python 3.10
-          uv pip install --python env/bin/python "ruff~=0.15.12"
-          echo "${{ github.workspace }}/env/bin" >> "$GITHUB_PATH"
+          dependency-profile: format
 
       # Add back linting once we have 10/10 on main
       - name: Code style check
