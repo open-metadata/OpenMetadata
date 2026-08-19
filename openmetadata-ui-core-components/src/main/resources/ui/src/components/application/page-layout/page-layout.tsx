@@ -21,7 +21,6 @@ import type {
   PageLayoutPanelProps,
   PageLayoutProps,
   PageLayoutScroll,
-  PageLayoutVariant,
   PanelSize,
 } from './page-layout.types';
 
@@ -31,7 +30,6 @@ export type {
   PageLayoutPanelProps,
   PageLayoutProps,
   PageLayoutScroll,
-  PageLayoutVariant,
   PanelSize,
 } from './page-layout.types';
 
@@ -44,21 +42,14 @@ const toCssSize = (value: PanelSize): string =>
 // ─── Context ───────────────────────────────────────────────────────────────────
 
 interface PageLayoutContextValue {
-  variant: PageLayoutVariant;
   scroll: PageLayoutScroll;
 }
 
 const PageLayoutContext = createContext<PageLayoutContextValue>({
-  variant: 'default',
   scroll: 'content',
 });
 
 const usePageLayoutContext = () => useContext(PageLayoutContext);
-
-const GUTTER_CLASS: Record<PageLayoutVariant, string> = {
-  default: 'tw:px-4',
-  compact: 'tw:p-2',
-};
 
 /**
  * In `content` mode each scroll region owns its overflow; in `page` mode the
@@ -78,7 +69,7 @@ const REGION_SCROLL_CLASS: Record<PageLayoutScroll, string> = {
  * to zero width — no width math, no `wrap={false}`, no Ant Design.
  *
  * @example
- * <PageLayout pageTitle="Explore" scroll="page" variant="compact">
+ * <PageLayout pageTitle="Explore" scroll="page">
  *   <PageLayout.Header>{toolbar}</PageLayout.Header>
  *   <PageLayout.LeftPanel aria-label={navLabel}>{nav}</PageLayout.LeftPanel>
  *   <PageLayout.Content>{page}</PageLayout.Content>
@@ -88,7 +79,6 @@ const REGION_SCROLL_CLASS: Record<PageLayoutScroll, string> = {
 const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
   function PageLayout(
     {
-      variant = 'default',
       scroll = 'content',
       pageTitle,
       fullHeight = true,
@@ -98,10 +88,7 @@ const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
     },
     ref
   ) {
-    const contextValue = useMemo(
-      () => ({ variant, scroll }),
-      [variant, scroll]
-    );
+    const contextValue = useMemo(() => ({ scroll }), [scroll]);
 
     return (
       <PageLayoutContext.Provider value={contextValue}>
@@ -117,7 +104,6 @@ const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
           )}
           data-scroll={scroll}
           data-testid="page-layout"
-          data-variant={variant}
           style={{
             gridTemplateColumns: 'auto minmax(0, 1fr) auto',
             gridTemplateRows:
@@ -216,15 +202,14 @@ const PageLayoutContent = ({
   style,
   ...props
 }: PageLayoutContentProps) => {
-  const { variant, scroll } = usePageLayoutContext();
+  const { scroll } = usePageLayoutContext();
 
   return (
     <main
       {...props}
       className={cx(
-        'tw:min-w-0',
+        'tw:min-w-0 tw:p-2',
         REGION_SCROLL_CLASS[scroll],
-        GUTTER_CLASS[variant],
         className
       )}
       style={{ gridArea: 'content', ...style }}>

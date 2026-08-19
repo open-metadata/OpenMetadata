@@ -68,30 +68,14 @@ describe('PageLayout', () => {
     expect(right.style.width).toBe('16rem');
   });
 
-  it('defaults to the 16px gutter and switches to 8px for the compact variant', () => {
-    const { rerender } = render(
+  it('applies the default content padding', () => {
+    render(
       <PageLayout>
         <PageLayout.Content>Body</PageLayout.Content>
       </PageLayout>
     );
 
-    expect(screen.getByRole('main')).toHaveClass('tw:px-4');
-    expect(screen.getByTestId('page-layout')).toHaveAttribute(
-      'data-variant',
-      'default'
-    );
-
-    rerender(
-      <PageLayout variant="compact">
-        <PageLayout.Content>Body</PageLayout.Content>
-      </PageLayout>
-    );
-
     expect(screen.getByRole('main')).toHaveClass('tw:p-2');
-    expect(screen.getByTestId('page-layout')).toHaveAttribute(
-      'data-variant',
-      'compact'
-    );
   });
 
   it('renders the header spanning the full width', () => {

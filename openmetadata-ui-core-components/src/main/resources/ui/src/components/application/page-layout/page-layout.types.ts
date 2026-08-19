@@ -13,14 +13,6 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
 /**
- * `default` keeps a 16px horizontal gutter; `compact` uses a uniform 8px
- * gutter and is meant for pages whose header is a full-bleed shell. The
- * variant lives in context so `PageLayout.Content` picks the matching gutter
- * without the caller repeating it.
- */
-export type PageLayoutVariant = 'default' | 'compact';
-
-/**
  * `content` (default) keeps the header fixed while `PageLayout.Content` and the
  * side panels scroll on their own. `page` lets the whole layout scroll as one
  * document, so the header scrolls away with the content beneath it.
@@ -31,8 +23,6 @@ export type PageLayoutScroll = 'content' | 'page';
 export type PanelSize = number | string;
 
 export interface PageLayoutProps extends HTMLAttributes<HTMLDivElement> {
-  /** Gutter density applied to `PageLayout.Content`. */
-  variant?: PageLayoutVariant;
   /**
    * Scroll behaviour. `content` (default) fixes the header and scrolls the
    * content/panels independently; `page` scrolls the whole layout as one.

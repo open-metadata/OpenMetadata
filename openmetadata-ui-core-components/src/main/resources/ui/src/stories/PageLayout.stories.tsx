@@ -23,10 +23,6 @@ const meta = {
   },
   tags: ['autodocs'],
   argTypes: {
-    variant: {
-      control: 'inline-radio',
-      options: ['default', 'compact'],
-    },
     scroll: {
       control: 'inline-radio',
       options: ['content', 'page'],
