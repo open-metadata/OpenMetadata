@@ -26,8 +26,6 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
-import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -54,8 +52,8 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   const { folderName, fileName, formattedFileSize } = useMemo(() => {
     return {
       folderName: getEntityName(file.folder),
-      formattedFileSize: formatBytes(file.fileSize),
       fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize),
     };
   }, [file]);
 
@@ -107,7 +105,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4"
+        className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
@@ -119,16 +117,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.detail-plural')}
             </Typography>
           </div>
-          <Box align="center" className="tw:py-1.5" justify="between">
-            <Typography className="tw:text-quaternary" size="text-sm">
-              {t('label.status')}
-            </Typography>
-            <DocumentStatusBadge
-              error={file.processingError}
-              stats={file.extractionStats}
-              status={file.processingStatus}
-            />
-          </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
           )}
@@ -142,25 +130,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               value={getShortRelativeTime(file.updatedAt)}
             />
           )}
-          {file.processingError && (
-            <Box className="tw:py-1.5" direction="col" gap={1}>
-              <Typography className="tw:text-quaternary" size="text-sm">
-                {t('label.error')}
-              </Typography>
-              <Typography
-                className="tw:text-error-primary tw:break-words"
-                data-testid="processing-error"
-                size="text-sm">
-                {file.processingError}
-              </Typography>
-            </Box>
-          )}
         </Card>
-
-        <ExtractedMemoriesCard
-          sourceId={file.id}
-          titleClassName="tw:uppercase"
-        />
       </Box>
     </Box>
   );

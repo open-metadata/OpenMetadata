@@ -3,17 +3,95 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class VectorSearchQueryBuilderTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID TEAM_ID = UUID.randomUUID();
+
+  private static SubjectContext nonAdminSubject() {
+    User user =
+        new User()
+            .withId(USER_ID)
+            .withName("alice")
+            .withIsAdmin(false)
+            .withTeams(
+                List.of(
+                    new EntityReference()
+                        .withId(TEAM_ID)
+                        .withType(Entity.TEAM)
+                        .withName("analytics")));
+    return new SubjectContext(user, null);
+  }
+
+  private static SubjectContext adminSubject() {
+    return new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+  }
+
+  /**
+   * The memory visibility clause, or null when none was emitted. It lives in the KNN filter bool's
+   * sibling {@code filter} array rather than in {@code must}, because a security constraint must not
+   * contribute to the relevance score.
+   */
+  private static JsonNode memoryVisibilityClause(JsonNode query) {
+    JsonNode bool = query.path("knn").path("embedding").path("filter").path("bool");
+    if (bool.isMissingNode()) {
+      bool = query.path("knn").path("filter").path("bool");
+    }
+    JsonNode filter = bool.path("filter");
+    return filter.isArray() && !filter.isEmpty() ? filter.get(0) : null;
+  }
+
+  @Test
+  void testContextMemoryScopingFiltersReachTheQuery() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of(Entity.CONTEXT_MEMORY),
+            "sourceType", List.of("FileExtraction"),
+            "visibility", List.of(MemoryVisibility.SHARED.value()));
+
+    String query =
+        VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0);
+
+    JsonNode must =
+        MAPPER
+            .readTree(query)
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
+    assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
+    boolean found = false;
+    for (JsonNode clause : mustClauses) {
+      if (value.equals(clause.path("term").path(field).asText(null))) {
+        found = true;
+        break;
+      }
+    }
+    return found;
+  }
 
   @Test
   void testBuildsValidQueryWithNoFilters() throws Exception {
@@ -244,6 +322,31 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithDataProductsFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("dataProducts", List.of("clickstream"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    // Should have 2 filters: deleted=false + dataProducts
+    assertEquals(2, mustFilters.size());
+
+    // Second filter should be a term query on dataProducts.name
+    JsonNode dataProductFilter = mustFilters.get(1);
+    assertTrue(dataProductFilter.has("term"));
+
+    JsonNode termQuery = dataProductFilter.get("term");
+    assertTrue(termQuery.has("dataProducts.name"));
+    assertEquals("clickstream", termQuery.get("dataProducts.name").asText());
+  }
+
+  @Test
   void testBuildsQueryWithMultipleFilters() throws Exception {
     float[] vector = {0.1f, 0.2f, 0.3f, 0.4f};
     int size = 20;
@@ -394,6 +497,55 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("service.name"));
     assertTrue(filtersJson.contains("service.displayName"));
     assertTrue(filtersJson.contains("my_service"));
+  }
+
+  @Test
+  void testBuildsQueryWithMetricFacetFilters() throws Exception {
+    float[] vector = {0.1f};
+    Map<String, List<String>> filters =
+        Map.of("granularity", List.of("MONTH"), "metricType", List.of("COUNT"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    JsonNode mustFilters =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("granularity"));
+    assertTrue(filtersJson.contains("MONTH"));
+    assertTrue(filtersJson.contains("metricType"));
+    assertTrue(filtersJson.contains("COUNT"));
+  }
+
+  @Test
+  void testUnitOfMeasurementFilterAlsoMatchesTheCustomUnit() throws Exception {
+    float[] vector = {0.1f};
+    // A metric whose unit is OTHER displays its customUnitOfMeasurement, so filtering by the
+    // displayed value must match; otherwise the filter silently returns nothing.
+    Map<String, List<String>> filters = Map.of("unitOfMeasurement", List.of("basis points"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    String filtersJson =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must")
+            .toString();
+    assertTrue(filtersJson.contains("unitOfMeasurement"));
+    assertTrue(filtersJson.contains("customUnitOfMeasurement"));
+    assertTrue(filtersJson.contains("basis points"));
   }
 
   @Test
@@ -723,5 +875,319 @@ class VectorSearchQueryBuilderTest {
     // Should have only 1 filter: deleted=false
     assertEquals(1, mustFilters.size());
     assertFalse(mustFilters.get(0).get("term").get("deleted").asBoolean());
+  }
+
+  // -------------------------------------------------------------------------
+  // buildNativeESQuery tests (Elasticsearch 8.x/9.x top-level knn format)
+  // -------------------------------------------------------------------------
+
+  @Test
+  void testNativeESQueryTopLevelKnnStructure() throws Exception {
+    float[] vector = {0.1f, 0.2f, 0.3f};
+    int size = 10;
+    int k = 100;
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, size, 0, k, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    assertEquals(size, root.get("size").asInt());
+
+    // Must have top-level "knn", NOT "query"
+    assertTrue(root.has("knn"), "ES native query must have top-level 'knn'");
+    assertTrue(!root.has("query"), "ES native query must not have 'query' key");
+
+    JsonNode knn = root.get("knn");
+    assertEquals("embedding", knn.get("field").asText());
+    assertEquals(k, knn.get("k").asInt());
+    assertNotNull(knn.get("query_vector"));
+    assertTrue(knn.get("query_vector").isArray());
+    assertEquals(3, knn.get("query_vector").size());
+  }
+
+  @Test
+  void testNativeESQueryNumCandidates() throws Exception {
+    float[] vector = {0.1f};
+
+    // default multiplier (2): k * 2 < 100 → num_candidates should be 100
+    String query1 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 30, Map.of());
+    JsonNode root1 = MAPPER.readTree(query1);
+    assertEquals(100, root1.get("knn").get("num_candidates").asInt());
+
+    // default multiplier (2): k * 2 > 100 → num_candidates should be k * 2
+    String query2 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 200, Map.of());
+    JsonNode root2 = MAPPER.readTree(query2);
+    assertEquals(400, root2.get("knn").get("num_candidates").asInt());
+
+    // custom multiplier (5): num_candidates = max(k * 5, 100)
+    String query3 = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of(), 5);
+    JsonNode root3 = MAPPER.readTree(query3);
+    assertEquals(500, root3.get("knn").get("num_candidates").asInt());
+  }
+
+  @Test
+  void testNativeESQueryClampsNumCandidatesOnIntOverflow() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    // k * multiplier > Integer.MAX_VALUE → must clamp, never emit a negative value.
+    String query =
+        VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 1_000_000, Map.of(), 100_000);
+
+    JsonNode root = MAPPER.readTree(query);
+    int numCandidates = root.get("knn").get("num_candidates").asInt();
+
+    assertTrue(numCandidates > 0, "num_candidates must be positive even on overflow");
+    assertEquals(
+        Integer.MAX_VALUE, numCandidates, "num_candidates must clamp to Integer.MAX_VALUE");
+  }
+
+  @Test
+  void testNativeESQueryAlwaysHasDeletedFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertNotNull(mustFilters);
+    assertTrue(mustFilters.isArray());
+    assertTrue(mustFilters.size() >= 1);
+    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+  }
+
+  @Test
+  void testNativeESQueryWithEntityTypeFilter() throws Exception {
+    float[] vector = {0.5f};
+    Map<String, List<String>> filters = Map.of("entityType", List.of("table", "dashboard"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 5, 0, 50, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode entityTypeFilter = mustFilters.get(1);
+    assertTrue(entityTypeFilter.has("terms"));
+    JsonNode entityTypes = entityTypeFilter.get("terms").get("entityType");
+    assertEquals(2, entityTypes.size());
+    assertEquals("table", entityTypes.get(0).asText());
+    assertEquals("dashboard", entityTypes.get(1).asText());
+  }
+
+  @Test
+  void testNativeESQueryWithOwnersFilter() throws Exception {
+    float[] vector = {0.1f};
+    Map<String, List<String>> filters = Map.of("owners", List.of("user1", "team2"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode ownersFilter = mustFilters.get(1);
+    assertTrue(ownersFilter.has("bool"));
+    JsonNode shouldClauses = ownersFilter.get("bool").get("should");
+    assertNotNull(shouldClauses);
+    assertEquals(2, shouldClauses.size());
+
+    String ownersJson = shouldClauses.toString();
+    assertTrue(ownersJson.contains("user1"));
+    assertTrue(ownersJson.contains("team2"));
+  }
+
+  @Test
+  void testNativeESQueryWithTagsFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters = Map.of("tags", List.of("PII.Sensitive"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+    JsonNode tagsFilter = mustFilters.get(1);
+    assertTrue(tagsFilter.has("term"));
+    assertEquals("PII.Sensitive", tagsFilter.get("term").get("tags.tagFQN").asText());
+  }
+
+  @Test
+  void testNativeESQueryWithMultipleFilters() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of("table"),
+            "tier", List.of("Tier.Tier1"),
+            "serviceType", List.of("BigQuery"));
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters = root.get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(4, mustFilters.size(), "deleted=false + 3 user filters");
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("entityType"));
+    assertTrue(filtersJson.contains("tier"));
+    assertTrue(filtersJson.contains("serviceType"));
+  }
+
+  @Test
+  void testNativeESQuerySourceExcludesEmbedding() throws Exception {
+    float[] vector = {0.1f};
+
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode excludes = root.get("_source").get("excludes");
+    assertNotNull(excludes);
+    assertTrue(excludes.isArray());
+    assertEquals("embedding", excludes.get(0).asText());
+  }
+
+  @Test
+  void testNativeESQueryAndOpenSearchQueryProduceSameFilters() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of("table"),
+            "owners", List.of("alice"),
+            "tier", List.of("Tier.Gold"));
+
+    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters);
+
+    JsonNode osFilters =
+        MAPPER
+            .readTree(osQuery)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+    JsonNode esFilters = MAPPER.readTree(esQuery).get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(
+        osFilters.size(),
+        esFilters.size(),
+        "Both queries should produce the same number of filter clauses");
+    assertEquals(osFilters.toString(), esFilters.toString(), "Filter clauses should be identical");
+  }
+
+  @Test
+  void nullFiltersProduceOnlyTheDeletedClauseWithoutThrowing() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 0, 100, null, 0.0);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, null);
+
+    JsonNode osMust =
+        MAPPER
+            .readTree(osQuery)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+    JsonNode esMust = MAPPER.readTree(esQuery).get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(1, osMust.size(), "Null filters should yield only the deleted=false clause");
+    assertEquals(1, esMust.size(), "Null filters should yield only the deleted=false clause");
+    assertEquals("{\"term\":{\"deleted\":false}}", osMust.get(0).toString());
+  }
+
+  /**
+   * The single most important test here: no integration test ever issues a vector query without a
+   * subject (every IT caller is authenticated), so this is the only guard that an anonymous or
+   * internal caller cannot reach a restricted memory.
+   */
+  @Test
+  void testAppliesFailClosedMemoryClauseWhenNoSubject() throws Exception {
+    String query = VectorSearchQueryBuilder.buildQuery(new float[] {0.1f, 0.2f}, 10, Map.of(), 0.0);
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "every vector query must carry a memory visibility clause");
+    String rendered = clause.toString();
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
+    assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
+    assertFalse(
+        rendered.contains(MemoryVisibility.PRIVATE.value()),
+        "a Private memory must never be admitted by the fail-closed clause");
+  }
+
+  @Test
+  void testWidensMemoryClauseForResolvableSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    String rendered = memoryVisibilityClause(MAPPER.readTree(query)).toString();
+    assertTrue(rendered.contains(USER_ID.toString()), "the owner branch must name the subject");
+    assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
+    assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+  }
+
+  /**
+   * A KNN query spans an alias of many indices and OpenSearch 400s the whole request if any of them
+   * does not map {@code owners} as nested, so the owner branch must set ignore_unmapped exactly as
+   * {@code QueryBuilderFactory#nestedQuery} does. Regressing this breaks search outright for every
+   * non-admin caller, which the field-set drift guard cannot see because the field names are
+   * unchanged.
+   */
+  @Test
+  void testOwnerBranchIgnoresUnmappedNestedPath() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    JsonNode nested = findNested(memoryVisibilityClause(MAPPER.readTree(query)));
+    assertNotNull(nested, "the widened clause must carry a nested owners query");
+    assertTrue(
+        nested.path("ignore_unmapped").asBoolean(false),
+        "nested owners query must set ignore_unmapped, or one unmapped index 400s the search");
+  }
+
+  private static JsonNode findNested(JsonNode node) {
+    JsonNode found = null;
+    if (node != null && node.isObject()) {
+      if (node.has("nested")) {
+        found = node.get("nested");
+      } else {
+        for (JsonNode child : node) {
+          found = findNested(child);
+          if (found != null) break;
+        }
+      }
+    } else if (node != null && node.isArray()) {
+      for (JsonNode child : node) {
+        found = findNested(child);
+        if (found != null) break;
+      }
+    }
+    return found;
+  }
+
+  @Test
+  void testOmitsMemoryClauseForAdminSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
+
+    assertNull(memoryVisibilityClause(MAPPER.readTree(query)), "admins bypass memory visibility");
+  }
+
+  /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */
+  @Test
+  void testNativeESQueryAlsoCarriesTheMemoryClause() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, 5, 0, 5, Map.of());
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "the ES query path must enforce memory visibility too");
+    assertTrue(clause.toString().contains(MemoryVisibility.ENTITY.value()));
   }
 }

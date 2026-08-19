@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
@@ -141,6 +142,21 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(
+      ({ footer }: { footer?: { props?: { onPress?: () => void } } }) => (
+        <div
+          data-testid="empty-placeholder"
+          onClick={() => footer?.props?.onPress?.()}>
+          EmptyPlaceholder
+        </div>
+      )
+    ),
+}));
+
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -201,15 +217,70 @@ jest.mock('../../../utils/ToastUtils', () => ({
     .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
-jest.mock('react-dnd', () => ({
-  useDrag: jest.fn().mockReturnValue([{ isDragging: false }, jest.fn()]),
-  useDrop: jest.fn().mockReturnValue([{ isOver: false }, jest.fn()]),
-  DndProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+interface MockTableColumn {
+  key?: string;
+  dataIndex?: string;
+  render?: (value: unknown, record: unknown, index: number) => ReactNode;
+}
 
-jest.mock('react-dnd-html5-backend', () => ({
-  HTML5Backend: jest.fn(),
-}));
+interface MockTableProps {
+  columns?: MockTableColumn[];
+  dataSource?: Record<string, unknown>[];
+  loading?: boolean;
+  locale?: { emptyText?: ReactNode };
+  expandable?: {
+    expandIcon?: (props: {
+      expanded: boolean;
+      onExpand: (record: unknown) => void;
+      record: unknown;
+    }) => ReactNode;
+    onExpand?: (expanded: boolean, record: unknown) => void;
+  };
+  extraTableFilters?: ReactNode;
+  'data-testid'?: string;
+}
+
+jest.mock('../../common/Table/TableV2', () =>
+  jest.fn().mockImplementation((props: MockTableProps) => {
+    const {
+      columns = [],
+      dataSource = [],
+      loading,
+      locale,
+      expandable,
+      extraTableFilters,
+    } = props;
+
+    return (
+      <div data-testid={props['data-testid']}>
+        {extraTableFilters}
+        {loading && <div data-testid="table-loading">Loading...</div>}
+        {dataSource.length === 0
+          ? !loading && locale?.emptyText
+          : dataSource.map((record, index) => (
+              <div data-testid={`glossary-row-${index}`} key={index}>
+                {expandable?.expandIcon?.({
+                  expanded: false,
+                  onExpand: (rec) => expandable?.onExpand?.(true, rec),
+                  record,
+                })}
+                {columns.map((col, colIndex) =>
+                  col.render ? (
+                    <span key={col.key ?? col.dataIndex ?? colIndex}>
+                      {col.render(
+                        col.dataIndex ? record[col.dataIndex] : undefined,
+                        record,
+                        index
+                      )}
+                    </span>
+                  ) : null
+                )}
+              </div>
+            ))}
+      </div>
+    );
+  })
+);
 
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditButton: jest.fn().mockReturnValue(null),
@@ -277,7 +348,7 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   describe('Empty State', () => {
-    it('should show the ErrorPlaceHolder component when no glossary terms are present', async () => {
+    it('should show the EmptyPlaceholder component when no glossary terms are present', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
@@ -289,26 +360,57 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
     });
 
-    it('should call the onAddGlossaryTerm function when clicking add button in ErrorPlaceHolder', async () => {
+    it('should call the onAddGlossaryTerm function when clicking add button in EmptyPlaceholder', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
         paging: { after: null },
       });
 
+      // The add action only renders for an approved glossary term
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Approved,
+      };
+
       const { container } = render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
 
-      fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
+
+      expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
+    });
+
+    it('should show the add term action for a glossary regardless of term status', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { after: null },
+      });
+
+      // A non-approved active entity should still allow adding terms to a glossary
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Draft,
+      };
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
 
       expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
     });

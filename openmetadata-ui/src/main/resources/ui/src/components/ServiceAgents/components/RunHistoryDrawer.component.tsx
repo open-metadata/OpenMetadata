@@ -16,16 +16,28 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
 import { AlignLeft } from '@untitledui/icons';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
-import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
+import {
+  Agent,
+  AgentActionPermissions,
+  AgentRun,
+  RunStatus,
+} from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
-import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
+import {
+  AGENT_TYPE_ICON,
+  canRunAgent,
+  fmtNum,
+  RUN_META,
+} from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
 import RunStepRow from './RunStepRow.component';
 
@@ -69,9 +81,29 @@ interface RunHistoryProps {
 
 const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
+  const railRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  // The rail only fits four or five of the ten cards, and the default selection is the newest run —
+  // which is now the rightmost card, outside the initial scroll window. Drive `scrollLeft` directly
+  // instead of `scrollIntoView`: the drawer body is `overflow-y-auto`, so `scrollIntoView` would also
+  // move it vertically.
+  useEffect(() => {
+    const rail = railRef.current;
+    const card = selectedRef.current;
+
+    if (!rail || !card) {
+      return;
+    }
+
+    rail.scrollLeft =
+      card.offsetLeft - (rail.clientWidth - card.clientWidth) / 2;
+  }, [runs, selectedId]);
 
   return (
-    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1">
+    <Box
+      className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1"
+      ref={railRef}>
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -80,13 +112,18 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 
         return (
           <button
+            // Selection is a 2px brand border rather than an outward glow: the rail is
+            // `overflow-x-auto`, which forces the block axis to `auto` too, so anything drawn outside
+            // the card's box gets clipped. Unselected cards carry the same 2px width so selecting one
+            // doesn't resize it.
             className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
-                ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
+                ? 'tw:border-utility-brand-600 tw:bg-primary'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
             data-testid="run-history-item"
             key={r.id}
+            ref={isSelected ? selectedRef : undefined}
             type="button"
             onClick={() => onSelect(r.id)}>
             <div
@@ -118,6 +155,10 @@ interface RunHistoryDrawerProps {
   agent: Agent;
   open: boolean;
   initialRunId?: string;
+  // Must be a stable reference (memoize with `useCallback`) — it feeds
+  // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
+  fetchRuns?: () => Promise<AgentRun[]>;
+  permissions?: AgentActionPermissions;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
@@ -127,25 +168,30 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
   open,
   initialRunId,
+  fetchRuns,
+  permissions,
   onClose,
   onOpenLogs,
   onRun,
 }) => {
   const { t } = useTranslation();
-  const { runs, isLoading } = useAgentRuns(agent.fqn, true);
+  const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
 
+  // `runs` is oldest-first, so the newest run — the sensible default selection — is the last one.
+  const latestRun = runs.at(-1);
+
   useEffect(() => {
-    if (runs.length > 0 && !runs.some((r) => r.id === selId)) {
+    if (latestRun && !runs.some((r) => r.id === selId)) {
       const initialRun = initialRunId
         ? runs.find((r) => r.id === initialRunId)
         : undefined;
-      setSelId((initialRun ?? runs[0]).id);
+      setSelId((initialRun ?? latestRun).id);
     }
-  }, [runs, initialRunId, selId]);
+  }, [runs, latestRun, initialRunId, selId]);
 
-  const run = runs.find((r) => r.id === selId) ?? runs[0];
+  const run = runs.find((r) => r.id === selId) ?? latestRun;
   const m = run ? RUN_META[run.status] : undefined;
   const runLabel = m ? t(m.labelKey) : '';
   const tot = run?.totals;
@@ -184,7 +230,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             </div>
           </div>
           <Button
-            className="tw:font-semibold tw:ring-secondary"
+            className="tw:font-semibold tw:after:outline-secondary"
             color="secondary"
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
@@ -192,15 +238,17 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}
           </Button>
-          <Button
-            className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
-            color="secondary"
-            data-testid="drawer-run-now-button"
-            iconLeading={<PlayIcon height={14} width={14} />}
-            size="sm"
-            onClick={() => onRun(agent)}>
-            {t('label.run-now')}
-          </Button>
+          {canRunAgent(agent, permissions) && (
+            <Button
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+              color="secondary"
+              data-testid="drawer-run-now-button"
+              iconLeading={<PlayIcon height={14} width={14} />}
+              size="sm"
+              onClick={() => onRun(agent)}>
+              {t('label.run-now')}
+            </Button>
+          )}
         </Box>
       </SlideoutMenu.Header>
 
@@ -273,7 +321,9 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               variant="ghost">
               <Box
                 align="center"
-                className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
+                className={`tw:pb-2.5 tw:pt-3.5 ${
+                  isEmpty(run.steps) ? '' : 'tw:border-b tw:border-secondary'
+                }`}
                 justify="between">
                 <span className="tw:text-sm tw:font-semibold tw:text-secondary">
                   {t('label.steps')}
@@ -282,13 +332,26 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {run.steps.length} {t('label.steps-lowercase')}
                 </span>
               </Box>
-              {run.steps.map((s, idx) => (
-                <RunStepRow
-                  isLast={idx === run.steps.length - 1}
-                  key={idx}
-                  step={s}
-                />
-              ))}
+              {isEmpty(run.steps) ? (
+                // EmptyPlaceholder's shell is absolutely positioned and fills its nearest
+                // positioned ancestor, so the host has to be relative and carry its own height.
+                <div
+                  className="tw:relative tw:min-h-[120px]"
+                  data-testid="run-steps-empty">
+                  <EmptyPlaceholder
+                    title={t('message.no-steps-available')}
+                    variant="blank"
+                  />
+                </div>
+              ) : (
+                run.steps.map((s, idx) => (
+                  <RunStepRow
+                    isLast={idx === run.steps.length - 1}
+                    key={idx}
+                    step={s}
+                  />
+                ))
+              )}
             </Card>
           </>
         ) : (

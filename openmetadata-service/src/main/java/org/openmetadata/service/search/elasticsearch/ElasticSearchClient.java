@@ -425,11 +425,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineage(lineageRequest);
+    return ensureLineageBuilder().searchLineage(lineageRequest);
   }
 
   @Override
@@ -446,11 +442,7 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+    return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
   }
 
   @Override
@@ -464,39 +456,48 @@ public class ElasticSearchClient implements SearchClient {
       Long startTime,
       Long endTime)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn,
-        upstreamDepth,
-        downstreamDepth,
-        queryFilter,
-        includeDeleted,
-        entityType,
-        startTime,
-        endTime);
+    return ensureLineageBuilder()
+        .getLineagePaginationInfo(
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            includeDeleted,
+            entityType,
+            startTime,
+            endTime);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageByEntityCount(request);
+    return ensureLineageBuilder().searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
-    if (lineageGraphBuilder == null) {
+    return ensureLineageBuilder().getPlatformLineage(index, queryFilter, deleted);
+  }
+
+  private ESLineageGraphBuilder ensureLineageBuilder() {
+    ESLineageGraphBuilder builder = lineageGraphBuilder;
+    if (builder == null && newClient != null) {
+      synchronized (this) {
+        builder = lineageGraphBuilder;
+        if (builder == null) {
+          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
+          builder = new ESLineageGraphBuilder(newClient);
+          lineageGraphBuilder = builder;
+          LOG.info("ESLineageGraphBuilder initialization completed");
+        }
+      }
+    }
+    if (builder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
-    return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
+    return builder;
   }
 
   @Override
@@ -550,6 +551,12 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return aggregationManager.getEntityTypeCounts(request, index);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
@@ -704,6 +711,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
@@ -846,6 +863,14 @@ public class ElasticSearchClient implements SearchClient {
                   org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
+
+              // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+              // pipeline by default. Rest5Client / elasticsearch-java's transport also
+              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // so leaving both enabled makes the second pass run on already-inflated bytes
+              // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
+              // transport layer and let the ES client own decompression.
+              httpAsyncClientBuilder.disableContentCompression();
             });
 
         restClientBuilder.setRequestConfigCallback(
@@ -854,6 +879,9 @@ public class ElasticSearchClient implements SearchClient {
                     .setConnectTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
+                    .setConnectionRequestTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionRequestTimeoutSecs()))
                     .setResponseTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));
@@ -1129,16 +1157,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void initializeLineageBuilders() {
-    if (lineageGraphBuilder == null && newClient != null) {
-      synchronized (this) {
-        if (lineageGraphBuilder == null) {
-          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
-          lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
-          LOG.info("ESLineageGraphBuilder initialization completed");
-        }
-      }
+    if (newClient != null) {
+      ensureLineageBuilder();
     } else {
-      LOG.debug("ESLineageGraphBuilder already initialized or newClient is null");
+      LOG.debug("ESLineageGraphBuilder cannot be initialized because newClient is null");
     }
   }
 

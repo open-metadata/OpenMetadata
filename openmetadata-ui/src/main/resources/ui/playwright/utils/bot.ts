@@ -339,26 +339,27 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
   await waitForAllLoadersToDisappear(page);
 
-  const isRevokeButtonVisible = await page
-    .getByTestId('revoke-button')
-    .isVisible();
-  const isAuthMechanismVisible = await page
-    .getByTestId('auth-mechanism')
-    .isVisible();
+  await expect(page.getByTestId('left-panel')).toBeVisible();
 
-  if (isRevokeButtonVisible) {
-    await page.getByTestId('revoke-button').click();
+  const revokeButton = page.getByTestId('revoke-button');
+  const authMechanism = page.getByTestId('auth-mechanism');
+
+  // Button render can lag the page loader; wait instead of a one-shot isVisible() check.
+  await expect(revokeButton.or(authMechanism)).toBeVisible({ timeout: 15000 });
+
+  if (await revokeButton.isVisible()) {
+    await revokeButton.click();
 
     await expect(page.getByTestId('save-button')).toBeVisible();
 
     await page.getByTestId('save-button').click();
 
     await waitForAllLoadersToDisappear(page);
-  } else if (isAuthMechanismVisible) {
-    await page.getByTestId('auth-mechanism').click();
+  } else if (await authMechanism.isVisible()) {
+    await authMechanism.click();
   }
 
-  await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
+  await expect(page.getByTestId('token-expiry')).toBeVisible();
 
   await page.getByTestId('token-expiry').click();
   await page.getByText('Unlimited').click();

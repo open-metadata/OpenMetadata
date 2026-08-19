@@ -25,10 +25,13 @@ export interface DocumentsViewProps {
   totalFileCount: number;
   data: ContextFile[];
   folders?: FolderOption[];
+  hasMoreFolders?: boolean;
+  isLoadingMoreFolders?: boolean;
   isLoading: boolean;
   isLoadingMore?: boolean;
   previewFileId?: string;
   selectedIds?: Set<string>;
+  selectedFolderName?: string;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
@@ -38,6 +41,8 @@ export interface DocumentsViewProps {
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
   onScrollEnd?: () => void;
+  onUploadFile?: () => void;
+  onLoadMoreFolders?: () => void;
 }
 
 export interface MetaRowProps {
@@ -54,26 +59,35 @@ export interface DocumentPreviewPanelProps {
 export interface FolderPickerMenuProps {
   folders: FolderOption[];
   currentFolderId?: string;
+  hasMoreFolders?: boolean;
+  isLoadingMoreFolders?: boolean;
   onPick: (folderId: string) => void;
+  onLoadMoreFolders?: () => void;
 }
 export interface FileActionsProps {
   canDelete?: boolean;
   canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
+  hasMoreFolders?: boolean;
+  isLoadingMoreFolders?: boolean;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onLoadMoreFolders?: () => void;
 }
 export interface ListHeaderProps {
   canDelete?: boolean;
   canEdit?: boolean;
   totalFileCount: number;
   folders?: FolderOption[];
+  hasMoreFolders?: boolean;
+  isLoadingMoreFolders?: boolean;
   selectedCount: number;
   onClear?: () => void;
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
+  onLoadMoreFolders?: () => void;
 }
 
 export interface FileRowProps {
@@ -81,13 +95,16 @@ export interface FileRowProps {
   canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
+  hasMoreFolders?: boolean;
   isActive?: boolean;
+  isLoadingMoreFolders?: boolean;
   isSelected?: boolean;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
+  onLoadMoreFolders?: () => void;
 }
 
 export interface FolderFilesState {
@@ -101,11 +118,16 @@ export interface DocumentFolderViewProps {
   folders: Folder[];
   isLoading: boolean;
   totalFileCount?: number;
+  totalFolderCount?: number;
   selectedFolderId?: string;
   canCreate?: boolean;
   canDelete?: boolean;
+  hasMoreFolders?: boolean;
+  isLoadingMoreFolders?: boolean;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersChanged: () => void;
+  onUploadToFolder?: (folderId: string) => void;
+  onLoadMoreFolders?: () => void;
 }
 
 export interface DocumentFolderViewHandle {

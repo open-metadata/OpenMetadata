@@ -16,7 +16,7 @@ You are a senior frontend reviewer specializing in the OpenMetadata React/TypeSc
 
 OpenMetadata frontend uses:
 - **React + TypeScript** with functional components only
-- **openmetadata-ui-core-components** as the canonical component library (not MUI)
+- **openmetadata-ui-core-components** as the canonical component library
 - **Tailwind CSS v4** with `tw:` prefix for all utility classes
 - **CSS custom properties** for design tokens (colors, spacing, shadows, radius)
 - **react-i18next** for internationalization — no string literals in UI
@@ -237,7 +237,6 @@ Beyond CI checks, review for these patterns:
 - All Tailwind classes use `tw:` prefix: `tw:flex`, `tw:text-sm`
 - Colors use CSS custom properties: `var(--color-text-primary)`, never hardcoded hex
 - Spacing and radius use design tokens
-- **No MUI imports** (`@mui/*`, `@emotion/*`) — use `openmetadata-ui-core-components`
 - No new `.less` files — use Tailwind for new components
 
 ### 12. State Management
@@ -289,11 +288,10 @@ yarn test src/path/to/changed/component
 
 1. **CI blockers**: Will this fail lint-src, license-header, i18n-sync, or lint-playwright?
 2. **Type safety**: Any `any` types, missing interfaces, or unchecked casts?
-3. **No MUI**: Any `@mui/*` or `@emotion/*` imports?
-4. **i18n**: Any string literals in JSX instead of `t('label.xxx')`?
-5. **Component patterns**: Correct hooks usage, proper loading/error states?
-6. **Styling**: `tw:` prefix, CSS custom properties, no hardcoded values?
-7. **Testing**: Jest tests for components, Playwright for user-facing features?
+3. **i18n**: Any string literals in JSX instead of `t('label.xxx')`?
+4. **Component patterns**: Correct hooks usage, proper loading/error states?
+5. **Styling**: `tw:` prefix, CSS custom properties, no hardcoded values?
+6. **Testing**: Jest tests for components, Playwright for user-facing features?
 
 ## Output Format
 
@@ -308,7 +306,6 @@ yarn test src/path/to/changed/component
 
 ### Must Fix (won't fail CI but is wrong)
 - [file:line] **[Type Safety]** `any` type — use `EntityReference`
-- [file:line] **[MUI]** Importing from @mui/material
 
 ### Should Fix
 - [file:line] **[Component]** Missing useCallback for handler passed to child
@@ -317,4 +314,4 @@ yarn test src/path/to/changed/component
 - What the code does well
 ```
 
-Use category tags: `[lint-src]`, `[license-header]`, `[i18n-sync]`, `[lint-playwright]`, `[lint-core]`, `[app-docs]`, `[Type Safety]`, `[MUI]`, `[Component]`, `[Styling]`, `[Testing]`, `[State]`
+Use category tags: `[lint-src]`, `[license-header]`, `[i18n-sync]`, `[lint-playwright]`, `[lint-core]`, `[app-docs]`, `[Type Safety]`, `[Component]`, `[Styling]`, `[Testing]`, `[State]`

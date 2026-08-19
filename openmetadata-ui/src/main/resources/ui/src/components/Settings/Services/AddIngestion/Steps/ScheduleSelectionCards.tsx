@@ -71,14 +71,14 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
                 />
               ) : (
                 <span
-                  className="tw:size-5 tw:rounded-full tw:ring-1 tw:ring-primary tw:ring-inset"
+                  className="tw:size-5 tw:rounded-full tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                   data-testid="unselected-indicator"
                 />
               )}
             </div>
 
             <div className="tw:flex tw:flex-col tw:gap-0.5">
-              <div className="tw:text-sm tw:font-semibold tw:text-primary">
+              <div className="tw:text-sm tw:font-medium tw:text-primary">
                 {option.label}
               </div>
               <div className="tw:text-sm tw:text-tertiary">

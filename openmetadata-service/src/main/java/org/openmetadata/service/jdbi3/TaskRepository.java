@@ -39,9 +39,11 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -77,6 +79,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -101,6 +104,10 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
+
+  // Stage a workflow-managed task holds after being persisted but before its Flowable instance
+  // starts.
+  public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
 
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
@@ -352,12 +359,22 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
+    // A reference is only required to carry id and type, so populate the rest before the updater
+    // diffs these lists — it sorts them by name.
+    task.setAssignees(EntityUtil.populateEntityReferences(task.getAssignees()));
+    task.setReviewers(EntityUtil.populateEntityReferences(task.getReviewers()));
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
+    // Duplicate check re-runs on PATCH/PUT so an existing task can't be repointed at an entity
+    // that already has an active DAR (H6). Expiry future-check stays create-only: a task that
+    // sat in Open past its own deadline (H7 gray-zone) must still be editable by its filer up
+    // until close; the JSON-schema bound on expirationDate plus the "payload frozen after Open"
+    // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
-      validateNoDuplicateActiveDataAccessRequest(task);
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
     }
+    validateNoDuplicateActiveDataAccessRequest(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -393,7 +410,11 @@ public class TaskRepository extends EntityRepository<Task> {
     if (isDuplicateDataAccessRequestCheckable(task)) {
       String entityFqn = task.getAbout().getFullyQualifiedName();
       Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
-      if (existing != null) {
+      // Exclude the task's own row so re-running the check on PATCH/PUT (needed to catch H6:
+      // repointing task B's `about` at task A's entity) doesn't fire on the task's own record.
+      boolean collides =
+          existing != null && (task.getId() == null || !existing.getId().equals(task.getId()));
+      if (collides) {
         throw new IllegalArgumentException(
             String.format(
                 "An active data access request (%s) already exists for '%s'. "
@@ -439,11 +460,12 @@ public class TaskRepository extends EntityRepository<Task> {
     try {
       List<EntityReference> owners = Entity.getOwners(about);
       if (!nullOrEmpty(owners)) {
-        task.setAssignees(owners);
+        List<EntityReference> expandedAssignees = expandTeamsToUsers(owners);
+        task.setAssignees(expandedAssignees);
         LOG.debug(
             "Task {} defaulting assignees to entity owners: {}",
             task.getTaskId(),
-            owners.stream().map(EntityReference::getName).toList());
+            expandedAssignees.stream().map(EntityReference::getName).toList());
       }
     } catch (Exception e) {
       LOG.debug(
@@ -452,6 +474,43 @@ public class TaskRepository extends EntityRepository<Task> {
           about.getId(),
           e.getMessage());
     }
+  }
+
+  private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
+    List<EntityReference> expanded = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      if (Entity.TEAM.equals(ref.getType())) {
+        appendTeamMembers(ref, expanded);
+      } else {
+        expanded.add(ref);
+      }
+    }
+    return dedupById(expanded);
+  }
+
+  private void appendTeamMembers(EntityReference teamRef, List<EntityReference> expanded) {
+    try {
+      Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "users", Include.NON_DELETED);
+      if (!nullOrEmpty(team.getUsers())) {
+        expanded.addAll(team.getUsers());
+      }
+      // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+      // (e.g. Data Access Requests) an empty assignee list triggers the node's
+      // emptyAssigneeStrategy (assignAdmins) in SetApprovalAssigneesImpl, so it routes to
+      // platform admins rather than being pinned to a member-less team.
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to expand team {} to users: {}", teamRef.getFullyQualifiedName(), e.getMessage());
+    }
+  }
+
+  // Dedup by id so a user who is both a direct owner and a member of an owning team — or a member
+  // of two owning teams — appears once in the task's assignees. LinkedHashMap preserves insertion
+  // order so the original owner-list order carries through.
+  static List<EntityReference> dedupById(List<EntityReference> refs) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
+    return new ArrayList<>(byId.values());
   }
 
   /**
@@ -824,6 +883,56 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public Task reopenTask(Task task, String user) {
     return TaskWorkflowHandler.getInstance().reopenTask(task, user);
+  }
+
+  /**
+   * Reopen a resolved workflow-managed task and restart its governance workflow. The prior Flowable
+   * instance ended at the workflow's end event and can't be resumed, so it is re-triggered from
+   * scratch on the same task.
+   */
+  public Task reopenTaskWithWorkflow(Task task, String user) {
+    Task terminalSnapshot = JsonUtils.deepCopy(task, Task.class);
+    Task reopened = reopenTask(task, user);
+    if (reopened.getWorkflowDefinitionId() == null) {
+      return reopened;
+    }
+
+    Task openSnapshot = JsonUtils.deepCopy(reopened, Task.class);
+    reopened.setWorkflowInstanceId(null);
+    reopened.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
+    reopened.setWorkflowStageDisplayName("Starting");
+    reopened.setAvailableTransitions(List.of());
+    reopened.setUpdatedBy(user);
+    reopened.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(reopened, true);
+    postUpdate(openSnapshot, reopened);
+
+    boolean started = triggerWorkflowManagedTask(reopened);
+
+    Task refreshed =
+        get(
+            null,
+            reopened.getId(),
+            getFields(
+                "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"));
+    // Use the trigger's own success signal: a null workflowInstanceId would also appear if the
+    // workflow started then immediately completed, and the failure-marker stage is brittle to
+    // match.
+    if (!started) {
+      // Roll back to the prior terminal state so no Open task is left without a live workflow.
+      restoreTerminalTask(terminalSnapshot, refreshed, user);
+      throw new IllegalStateException(
+          String.format("Workflow restart failed for reopened task %s", reopened.getId()));
+    }
+    return refreshed;
+  }
+
+  private void restoreTerminalTask(Task terminalSnapshot, Task current, String user) {
+    Task restored = JsonUtils.deepCopy(terminalSnapshot, Task.class);
+    restored.setUpdatedBy(user);
+    restored.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(restored, true);
+    postUpdate(current, restored);
   }
 
   /**
@@ -1300,13 +1409,13 @@ public class TaskRepository extends EntityRepository<Task> {
   protected void postCreate(Task entity) {
     super.postCreate(entity);
     triggerWorkflowManagedTask(entity);
-    IncidentTcrsSyncHandler.handleTaskCreate(entity);
+    IncidentTcrsSyncHandler.sync(entity);
   }
 
   @Override
   protected void postUpdate(Task original, Task updated) {
     super.postUpdate(original, updated);
-    IncidentTcrsSyncHandler.handleTaskUpdate(original, updated);
+    IncidentTcrsSyncHandler.sync(updated);
   }
 
   private void initializeWorkflowManagedTask(Task task, boolean update) {
@@ -1331,15 +1440,16 @@ public class TaskRepository extends EntityRepository<Task> {
               task.setTaskFormSchemaVersion(
                   binding.schema() != null ? binding.schema().getVersion() : null);
               task.setWorkflowDefinitionId(workflowDefinition.getId());
-              task.setWorkflowStageId("pending-workflow-start");
+              task.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
               task.setWorkflowStageDisplayName("Starting");
               task.setAvailableTransitions(List.of());
             });
   }
 
-  private void triggerWorkflowManagedTask(Task task) {
+  /** Returns true only if the Flowable workflow instance was started successfully. */
+  private boolean triggerWorkflowManagedTask(Task task) {
     if (!isPendingWorkflowManagedTask(task)) {
-      return;
+      return false;
     }
 
     try {
@@ -1369,16 +1479,19 @@ public class TaskRepository extends EntityRepository<Task> {
       variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
       variables.put(
-          "taskFormSchemaId",
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           task.getTaskFormSchemaId() != null ? task.getTaskFormSchemaId().toString() : null);
-      variables.put("taskFormSchemaVersion", task.getTaskFormSchemaVersion());
-      variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
+      variables.put(
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
 
       WorkflowHandler.getInstance()
           .triggerByKey(
               getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
               task.getId().toString(),
               variables);
+      return true;
     } catch (Exception e) {
       LOG.error(
           "Failed to trigger workflow-managed task {} using workflow definition {}",
@@ -1386,6 +1499,7 @@ public class TaskRepository extends EntityRepository<Task> {
           task.getWorkflowDefinitionId(),
           e);
       markWorkflowTriggerFailure(task);
+      return false;
     }
   }
 
@@ -1415,7 +1529,7 @@ public class TaskRepository extends EntityRepository<Task> {
   private boolean isPendingWorkflowManagedTask(Task task) {
     return shouldCreateWorkflowManagedTask(task)
         && task.getWorkflowDefinitionId() != null
-        && "pending-workflow-start".equals(task.getWorkflowStageId());
+        && PENDING_WORKFLOW_START_STAGE_ID.equals(task.getWorkflowStageId());
   }
 
   /**
@@ -1662,8 +1776,39 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     private void updatePayload() {
+      // Report M7 (past date on PATCH) + Copilot follow-up (10-year horizon cap on PATCH):
+      // create-time validation rejects both a past expirationDate and one beyond the ten-year
+      // horizon, but the update path used to accept either. If the field actually changes,
+      // re-run the same create-time check so the same 400 fires whether the caller lands the
+      // bad value on POST or on PATCH. Skip when expirationDate is untouched so unrelated
+      // payload edits (columns, reason) on an already-expired-but-still-Open task remain
+      // possible.
+      if (updated.getType() == TaskEntityType.DataAccessRequest) {
+        Long previousExpiry = readExpirationDate(original.getPayload());
+        Long nextExpiry = readExpirationDate(updated.getPayload());
+        if (!Objects.equals(previousExpiry, nextExpiry)) {
+          TaskFieldValidator.validateDataAccessRequestExpiry(updated);
+        }
+      }
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
+    }
+
+    private Long readExpirationDate(Object payload) {
+      Long expirationDate = null;
+      if (payload != null) {
+        try {
+          DataAccessRequestPayload typed =
+              JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+          expirationDate = typed == null ? null : typed.getExpirationDate();
+        } catch (IllegalArgumentException malformed) {
+          // Malformed payload is separately caught at the API boundary by
+          // TaskFieldValidator.readDataAccessPayload; here we just refuse to compare instead
+          // of surfacing the parse failure twice.
+          expirationDate = null;
+        }
+      }
+      return expirationDate;
     }
 
     private void updateResolution() {

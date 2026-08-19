@@ -18,6 +18,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.Entity;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Execution(ExecutionMode.SAME_THREAD)
 public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
@@ -150,10 +153,16 @@ public class McpToolsValidationIT extends McpTestBase {
   @Test
   @Order(1)
   void testSearchMetadataTool() throws Exception {
-    Map<String, Object> toolCall =
-        McpTestUtils.createSearchMetadataToolCall("mcp_val_table", 5, Entity.TABLE);
-    JsonNode result = executeToolCall(toolCall);
-    validateSearchMetadataResponse(result, "mcp_val_table");
+    Awaitility.await("MCP search should find the newly indexed validation table")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              Map<String, Object> toolCall =
+                  McpTestUtils.createSearchMetadataToolCall("mcp_val_table", 5, Entity.TABLE);
+              JsonNode result = executeToolCall(toolCall);
+              validateSearchMetadataResponse(result, "mcp_val_table");
+            });
   }
 
   @Test
@@ -196,7 +205,7 @@ public class McpToolsValidationIT extends McpTestBase {
   @Test
   @Order(3)
   void testCreateGlossaryTool() throws Exception {
-    String randomGlossaryName = "randomGlossary";
+    String randomGlossaryName = "randomGlossary_" + UUID.randomUUID().toString().substring(0, 8);
     Map<String, Object> toolCall =
         McpTestUtils.createGlossaryToolCall(
             randomGlossaryName, "Test glossary created for validation testing");
@@ -332,6 +341,25 @@ public class McpToolsValidationIT extends McpTestBase {
     JsonNode response = OBJECT_MAPPER.readTree(firstResult.get("text").asText());
     assertThat(response.has("data")).isTrue();
     assertThat(response.get("data").isArray()).isTrue();
+  }
+
+  /**
+   * The MCP door reaches the same DAO as the REST door, so it must canonicalize {@code entityType}
+   * the same way — see issue #29542. An LLM caller naturally writes {@code "Column"}, which matched
+   * nothing on PostgreSQL before the fix.
+   */
+  @Test
+  @Order(22)
+  void testGetTestDefinitionsForMixedCaseEntityType() throws Exception {
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("Column");
+    JsonNode result = executeToolCall(toolCall);
+
+    JsonNode response = OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+    JsonNode definitions = response.get("data");
+    assertThat(definitions).isNotEmpty();
+    for (JsonNode definition : definitions) {
+      assertThat(definition.get("entityType").asText()).isEqualTo("COLUMN");
+    }
   }
 
   @Test
@@ -573,36 +601,33 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(result.has("content")).isTrue();
     JsonNode content = result.get("content");
     assertThat(content.isArray()).isTrue();
+    assertThat(content).isNotEmpty();
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = OBJECT_MAPPER.readTree(firstResult.get("text").asText());
 
-    if (content.size() > 0) {
-      JsonNode firstResult = content.get(0);
-      assertThat(firstResult.has("text")).isTrue();
-      JsonNode response = OBJECT_MAPPER.readTree(firstResult.get("text").asText());
+    assertThat(response.has("query")).isTrue();
+    assertEquals(response.get("query").asText(), expectedQuery);
 
-      assertThat(response.has("query")).isTrue();
-      assertEquals(response.get("query").asText(), expectedQuery);
+    Set<String> matchingEntities = new HashSet<>();
+    response
+        .get("results")
+        .forEach(
+            r -> {
+              assertThat(r.has("name")).isTrue();
+              assertThat(r.has("fullyQualifiedName")).isTrue();
+              assertThat(r.has("entityType")).isTrue();
+              assertThat(r.has("deleted"))
+                  .withFailMessage("Missing 'deleted' field in search result for: " + r.get("name"))
+                  .isTrue();
+              matchingEntities.add(r.get("name").asText());
+            });
 
-      Set<String> matchingEntities = new HashSet<>();
-      response
-          .get("results")
-          .forEach(
-              r -> {
-                assertThat(r.has("name")).isTrue();
-                assertThat(r.has("fullyQualifiedName")).isTrue();
-                assertThat(r.has("entityType")).isTrue();
-                assertThat(r.has("deleted"))
-                    .withFailMessage(
-                        "Missing 'deleted' field in search result for: " + r.get("name"))
-                    .isTrue();
-                matchingEntities.add(r.get("name").asText());
-              });
-
-      assertThat(matchingEntities.stream().anyMatch(name -> name.contains(expectedQuery)))
-          .withFailMessage(
-              "Expected at least one entity name containing '%s' but got: %s",
-              expectedQuery, matchingEntities)
-          .isTrue();
-    }
+    assertThat(matchingEntities.stream().anyMatch(name -> name.contains(expectedQuery)))
+        .withFailMessage(
+            "Expected at least one entity name containing '%s' but got: %s",
+            expectedQuery, matchingEntities)
+        .isTrue();
   }
 
   private JsonNode readEntityText(JsonNode result) throws Exception {

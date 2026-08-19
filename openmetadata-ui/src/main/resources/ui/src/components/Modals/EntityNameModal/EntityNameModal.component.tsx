@@ -109,6 +109,9 @@ const EntityNameModal = <T extends EntityName>({
     <ModalOverlay
       isDismissable={false}
       isOpen={visible}
+      // The library overlay is `tw:z-50`, which loses to antd `Drawer`/`Modal`
+      // (z-index 1000) — so the dialog renders behind an open column/entity
+      style={{ zIndex: 'var(--om-z-modal)' }}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
         <Dialog data-testid="entity-name-modal" width={520}>

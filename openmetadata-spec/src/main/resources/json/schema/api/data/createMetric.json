@@ -39,6 +39,30 @@
       "description": "Metric's granularity.",
       "$ref": "../../entity/data/metric.json#/definitions/metricGranularity"
     },
+    "dimensions": {
+      "description": "Dimensions associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/metric.json#/definitions/metricDimension"
+      },
+      "default": null
+    },
+    "measures": {
+      "description": "Measures associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/metric.json#/definitions/metricMeasure"
+      },
+      "default": null
+    },
+    "filters": {
+      "description": "Filters applied to this metric.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/metric.json#/definitions/metricFilter"
+      },
+      "default": null
+    },
     "relatedMetrics": {
       "description": "Other array of related metric fully qualified names that are related to this Metric.",
       "type" : "array",

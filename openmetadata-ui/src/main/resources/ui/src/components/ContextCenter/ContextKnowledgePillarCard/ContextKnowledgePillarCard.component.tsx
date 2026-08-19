@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, Fragment } from 'react';
+import { FC, Fragment, KeyboardEvent, MouseEvent } from 'react';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -35,8 +35,28 @@ function RecentItem({
   readonly Icon: FC<{ className?: string }>;
   readonly item: PillarRecentItem;
 }) {
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    item.onClick();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      item.onClick();
+    }
+  };
+
   return (
-    <Box align="center" className="tw:py-1.5" gap={2}>
+    <Box
+      align="center"
+      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+      gap={2}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}>
       {item.icon ? (
         item.icon
       ) : (
@@ -150,7 +170,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   return (
     <Card
       className={classNames(
-        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between',
+        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between tw:min-h-68',
         'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px'
       )}
       data-testid={dataTestId}

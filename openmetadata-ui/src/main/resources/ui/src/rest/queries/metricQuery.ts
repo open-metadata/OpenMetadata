@@ -19,16 +19,15 @@ import { getMetricByFqn } from '../metricsAPI';
 // Field list the detail page reads on mount. Inlined here rather than imported from a
 // Utils file to keep the cache-key surface stable across edits to unrelated UI code.
 export const METRIC_DEFAULT_FIELDS = [
-  TabSpecificField.DATA_PRODUCTS,
-  TabSpecificField.DERIVED_FROM,
-  TabSpecificField.DOMAINS,
-  TabSpecificField.EXTENSION,
-  TabSpecificField.FOLLOWERS,
   TabSpecificField.OWNERS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.VOTES,
+  TabSpecificField.EXTENSION,
   TabSpecificField.RELATED_METRICS,
   TabSpecificField.REVIEWERS,
-  TabSpecificField.TAGS,
-  TabSpecificField.VOTES,
 ].join(',');
 
 /**

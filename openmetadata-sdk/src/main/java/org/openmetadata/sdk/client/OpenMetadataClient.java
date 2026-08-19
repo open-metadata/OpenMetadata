@@ -70,6 +70,7 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.system.SystemSettingsService;
 import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
@@ -129,6 +130,9 @@ public class OpenMetadataClient {
   // Glossary
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
+
+  // System settings
+  private final SystemSettingsService settings;
 
   // Classification
   private final ClassificationService classifications;
@@ -252,6 +256,7 @@ public class OpenMetadataClient {
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
     this.glossaryTerms = new GlossaryTermService(httpClient);
+    this.settings = new SystemSettingsService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -457,6 +462,10 @@ public class OpenMetadataClient {
 
   public GlossaryTermService glossaryTerms() {
     return glossaryTerms;
+  }
+
+  public SystemSettingsService settings() {
+    return settings;
   }
 
   // Classification Service Getters

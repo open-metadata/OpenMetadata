@@ -22,6 +22,7 @@ import {
   useSlottedContext,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CalendarCell } from './cell';
 import { DateInput } from './date-input';
@@ -80,6 +81,7 @@ export const Calendar = ({
   className,
   ...props
 }: CalendarProps) => {
+  const { t } = useCoreTranslation();
   const context = useSlottedContext(AriaCalendarContext)!;
 
   const ContextWrapper = context ? Fragment : CalendarContextProvider;
@@ -114,7 +116,9 @@ export const Calendar = ({
 
         <div className="tw:flex tw:gap-3">
           <DateInput className="tw:flex-1" />
-          <PresetButton value={today(getLocalTimeZone())}>Today</PresetButton>
+          <PresetButton value={today(getLocalTimeZone())}>
+            {t('label.today', 'Today')}
+          </PresetButton>
         </div>
 
         <AriaCalendarGrid className="tw:w-max" weekdayStyle="short">

@@ -78,6 +78,11 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
  * <p>Defense-in-depth: any new SpEL syntax feature is implicitly rejected by the
  * default-deny policy until explicitly allowlisted, eliminating the bypass surface a
  * regex-based scan carries.
+ *
+ * <p><b>Scope: policy/alert conditions only.</b> These are boolean predicates over approved
+ * {@code @Function} calls, so arithmetic ({@code + - * /}) is deliberately rejected. Data
+ * Insight chart formulas are numeric and must not be routed here — they use {@link
+ * org.openmetadata.service.util.DataInsightFormulaEvaluator} instead.
  */
 @Slf4j
 public final class ExpressionValidator {

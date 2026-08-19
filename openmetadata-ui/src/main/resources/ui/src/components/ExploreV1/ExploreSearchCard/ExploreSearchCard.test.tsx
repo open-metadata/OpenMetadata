@@ -299,6 +299,133 @@ describe('ExploreSearchCard - Card container', () => {
       screen.getByTestId('ranking-score-explanation')
     ).not.toHaveTextContent('avgdl');
   });
+
+  it('breaks the function_score subtree out into per-signal boosts', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 35.847,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 35.847,
+          details: [
+            {
+              description: 'max plus 0.05 times others of:',
+              value: 33.975,
+            },
+            {
+              description: 'min of:',
+              value: 1.872,
+              details: [
+                {
+                  description: 'function score, score mode [sum]',
+                  value: 1.872,
+                  details: [
+                    { description: 'product of:', value: 1 },
+                    {
+                      description: 'function score, product of:',
+                      value: 0.5,
+                      details: [
+                        {
+                          description:
+                            'match filter: ConstantScore(tier.tagFQN:tier.tier1)',
+                          value: 1,
+                        },
+                      ],
+                    },
+                    {
+                      description:
+                        "field value function: none(doc['usageSummary.weeklyStats.percentileRank'].value?:0.0 * factor=0.005)",
+                      value: 0.125,
+                    },
+                  ],
+                },
+                { description: 'maxBoost', value: 2 },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    const boosts = screen.getByTestId('ranking-signal-boosts');
+
+    expect(boosts).toHaveTextContent('label.signal-boost-plural');
+    expect(boosts).toHaveTextContent('tier.tagFQN: tier.tier1');
+    expect(boosts).toHaveTextContent('usageSummary.weeklyStats.percentileRank');
+    expect(boosts).toHaveTextContent('label.baseline');
+    expect(screen.getByTestId('ranking-signal-total')).toHaveTextContent(
+      '+1.8720'
+    );
+    expect(screen.getByTestId('ranking-score-breakdown')).toHaveTextContent(
+      'message.search-ranking-score-breakdown'
+    );
+  });
+
+  it('reports the max_boost cap when the raw signal total exceeds it', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 12,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 12,
+          details: [
+            { description: 'max plus 0.05 times others of:', value: 10 },
+            {
+              description: 'min of:',
+              value: 2,
+              details: [
+                {
+                  description: 'function score, score mode [sum]',
+                  value: 3.4,
+                  details: [
+                    {
+                      description: 'function score, product of:',
+                      value: 3.4,
+                      details: [
+                        {
+                          description:
+                            'match filter: ConstantScore(tier.tagFQN:tier.tier1)',
+                          value: 1,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                { description: 'maxBoost', value: 2 },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    expect(screen.getByTestId('ranking-signal-total')).toHaveTextContent(
+      'message.search-ranking-signal-capped'
+    );
+  });
+
+  it('omits the signal section when the explanation has no function_score', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: ['ranking:exactName:name.keyword:0'],
+        score: 10,
+        scoreExplanation: {
+          description: 'max plus 0.05 times others of:',
+          value: 10,
+          details: [
+            { description: 'ConstantScore(name.keyword:users)', value: 10 },
+          ],
+        },
+      }
+    );
+
+    expect(screen.queryByTestId('ranking-signal-boosts')).toBeNull();
+  });
 });
 
 describe('ExploreSearchCard - Entity type tags', () => {
@@ -327,14 +454,14 @@ describe('ExploreSearchCard - Entity type tags', () => {
     expect(screen.queryByText(Constraint.Null)).not.toBeInTheDocument();
   });
 
-  it('renders real constraint metadata for column cards', () => {
+  it('does not render constraint metadata for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
       constraint: Constraint.PrimaryKey,
     } as Partial<ExploreSearchCardProps['source']>);
 
-    expect(screen.getByTestId('label.constraint')).toBeInTheDocument();
-    expect(screen.getByText(Constraint.PrimaryKey)).toBeInTheDocument();
+    expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
+    expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
   });
 });
 

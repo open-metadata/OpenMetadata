@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
+import org.openmetadata.service.rdf.RdfIndexingFields;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -78,7 +79,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
   private final RdfRepository rdfRepository;
-  private final RdfBatchProcessor batchProcessor;
+  private RdfBatchProcessor batchProcessor;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -170,6 +171,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
       }
+      // recreateIndex clears the graph before any indexing work starts, so its
+      // batches can use pure INSERT DATA updates. A concurrent live RdfUpdater
+      // write can leave duplicate literal values until the next recreate run;
+      // that accepted race is no worse than the reverse lost-update race in the
+      // previous clear-and-reconcile implementation.
+      batchProcessor =
+          new RdfBatchProcessor(
+              collectionDAO, rdfRepository, RdfIndexingRunContext.forJob(jobData));
 
       LOG.info(
           "RDF Index Job Started for Entities: {}, RecreateIndex: {}",
@@ -655,7 +664,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
               batchSize,
               cursor,
               true,
-              Entity.getFields(entityType, List.of("*")),
+              Entity.getFields(entityType, RdfIndexingFields.forEntityType(entityType)),
               null);
 
       if (!listOrEmpty(result.getData()).isEmpty() && !stopped) {

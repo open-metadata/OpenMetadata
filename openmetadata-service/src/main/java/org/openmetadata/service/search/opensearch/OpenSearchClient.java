@@ -408,23 +408,12 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    if (lineageGraphBuilder == null) {
-      initializeLineageBuilders();
-    }
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineage(lineageRequest);
+    return ensureLineageBuilder().searchLineage(lineageRequest);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+    return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
   }
 
   @Override
@@ -438,39 +427,48 @@ public class OpenSearchClient implements SearchClient {
       Long startTime,
       Long endTime)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn,
-        upstreamDepth,
-        downstreamDepth,
-        queryFilter,
-        includeDeleted,
-        entityType,
-        startTime,
-        endTime);
+    return ensureLineageBuilder()
+        .getLineagePaginationInfo(
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            queryFilter,
+            includeDeleted,
+            entityType,
+            startTime,
+            endTime);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    if (lineageGraphBuilder == null) {
-      throw new UnsupportedOperationException(
-          "Lineage features are not available in this deployment");
-    }
-    return lineageGraphBuilder.searchLineageByEntityCount(request);
+    return ensureLineageBuilder().searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
-    if (lineageGraphBuilder == null) {
+    return ensureLineageBuilder().getPlatformLineage(index, queryFilter, deleted);
+  }
+
+  private OSLineageGraphBuilder ensureLineageBuilder() {
+    OSLineageGraphBuilder builder = lineageGraphBuilder;
+    if (builder == null && newClient != null) {
+      synchronized (this) {
+        builder = lineageGraphBuilder;
+        if (builder == null) {
+          LOG.info("Initializing OSLineageGraphBuilder with settings now available");
+          builder = new OSLineageGraphBuilder(newClient);
+          lineageGraphBuilder = builder;
+          LOG.info("OSLineageGraphBuilder initialization completed");
+        }
+      }
+    }
+    if (builder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
-    return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
+    return builder;
   }
 
   @Override
@@ -519,6 +517,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return aggregationManager.getEntityTypeCounts(request, index);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
@@ -666,6 +670,16 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
   }
 
   @Override
@@ -899,6 +913,14 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.useSystemProperties();
 
+            // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+            // pipeline by default. opensearch-java's ApacheHttpClient5Transport also
+            // decompresses the response body itself, so leaving both enabled makes the second
+            // pass run on already-inflated bytes and throws
+            // "java.util.zip.ZipException: Not in GZIP format" out of LazyDecompressingInputStream.
+            // Disable at the transport layer and let opensearch-java own decompression.
+            httpClientBuilder.disableContentCompression();
+
             return httpClientBuilder;
           });
 
@@ -906,6 +928,8 @@ public class OpenSearchClient implements SearchClient {
           requestConfigBuilder ->
               requestConfigBuilder
                   .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
+                  .setConnectionRequestTimeout(
+                      Timeout.ofSeconds(esConfig.getConnectionRequestTimeoutSecs()))
                   .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
 
       var defaultFactory =
@@ -1154,16 +1178,10 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void initializeLineageBuilders() {
-    if (lineageGraphBuilder == null && newClient != null) {
-      synchronized (this) {
-        if (lineageGraphBuilder == null) {
-          LOG.info("Initializing OSLineageGraphBuilder with settings now available");
-          lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
-          LOG.info("OSLineageGraphBuilder initialization completed");
-        }
-      }
+    if (newClient != null) {
+      ensureLineageBuilder();
     } else {
-      LOG.debug("OSLineageGraphBuilder already initialized or newClient is null");
+      LOG.debug("OSLineageGraphBuilder cannot be initialized because newClient is null");
     }
   }
 

@@ -9,15 +9,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 """
 DBT source methods.
 """
 
+import contextlib
+import re
 import traceback
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -25,6 +29,15 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.metric import (
+    Language,
+    Metric,
+    MetricDimension,
+    MetricExpression,
+    MetricFilter,
+    MetricGranularity,
+    MetricMeasure,
+)
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -54,19 +67,24 @@ from metadata.generated.schema.type.basic import (
     Timestamp,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
@@ -86,10 +104,15 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtServiceSource,
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
     check_ephemeral_node,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
+    find_dependent_metric_names,
     find_domain_by_name,
+    find_semantic_models_for_metric,
+    find_semantic_models_transitive,
     format_domain_reference,
     format_validation_error_message,
     generate_entity_link,
@@ -99,8 +122,14 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
     get_dbt_test_definition_name,
+    get_dbt_test_description,
+    get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
+    get_source_physical_name,
+    is_compiled_only_result,
+    map_dbt_metric_type,
+    order_metrics_by_dependency,
     validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
@@ -137,6 +166,11 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        # Upstream nodes already reported as unresolved, so a dbt project whose source
+        # database was never ingested reports each missing upstream once instead of once
+        # per referencing model. Bounded by the number of distinct upstream nodes in the
+        # project and reset per project in yield_data_models.
+        self.reported_unresolved_upstreams: set[str] = set()
         self._load_omd_custom_properties()
 
     @classmethod
@@ -598,12 +632,18 @@ class DbtSource(DbtServiceSource):
         the same unique_id may appear in more than one file.  Return the
         result with the most recent ``execute`` completed_at timestamp so
         that OpenMetadata always reflects the latest test state.
+
+        Compile-only entries are only considered when nothing else matched: a
+        ``dbt docs generate`` artifact produced after a ``dbt test`` one carries
+        the newer timestamp, and preferring it would discard the real result
+        before add_dbt_test_result() could ingest it (issue #29824).
         """
         matches = [
             item for run_result in dbt_objects.dbt_run_results for item in run_result.results if item.unique_id == key
         ]
         if not matches:
             return None
+        matches = [item for item in matches if not is_compiled_only_result(item)] or matches
         if len(matches) == 1:
             return matches[0]
 
@@ -615,7 +655,13 @@ class DbtSource(DbtServiceSource):
                         try:
                             return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                         except ValueError:
-                            return None
+                            dot = completed.rfind(".")
+                            if dot != -1:
+                                completed = completed[: dot + 7] + "Z"
+                            try:
+                                return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
+                            except ValueError:
+                                return None
                     return completed
             return None
 
@@ -629,9 +675,11 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
+        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
         self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-            manifest_entities, manifest_node
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [node.fqn for node in upstream_nodes]
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = build_upstream_name_map(
+            upstream_nodes
         )
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
@@ -648,7 +696,7 @@ class DbtSource(DbtServiceSource):
                 manifest_entities, manifest_node
             )
 
-    def add_dbt_sources(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects) -> None:
+    def add_dbt_sources(self, key: str, manifest_node, dbt_objects: DbtObjects) -> None:
         """
         Method to append dbt test cases based on sources file for later processing
         In dbt manifest sources node name is table/view name (not test name like with test nodes)
@@ -661,13 +709,39 @@ class DbtSource(DbtServiceSource):
             (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
             None,
         )
+        if not freshness_test_result:
+            return
 
-        if freshness_test_result:
-            self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-                manifest_entities, manifest_node
-            )
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
+        # A freshness check tests the source table itself. Sources are graph roots with no
+        # depends_on, so resolving upstreams the way a dbt test node does always yields an
+        # empty list and leaves the test case with no table to attach to.
+        source_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=get_corrected_name(manifest_node.database),
+            schema_name=get_corrected_name(manifest_node.schema_),
+            table_name=get_source_physical_name(manifest_node),
+        )
+        table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
+        if not table_entity:
+            logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
+            return
+
+        # searchAcrossDatabases lets the lookup resolve under a different service, so the
+        # test case has to follow the entity that was actually found, not the FQN we guessed
+        source_fqn = model_str(table_entity.fullyQualifiedName)
+
+        self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [source_fqn]
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = (
+            build_upstream_name_map([build_upstream_node(manifest_node, source_fqn)])
+        )
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
+        # sources.json results share the dbt_tests collection with run_results.json
+        # results but are a different artifact shape, so tag them at the producer
+        # instead of sniffing the parsed object downstream
+        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
     def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
         def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
@@ -727,6 +801,7 @@ class DbtSource(DbtServiceSource):
         """
         Yield the data models
         """
+        self.reported_unresolved_upstreams.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -743,14 +818,18 @@ class DbtSource(DbtServiceSource):
             self.context.get().data_model_links = []
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
+            self.context.get().dbt_metrics = {}
             self.context.get().table_domains = {}
             self.context.get().table_custom_properties = {}
             self.context.get().run_results_generate_time = None
+            self.context.get().sources_generate_time = None
 
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if dbt_objects.dbt_run_results and dbt_objects.dbt_run_results[0].metadata.generated_at:
                 self.context.get().run_results_generate_time = dbt_objects.dbt_run_results[0].metadata.generated_at
+            if dbt_objects.dbt_sources and dbt_objects.dbt_sources.metadata.generated_at:
+                self.context.get().sources_generate_time = dbt_objects.dbt_sources.metadata.generated_at
             dbt_project_name = getattr(dbt_objects.dbt_manifest.metadata, "project_name", None)
             for key, manifest_node in manifest_entities.items():
                 try:
@@ -774,7 +853,6 @@ class DbtSource(DbtServiceSource):
                         self.add_dbt_sources(
                             key,
                             manifest_node=manifest_node,
-                            manifest_entities=manifest_entities,
                             dbt_objects=dbt_objects,
                         )
 
@@ -888,9 +966,36 @@ class DbtSource(DbtServiceSource):
                         )
                     )
 
+            self._collect_dbt_metrics(dbt_objects)
+
+    def _collect_dbt_metrics(self, dbt_objects: DbtObjects):
+        if not getattr(self.source_config, "includeMetrics", False):
+            return
+        manifest = dbt_objects.dbt_manifest
+        metrics = getattr(manifest, "metrics", None) or {}
+        semantic_models = getattr(manifest, "semantic_models", None) or {}
+        if not metrics:
+            return
+        logger.debug(f"Found {len(metrics)} dbt metrics to process")
+        for key in order_metrics_by_dependency(metrics):
+            self.context.get().dbt_metrics[key] = {
+                "metric_node": metrics[key],
+                "semantic_models": semantic_models,
+                "all_metrics": metrics,
+            }
+
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
         """
         Method to fetch the upstream nodes
+        """
+        return [node.fqn for node in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
+
+    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
+        """
+        Method to fetch the upstream nodes as UpstreamNode entries.
+
+        The dbt names are kept alongside the FQN because the FQN is built from the model
+        alias, while dbt ``ref()`` expressions carry the model name.
         """
         upstream_nodes = []
         if (
@@ -928,7 +1033,7 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(self.parse_upstream_nodes(manifest_entities, parent_node))
+                        upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
                         parent_fqn = fqn.build(
                             self.metadata,
@@ -940,8 +1045,8 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(parent_fqn)
+                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
+                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -1117,24 +1222,23 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Lineage upstream nodes",
-                                error=(
-                                    "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt lineage edge dropped: upstream table '{upstream_node}' was not "
+                        f"returned by OpenMetadata, so no edge was created to "
+                        f"'{model_str(to_entity.fullyQualifiedName)}'. Either the table has not been "
+                        "ingested or the lookup itself failed - check the logs above for a "
+                        "search or API error. Further models referencing this upstream are not "
+                        "reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1221,28 +1325,418 @@ class DbtSource(DbtServiceSource):
                             lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Exposure lineage",
-                                error=(
-                                    "Error to create DBT Exposure lineage",
-                                    f"{str(exposure_spec)[:20]}...",
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt exposure lineage edge dropped: upstream table '{upstream_node}' was "
+                        f"not returned by OpenMetadata, so no edge was created to exposure "
+                        f"'{manifest_node.name}'. Either the table has not been ingested or the "
+                        "lookup itself failed - check the logs above for a search or API error. "
+                        "Further nodes referencing this upstream are not reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
+
+    def yield_dbt_metrics(self, metric_entry: dict) -> Iterable[Either[CreateMetricRequest]]:
+        metric_node = metric_entry["metric_node"]
+        semantic_models = metric_entry["semantic_models"]
+        all_metrics = metric_entry.get("all_metrics") or {}
+        try:
+            metric_name = metric_node.name
+            dbt_type = getattr(metric_node.type, "value", str(metric_node.type))
+            metric_type = map_dbt_metric_type(dbt_type)
+
+            description = getattr(metric_node, "description", None) or ""
+            label = getattr(metric_node, "label", None)
+
+            type_params = getattr(metric_node, "type_params", None)
+            metric_expression, related_metrics = self._build_expression_and_related(dbt_type, type_params, all_metrics)
+
+            dimensions = self._extract_dimensions(metric_node, semantic_models, all_metrics)
+            measures = self._extract_measures(metric_node, semantic_models, all_metrics)
+            filters = self._extract_filters(metric_node)
+
+            granularity = None
+            time_gran = getattr(metric_node, "time_granularity", None)
+            if time_gran:
+                gran_value = getattr(time_gran, "value", str(time_gran)).upper()
+                with contextlib.suppress(ValueError):
+                    granularity = MetricGranularity(gran_value)
+
+            tags = self._extract_metric_tags(metric_node)
+
+            create_metric = CreateMetricRequest(
+                name=metric_name,
+                displayName=label or metric_name,
+                description=description,
+                metricType=metric_type,
+                metricExpression=metric_expression,
+                granularity=granularity,
+                relatedMetrics=related_metrics,
+                dimensions=dimensions or None,
+                measures=measures or None,
+                filters=filters or None,
+                tags=tags or None,
+            )
+
+            yield Either(right=create_metric)
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=getattr(metric_node, "name", "unknown_metric"),
+                    error=f"Failed to process dbt metric: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _build_expression_and_related(self, dbt_type, type_params, all_metrics):
+        builders = {
+            "simple": self._simple_metric_expression,
+            "derived": self._derived_metric_expr_and_related,
+            "ratio": self._ratio_metric_expr_and_related,
+            "cumulative": self._cumulative_metric_expression,
+            "conversion": self._conversion_metric_expression,
+        }
+        metric_expression = None
+        related_metrics = None
+        builder = builders.get(dbt_type)
+        if builder and type_params:
+            metric_expression, related_metrics = builder(type_params)
+        if related_metrics:
+            related_metrics = self._filter_known_metrics(related_metrics, all_metrics)
+        return metric_expression, related_metrics
+
+    @staticmethod
+    def _simple_metric_expression(type_params):
+        expression = None
+        measure_ref = getattr(type_params, "measure", None)
+        measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if measure_name:
+            expression = MetricExpression(language=Language.SQL, code=measure_name)
+        return expression, None
+
+    @staticmethod
+    def _derived_metric_expr_and_related(type_params):
+        expression = None
+        expr = getattr(type_params, "expr", None)
+        if expr:
+            expression = MetricExpression(language=Language.SQL, code=expr)
+        sub_metrics = getattr(type_params, "metrics", None) or []
+        related = [getattr(m, "name", str(m)) for m in sub_metrics] or None
+        return expression, related
+
+    @staticmethod
+    def _ratio_metric_expr_and_related(type_params):
+        expression = None
+        numerator = getattr(type_params, "numerator", None)
+        denominator = getattr(type_params, "denominator", None)
+        num_name = getattr(numerator, "name", str(numerator)) if numerator else ""
+        den_name = getattr(denominator, "name", str(denominator)) if denominator else ""
+        related = [name for name in (num_name, den_name) if name] or None
+        if num_name and den_name:
+            expression = MetricExpression(language=Language.SQL, code=f"{num_name} / {den_name}")
+        return expression, related
+
+    @staticmethod
+    def _cumulative_window_str(type_params):
+        window_str = ""
+        cum_params = getattr(type_params, "cumulative_type_params", None)
+        window = getattr(cum_params, "window", None) if cum_params else None
+        if window:
+            count = getattr(window, "count", "")
+            gran = getattr(window, "granularity", None)
+            gran_val = getattr(gran, "value", str(gran)) if gran else ""
+            window_str = f" over {count} {gran_val}" if count else ""
+        return window_str
+
+    @staticmethod
+    def _cumulative_metric_expression(type_params):
+        expression = None
+        measure_ref = getattr(type_params, "measure", None)
+        measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if measure_name:
+            window_str = DbtSource._cumulative_window_str(type_params)
+            expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
+        return expression, None
+
+    @staticmethod
+    def _conversion_metric_expression(type_params):
+        expression = None
+        conv = getattr(type_params, "conversion_type_params", None)
+        if conv:
+            base = getattr(conv, "base_measure", None)
+            conversion = getattr(conv, "conversion_measure", None)
+            base_name = getattr(base, "name", "") if base else ""
+            conv_name = getattr(conversion, "name", "") if conversion else ""
+            entity = getattr(conv, "entity", "")
+            expression = MetricExpression(
+                language=Language.SQL,
+                code=f"conversion({base_name} -> {conv_name}, entity={entity})",
+            )
+        return expression, None
+
+    @staticmethod
+    def _filter_known_metrics(related_metrics, all_metrics):
+        known = {name for node in all_metrics.values() if (name := getattr(node, "name", None))}
+        return [name for name in related_metrics if name in known] or None
+
+    def _extract_dimensions(self, metric_node, semantic_models, all_metrics=None) -> list[MetricDimension]:
+        result = []
+        models = (
+            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
+            if all_metrics
+            else find_semantic_models_for_metric(metric_node, semantic_models)
+        )
+        seen = set()
+        for sm in models:
+            for dim in getattr(sm, "dimensions", None) or []:
+                if dim.name in seen:
+                    continue
+                seen.add(dim.name)
+                dim_type = getattr(dim.type, "value", str(dim.type)).upper() if dim.type else None
+                result.append(
+                    MetricDimension(
+                        name=dim.name,
+                        type=dim_type,
+                        description=getattr(dim, "description", None),
+                        expression=getattr(dim, "expr", None),
+                    )
+                )
+        return result
+
+    def _extract_measures(self, metric_node, semantic_models, all_metrics=None) -> list[MetricMeasure]:
+        result = []
+        models = (
+            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
+            if all_metrics
+            else find_semantic_models_for_metric(metric_node, semantic_models)
+        )
+        seen = set()
+        for sm in models:
+            for measure in getattr(sm, "measures", None) or []:
+                if measure.name in seen:
+                    continue
+                seen.add(measure.name)
+                agg_value = getattr(measure.agg, "value", str(measure.agg)) if measure.agg else None
+                result.append(
+                    MetricMeasure(
+                        name=measure.name,
+                        aggregation=agg_value,
+                        description=getattr(measure, "description", None),
+                        expression=getattr(measure, "expr", None),
+                    )
+                )
+        return result
+
+    def _extract_filters(self, metric_node) -> list[MetricFilter]:
+        result = []
+        filter_obj = getattr(metric_node, "filter", None)
+        if filter_obj:
+            where_filters = getattr(filter_obj, "where_filters", None) or []
+            for wf in where_filters:
+                sql_template = getattr(wf, "where_sql_template", None)
+                if sql_template:
+                    result.append(MetricFilter(where=sql_template))
+        return result
+
+    def _extract_metric_tags(self, metric_node) -> list:
+        tags = getattr(metric_node, "tags", None) or []
+        if not tags:
+            return []
+        return (
+            get_tag_labels(
+                metadata=self.metadata,
+                tags=tags,
+                classification_name=self.tag_classification_name,
+                include_tags=bool(self.source_config.includeTags),
+            )
+            or []
+        )
+
+    def create_dbt_metric_lineage(self, metric_entry: dict) -> Iterable[Either[AddLineageRequest]]:
+        metric_node = metric_entry["metric_node"]
+        semantic_models = metric_entry["semantic_models"]
+        all_metrics = metric_entry.get("all_metrics") or {}
+
+        metric_name = metric_node.name
+        metric_entity = self.metadata.get_by_name(
+            entity=Metric,
+            fqn=metric_name,
+        )
+        if not metric_entity:
+            logger.debug(f"Metric entity '{metric_name}' not found, skipping lineage")
+            return
+
+        # Table → Metric lineage (from semantic models). Resolve transitively so
+        # derived/ratio/conversion metrics that inherit semantic models through parent
+        # metrics also get source-table and column lineage, matching dimension/measure extraction.
+        models = (
+            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
+            if all_metrics
+            else find_semantic_models_for_metric(metric_node, semantic_models)
+        )
+        for sm in models:
+            node_relation = getattr(sm, "node_relation", None)
+            if not node_relation:
+                continue
+            try:
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.config.serviceName,
+                    database_name=getattr(node_relation, "database", None),
+                    schema_name=node_relation.schema_name,
+                    table_name=node_relation.alias,
+                )
+                from_entity = self._get_table_entity(table_fqn)
+                if not from_entity:
+                    continue
+                columns_lineage = self._build_table_metric_column_lineage(metric_entity, from_entity, sm)
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=Uuid(from_entity.id.root),
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=Uuid(metric_entity.id.root),
+                                    type="metric",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage,
+                                    columnsLineage=columns_lineage or None,
+                                ),
+                            )
+                        ),
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to create table lineage for metric '{metric_name}' from semantic model '{sm.name}': {exc}"
+                )
+
+        # Metric → Metric lineage (for derived/ratio/conversion metrics)
+        for parent_name in find_dependent_metric_names(metric_node):
+            try:
+                parent_entity = self.metadata.get_by_name(entity=Metric, fqn=parent_name)
+                if not parent_entity:
+                    continue
+                columns_lineage = self._build_metric_metric_column_lineage(parent_entity, metric_entity)
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=Uuid(parent_entity.id.root),
+                                    type="metric",
+                                ),
+                                toEntity=EntityReference(
+                                    id=Uuid(metric_entity.id.root),
+                                    type="metric",
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage,
+                                    columnsLineage=columns_lineage or None,
+                                ),
+                            )
+                        ),
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to create metric lineage for '{metric_name}' from parent metric '{parent_name}': {exc}"
+                )
+
+    _SIMPLE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+    def _candidate_source_column(self, child) -> str | None:
+        expr = getattr(child, "expr", None)
+        if expr and self._SIMPLE_IDENTIFIER_RE.match(expr.strip()):
+            return expr.strip()
+        return getattr(child, "name", None)
+
+    @staticmethod
+    def _find_metric_child_fqn(metric_entity: Metric, children_attr: str, name: str) -> str | None:
+        children = getattr(metric_entity, children_attr, None) or []
+        for child in children:
+            if child.name == name and child.fullyQualifiedName is not None:
+                return child.fullyQualifiedName.root
+        return None
+
+    def _build_table_metric_column_lineage(
+        self,
+        metric_entity: Metric,
+        from_table_entity: Table,
+        semantic_model,
+    ) -> list[ColumnLineage]:
+        """Column-level lineage from a source table to a metric's dimensions/measures.
+
+        Matches each dimension/measure by `expr` when it's a simple column identifier,
+        otherwise falls back to the child's name.
+        """
+        columns_lineage: list[ColumnLineage] = []
+        pairs = (
+            ("dimensions", "dimensions"),
+            ("measures", "measures"),
+        )
+        for sm_attr, metric_attr in pairs:
+            for child in getattr(semantic_model, sm_attr, None) or []:
+                candidate = self._candidate_source_column(child)
+                if not candidate:
+                    continue
+                source_col_fqn = get_column_fqn(from_table_entity, candidate)
+                if not source_col_fqn:
+                    continue
+                metric_child_fqn = self._find_metric_child_fqn(metric_entity, metric_attr, child.name)
+                if not metric_child_fqn:
+                    continue
+                columns_lineage.append(
+                    ColumnLineage(
+                        fromColumns=[source_col_fqn],
+                        toColumn=metric_child_fqn,
+                    )
+                )
+        return columns_lineage
+
+    def _build_metric_metric_column_lineage(self, parent_entity: Metric, child_entity: Metric) -> list[ColumnLineage]:
+        """Column-level lineage between metrics by name-matching their children.
+
+        A derived metric inherits dimensions/measures from its parents; whenever a
+        child metric has a dimension or measure of the same name as its parent, we
+        emit a ColumnLineage connecting the two.
+        """
+        columns_lineage: list[ColumnLineage] = []
+        for attr in ("dimensions", "measures"):
+            parent_children = {
+                c.name: c for c in (getattr(parent_entity, attr, None) or []) if c.fullyQualifiedName is not None
+            }
+            for child in getattr(child_entity, attr, None) or []:
+                parent_child = parent_children.get(child.name)
+                if not parent_child or child.fullyQualifiedName is None:
+                    continue
+                columns_lineage.append(
+                    ColumnLineage(
+                        fromColumns=[parent_child.fullyQualifiedName.root],
+                        toColumn=child.fullyQualifiedName.root,
+                    )
+                )
+        return columns_lineage
 
     def process_dbt_meta(self, manifest_meta, table_fqn):
         """
@@ -1402,19 +1896,22 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
-                test_definition_name = get_dbt_test_definition_name(manifest_node)
+                entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                 check_test_definition_exists = self.metadata.get_by_name(
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
+                # A TestDefinition is shared by every dbt test of the same type AND
+                # entityType (e.g. column-scoped "unique" tests share one, table-scoped
+                # "unique" tests share a different one - same type, incompatible
+                # entityLink shapes), so its description is only set on creation and
+                # never patched from an individual node.
                 if not check_test_definition_exists:
-                    entity_type = EntityType.TABLE
-                    if get_manifest_column_name(manifest_node):
-                        entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=manifest_node.description,
+                            description=get_dbt_test_description(manifest_node),
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1456,20 +1953,25 @@ class DbtSource(DbtServiceSource):
                     )
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
+                    description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
+                        entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                        test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
+                                description=description,
+                                testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
                                 owners=None,
                             )
                         )
-                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                    else:
+                        logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1479,71 +1981,203 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+        """
+        Keep the description of an already ingested test case in sync with dbt.
+
+        Mirrors how table and column descriptions are handled: an empty
+        description is always filled in, while an existing one is only
+        overridden when dbtUpdateDescriptions is enabled.
+        """
+        if description:
+            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")
+            self.metadata.patch_description(
+                entity=TestCase,
+                source=test_case,
+                description=description,
+                force=bool(self.source_config.dbtUpdateDescriptions),
+            )
+
+    @staticmethod
+    def _map_dbt_test_status(status_value: str) -> tuple[TestCaseStatus, int]:
+        """
+        Map a dbt result status onto an OpenMetadata test case status.
+
+        Statuses that are neither a known success nor a known failure (dbt's
+        ``warn`` and ``runtime error``) fall through to Aborted.
+        """
+        if status_value in [item.value for item in DbtTestSuccessEnum]:
+            return TestCaseStatus.Success, 1
+        if status_value in [item.value for item in DbtTestFailureEnum]:
+            return TestCaseStatus.Failed, 0
+        return TestCaseStatus.Aborted, 0
+
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
+        """
+        Resolve when a dbt result was produced.
+
+        Prefers the "execute" timing entry. sources.json runtime-error results carry no
+        timing at all, so fall back to the generated_at of the artifact they came from.
+        """
+        dbt_test_completed_at = None
+        for dbt_test_timing in getattr(dbt_test_result, "timing", None) or []:
+            if dbt_test_timing.name == "execute":
+                dbt_test_completed_at = dbt_test_timing.completed_at
+
+        dbt_timestamp = dbt_test_completed_at or fallback_generate_time
+
+        # check if the timestamp is a str type and convert accordingly
+        if isinstance(dbt_timestamp, str):
+            try:
+                dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+            except ValueError:
+                # dbt-fusion outputs 9-digit nanosecond timestamps like
+                # 2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+                # Strip trailing digits to 6-digit precision.
+                dot = dbt_timestamp.rfind(".")
+                if dot != -1:
+                    dbt_timestamp = dbt_timestamp[: dot + 7] + "Z"
+                try:
+                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                except ValueError:
+                    dbt_timestamp = None
+
+        return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
+
+    @staticmethod
+    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
+        """
+        Build the result detail of a source freshness check.
+
+        sources.json has no ``message`` field, so the actionable detail is how far behind
+        the source is against its configured thresholds. Runtime errors carry the adapter
+        error instead - that variant holds no freshness measurements at all.
+        """
+        error = getattr(dbt_test_result, "error", None)
+        if error:
+            return str(error)
+
+        details = []
+        age_in_seconds = getattr(dbt_test_result, "max_loaded_at_time_ago_in_s", None)
+        if age_in_seconds is not None:
+            details.append(f"Data is {age_in_seconds / 3600:.1f} hours old")
+        max_loaded_at = getattr(dbt_test_result, "max_loaded_at", None)
+        if max_loaded_at:
+            details.append(f"max_loaded_at={max_loaded_at}")
+        criteria = getattr(dbt_test_result, "criteria", None)
+        for threshold_name in ("warn_after", "error_after"):
+            threshold = getattr(criteria, threshold_name, None)
+            if threshold and threshold.count is not None and threshold.period is not None:
+                details.append(f"{threshold_name}={threshold.count} {threshold.period.value}")
+
+        return "; ".join(details) or None
+
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+        """
+        Build the test case result of a `dbt source freshness` run.
+
+        The sources.json shapes have no ``message``, and the runtime-error shape has no
+        ``timing`` either, so none of the run_results.json specific handling applies here.
+        """
+        test_case_status, test_result_value = self._map_dbt_test_status(dbt_test_result.status.value)
+
+        dbt_timestamp = self._resolve_dbt_test_timestamp(dbt_test_result, self.context.get().sources_generate_time)
+        if not dbt_timestamp:
+            logger.debug(
+                "Skipping freshness result for '%s': unparseable timestamp",
+                manifest_node.name,
+            )
+            return None
+
+        return TestCaseResult(
+            timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
+            testCaseStatus=test_case_status,
+            testResultValue=[
+                TestResultValue(
+                    name=dbt_test_result.unique_id,
+                    value=str(test_result_value),
+                )
+            ],
+            sampleData=None,
+            result=(
+                self._get_freshness_result_details(dbt_test_result)
+                if test_case_status != TestCaseStatus.Success
+                else None
+            ),
+        )
+
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+        """
+        Build the test case result of a dbt test recorded in run_results.json
+        """
+        # Skip compiled-only entries: `dbt run` includes test nodes in
+        # run_results.json with status="success" but message=null since
+        # no test SQL was executed. Executed dbt tests can also have
+        # message=null, e.g. passing tests with status="pass". The predicate is
+        # shared with _get_latest_result so the selector can never hand over a
+        # result this builder then drops (issue #29824).
+        if is_compiled_only_result(dbt_test_result):
+            logger.debug(
+                "Skipping compiled-only test result for '%s' (status is success and message is null).",
+                manifest_node.name,
+            )
+            return None
+
+        test_case_status, test_result_value = self._map_dbt_test_status(dbt_test_result.status.value)
+
+        dbt_timestamp = self._resolve_dbt_test_timestamp(dbt_test_result, self.context.get().run_results_generate_time)
+        if not dbt_timestamp:
+            logger.debug(
+                "Skipping test case result for '%s': unparseable timestamp",
+                manifest_node.name,
+            )
+            return None
+
+        return TestCaseResult(
+            timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
+            testCaseStatus=test_case_status,
+            testResultValue=[
+                TestResultValue(
+                    name=dbt_test_result.unique_id,
+                    value=str(test_result_value),
+                )
+            ],
+            sampleData=None,
+            result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
+        )
+
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
         """
+        node_name = "unknown"
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
+                node_name = manifest_node.name
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
                     return
 
-                # Skip compiled-only entries: `dbt run` includes test nodes in
-                # run_results.json with status="success" but message=null since
-                # no test SQL was executed. Real results always have a message.
-                if not dbt_test_result.message:
-                    logger.debug(
-                        "Skipping compiled-only test result for '%s' (message is null).",
-                        manifest_node.name,
-                    )
+                # sources.json freshness results and run_results.json test results reach
+                # this handler through the same context key but are different artifact
+                # shapes - only run results carry `message`, and freshness runtime errors
+                # carry no `timing` either - so each needs its own builder.
+                test_case_result = (
+                    self._build_freshness_test_case_result(manifest_node, dbt_test_result)
+                    if dbt_test.get(DbtCommonEnum.IS_FRESHNESS.value)
+                    else self._build_run_result_test_case_result(manifest_node, dbt_test_result)
+                )
+                if test_case_result is None:
                     return
 
-                test_case_status = TestCaseStatus.Aborted
-                test_result_value = 0
-                if dbt_test_result.status.value in [item.value for item in DbtTestSuccessEnum]:
-                    test_case_status = TestCaseStatus.Success
-                    test_result_value = 1
-                elif dbt_test_result.status.value in [item.value for item in DbtTestFailureEnum]:
-                    test_case_status = TestCaseStatus.Failed
-                    test_result_value = 0
-
-                # Process the Test Timings
-                dbt_test_timings = dbt_test_result.timing
-                dbt_test_completed_at = None
-                for dbt_test_timing in dbt_test_timings:
-                    if dbt_test_timing.name == "execute":
-                        dbt_test_completed_at = dbt_test_timing.completed_at
-                dbt_timestamp = None
-                if dbt_test_completed_at:
-                    dbt_timestamp = dbt_test_completed_at
-                elif self.context.get().run_results_generate_time:
-                    dbt_timestamp = self.context.get().run_results_generate_time
-
-                # check if the timestamp is a str type and convert accordingly
-                if isinstance(dbt_timestamp, str):
-                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
-
-                # Create the test case result object
-                test_case_result = TestCaseResult(
-                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp, milliseconds=True)),
-                    testCaseStatus=test_case_status,
-                    testResultValue=[
-                        TestResultValue(
-                            name=dbt_test_result.unique_id,
-                            value=str(test_result_value),
-                        )
-                    ],
-                    sampleData=None,
-                    result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
-                )
-
-                # Create the test case fqns and add the results
-                for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+                # Results belong to the single table the test case was created against,
+                # which for multi-upstream tests is not every entry in the upstream list
+                table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
+                if table_fqn:
                     source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -1568,7 +2202,13 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"DBT Test Result {node_name}",
+                    error=f"Failed to capture test results for node '{node_name}': {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.metadata.close()

@@ -72,7 +72,9 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -255,11 +257,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
         self._connection = create_connection(self.service_connection)
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
-        try:
+        self.connection_obj = self.client
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @property
     def name(self) -> str:
@@ -557,16 +557,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         sql: Optional[str] = None,  # noqa: UP045
     ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         if from_entity and to_entity:
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
                         ),
-                        toEntity=EntityReference(
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
@@ -642,7 +650,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if self._connection is not None:
             run_test_connection(self.metadata, self._connection)
         else:
-            test_connection_common(self.metadata, self.client, self.service_connection)
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""

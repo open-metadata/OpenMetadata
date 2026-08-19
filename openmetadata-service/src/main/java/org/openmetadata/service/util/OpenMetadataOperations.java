@@ -1085,8 +1085,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
       }
-      jdbi.open().getConnection();
-      return 0;
+      boolean connectionValid = jdbi.withHandle(handle -> handle.getConnection().isValid(5));
+      return connectionValid ? 0 : 1;
     } catch (Exception e) {
       LOG.error("Failed to check connection due to ", e);
       return 1;
@@ -2505,10 +2505,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Dropping data assets data streams...");
       dataInsightsApp.deleteDataAssetsDataStream();
 
-      // Drop data quality indexes
-      LOG.info("Dropping data quality indexes...");
-      dataInsightsApp.deleteDataQualityDataIndex();
-
       LOG.info("Data Insights indexes and data streams dropped successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
@@ -2526,10 +2522,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop data assets data streams
       LOG.info("Create/Update data assets data streams...");
       dataInsightsApp.createOrUpdateDataAssetsDataStream();
-
-      // Drop data quality indexes
-      LOG.info("Create/Updated data quality indexes...");
-      dataInsightsApp.createDataQualityDataIndex();
 
       LOG.info("Data Insights indexes and data streams created successfully.");
     } catch (Exception e) {
@@ -3222,7 +3214,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+                new FileConfigurationSourceProvider(),
+                new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);

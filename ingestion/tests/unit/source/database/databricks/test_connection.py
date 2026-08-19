@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
@@ -24,8 +25,10 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection as DatabricksConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.databricks.connection import (
     DATABRICKS_ERRORS,
+    UNRESOLVED_TARGET_TOKEN,
     DatabricksChecks,
     DatabricksConnection,
 )
@@ -96,9 +99,12 @@ def test_expired_token_message_is_classified():
     assert DATABRICKS_ERRORS.classify(error).title == "Access token expired"
 
 
-def test_forbidden_message_is_classified():
-    error = _SqlAlchemyError(Exception("HTTP Response code: 403, Forbidden"))
-    assert DATABRICKS_ERRORS.classify(error).title == "Access denied"
+def test_a_not_found_object_is_not_misread_as_access_denied():
+    """Regression: a `contains("forbidden")` rule used to sit ahead of every
+    not-found rule, so any object whose name contained "forbidden" was diagnosed as
+    "Access denied". The rule is gone; this keeps it gone."""
+    error = _SqlAlchemyError(Exception("[TABLE_OR_VIEW_NOT_FOUND] The table `forbidden_items` does not exist"))
+    assert DATABRICKS_ERRORS.classify(error).title == "Table or view not found"
 
 
 def test_malformed_http_path_is_classified():
@@ -160,7 +166,7 @@ def test_unknown_error_returns_no_diagnosis():
 
 
 def test_checks_cover_exactly_the_seeded_steps():
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -182,7 +188,7 @@ def test_checks_cover_exactly_the_seeded_steps():
 def test_construction_does_not_touch_the_network():
     # Building the provider must not connect - that belongs in a gated check.
     engine = MagicMock()
-    DatabricksChecks(client=engine, service_connection=_config())
+    DatabricksChecks(db=Borrowed.of(engine), service_connection=_config())
     engine.connect.assert_not_called()
 
 
@@ -190,16 +196,16 @@ def test_construction_does_not_build_the_inspector():
     # Regression: inspect(engine) connects eagerly, so building it in __init__ would
     # connect before the gate (auth error escapes as a 500). Keep it lazy.
     with patch(f"{CONNECTION_MODULE}.inspect") as mock_inspect:
-        checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+        checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
         mock_inspect.assert_not_called()
         _ = checks._engine_wrapper.inspector
         mock_inspect.assert_called_once()
 
 
 def test_check_access_probes_the_host_port_then_pings():
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     with (
-        patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe,
+        patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe,
         patch(f"{CONNECTION_MODULE}.run_sql", return_value=MagicMock()) as mock_run,
     ):
         checks.check_access()
@@ -208,11 +214,11 @@ def test_check_access_probes_the_host_port_then_pings():
 
 
 def test_check_access_reports_unreachable_host_as_network_failure():
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     probe_error = NetworkUnreachableError("my-workspace.cloud.databricks.com:443 is not reachable")
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
-        patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=probe_error) as mock_probe,
+        patch("metadata.core.connections.test_connection.network.tcp_probe", side_effect=probe_error) as mock_probe,
         pytest.raises(CheckError) as exc,
     ):
         checks.check_access()
@@ -224,13 +230,13 @@ def test_check_access_reports_unreachable_host_as_network_failure():
 def test_probe_target_defaults_to_443_when_no_port():
     config = _config()
     config.hostPort = "my-workspace.cloud.databricks.com"
-    checks = DatabricksChecks(client=MagicMock(), service_connection=config)
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=config)
     assert checks._probe_target() == ("my-workspace.cloud.databricks.com", 443)
 
 
 def test_first_catalog_uses_configured_catalog_without_querying():
     engine = MagicMock()
-    checks = DatabricksChecks(client=engine, service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(engine), service_connection=_config())
     assert checks._first_catalog() == "my_catalog"
     engine.connect.assert_not_called()
 
@@ -252,7 +258,7 @@ def test_listing_caps_rows_at_the_sample_size_at_the_source():
     engine = MagicMock()
     engine.connect.return_value.__enter__.return_value = conn
 
-    wrapper = DatabricksEngineWrapper(engine)
+    wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
     wrapper.first_catalog = "my_catalog"
     wrapper.first_schema = "my_schema"
     wrapper.get_tables()
@@ -261,7 +267,7 @@ def test_listing_caps_rows_at_the_sample_size_at_the_source():
 
 
 def test_get_databases_reports_catalog_count():
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     with patch.object(
         checks._engine_wrapper, "get_catalogs", return_value=[("my_catalog",), ("other",)]
     ) as mock_catalogs:
@@ -273,7 +279,7 @@ def test_get_databases_reports_catalog_count():
 def test_get_databases_failure_reports_the_attempted_command_as_evidence():
     config = _config()
     config.catalog = None
-    checks = DatabricksChecks(client=MagicMock(), service_connection=config)
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=config)
     with (
         patch.object(checks._engine_wrapper, "get_catalogs", side_effect=Exception("boom")),
         pytest.raises(CheckError) as exc,
@@ -284,7 +290,7 @@ def test_get_databases_failure_reports_the_attempted_command_as_evidence():
 
 def test_get_databases_omits_the_command_when_catalog_is_configured():
     # A configured catalog is trusted without running SHOW CATALOGS.
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     with patch.object(checks._engine_wrapper, "get_catalogs", return_value=[("my_catalog",)]):
         evidence = checks.get_databases()
     assert evidence.command is None
@@ -295,7 +301,7 @@ def test_probe_target_strips_a_pasted_url_scheme_and_path():
     # gate fails with a misleading DNS error before the driver.
     config = _config()
     config.hostPort = "https://my-workspace.cloud.databricks.com:443/sql/1.0/warehouses/x"
-    checks = DatabricksChecks(client=MagicMock(), service_connection=config)
+    checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=config)
     assert checks._probe_target() == ("my-workspace.cloud.databricks.com", 443)
 
 
@@ -329,20 +335,45 @@ def test_schema_scoped_get_schemas_skips_use_catalog_when_catalog_unresolved():
     )
 
     engine = MagicMock()
-    wrapper = DatabricksEngineWrapper(engine)
+    wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
     wrapper.first_catalog = None
     assert wrapper.get_schemas(schema_name="my_schema") == ["my_schema"]
     engine.connect.assert_not_called()
 
 
-def test_get_tables_returns_empty_when_catalog_unresolved():
+@pytest.mark.parametrize("listing", ["get_tables", "get_views"])
+def test_listing_raises_when_the_catalog_never_resolved(listing):
+    """GetTables/GetViews are mandatory steps. Returning [] here would be
+    indistinguishable from "the schema is empty", so the step would pass having
+    resolved nothing and proved nothing - it must fail instead."""
     from metadata.ingestion.source.database.databricks.connection import (
         DatabricksEngineWrapper,
     )
 
     engine = MagicMock()
-    wrapper = DatabricksEngineWrapper(engine)
+    wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
     wrapper.first_catalog = None
     wrapper.first_schema = "my_schema"
-    assert wrapper.get_tables() == []
+
+    with pytest.raises(SourceConnectionException) as failure:
+        getattr(wrapper, listing)()
+
+    assert UNRESOLVED_TARGET_TOKEN in str(failure.value)
+    assert DATABRICKS_ERRORS.classify(failure.value).title == "Could not resolve a catalog and schema to probe"
     engine.connect.assert_not_called()
+
+
+@pytest.mark.parametrize("listing", ["get_tables", "get_views"])
+def test_listing_raises_when_the_schema_never_resolved(listing):
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksEngineWrapper,
+    )
+
+    engine = MagicMock()
+    wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
+    wrapper.first_catalog = "my_catalog"
+    wrapper.schemas = []  # get_schemas() ran and found nothing usable
+    wrapper.first_schema = None
+
+    with pytest.raises(SourceConnectionException):
+        getattr(wrapper, listing)()

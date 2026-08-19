@@ -1,5 +1,6 @@
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { borderAfter } from '@/utils/tailwindClasses';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -7,7 +8,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
@@ -17,7 +18,7 @@ import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 export const styles = sortCx({
   common: {
     root: [
-      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:before:absolute tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
@@ -27,9 +28,18 @@ export const styles = sortCx({
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
     ].join(' '),
+    focusOutline:
+      'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
+    xxs: {
+      root: [
+        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:*:data-icon:size-3',
+      ].join(' '),
+      linkRoot: 'tw:gap-0.5',
+    },
     xs: {
       root: [
         'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
@@ -65,20 +75,22 @@ export const styles = sortCx({
   colors: {
     primary: {
       root: [
-        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-primary-icon tw:hover:*:data-icon:text-button-primary-icon_hover',
       ].join(' '),
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
-        'tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
       ].join(' '),
@@ -110,20 +122,22 @@ export const styles = sortCx({
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-destructive-primary-icon tw:hover:*:data-icon:text-button-destructive-primary-icon_hover',
       ].join(' '),
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -146,25 +160,28 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-success-300 tw:ring-inset',
+        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-warning-300 tw:ring-inset',
+        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-brand tw:ring-inset',
+        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },
@@ -193,6 +210,8 @@ export interface CommonProps {
   showTextWhileLoading?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
+  /** Omits the default focus outline when the surrounding UI intentionally does not use one */
+  hideFocusOutline?: boolean;
 }
 
 /**
@@ -236,123 +255,140 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const Button = ({
-  size = 'sm',
-  color = 'primary',
-  children,
-  className,
-  noTextPadding,
-  ellipsis,
-  iconLeading: IconLeading,
-  iconTrailing: IconTrailing,
-  isDisabled: disabled,
-  isLoading: loading,
-  showTextWhileLoading,
-  ...otherProps
-}: Props) => {
-  const href = 'href' in otherProps ? otherProps.href : undefined;
-  const Component = href ? AriaLink : AriaButton;
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
+  function Button(
+    {
+      size = 'sm',
+      color = 'primary',
+      children,
+      className,
+      hideFocusOutline,
+      noTextPadding,
+      ellipsis,
+      iconLeading: IconLeading,
+      iconTrailing: IconTrailing,
+      isDisabled: disabled,
+      isLoading: loading,
+      showTextWhileLoading,
+      ...otherProps
+    }: Props,
+    ref
+  ) {
+    const href = 'href' in otherProps ? otherProps.href : undefined;
+    const Component = href ? AriaLink : AriaButton;
 
-  const isIcon = (IconLeading || IconTrailing) && !children;
-  const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-    color
-  );
-  noTextPadding = isLinkType || noTextPadding;
+    const isIcon = (IconLeading || IconTrailing) && !children;
+    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
+      color
+    );
+    noTextPadding = isLinkType || noTextPadding;
 
-  let props = {};
+    let props = {};
 
-  if (href) {
-    props = {
-      ...otherProps,
+    if (href) {
+      props = {
+        ...otherProps,
 
-      href: disabled ? undefined : href,
-    };
-  } else {
-    props = {
-      ...otherProps,
+        href: disabled ? undefined : href,
+      };
+    } else {
+      props = {
+        ...otherProps,
 
-      type: otherProps.type || 'button',
-      isPending: loading,
-    };
+        type: otherProps.type || 'button',
+        isPending: loading,
+      };
+    }
+
+    return (
+      <Component
+        data-icon-only={isIcon ? true : undefined}
+        data-loading={loading ? true : undefined}
+        // `Component` is `typeof AriaButton | typeof AriaLink`, chosen at runtime by
+        // `href`. TS can't narrow which branch applies here, so it wants a ref that
+        // satisfies both `RefObject<HTMLButtonElement>` and `RefObject<HTMLAnchorElement>`
+        // simultaneously (an intersection), which `ref`'s real type — a union — can never
+        // satisfy. The cast is safe: at runtime the ref always lands on whichever concrete
+        // DOM node `Component` actually renders.
+        ref={ref as never}
+        {...props}
+        className={cx(
+          styles.common.root,
+          // A base reset also suppresses the native outline when React Aria's
+          // data-focus-visible state is absent, such as a forced browser pseudo-state.
+          hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
+          styles.sizes[size].root,
+          styles.colors[color].root,
+          isLinkType && styles.sizes[size].linkRoot,
+          ellipsis && 'tw:min-w-0',
+          (loading || (href && (disabled || loading))) &&
+            'tw:pointer-events-none',
+          // If in `loading` state, hide everything except the loading icon
+          // (and text if `showTextWhileLoading` is true).
+          loading &&
+            (showTextWhileLoading
+              ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
+              : 'tw:[&>*:not([data-icon=loading])]:invisible'),
+          className
+        )}
+        isDisabled={disabled}>
+        {/* Leading icon */}
+        {isValidElement(IconLeading) && IconLeading}
+        {isReactComponent(IconLeading) && (
+          <IconLeading className={styles.common.icon} data-icon="leading" />
+        )}
+
+        {loading && (
+          <svg
+            className={cx(
+              styles.common.icon,
+              !showTextWhileLoading &&
+                'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
+            )}
+            data-icon="loading"
+            fill="none"
+            viewBox="0 0 20 20">
+            {/* Background circle */}
+            <circle
+              className="tw:stroke-current tw:opacity-30"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeWidth="2"
+            />
+            {/* Spinning circle */}
+            <circle
+              className="tw:origin-center tw:animate-spin tw:stroke-current"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeDasharray="12.5 50"
+              strokeLinecap="round"
+              strokeWidth="2"
+            />
+          </svg>
+        )}
+
+        {children && (
+          <span
+            data-text
+            className={cx(
+              'tw:transition-inherit-all',
+              !noTextPadding && 'tw:px-0.5',
+              ellipsis && 'tw:truncate tw:min-w-0'
+            )}>
+            {children}
+          </span>
+        )}
+
+        {/* Trailing icon */}
+        {isValidElement(IconTrailing) && IconTrailing}
+        {isReactComponent(IconTrailing) && (
+          <IconTrailing className={styles.common.icon} data-icon="trailing" />
+        )}
+      </Component>
+    );
   }
-
-  return (
-    <Component
-      data-icon-only={isIcon ? true : undefined}
-      data-loading={loading ? true : undefined}
-      {...props}
-      className={cx(
-        styles.common.root,
-        styles.sizes[size].root,
-        styles.colors[color].root,
-        isLinkType && styles.sizes[size].linkRoot,
-        ellipsis && 'tw:min-w-0',
-        (loading || (href && (disabled || loading))) &&
-          'tw:pointer-events-none',
-        // If in `loading` state, hide everything except the loading icon (and text if `showTextWhileLoading` is true).
-        loading &&
-          (showTextWhileLoading
-            ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
-            : 'tw:[&>*:not([data-icon=loading])]:invisible'),
-        className
-      )}
-      isDisabled={disabled}>
-      {/* Leading icon */}
-      {isValidElement(IconLeading) && IconLeading}
-      {isReactComponent(IconLeading) && (
-        <IconLeading className={styles.common.icon} data-icon="leading" />
-      )}
-
-      {loading && (
-        <svg
-          className={cx(
-            styles.common.icon,
-            !showTextWhileLoading &&
-              'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
-          )}
-          data-icon="loading"
-          fill="none"
-          viewBox="0 0 20 20">
-          {/* Background circle */}
-          <circle
-            className="tw:stroke-current tw:opacity-30"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeWidth="2"
-          />
-          {/* Spinning circle */}
-          <circle
-            className="tw:origin-center tw:animate-spin tw:stroke-current"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeDasharray="12.5 50"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
-      )}
-
-      {children && (
-        <span
-          data-text
-          className={cx(
-            'tw:transition-inherit-all',
-            !noTextPadding && 'tw:px-0.5',
-            ellipsis && 'tw:truncate tw:min-w-0'
-          )}>
-          {children}
-        </span>
-      )}
-
-      {/* Trailing icon */}
-      {isValidElement(IconTrailing) && IconTrailing}
-      {isReactComponent(IconTrailing) && (
-        <IconTrailing className={styles.common.icon} data-icon="trailing" />
-      )}
-    </Component>
-  );
-};
+);

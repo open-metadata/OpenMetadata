@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { BadgeColors } from '@openmetadata/ui-core-components';
 import { EntityType } from '../enums/entity.enum';
 import {
+  CacheState,
   ContextSection,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+
+export const CACHE_STATE_BADGE_COLOR: Record<CacheState, BadgeColors> = {
+  [CacheState.Fresh]: 'gray',
+  [CacheState.Stale]: 'gray',
+  [CacheState.Generating]: 'warning',
+  [CacheState.Failed]: 'error',
+};
 
 export const PERSONA_CONTEXT_ASSET_SECTIONS = [
   ContextSection.Description,

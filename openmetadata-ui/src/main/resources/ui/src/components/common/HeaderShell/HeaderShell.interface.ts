@@ -37,6 +37,8 @@ export interface HeaderShellProps {
   hasStats?: boolean;
   /** Right-aligned actions (search, buttons, view toggle). */
   actions?: ReactNode;
+  /** Classes applied to the actions container. */
+  actionsClassName?: string;
   /** Footer row rendered full-width under the header, typically the tab strip. */
   footer?: ReactNode;
   /** Visual treatment. 'gradient' applies the brand-tinted card per Figma. */

@@ -69,7 +69,7 @@ import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
-import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflows.svg';
+import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
   GlobalSettingOptions,
@@ -648,20 +648,6 @@ class GlobalSettingsClassBase {
                 icon: ColumnIcon,
               },
             ].sort((a, b) => a.label.localeCompare(b.label)),
-          },
-          {
-            label: t('label.search-mapping-plural'),
-            description: t('message.page-sub-header-for-search-index-mappings'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_MAPPINGS}`,
-            icon: PreferencesSearchIcon,
-          },
-          {
-            label: t('label.ai'),
-            description: t('message.page-sub-header-for-ai-setting'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.AI_SETTINGS}`,
-            icon: MetadataIcon,
           },
           {
             label: t('label.lineage'),

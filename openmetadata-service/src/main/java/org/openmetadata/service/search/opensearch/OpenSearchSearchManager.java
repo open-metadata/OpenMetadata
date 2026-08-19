@@ -32,10 +32,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -57,6 +59,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -168,20 +171,20 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       throw new IOException("OpenSearch client is not available");
     }
 
+    Query sourceUrlQuery =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                            m ->
+                                m.term(
+                                    t -> t.field("sourceUrl").value(FieldValue.of(sourceUrl))))));
     SearchRequest searchRequest =
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(
-                        q ->
-                            q.bool(
-                                b ->
-                                    b.must(
-                                        m ->
-                                            m.term(
-                                                t ->
-                                                    t.field("sourceUrl")
-                                                        .value(FieldValue.of(sourceUrl)))))));
+                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -203,26 +206,23 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       throw new IOException("OpenSearch client is not available");
     }
 
+    Query fieldQuery =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
+                            .filter(
+                                f ->
+                                    f.term(
+                                        t -> t.field("deleted").value(FieldValue.of(deleted))))));
     SearchRequest searchRequest =
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(
-                        q ->
-                            q.bool(
-                                b ->
-                                    b.must(
-                                            m ->
-                                                m.wildcard(
-                                                    w -> w.field(fieldName).value(fieldValue)))
-                                        .filter(
-                                            f ->
-                                                f.term(
-                                                    t ->
-                                                        t.field("deleted")
-                                                            .value(FieldValue.of(deleted)))))));
+                    .query(restrictToOrgWideMemories(fieldQuery)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -582,6 +582,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         requestBuilder.from(request.getFrom());
         requestBuilder.size(request.getSize());
+        applyContextMemoryVisibility(subjectContext, requestBuilder);
 
         // Add aggregations for NLQ query
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
@@ -866,7 +867,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+      return client.search(
+          s -> s.index(indexName).query(restrictToOrgWideMemories(boolQuery)).size(1000),
+          JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -880,27 +883,32 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
    * memories. Non-memory documents are left untouched.
    */
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built outside {@link
+   * OpenSearchRequestBuilder} (which applies the same default in its {@code build}). These paths
+   * take no {@link SubjectContext}, so they cannot tell whose restricted memory a document is and
+   * must fail closed. Non-memory documents are unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext);
     if (visibilityBuilder != null) {
-      Query visibilityQuery = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
-      Query existingQuery = requestBuilder.query();
-      if (existingQuery != null) {
-        Query combinedQuery =
-            Query.of(
-                qb ->
-                    qb.bool(
-                        b -> {
-                          b.must(existingQuery);
-                          b.filter(visibilityQuery);
-                          return b;
-                        }));
-        requestBuilder.query(combinedQuery);
-      } else {
-        requestBuilder.query(visibilityQuery);
-      }
+      requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
+    }
+    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
+    // OpenSearchRequestBuilder#build falls back to its org-wide-only default instead of running the
+    // search unfiltered.
+    if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
     }
   }
 
@@ -1071,15 +1079,11 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchSettings searchSettings,
       String clusterAlias)
       throws IOException {
-    OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
-
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
-    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      SearchResponse<JsonData> searchResponse =
+          executeRankedSearch(request, subjectContext, searchSettings, clusterAlias);
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toJsonString()).build();
@@ -1095,6 +1099,97 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  /**
+   * Runs the ranked query, then re-runs it without the fuzzy stage when the query turns out to name
+   * an entity exactly.
+   *
+   * <p>See {@link SearchRankingHelper#isExactIdentifierLookup}: the fuzzy stage admits documents
+   * rather than only scoring them, so asking for an entity by its fully-qualified name also returns
+   * its siblings (#31227). Whether that recall is wanted cannot be decided from the query alone — a
+   * typo is "one token off" exactly as a sibling is — so it is decided from the result set, which
+   * only exists once the search has run.
+   *
+   * <p>The widened query runs first, so an ordinary search costs one round-trip and keeps the
+   * results it has today. Only an exact identifier lookup pays a second.
+   */
+  private SearchResponse<JsonData> executeRankedSearch(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    return SearchRankingHelper.searchWithIdentifierPrecision(
+        request.getQuery(),
+        searchSettings,
+        new SearchRankingHelper.SearchWindow(
+            request.getFrom() == null ? 0 : request.getFrom(),
+            request.getSize() == null ? 0 : request.getSize(),
+            !nullOrEmpty(request.getSearchAfter())),
+        (settings, window) ->
+            executeSearchRequest(windowed(request, window), subjectContext, settings, clusterAlias),
+        OpenSearchSearchManager::hitIdentifiers);
+  }
+
+  /**
+   * The same request restricted to a different window, so the identity probe can read the top of
+   * the ranking whichever page was asked for. The probe window is not cursor paged, so it drops any
+   * {@code search_after}: leaving the cursor on would scroll the probe to wherever the caller had
+   * got to and it would judge the same window the caller asked for, which is the tear it exists to
+   * prevent. Returns the original when nothing needs changing, which is the common case.
+   */
+  private static org.openmetadata.schema.search.SearchRequest windowed(
+      org.openmetadata.schema.search.SearchRequest request,
+      SearchRankingHelper.SearchWindow window) {
+    Integer currentFrom = request.getFrom();
+    Integer currentSize = request.getSize();
+    boolean sameWindow =
+        currentFrom != null
+            && currentFrom == window.from()
+            && currentSize != null
+            && currentSize == window.size();
+    boolean keepsCursor = window.cursorPaged() || nullOrEmpty(request.getSearchAfter());
+    if (sameWindow && keepsCursor) {
+      return request;
+    }
+    org.openmetadata.schema.search.SearchRequest copy =
+        JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
+            .withFrom(window.from())
+            .withSize(window.size());
+    return window.cursorPaged() ? copy : copy.withSearchAfter(List.of());
+  }
+
+  /**
+   * {@code name} and {@code fullyQualifiedName} of the returned hits, deserialised lazily.
+   *
+   * <p>This runs on every search response, so materialising every hit's source here would add a
+   * full parse per request that the response serialisation then repeats. The stream stops at the
+   * first hit whose identifier matches the query.
+   */
+  private static Stream<String> hitIdentifiers(SearchResponse<JsonData> response) {
+    if (response.hits() == null || response.hits().hits() == null) {
+      return Stream.empty();
+    }
+    return response.hits().hits().stream()
+        .limit(SearchRankingHelper.identityProbeSize())
+        .map(Hit::source)
+        .filter(Objects::nonNull)
+        .flatMap(source -> SearchRankingHelper.identifiersFrom(source.toJson().asJsonObject()));
+  }
+
+  private SearchResponse<JsonData> executeSearchRequest(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    OpenSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    try {
+      return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1417,7 +1512,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
 
     baseQueryBuilder.minimumShouldMatch(1);
-    Query originalQuery = baseQueryBuilder.build();
+    // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
+    // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
+    // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
+    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1673,7 +1771,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1728,7 +1826,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1838,7 +1936,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(finalBaseQuery)
+                    .query(restrictToOrgWideMemories(finalBaseQuery))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();

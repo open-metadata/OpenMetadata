@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import es.co.elastic.clients.elasticsearch._types.Script;
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
@@ -10,6 +12,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.QueryStringQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.json.JsonData;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -400,6 +403,52 @@ public class ElasticQueryBuilder {
 
   public static Query nestedQuery(String path, Query query) {
     return Query.of(q -> q.nested(n -> n.path(path).query(query).ignoreUnmapped(true)));
+  }
+
+  public static Query constantScoreQuery(Query filter, Float boost) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                cs -> {
+                  cs.filter(filter);
+                  if (boost != null) {
+                    cs.boost(boost);
+                  }
+                  return cs;
+                }));
+  }
+
+  public static Query matchBoolPrefixQuery(
+      String field, String query, String minimumShouldMatch, String queryName) {
+    return Query.of(
+        q ->
+            q.matchBoolPrefix(
+                m -> {
+                  m.field(field).query(query);
+                  if (minimumShouldMatch != null) {
+                    m.minimumShouldMatch(minimumShouldMatch);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  return m;
+                }));
+  }
+
+  public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
+    Map<String, JsonData> scriptParams = new HashMap<>();
+    params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    return Query.of(
+        q ->
+            q.scriptScore(
+                ss ->
+                    ss.query(query)
+                        .script(
+                            Script.of(
+                                s ->
+                                    s.source(script -> script.scriptString(source))
+                                        .lang(ScriptLanguage.Painless)
+                                        .params(scriptParams)))));
   }
 
   public static Query functionScoreQuery(

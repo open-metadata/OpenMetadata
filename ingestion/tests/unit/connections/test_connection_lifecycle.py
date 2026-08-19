@@ -18,6 +18,8 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source import connections as connections_module
 
@@ -96,6 +98,23 @@ def test_first_build_does_not_log_reopen(caplog):
     assert not any("opening a new client" in r.message for r in caplog.records)
 
 
+def test_failed_build_releases_what_get_client_registered():
+    """A ``_get_client`` that raises after registering a teardown still unwinds:
+    the caller never receives a client, so nothing is left for it to close."""
+    released = []
+
+    class HalfBuiltConnection(BaseConnection):
+        def _get_client(self):
+            self._on_close(lambda: released.append("engine"))
+            raise RuntimeError("client construction failed")
+
+    conn = HalfBuiltConnection(_service_connection())
+    with pytest.raises(RuntimeError):
+        _ = conn.client
+
+    assert released == ["engine"]
+
+
 def test_create_connection_returns_owner():
     with patch.object(connections_module, "_get_connection_class_from_spec", return_value=FakeConnection):
         conn = connections_module.create_connection(_service_connection())
@@ -135,3 +154,29 @@ def test_run_test_connection_reuses_without_rebuild_or_close():
     assert owner.build_count == 1
     assert owner.client is client
     assert client.closed is False
+
+
+def test_close_on_failure_releases_the_owner_when_the_test_raises():
+    owner = FakeConnection(_service_connection())
+    client = owner.client
+
+    with pytest.raises(RuntimeError, match="cannot connect"), connections_module.close_on_failure(owner):
+        raise RuntimeError("cannot connect")
+
+    assert client.closed is True
+
+
+def test_close_on_failure_keeps_the_owner_when_the_test_passes():
+    owner = FakeConnection(_service_connection())
+    client = owner.client
+
+    with connections_module.close_on_failure(owner):
+        pass
+
+    assert client.closed is False
+    assert owner.build_count == 1
+
+
+def test_close_on_failure_tolerates_an_unowned_connection():
+    with pytest.raises(RuntimeError), connections_module.close_on_failure(None):
+        raise RuntimeError("cannot connect")

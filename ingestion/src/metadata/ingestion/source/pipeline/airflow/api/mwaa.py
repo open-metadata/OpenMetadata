@@ -20,6 +20,7 @@ from urllib.parse import quote
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.source.pipeline.airflow.api.exceptions import AirflowApiResponseError
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
     AirflowApiDagRun,
@@ -94,6 +95,17 @@ class MWAAClient:
         # Return a simple response to indicate connectivity
         return {"version": "MWAA", "status": "connected"}
 
+    def test_get_version(self) -> Dict:  # noqa: UP006
+        """Prove the environment is reachable and the credentials work.
+
+        ``get_version`` is a hardcoded stub - MWAA exposes no version endpoint - so
+        it proves nothing and cannot gate a connection. Listing one DAG is the
+        smallest call that really exercises the IAM credentials, the environment
+        name and the route; ``_invoke_rest_api`` re-raises whatever AWS returns.
+        """
+        self._invoke_rest_api("/dags", query={"limit": "1"})
+        return {"version": "MWAA", "status": "connected"}
+
     def list_dags(self, limit: int = 100, offset: int = 0) -> Dict:  # noqa: UP006
         """List DAGs with pagination"""
         query = {"limit": str(limit), "offset": str(offset)}
@@ -126,21 +138,22 @@ class MWAAClient:
             query = {"limit": str(limit), "offset": str(offset)}
             response = self._invoke_rest_api(path, query=query)
 
-            if not response:
-                break
+            if not isinstance(response, dict) or not isinstance(response.get(key), list):
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
 
-            page = response.get(key, [])
+            page = response[key]
+            total_entries = response.get("total_entries")
+            if total_entries is not None and type(total_entries) is not int:
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
             if not page:
+                if total_entries is not None and offset < total_entries:
+                    raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
                 break
 
             result.extend(page)
-            offset += limit
+            offset += len(page)
 
-            total_entries = response.get("total_entries")
-            if total_entries is not None:
-                if offset >= total_entries:
-                    break
-            elif len(page) < limit:
+            if total_entries is not None and offset >= total_entries:
                 break
 
         return result
@@ -173,13 +186,10 @@ class MWAAClient:
         if isinstance(schedule, dict):
             schedule = schedule.get("value")
 
-        # Get tasks for the DAG
-        try:
-            task_response = self.get_dag_tasks(dag_id)
-            tasks_data = task_response.get("tasks", [])
-        except Exception as exc:
-            logger.warning(f"Could not fetch tasks for DAG {dag_id}: {exc}")
-            tasks_data = []
+        task_response = self.get_dag_tasks(dag_id)
+        if not isinstance(task_response, dict) or not isinstance(task_response.get("tasks"), list):
+            raise AirflowApiResponseError(f"Invalid tasks response for DAG {dag_id}")
+        tasks_data = task_response["tasks"]
 
         tasks = [
             AirflowApiTask(

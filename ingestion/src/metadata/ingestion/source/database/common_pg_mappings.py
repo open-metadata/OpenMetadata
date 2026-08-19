@@ -35,6 +35,7 @@ ischema_names.update(
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
         "bpchar": SqlAlchemyString,
+        "citext": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),

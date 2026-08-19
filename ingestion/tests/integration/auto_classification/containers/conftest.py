@@ -14,6 +14,7 @@ import csv
 import io
 import json
 import uuid
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -432,15 +433,65 @@ def pii_spacy_recognizer() -> Recognizer:
     )
 
 
+PII_CLASSIFICATION_FQN = "PII"
+PII_SENSITIVE_FQN = "PII.Sensitive"
+PII_NON_SENSITIVE_FQN = "PII.NonSensitive"
+
+
+def snapshot_classification(metadata: OpenMetadata, fqn: str) -> CreateClassificationRequest:
+    """Capture a classification's current definition as a request that restores it verbatim."""
+    classification = metadata.get_by_name(entity=Classification, fqn=fqn, fields=["autoClassificationConfig"])
+    # The entity and the request generate distinct AutoClassificationConfig classes, so the instance
+    # has to be round-tripped through JSON rather than handed over directly.
+    auto_classification_config = (
+        classification.autoClassificationConfig.model_dump(mode="json")
+        if classification.autoClassificationConfig
+        else None
+    )
+
+    return CreateClassificationRequest(
+        name=classification.name,
+        displayName=classification.displayName,
+        description=classification.description,
+        provider=classification.provider,
+        mutuallyExclusive=classification.mutuallyExclusive,
+        autoClassificationConfig=auto_classification_config,
+    )
+
+
+def snapshot_tag(metadata: OpenMetadata, fqn: str) -> CreateTagRequest:
+    """Capture a tag's current definition as a request that restores it verbatim."""
+    tag = metadata.get_by_name(entity=Tag, fqn=fqn, fields=["recognizers"])
+
+    return CreateTagRequest(
+        name=tag.name,
+        displayName=tag.displayName,
+        description=tag.description,
+        classification=fqn.rsplit(".", 1)[0],
+        style=tag.style,
+        provider=tag.provider,
+        mutuallyExclusive=tag.mutuallyExclusive,
+        recognizers=tag.recognizers,
+        autoClassificationEnabled=tag.autoClassificationEnabled,
+        autoClassificationPriority=tag.autoClassificationPriority,
+    )
+
+
+# The PII classification is global server state shared by every auto-classification suite in the
+# session. These fixtures overwrite its recognizers, so they must restore the seeded definition on
+# teardown -- ingestion/tests/integration/auto_classification/databases asserts against the
+# recognizers shipped in piiTagsWithRecognizers.json and runs after this module.
 @pytest.fixture(scope="module")
 def pii_classification(
     metadata: OpenMetadata[Classification, CreateClassificationRequest],
-) -> Classification:
+) -> Generator[Classification, None, None]:
+    seeded = snapshot_classification(metadata, PII_CLASSIFICATION_FQN)
     create_classification_request = CreateClassificationRequestFactory.create(
         fqn="PII",
         autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority.value,
     )
-    return metadata.create_or_update(create_classification_request)
+    yield metadata.create_or_update(create_classification_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")
@@ -451,7 +502,8 @@ def sensitive_pii_tag(
     credit_card_recognizer: Recognizer,
     us_ssn_recognizer: Recognizer,
     pii_spacy_recognizer: Recognizer,
-) -> Tag:
+) -> Generator[Tag, None, None]:
+    seeded = snapshot_tag(metadata, PII_SENSITIVE_FQN)
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="Sensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
@@ -463,7 +515,8 @@ def sensitive_pii_tag(
             pii_spacy_recognizer,
         ],
     )
-    return metadata.create_or_update(create_tag_request)
+    yield metadata.create_or_update(create_tag_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")
@@ -472,7 +525,8 @@ def non_sensitive_pii_tag(
     pii_classification: Classification,
     phone_recognizer: Recognizer,
     date_recognizer: Recognizer,
-) -> Tag:
+) -> Generator[Tag, None, None]:
+    seeded = snapshot_tag(metadata, PII_NON_SENSITIVE_FQN)
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="NonSensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
@@ -482,7 +536,8 @@ def non_sensitive_pii_tag(
             date_recognizer,
         ],
     )
-    return metadata.create_or_update(create_tag_request)
+    yield metadata.create_or_update(create_tag_request)
+    metadata.create_or_update(seeded)
 
 
 @pytest.fixture(scope="module")

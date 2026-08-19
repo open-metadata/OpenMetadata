@@ -36,6 +36,7 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import ErrorPlaceHolderIngestion from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
@@ -46,14 +47,21 @@ import { useAgentPermissions } from '../hooks/useAgentPermissions';
 import AgentGroup from './AgentGroup.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
+const AGENTS_EMPTY_CARD_CLASS =
+  'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl';
+
 interface MetadataAgentsViewProps {
   addAgentSlot?: ReactNode;
   agents: Agent[];
   ingestionPipelineList: IngestionPipeline[];
+  /** First load — spans the airflow status call and the pipeline fetch it gates. */
+  isLoading?: boolean;
   serviceCategory: ServiceCategory;
   serviceDetails: ServicesType;
   serviceName: string;
   showAddAgent: boolean;
+  /** True while the agents list is being refetched, so the refresh control can show it. */
+  isRefreshing?: boolean;
   onRefresh: () => void;
 }
 
@@ -61,6 +69,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
+  isLoading,
+  isRefreshing,
   serviceCategory,
   serviceDetails,
   serviceName,
@@ -69,7 +79,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { platform } = useAirflowStatus();
+  const { isAirflowAvailable, isFetchingStatus, platform } = useAirflowStatus();
   const { theme } = useApplicationStore();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
@@ -83,10 +93,37 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { rawText, isLoading: isLogsLoading } = useAgentLogs(
-    logsFor?.id ?? '',
+  // The `agents` prop updates live (service progress stream), so read the
+  // current status of the open agent from it rather than the click-time
+  // snapshot — this is what tells polling when the run has finished.
+  const liveLogsAgent = useMemo(
+    () => agents.find((agent) => agent.id === logsFor?.id) ?? logsFor,
+    [agents, logsFor]
+  );
+  const isLogsAgentActive =
+    liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
+
+  // Same reason for the run history drawer — its "Run now" guard has to see the
+  // status the agent has now, not the one it had when the drawer was opened.
+  const liveRunsAgent = useMemo(
+    () =>
+      agents.find((agent) => agent.id === runsFor?.agent.id) ?? runsFor?.agent,
+    [agents, runsFor]
+  );
+
+  const {
+    rawText,
+    isLoading: isLogsLoading,
+    isLive: isLogsRunLive,
+    streamHealth,
+    streamTruncated,
+    streamError,
+  } = useAgentLogs(
+    logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
-    Boolean(logsFor)
+    Boolean(logsFor),
+    isLogsAgentActive,
+    liveLogsAgent?.currentRunId
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -118,24 +155,17 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [deleteTarget, onRefresh]);
 
   const onAction = useCallback(
-    (action: string, agent: Agent) => {
+    (action: string, agent: Agent): void | Promise<void> => {
       switch (action) {
         case 'run':
-          void runAgent(agent);
-
-          break;
+          return runAgent(agent);
         case 'redeploy':
-          void redeployAgent(agent);
-
-          break;
+          return redeployAgent(agent);
         case 'kill':
-          void killAgent(agent);
-
-          break;
+          return killAgent(agent);
         case 'pause':
-          void toggleAgent(agent);
-
-          break;
+        case 'resume':
+          return toggleAgent(agent);
         case 'edit':
           navigate(
             connectionsRouterClassBase.getEditIngestionPath(
@@ -177,10 +207,23 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
-  const emptyPlaceholder = useMemo(
-    () => getErrorPlaceHolder(agents.length, platform === DISABLED, theme),
-    [agents.length, platform, theme]
-  );
+  const emptyPlaceholder = useMemo(() => {
+    // The pipeline fetch is skipped while the service is unreachable, so an empty list here means
+    // "could not load", not "none exist" — say which.
+    if (!isFetchingStatus && !isAirflowAvailable) {
+      return (
+        <ErrorPlaceHolderIngestion cardClassName={AGENTS_EMPTY_CARD_CLASS} />
+      );
+    }
+
+    return getErrorPlaceHolder(
+      agents.length,
+      platform === DISABLED,
+      theme,
+      undefined,
+      AGENTS_EMPTY_CARD_CLASS
+    );
+  }, [agents.length, isAirflowAvailable, isFetchingStatus, platform, theme]);
 
   const extraMenuItems = useMemo(
     () =>
@@ -228,17 +271,21 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
         icon={<Code01 size={18} />}
+        isLoading={isLoading}
+        isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}
+        onRefresh={onRefresh}
         onRun={onRun}
         onRunDetails={onRunDetails}
       />
-      {runsFor && (
+      {runsFor && liveRunsAgent && (
         <RunHistoryDrawer
           open
-          agent={runsFor.agent}
+          agent={liveRunsAgent}
           initialRunId={runsFor.runId}
+          permissions={agentPermissions?.[liveRunsAgent.fqn]}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
             setLogsFor(agent);
@@ -252,8 +299,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
+          mode={isLogsRunLive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
+          streamError={streamError}
+          streamHealth={streamHealth}
+          streamTruncated={streamTruncated}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
           totalLines={rawText.split('\n').length}
           onClose={() => setLogsFor(null)}

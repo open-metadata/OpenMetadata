@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -42,6 +42,7 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useAppRoutesRegistry } from '../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
@@ -85,6 +86,9 @@ export const PersonaDetailsPage = () => {
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const hasNonDefaultMode = useAppRoutesRegistry(
+    (state) => Object.keys(state.routes).length > 0
+  );
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -99,9 +103,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories().find(
-        (category) => category.key === activeCategory
-      );
+      const category = getCustomizePageCategories()
+        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
+        .find((category) => category.key === activeCategory);
 
       if (category) {
         breadcrumbList.push({
@@ -112,7 +116,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn]);
+  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
@@ -343,7 +347,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[0, 16]}>
+      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
@@ -377,7 +381,7 @@ export const PersonaDetailsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          <DescriptionV1
+          <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}

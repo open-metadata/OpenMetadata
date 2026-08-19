@@ -156,7 +156,7 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Fill the form - use locator for MUI TextField input
+      // Fill the form - use locator for the text field input
       const dpName = `PW-DataProduct-${uuid()}`;
       await page.getByTestId('name').locator('input').fill(dpName);
 

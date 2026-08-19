@@ -62,6 +62,7 @@ public class CreateDataProductTool implements McpTool {
     if (params.containsKey("tags")) {
       create.setTags(CommonUtils.buildTagLabels(params.get("tags")));
     }
+    create.setExtension(CommonUtils.extension(params));
 
     final DataProductMapper mapper = new DataProductMapper();
     final DataProduct entity =
@@ -74,6 +75,8 @@ public class CreateDataProductTool implements McpTool {
     repo.prepareInternal(entity, false);
 
     final String userName = CommonUtils.principal(securityContext);
+    // createOrUpdate silently overwrites an existing data product with this name —
+    // tools.json marks this tool destructiveHint:true for that reason.
     final RestUtil.PutResponse<DataProduct> response =
         repo.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);

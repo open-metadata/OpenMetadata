@@ -80,8 +80,57 @@ describe('HeaderShell', () => {
       />
     );
 
-    expect(container.querySelector('.tw\\:ml-auto')).not.toBeNull();
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass('tw:shrink-0');
     expect(screen.getByTestId('actions')).toBeInTheDocument();
+  });
+
+  it('truncates a long string title without shrinking adjacent content', () => {
+    const actionLabel = 'Action';
+    const badgeLabel = 'Badge';
+    const title = 'A'.repeat(200);
+    render(
+      <HeaderShell
+        actions={<button>{actionLabel}</button>}
+        badge={<span data-testid="badge">{badgeLabel}</span>}
+        title={title}
+      />
+    );
+
+    const heading = screen.getByRole('heading', { level: 3, name: title });
+    const titleRow = heading.parentElement?.parentElement;
+    const titleContent = titleRow?.parentElement;
+
+    expect(heading).toHaveClass('tw:min-w-0', 'tw:truncate');
+    expect(heading.parentElement).toHaveClass('tw:truncate');
+    expect(titleRow).toHaveClass('tw:min-w-0');
+    expect(titleContent).toHaveClass('tw:min-w-0', 'tw:flex-1');
+    expect(screen.getByTestId('badge').parentElement).toHaveClass(
+      'tw:shrink-0'
+    );
+    expect(
+      screen.getByRole('button', { name: actionLabel }).parentElement
+    ).toHaveClass('tw:shrink-0');
+  });
+
+  it('renders a zero-valued badge', () => {
+    render(<HeaderShell badge={0} title="Badge count" />);
+
+    expect(screen.getByText('0')).toHaveClass('tw:shrink-0');
+  });
+
+  it('applies a custom class name to the actions container', () => {
+    const { container } = render(
+      <HeaderShell
+        actions={<button data-testid="actions">Add</button>}
+        actionsClassName="tw:min-w-0 tw:flex-1"
+        title="With Custom Actions"
+      />
+    );
+
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass(
+      'tw:min-w-0',
+      'tw:flex-1'
+    );
   });
 
   it('applies the Figma gradient and brand border on the gradient variant', () => {
@@ -90,7 +139,7 @@ describe('HeaderShell', () => {
     const { className } = screen.getByTestId('header-shell');
 
     expect(className).toContain('linear-gradient');
-    expect(className).toContain('border-[#EFF8FF]');
+    expect(className).toContain('border-brand-50');
   });
 
   it('does not apply the gradient on the default flat variant', () => {

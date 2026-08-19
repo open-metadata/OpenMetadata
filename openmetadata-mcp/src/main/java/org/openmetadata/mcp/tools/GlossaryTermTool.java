@@ -43,6 +43,7 @@ public class GlossaryTermTool implements McpTool {
     if (params.containsKey("reviewers")) {
       createGlossaryTerm.setReviewers(CommonUtils.getTeamsOrUsers(params.get("reviewers")));
     }
+    createGlossaryTerm.setExtension(CommonUtils.extension(params));
 
     GlossaryTerm glossaryTerm =
         glossaryTermMapper.createToEntity(
@@ -63,6 +64,8 @@ public class GlossaryTermTool implements McpTool {
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 
     String userName = securityContext.getUserPrincipal().getName();
+    // createOrUpdate silently overwrites an existing term at this FQN — tools.json marks
+    // this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<GlossaryTerm> response =
         glossaryTermRepository.createOrUpdate(null, glossaryTerm, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);

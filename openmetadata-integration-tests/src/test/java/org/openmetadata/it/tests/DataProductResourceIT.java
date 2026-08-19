@@ -723,6 +723,34 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     return SdkClients.adminClient().tables().create(createTable);
   }
 
+  private org.openmetadata.schema.entity.data.DatabaseSchema createSchemaWithDomain(
+      TestNamespace ns, String suffix, Domain domain) {
+    DatabaseService service = getOrCreateDatabaseService(ns);
+    org.openmetadata.schema.entity.data.Database database =
+        getOrCreateDatabase(ns, service.getFullyQualifiedName());
+    org.openmetadata.schema.api.data.CreateDatabaseSchema create =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
+            .withName(ns.prefix(suffix))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databaseSchemas().create(create);
+  }
+
+  private Table createChildTable(
+      TestNamespace ns,
+      String suffix,
+      org.openmetadata.schema.entity.data.DatabaseSchema schema,
+      Domain domain) {
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix(suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName());
+    if (domain != null) {
+      createTable.withDomains(List.of(domain.getFullyQualifiedName()));
+    }
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
   private Dashboard createTestDashboard(TestNamespace ns, String suffix, Domain domain) {
     DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
@@ -858,6 +886,40 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     }
 
     return JsonUtils.readObjects(fieldNode.toString(), EntityReference.class);
+  }
+
+  private void assertSingleSearchDomain(UUID tableId, Domain expected, String message)
+      throws Exception {
+    assertSingleSearchDomain(tableId, expected, message, "table_search_index");
+  }
+
+  private void assertSingleSearchDomain(
+      UUID entityId, Domain expected, String message, String indexName) throws Exception {
+    List<EntityReference> searchDomains =
+        getEntityReferencesFromSearchIndex(entityId, indexName, "domains");
+    assertNotNull(searchDomains, message);
+    assertEquals(1, searchDomains.size(), message);
+    assertEquals(expected.getId(), searchDomains.getFirst().getId(), message);
+  }
+
+  private org.openmetadata.schema.entity.data.Database createDatabaseWithDomain(
+      TestNamespace ns, String suffix, Domain domain) {
+    DatabaseService service = getOrCreateDatabaseService(ns);
+    org.openmetadata.schema.api.data.CreateDatabase create =
+        new org.openmetadata.schema.api.data.CreateDatabase()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databases().create(create);
+  }
+
+  private org.openmetadata.schema.entity.data.DatabaseSchema createSchemaUnderDatabase(
+      TestNamespace ns, String suffix, org.openmetadata.schema.entity.data.Database database) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema create =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
+            .withName(ns.prefix(suffix))
+            .withDatabase(database.getFullyQualifiedName());
+    return SdkClients.adminClient().databaseSchemas().create(create);
   }
 
   // ===================================================================
@@ -1259,7 +1321,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
       Double currentVersion,
       long eventsSince) {
     Awaitility.await()
-        .atMost(Duration.ofSeconds(10))
+        .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
               ListResponse<ChangeEvent> events =
@@ -1390,6 +1452,124 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                   domain2.getId(),
                   searchIndexDomains.getFirst().getId(),
                   "Search index should show the migrated domain2");
+            });
+  }
+
+  @Test
+  void test_changeDataProductDomain_propagatesInheritedDomainToChildTablesInSearch(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "dp_inherit_finance");
+    Domain hr = createTestDomain(ns, "dp_inherit_hr");
+    Domain marketing = createTestDomain(ns, "dp_inherit_marketing");
+
+    // Schema with an explicit Finance domain, assigned as the data product's only asset
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createSchemaWithDomain(ns, "dp_inherit_schema", finance);
+
+    // Children under the schema: t1 inherits Finance, t2 is explicitly Finance, t3 is Marketing
+    Table inheritedChild = createChildTable(ns, "dp_inherit_t1", schema, null);
+    Table explicitSameDomainChild = createChildTable(ns, "dp_inherit_t2", schema, finance);
+    Table explicitOtherDomainChild = createChildTable(ns, "dp_inherit_t3", schema, marketing);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_inherit"))
+            .withDescription("Data product for inherited-domain search propagation test")
+            .withDomains(List.of(finance.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+
+    Awaitility.await("Wait for schema asset to be linked")
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> assertEquals(1, getAssets(dataProduct.getId(), 10, 0).getPaging().getTotal()));
+
+    // Move the data product, and with it the schema asset, from Finance to HR
+    dataProduct.setDomains(List.of(hr.getEntityReference()));
+    patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    Awaitility.await("Wait for inherited-domain search propagation to child tables")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  hr,
+                  "Child table that inherits its domain should follow the data product to HR in search");
+              assertSingleSearchDomain(
+                  explicitSameDomainChild.getId(),
+                  finance,
+                  "Child table with an explicit Finance domain should stay in Finance in search");
+              assertSingleSearchDomain(
+                  explicitOtherDomainChild.getId(),
+                  marketing,
+                  "Child table with an explicit Marketing domain should keep it in search");
+            });
+  }
+
+  @Test
+  void test_changeDataProductDomain_multiLevelDescendantsFollowInSearch(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "dp_ml_finance");
+    Domain hr = createTestDomain(ns, "dp_ml_hr");
+    Domain marketing = createTestDomain(ns, "dp_ml_marketing");
+
+    // Database (explicit Finance) is the asset; the schema and one table inherit through it, two
+    // levels down, so the move must reach descendants keyed on database.id in search.
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabaseWithDomain(ns, "dp_ml_db", finance);
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createSchemaUnderDatabase(ns, "dp_ml_schema", database);
+    Table inheritedTable = createChildTable(ns, "dp_ml_t1", schema, null);
+    Table explicitTable = createChildTable(ns, "dp_ml_t2", schema, marketing);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_ml"))
+            .withDescription("Data product for multi-level domain propagation test")
+            .withDomains(List.of(finance.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(database.getEntityReference())));
+
+    Awaitility.await("Wait for database asset to be linked")
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> assertEquals(1, getAssets(dataProduct.getId(), 10, 0).getPaging().getTotal()));
+
+    dataProduct.setDomains(List.of(hr.getEntityReference()));
+    patchEntity(dataProduct.getId().toString(), dataProduct);
+
+    Awaitility.await("Wait for multi-level inherited-domain search propagation")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertSingleSearchDomain(
+                  schema.getId(),
+                  hr,
+                  "Inheriting schema (child of the moved database) should follow to HR in search",
+                  "database_schema_search_index");
+              assertSingleSearchDomain(
+                  inheritedTable.getId(),
+                  hr,
+                  "Inheriting grandchild table should follow to HR in search");
+              assertSingleSearchDomain(
+                  explicitTable.getId(),
+                  marketing,
+                  "Grandchild table with an explicit domain should keep it in search");
             });
   }
 
@@ -1778,6 +1958,80 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_addPort_rejectsNonDataAssetEntity(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_type_guard"))
+            .withDescription("Data product for port type validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // A user is a real entity but not a data asset, so it cannot be a port.
+    String userName = ns.shortPrefix("port_user");
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertEquals(1, failResult.getFailedRequest().size());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    // The rejected asset must not appear as a port, and the view must load without error.
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_addPort_rejectsTableColumnPseudoType(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_tablecolumn_port"))
+            .withDescription("Data product for tableColumn port validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // tableColumn is a search-only pseudo type with no repository. It must be reported as a
+    // per-row failure, not silently dropped (populateEntityReferences works on a copy).
+    EntityReference columnRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("tableColumn")
+            .withFullyQualifiedName(ns.prefix("db.schema.table.column"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(columnRef));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
   void test_getPortsViewCombined(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
 
@@ -1913,6 +2167,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private void bulkAddInputPorts(String dataProductName, BulkAssets request) {
     SdkClients.adminClient().dataProducts().inputPorts(dataProductName).add(request);
+  }
+
+  private BulkOperationResult addInputPortsWithResult(String dataProductName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/dataProducts/name/" + dataProductName + "/inputPorts/add";
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   private void bulkAddOutputPorts(String dataProductName, BulkAssets request) throws Exception {

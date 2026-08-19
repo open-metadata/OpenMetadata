@@ -21,11 +21,11 @@
 }
 
 .rjsf .form-group.field {
-  margin: 12px 0;
+  margin: var(--om-space-12) 0;
 }
 
 .rjsf .property-wrapper.additional-fields ~ .button-comp {
-  margin-top: 6px;
+  margin-top: var(--om-space-6);
 }
 
 .rjsf .control-label {
@@ -34,22 +34,22 @@
 }
 
 .rjsf .control-label .required {
-  margin-left: 2px;
+  margin-left: var(--om-space-2);
   color: @failed-color;
 }
 
 .rjsf .field-description {
   color: @text-grey-muted;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   line-height: 16px;
-  margin: 2px;
+  margin: var(--om-space-2);
 }
 
 .rjsf .form-control {
   width: 100%;
-  padding: 4px 8px;
+  padding: var(--om-space-4) var(--om-space-8);
   color: @text-color;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   border: @global-border;
 
   &:hover {
@@ -70,16 +70,16 @@
   vertical-align: bottom;
   cursor: pointer;
   line-height: 20px;
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-sm);
   line-height: 20px;
   color: var(--tw-color-text-white);
-  transition-duration: 150ms;
+  transition-duration: var(--om-duration-150);
   transition-property: color, background-color, border-color,
     text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-  border-radius: 20px;
+  transition-duration: var(--om-duration-150);
+  border-radius: var(--om-radius-20);
 
   &:focus {
     outline: 2px solid transparent;
@@ -92,7 +92,7 @@
 }
 
 .rjsf .btn.array-item-remove {
-  padding: 14px;
+  padding: var(--om-space-14);
   background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwLjE4NDMgMi44MTI1SDE2LjY2ODdWMi4xMDkzOEMxNi42Njg3IDAuOTQ2MjY2IDE1LjcyMjQgMCAxNC41NTkzIDBIOC45MzQzM0M3Ljc3MTIyIDAgNi44MjQ5NSAwLjk0NjI2NiA2LjgyNDk1IDIuMTA5MzhWMi44MTI1SDMuMzA5MzNDMi4xNDYyMiAyLjgxMjUgMS4xOTk5NSAzLjc1ODc3IDEuMTk5OTUgNC45MjE4OEMxLjE5OTk1IDUuODU2IDEuODEwNSA2LjY0OTczIDIuNjUzMzEgNi45MjYzTDMuOTA3NDUgMjIuMDY1OEMzLjk5Nzc4IDIzLjE1MDQgNC45MjExMiAyNCA2LjAwOTUxIDI0SDE3LjQ4NDFDMTguNTcyNiAyNCAxOS40OTU5IDIzLjE1MDQgMTkuNTg2MyAyMi4wNjU0TDIwLjg0MDMgNi45MjYyNUMyMS42ODMyIDYuNjQ5NzMgMjIuMjkzNyA1Ljg1NiAyMi4yOTM3IDQuOTIxODhDMjIuMjkzNyAzLjc1ODc3IDIxLjM0NzQgMi44MTI1IDIwLjE4NDMgMi44MTI1Wk04LjIzMTIgMi4xMDkzOEM4LjIzMTIgMS43MjE2NyA4LjU0NjYyIDEuNDA2MjUgOC45MzQzMyAxLjQwNjI1SDE0LjU1OTNDMTQuOTQ3IDEuNDA2MjUgMTUuMjYyNSAxLjcyMTY3IDE1LjI2MjUgMi4xMDkzOFYyLjgxMjVIOC4yMzEyVjIuMTA5MzhaTTE4LjE4NDggMjEuOTQ5QzE4LjE1NDcgMjIuMzEwNSAxNy44NDcgMjIuNTkzOCAxNy40ODQxIDIyLjU5MzhINi4wMDk1MUM1LjY0Njc1IDIyLjU5MzggNS4zMzg5NyAyMi4zMTA1IDUuMzA4OTIgMjEuOTQ5NEw0LjA3MzExIDcuMDMxMjVIMTkuNDIwNUwxOC4xODQ4IDIxLjk0OVpNMjAuMTg0MyA1LjYyNUgzLjMwOTMzQzIuOTIxNjIgNS42MjUgMi42MDYyIDUuMzA5NTggMi42MDYyIDQuOTIxODhDMi42MDYyIDQuNTM0MTcgMi45MjE2MiA0LjIxODc1IDMuMzA5MzMgNC4yMTg3NUgyMC4xODQzQzIwLjU3MiA0LjIxODc1IDIwLjg4NzUgNC41MzQxNyAyMC44ODc1IDQuOTIxODhDMjAuODg3NSA1LjMwOTU4IDIwLjU3MiA1LjYyNSAyMC4xODQzIDUuNjI1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNOS4xODYxOSAyMC40NDA5TDguNDgzMDcgOS4wOTcxNUM4LjQ1OTAyIDguNzA5NTQgOC4xMjM1NCA4LjQxNDc0IDcuNzM3OCA4LjQzODg4QzcuMzUwMiA4LjQ2MjkzIDcuMDU1NDkgOC43OTY1OSA3LjA3OTQ5IDkuMTg0MTVMNy43ODI2MiAyMC41Mjc5QzcuODA1NzMgMjAuOTAwNyA4LjExNTI5IDIxLjE4NzYgOC40ODM3MyAyMS4xODc2QzguODkwOTMgMjEuMTg3NiA5LjIxMTE4IDIwLjg0NDYgOS4xODYxOSAyMC40NDA5WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTIgOC40Mzc1QzExLjYxMTcgOC40Mzc1IDExLjI5NjkgOC43NTIzMSAxMS4yOTY5IDkuMTQwNjJWMjAuNDg0NEMxMS4yOTY5IDIwLjg3MjcgMTEuNjExNyAyMS4xODc1IDEyIDIxLjE4NzVDMTIuMzg4MyAyMS4xODc1IDEyLjcwMzEgMjAuODcyNyAxMi43MDMxIDIwLjQ4NDRWOS4xNDA2MkMxMi43MDMxIDguNzUyMzEgMTIuMzg4MyA4LjQzNzUgMTIgOC40Mzc1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTYuMjYyMiA4LjQzODg3QzE1Ljg3NTUgOC40MTQ4MyAxNS41NDEgOC43MDk1MyAxNS41MTcgOS4wOTcxNEwxNC44MTM5IDIwLjQ0MDlDMTQuNzg5OSAyMC44Mjg0IDE1LjA4NDYgMjEuMTYyMSAxNS40NzIyIDIxLjE4NjFDMTUuODYgMjEuMjEwMSAxNi4xOTM0IDIwLjkxNTMgMTYuMjE3NCAyMC41Mjc5TDE2LjkyMDYgOS4xODQxNEMxNi45NDQ2IDguNzk2NTMgMTYuNjQ5OSA4LjQ2Mjg3IDE2LjI2MjIgOC40Mzg4N1oiIGZpbGw9IiMzNzM1MkYiLz4KPC9zdmc+Cg==)
     center center no-repeat;
   background-size: 50%;
@@ -102,17 +102,17 @@
   display: flex;
   align-items: center;
   width: 100%;
-  margin: -6px;
+  margin: calc(-1 * var(--om-space-6));
 }
 
 .rjsf .col-xs-5 {
   flex: 1 1 0%;
-  padding: 6px;
+  padding: var(--om-space-6);
 }
 
 .rjsf .col-xs-2 {
   width: 28px;
-  padding: 6px;
+  padding: var(--om-space-6);
 }
 
 .rjsf .errors .list-group > .list-group-item {
@@ -120,12 +120,12 @@
 }
 
 .rjsf .panel-danger.errors {
-  margin-top: 8px;
+  margin-top: var(--om-space-8);
   margin-bottom: 0;
 }
 
 .rjsf .list-group {
-  padding: 20px;
+  padding: var(--om-space-20);
 }
 
 .rjsf .list-group-item {
@@ -133,7 +133,7 @@
 }
 
 .rjsf .checkbox input[type='checkbox'] {
-  margin-right: 4px;
+  margin-right: var(--om-space-4);
   cursor: pointer;
   accent-color: @primary-color;
 }

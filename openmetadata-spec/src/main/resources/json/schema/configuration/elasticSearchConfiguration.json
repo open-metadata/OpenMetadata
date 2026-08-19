@@ -53,6 +53,12 @@
       "type": "integer",
       "default": 5
     },
+    "connectionRequestTimeoutSecs": {
+      "description": "Maximum time in seconds to wait for a connection from the HTTP connection pool",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "socketTimeoutSecs": {
       "description": "Socket Timeout in Seconds",
       "type": "integer",
@@ -68,7 +74,7 @@
       "default": 30
     },
     "maxConnPerRoute": {
-      "description": "Maximum connections per host/route in the connection pool",
+      "description": "Maximum connections per host/route in the connection pool. Keep this below maxConnTotal for multi-host clusters so one slow host cannot consume the entire pool; single-host deployments can raise it up to maxConnTotal.",
       "type": "integer",
       "default": 10
     },
@@ -191,6 +197,12 @@
           "type": "number",
           "default": 0.6
         },
+        "knnNumCandidatesMultiplier": {
+          "description": "Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the cost of latency. Defaults to 2.",
+          "type": "integer",
+          "default": 2,
+          "minimum": 1
+        },
         "providerClass": {
           "description": "Fully qualified class name of the NLQService implementation to use",
           "type": "string",
@@ -287,6 +299,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": ["scheme", "connectionTimeoutSecs", "connectionRequestTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

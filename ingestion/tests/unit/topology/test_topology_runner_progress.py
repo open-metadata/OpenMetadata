@@ -338,4 +338,28 @@ def test_declare_progress_totals_called_once_per_walk():
     _drive_leaf(runner)
     _drive_leaf(runner)
     assert runner.declared == 1
-    assert ("Table", 0, 99) in runner.progress_tracking.registry.global_counters()
+    # Two drives of two leaves each advance the leaf-declared global counter's
+    # done to 4 (see test_leaf_total_advances_global_done).
+    assert ("Table", 4, 99) in runner.progress_tracking.registry.global_counters()
+
+
+def test_leaf_total_advances_global_done():
+    """A total declared on a *leaf* entity type must have its global-counter
+    ``done`` advanced by leaf processing. Leaves have no container scope, so the
+    per-leaf ``advance_leaf`` is the only place their ``done`` can move; without
+    it a leaf-primary connector (e.g. Airflow pipelines) shows a stuck 0/total
+    denominator while the tree ``processed`` climbs."""
+    runner = _TotalsWalkRunner()
+    _drive_leaf(runner)
+    counters = {t: (d, total) for t, d, total in runner.progress_tracking.registry.global_counters()}
+    assert counters["Table"] == (2, 99)
+
+
+def test_leaf_advance_without_total_is_noop_on_global():
+    """The added per-leaf ``track`` must stay a no-op for leaf types with no
+    declared counter (every DB/dashboard connector's leaf), so their counting is
+    unchanged: the tree ``processed`` advances but no global counter appears."""
+    runner = _WalkRunner()
+    _drive_leaf(runner)
+    assert runner.progress_tracking.registry.global_counters() == []
+    assert runner.progress_tracking.registry.snapshot().processed == 2

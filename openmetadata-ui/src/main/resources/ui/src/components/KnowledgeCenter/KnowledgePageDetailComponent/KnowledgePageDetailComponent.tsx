@@ -80,6 +80,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
@@ -98,20 +99,17 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
-  fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
-  fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
 }) => {
@@ -482,14 +480,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
+      );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
         if (knowledgePage?.id) {
           saveDraftContent(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            content,
+            persistableContent,
             knowledgePage.version
           );
         }
@@ -499,7 +501,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
-      handleContentSave(content);
+      handleContentSave(persistableContent);
     },
     [knowledgePage, handleContentSave, saveDraftContent]
   );
@@ -828,33 +830,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [contentChangeState]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <KnowledgeDetailPageHeader
-        contentChangeState={contentChangeState}
-        fetchKnowledgePageHierarchy={fetchKnowledgePageHierarchy}
-        isLoading={isLoading}
-        knowledgePage={knowledgePage}
-        permissions={permissions}
-        onFollowChange={handleFollowChange}
-        onSave={handleSave}
-        onSetThreadLink={setThreadLink}
-        onToggleDelete={handleToggleDelete}
-        onVoteChange={handleVoteChange}
-      />
-    ),
-    [
-      contentChangeState,
-      isLoading,
-      knowledgePage,
-      permissions,
-      setThreadLink,
-      handleToggleDelete,
-      handleVoteChange,
-      handleSave,
-    ]
-  );
-
   useEffect(() => {
     knowledgePageIdRef.current = knowledgePage?.id;
   }, [knowledgePage?.id]);
@@ -970,7 +945,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
-      header: <div className="tw:mb-5 tw:rounded-xl">{getHeaderElement()}</div>,
       isRightPanelOpen,
       onTabChange: handleTabChange,
       onToggleRightPanel,
@@ -988,7 +962,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
-    getHeaderElement,
   ]);
 
   useEffect(() => {
@@ -1004,7 +977,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
+          entity: t('label.article'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

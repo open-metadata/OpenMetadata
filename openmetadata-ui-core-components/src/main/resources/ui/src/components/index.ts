@@ -90,6 +90,7 @@ export * from './base/video-player/play-button-icon';
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
 export * from './application/form-field/fields/icon-picker-field';
+export * from './application/form-field/field-doc-panel';
 export * from './application/form-field/field-doc-popover';
 export {
   FieldDocProvider,
@@ -106,6 +107,8 @@ export {
 export * from './application/accordion/accordion';
 export * from './application/breadcrumbs/breadcrumbs';
 export * from './application/tree/tree';
+export * from './application/tree-select/tree-select.types';
+export * from './application/tree-select/tree-select';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,

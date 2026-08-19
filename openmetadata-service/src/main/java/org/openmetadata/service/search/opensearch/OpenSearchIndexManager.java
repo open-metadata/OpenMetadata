@@ -133,6 +133,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
@@ -576,6 +577,9 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     List<IndexStats> result = new ArrayList<>();
     String statsPattern = buildScopedPattern(null);
     var statsResponse = client.indices().stats(s -> s.index(statsPattern));
+    // Fetch aliases once for the inventory instead of leasing one connection per index.
+    var aliasResponse = client.indices().getAlias(g -> g.index(statsPattern));
+    var aliasesByIndex = aliasResponse.result();
     var indices = statsResponse.indices();
     for (var entry : indices.entrySet()) {
       String indexName = entry.getKey();
@@ -611,7 +615,9 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         }
       }
       String health = "GREEN";
-      Set<String> aliases = getAliases(indexName);
+      var aliasMetadata = aliasesByIndex.get(indexName);
+      Set<String> aliases =
+          aliasMetadata == null ? Set.of() : new HashSet<>(aliasMetadata.aliases().keySet());
       result.add(
           new IndexStats(
               indexName,
