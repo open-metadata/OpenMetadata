@@ -67,14 +67,13 @@ const clickAvailableWidgetAction = async (
   addBtn: Locator,
   editBtn: Locator
 ) => {
-  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
-
   if (await addBtn.isVisible()) {
     await addBtn.click();
 
     return;
   }
 
+  await editBtn.waitFor({ state: 'visible' });
   await editBtn.click();
 };
 
@@ -252,8 +251,7 @@ export const assignDomainWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -298,8 +296,7 @@ export const removeDomainWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
   await waitForAllLoadersToDisappear(page);
 
   await page
