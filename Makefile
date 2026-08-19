@@ -234,6 +234,39 @@ snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container
 snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop the execution
 	snyk test --file=openmetadata-ui/src/main/resources/ui/yarn.lock $(SNYK_ARGS) --json > security-report/ui-dep-scan.json | true;
 
+## DEPENDENCY FRESHNESS
+# A different question from the Snyk scans above. Snyk answers "is it vulnerable" and its
+# remediation advice is the *smallest* upgrade that clears the CVE it found, so a version taken
+# from `fixedIn` is routinely already behind on the day it lands -- and the next disclosure in
+# the same library reopens the ticket. This reports where each line actually is, so the two can
+# be read side by side. Advisory only: it never fails a build.
+#
+# versions:display-dependency-updates resolves "latest" from the repository metadata, which
+# includes pre-releases: without this filter it proposes io.netty:netty-codec 4.2.16.Final ->
+# 5.0.0.Alpha2 and jackson-annotations 2.21 -> 3.0-rc5. Each entry is a full-match regex.
+VERSIONS_IGNORE := .*[-.]?[Aa]lpha.*,.*[-.]?[Bb]eta.*,.*[-.]?[Rr][Cc][0-9]*.*,.*[-.]?M[0-9]+,.*-SNAPSHOT,.*[-.]?CR[0-9]+,.*[-.]?[Pp]review.*
+
+.PHONY: deps-latest
+deps-latest:  ## Report the latest release of every Maven/Python dependency (advisory, never fails)
+	@mkdir -p security-report
+	# processDependencyManagement matters most here: transitive pins live in
+	# <dependencyManagement>, not <dependencies>.
+	mvn versions:display-dependency-updates \
+		-DprocessDependencyManagement=true -DprocessDependencies=true \
+		-Dmaven.version.ignore='$(VERSIONS_IGNORE)' \
+		> security-report/maven-updates.txt 2>&1 || true
+	# --not-required lists only the packages ingestion declares. The full tree is several times
+	# longer and is not directly actionable: a transitive moves by bumping whatever pulls it in.
+	# The resolved tree is already captured in ingestion/scan-requirements.txt for Snyk.
+	python3 -m pip list --outdated --not-required --format=json \
+		> security-report/pip-updates.json 2>/dev/null || echo '[]' > security-report/pip-updates.json
+	python3 scripts/dependency_freshness.py \
+		--maven security-report/maven-updates.txt \
+		--pip security-report/pip-updates.json \
+		--slack-file security-report/_freshness_slack.txt \
+		--json-file security-report/_freshness.json \
+		> security-report/dependency-freshness.md || true
+
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
 	@echo "Validating dependencies images..."

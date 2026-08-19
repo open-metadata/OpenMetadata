@@ -265,6 +265,24 @@ jobs:
           # Restore JSONs alongside generated PDFs/HTMLs.
           cp /tmp/snyk-json-backup/*.json security-report/ 2>/dev/null || true
 
+      # Advisory, and deliberately last: this reports how far behind latest each dependency
+      # is, which is a different question from "is it vulnerable". Snyk answers the second
+      # one, and its remediation advice is the *smallest* upgrade that clears the CVE it
+      # found -- so a version taken from it is routinely already a release or two behind on
+      # the day it lands, and the next disclosure in that library reopens the same ticket.
+      #
+      # It has to run after Generate Snyk HTML/PDF: export-snyk-pdf-report feeds every file
+      # in security-report/ to snyk-to-html, and html_to_pdf.py deletes the JSONs afterwards.
+      # Nothing here fails the build.
+      - name: Report dependency freshness
+        id: freshness
+        if: always() && steps.maven-build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          source env/bin/activate
+          make deps-latest
+          cat security-report/dependency-freshness.md >> $GITHUB_STEP_SUMMARY
+
       - name: Upload Snyk Reports
         if: always() && steps.maven-build.outcome == 'success'
         uses: actions/upload-artifact@v6
@@ -422,7 +440,16 @@ jobs:
               push(section)
           if retire_sections and snyk_sections:
               blocks.append({"type": "divider"})
-          for section in snyk_sections[:23]:
+          for section in snyk_sections[:21]:
+              push(section)
+
+          # Freshness last: it is advisory and must never push a vulnerability section out of
+          # the 50-block budget. Being behind latest is not a finding, so it does not feed the
+          # header icon either.
+          freshness_sections = read_sections("security-report/_freshness_slack.txt")
+          if freshness_sections and blocks:
+              blocks.append({"type": "divider"})
+          for section in freshness_sections[:2]:
               push(section)
 
           if not blocks:
