@@ -893,18 +893,82 @@ jobs:
       # `install-deps` still runs as a safety net so a Playwright version
       # bump that adds a new dep does not silently miss it.
       - name: Cache Playwright system deps
+        id: apt-deps-cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         uses: awalsh128/cache-apt-pkgs-action@v1.5.1
         continue-on-error: true
+        timeout-minutes: 10
         with:
-          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
-          version: playwright-chromium-deps-v1
+          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble).
+          # IMPORTANT semantics: on cache HIT the action restores the
+          # packages' installed FILES (fonts, libs, fontconfig cache) but
+          # does NOT register them in dpkg's status database — so a
+          # subsequent `apt-get install` (which is what `install-deps` runs)
+          # still treats them as missing and re-downloads from the mirror.
+          # That is why `install-deps` below is GATED on this step's
+          # cache-hit output rather than run unconditionally: the restored
+          # files alone are sufficient at runtime (Chromium consults the
+          # filesystem, not dpkg), and skipping apt entirely is the only
+          # thing that actually protects the matrix when Azure's Ubuntu
+          # mirror is down (run 32157314266: 11 shards timed out at 5 min;
+          # run 32166970973: cache HIT yet apt still crawled the mirror and
+          # the shard died at the install-deps ceiling).
+          # On cache MISS the action performs a real `apt-get install`
+          # (dpkg registered), then caches the result for the next run.
+          # Update this list AND bump the `version:` tag whenever the pinned
+          # playwright version rotates to a new Ubuntu base — see
+          # https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2
 
+      # This is the ONE step per workflow that populates the apt cache
+      # (`playwright-chromium-deps-v2`, above) for every downstream shard.
+      # If it succeeds, all 30+ shards below hit the cache and skip apt
+      # entirely; if it fails, we want the whole workflow to stop here with
+      # a clean "apt mirror was down" attribution instead of half-executing.
+      # The two attempts and the wider ceiling are the exception to
+      # the "no retries" rule on shards — retrying a once-per-workflow
+      # populator is cheap; retrying on every shard is what we said no to.
+      #
+      # `install-deps` only runs when the apt cache MISSED (or the cache
+      # action itself errored — `continue-on-error: true` leaves cache-hit
+      # empty in that case, and the `!= 'true'` check falls through to the
+      # safe path). On a hit, the action already restored every file
+      # Chromium needs, and running apt again would re-download all of it
+      # from the mirror — see the semantics note on the cache step.
+      #
+      # TRANSITIONAL: the per-attempt ceiling is 8 min (matching the shard
+      # side) while `playwright-chromium-deps-v2` is still populating across
+      # branches. Once every merge_group is a cache hit, tighten both
+      # ceilings back to 5 min and drop `environmentAtMostFiveMinutes`'s
+      # threshold from 480 → 300 in evaluate_playwright_performance.py.
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
         run: |
-          npx playwright install-deps chromium
+          set -euo pipefail
+          if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
+            install_deps() {
+              timeout --signal=TERM --kill-after=30s 8m \
+                npx playwright install-deps chromium
+            }
+            if ! install_deps; then
+              echo "::warning::install-deps chromium failed on first attempt; sleeping 15s and retrying once before failing the workflow" >&2
+              sleep 15
+              install_deps
+            fi
+          else
+            echo "apt deps cache hit — skipping install-deps (files already restored; apt would re-download from the mirror)"
+          fi
           npx playwright install chromium
 
       - name: Seed reusable Playwright auth and entity state
@@ -1020,6 +1084,13 @@ jobs:
     # bundle verify) and teardown/artifact upload. 30 min was tight enough
     # that slow shards were being cancelled by the job clock while playwright
     # itself still had time on the inner wrapper; 35 gives real headroom.
+    #
+    # This ceiling only works when the sub-budgets it composes actually hold.
+    # `Install Playwright Browsers` carries its own `timeout 5m` for exactly
+    # this reason — a slow apt mirror there previously ate 10 min silently,
+    # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
+    # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
+    # sync when adjusting this outer ceiling.
     timeout-minutes: 35
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
@@ -1133,12 +1204,6 @@ jobs:
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
           install-test-dependencies: "false"
 
-      - name: Record environment setup duration
-        run: |
-          finished_at=$(date +%s)
-          echo "PW_ENVIRONMENT_FINISHED_AT=$finished_at" >> "$GITHUB_ENV"
-          echo "PW_ENVIRONMENT_SECONDS=$((finished_at - PW_ENVIRONMENT_STARTED_AT))" >> "$GITHUB_ENV"
-
       - name: Setup Node.js
         id: setup-node
         uses: actions/setup-node@v5
@@ -1163,20 +1228,67 @@ jobs:
 
       # Same rationale as the Cache Playwright system deps step in the
       # fixture builder above — cache the Chromium system deps so every
-      # shard skips the ~30 s Ubuntu-mirror fetch (or a multi-minute crawl
-      # on a bad-mirror day, see run 30788758311).
+      # shard skips the Ubuntu-mirror fetch entirely (a multi-minute crawl
+      # on a bad-mirror day, see runs 30788758311 / 32157314266 / 32166970973).
       - name: Cache Playwright system deps
+        id: apt-deps-cache
         uses: awalsh128/cache-apt-pkgs-action@v1.5.1
         continue-on-error: true
+        timeout-minutes: 10
         with:
-          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
-          version: playwright-chromium-deps-v1
+          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble).
+          # IMPORTANT semantics: on cache HIT the action restores the
+          # packages' installed FILES but does NOT register them in dpkg's
+          # status database — a subsequent `apt-get install` (which is what
+          # `install-deps` runs) still treats them as missing and
+          # re-downloads from the mirror. That is why `install-deps` below
+          # is GATED on this step's cache-hit output: the restored files
+          # alone are sufficient at runtime (Chromium consults the
+          # filesystem, not dpkg). Run 32166970973 is the proof — cache HIT,
+          # yet apt crawled the mirror and the shard died at the ceiling.
+          # On cache MISS the action performs a real `apt-get install`
+          # (dpkg registered), then caches the result.
+          # Update this list AND bump the `version:` tag whenever the pinned
+          # playwright version rotates to a new Ubuntu base — see
+          # https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/registry/nativeDeps.ts
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2
 
+      # `install-deps` is `apt-get install` under the hood, and apt decides
+      # from dpkg state — NOT from files on disk — so it must only run when
+      # the apt cache missed (or the cache action itself errored;
+      # `continue-on-error: true` leaves cache-hit empty then, and the
+      # `!= 'true'` check falls through to this safe path). On a hit, the
+      # action already restored every file Chromium needs and running apt
+      # again would re-download all of it from the mirror. The `timeout`
+      # wrapper covers the miss path — if apt is broken during that window
+      # we fail fast with a clean attribution instead of letting the runner
+      # cancel the shard 20 min later (chromium-17 in run 32117681137,
+      # chromium-02 in run 32124717834, the whole matrix in run 32157314266).
+      #
+      # TRANSITIONAL: 8 min while `playwright-chromium-deps-v2` is still
+      # populating. Tighten back to 5 min once every merge_group is a cache
+      # hit and drop the env blocking threshold in
+      # evaluate_playwright_performance.py from 480 → 300 in the same PR.
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
+        env:
+          APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
         run: |
-          npx playwright install-deps chromium
+          if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
+            timeout --signal=TERM --kill-after=30s 8m \
+              npx playwright install-deps chromium
+          else
+            echo "apt deps cache hit — skipping install-deps (files already restored; apt would re-download from the mirror)"
+          fi
           npx playwright install chromium
 
       - name: Verify the restored authenticated application bundle
@@ -1186,6 +1298,18 @@ jobs:
           PLAYWRIGHT_IS_OSS: "true"
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
         run: npx playwright test --project=bundle-smoke --reporter=line
+
+      # Recorded AFTER every setup step (fixture restore, node, yarn, browser
+      # install, bundle-smoke) so the 5-min `environmentAtMostFiveMinutes`
+      # blocking gate actually measures the full setup phase. Previously this
+      # ran right after "Setup Openmetadata Test Environment", so a 10-min
+      # `install-deps` blowup was invisible to the env gate and only surfaced
+      # as a runner-clock cancellation.
+      - name: Record environment setup duration
+        run: |
+          finished_at=$(date +%s)
+          echo "PW_ENVIRONMENT_FINISHED_AT=$finished_at" >> "$GITHUB_ENV"
+          echo "PW_ENVIRONMENT_SECONDS=$((finished_at - PW_ENVIRONMENT_STARTED_AT))" >> "$GITHUB_ENV"
 
       - name: Run Playwright tests
         id: run-tests
