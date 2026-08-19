@@ -118,9 +118,15 @@ export const createOrFetch = async <T = ResponseBody>(
   if (createResponse.status() === 409) {
     const entityFqn = buildFqn(...fqnSegments);
     const lookupPath = fetchPath ?? `${createPath}/name`;
-    const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
+    // include=all so a soft-deleted entity is still found. It keeps its name, so the
+    // create really does conflict, but the default lookup hides it and the recovery
+    // would fail with a 404 that reads as though the conflict never happened.
+    const params = [`include=all`];
+    if (fields) {
+      params.push(`fields=${encodeURIComponent(fields)}`);
+    }
     const getResponse = await apiContext.get(
-      `${lookupPath}/${encodeURIComponent(entityFqn)}${query}`
+      `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
     );
 
     return await okJson<T>(

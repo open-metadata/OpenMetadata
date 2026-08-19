@@ -244,7 +244,7 @@ export class TableClass extends EntityClass {
       const getResponse = await apiContext.get(
         `${fetchPath}/${encodeURIComponent(
           entityFqn
-        )}?fields=domains,owners,tags`
+        )}?include=all&fields=domains,owners,tags`
       );
 
       if (!getResponse.ok()) {

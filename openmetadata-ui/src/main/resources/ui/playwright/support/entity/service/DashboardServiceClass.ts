@@ -56,11 +56,12 @@ export class DashboardServiceClass extends EntityClass {
     apiContext: APIRequestContext,
     dashboardData: { name: string; displayName: string; service: string }
   ): Promise<ResponseDataType> {
-    const response = await apiContext.post('/api/v1/dashboards', {
+    return await createOrFetch(apiContext, {
+      label: 'DashboardServiceClass.createDashboardChild',
+      createPath: '/api/v1/dashboards',
+      fqnSegments: [dashboardData.service, dashboardData.name],
       data: dashboardData,
     });
-
-    return await okJson(response, 'DashboardServiceClass.createDashboardChild');
   }
 
   async create(

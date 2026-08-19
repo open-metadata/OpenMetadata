@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -76,36 +76,28 @@ export class DirectoryClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/driveServices',
-      {
-        data: this.service,
-      }
-    );
-    this.serviceResponseData = await okJson(
-      serviceResponse,
-      'DirectoryClass.create'
-    );
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'DirectoryClass.create service',
+      createPath: '/api/v1/services/driveServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
 
     // Create directories
-    const entityResponse = await apiContext.post(
-      `/api/v1/${EntityTypeEndpoint.Directory}`,
-      {
-        data: {
-          name: this.directoryName,
-          description: this.entity.description,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
-      }
-    );
-    this.entityResponseData = await okJson(
-      entityResponse,
-      'DirectoryClass.create'
-    );
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'DirectoryClass.create directory',
+      createPath: `/api/v1/${EntityTypeEndpoint.Directory}`,
+      fqnSegments: [this.service.name, this.directoryName],
+      data: {
+        name: this.directoryName,
+        description: this.entity.description,
+        service: this.serviceResponseData.fullyQualifiedName,
+      },
+    });
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 

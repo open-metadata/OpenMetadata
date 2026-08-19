@@ -1021,7 +1021,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         {
           name: 'pw-policy-rule',
           resources: ['all'],
-          operations: ['all'],
+          operations: ['All'],
           effect: 'allow',
         },
       ]);
@@ -1058,7 +1058,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           {
             name: `pw-policy-rule-${i}`,
             resources: ['all'],
-            operations: ['all'],
+            operations: ['All'],
             effect: 'allow',
           },
         ]);
