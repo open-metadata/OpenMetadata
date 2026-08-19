@@ -174,6 +174,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
+  private static final String K8S_LOGS_DESERIALIZATION_MESSAGE =
+      "Kubernetes pod status is incompatible with the bundled client";
   private static final String K8S_STATUS_DESERIALIZATION_WARNING =
       "Pod/job status details are unavailable because the bundled Kubernetes client could not "
           + "parse fields returned by the Kubernetes cluster";
@@ -913,6 +915,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
       try {
         coreApi.listNamespacedPod(namespace).limit(1).execute();
       } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
         statusDetailsUnavailable = true;
         LOG.warn(
             "Kubernetes namespace {} is reachable but pod status could not be deserialized "
@@ -923,6 +928,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
       try {
         batchApi.listNamespacedJob(namespace).limit(1).execute();
       } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
         statusDetailsUnavailable = true;
         LOG.warn(
             "Kubernetes namespace {} is reachable but job status could not be deserialized "
@@ -960,6 +968,13 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       return buildHealthyStatus(getKubernetesVersion()).withReason(message);
 
+    } catch (IllegalArgumentException e) {
+      String error =
+          String.format(
+              "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
+              namespace, serviceAccount);
+      LOG.error(error, e);
+      return buildUnhealthyStatus(error);
     } catch (ApiException e) {
       String error =
           String.format(
@@ -1058,14 +1073,19 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 .labelSelector(buildLabelSelector(labelSelectorMap))
                 .execute();
       } catch (IllegalArgumentException e) {
+        if (!isUnknownFieldDeserializationError(e)) {
+          throw e;
+        }
         // client-java cannot deserialize a pod returned by a newer Kubernetes version when the
         // response contains a field that is not present in the bundled client models.
         LOG.warn(
             "Could not deserialize pod while fetching logs for pipeline {} (client-java models "
-                + "likely lag the cluster's Kubernetes version): {}",
+                + "likely lag the cluster's Kubernetes version)",
             pipelineName,
-            e.getMessage());
-        return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
+            e);
+        return Map.of(
+            PipelineServiceClientInterface.LOGS_ERROR_KEY,
+            FAILED_LOGS_MESSAGE + K8S_LOGS_DESERIALIZATION_MESSAGE);
       }
 
       // Early return if no pods found - avoid processing empty lists
@@ -1105,8 +1125,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
       return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 
     } catch (ApiException e) {
-      LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
-      return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
+      LOG.error("Failed to get logs for pipeline {}", pipelineName, e);
+      return Map.of(
+          PipelineServiceClientInterface.LOGS_ERROR_KEY,
+          FAILED_LOGS_MESSAGE + "Kubernetes API request failed");
     }
   }
 
@@ -2253,6 +2275,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
     } catch (Exception e) {
       return "kubernetes";
     }
+  }
+
+  private boolean isUnknownFieldDeserializationError(IllegalArgumentException exception) {
+    String message = exception.getMessage();
+    return message != null && message.contains("is not defined in the `");
   }
 
   private String getStringParam(Map<String, Object> params, String key, String defaultValue) {
