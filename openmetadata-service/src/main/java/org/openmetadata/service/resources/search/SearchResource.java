@@ -84,6 +84,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
@@ -952,8 +953,9 @@ public class SearchResource {
 
     Future<?> future =
         AsyncService.getInstance()
-            .getExecutorService()
-            .submit(
+            .submitCancellableDatabaseTask(
+                DatabaseOperation.SEARCH_OPERATION,
+                "entities:" + entities.size(),
                 () -> {
                   int totalEntities = entities.size();
                   int successCount = 0;
@@ -1088,6 +1090,7 @@ public class SearchResource {
                   if (!failures.isEmpty()) {
                     LOG.warn("Failed entities: {}", String.join("; ", failures));
                   }
+                  return null;
                 });
 
     AsyncService.getInstance()

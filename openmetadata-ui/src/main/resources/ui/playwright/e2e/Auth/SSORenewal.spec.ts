@@ -99,8 +99,11 @@ for (const scenario of SCENARIOS) {
       );
 
       test.afterAll('Restore original security configuration', async () => {
+        test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
         await userPage?.close();
         await userContext?.close();
+
         await restoreSecurity?.();
       });
 

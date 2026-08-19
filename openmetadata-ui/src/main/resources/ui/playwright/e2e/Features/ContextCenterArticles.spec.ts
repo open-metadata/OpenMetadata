@@ -51,6 +51,7 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForDraftPersisted,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -275,7 +276,10 @@ test.describe('Context Center Articles', () => {
 
     await test.step('dashboard view all articles opens article list', async () => {
       await navigateToDashboard(page);
-      await page.getByTestId('article-detail-card').click();
+      await page
+        .getByTestId('article-detail-card')
+        .getByRole('button', { name: 'View All Articles' })
+        .click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
@@ -424,16 +428,11 @@ test.describe('Context Center Articles', () => {
     await readArticleInHierarchy(page, testQuickLink.displayName);
     await scrollHierarchyToNode(page, testQuickLink.displayName);
 
-    const searchInput = await verifyArticleSearch(
-      page,
-      testQuickLink.displayName
-    );
+    await verifyArticleSearch(page, testQuickLink.displayName);
     await expect(
       page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
     ).toBeVisible();
 
-    await searchInput.clear();
-    await waitForAllLoadersToDisappear(page);
     await updateQuickLink(page, testQuickLink);
 
     const updatedCard = page.getByTestId(
@@ -959,6 +958,7 @@ test.describe('Context Center Articles', () => {
     await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
@@ -969,6 +969,7 @@ test.describe('Context Center Articles', () => {
     await titleInput.fill(`${updatedTitle} Unsaved`);
     await page.goBack();
     await waitForAllLoadersToDisappear(page);
+    await verifyArticleSearch(page, updatedTitle);
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
@@ -1520,7 +1521,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', reloadDescription);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleA.id, reloadDescription);
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
@@ -1599,7 +1600,11 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
         await page.fill('.om-block-editor', 'This draft should be deleted');
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(
+          page,
+          articleToDelete.id,
+          'This draft should be deleted'
+        );
       });
 
       await test.step('Navigate away to ensure draft is persisted in localStorage', async () => {
@@ -1647,14 +1652,14 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', contentA);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleA.id, contentA);
       });
 
       await test.step('Navigate to draft article B and type without saving', async () => {
         await navigateToArticle(page, draftArticleB.fullyQualifiedName);
         await page.fill('.om-block-editor', contentB);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.waitForTimeout(400);
+        await waitForDraftPersisted(page, draftArticleB.id, contentB);
       });
 
       await test.step('Reload Article B — its own draft should be synced', async () => {

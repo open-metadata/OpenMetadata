@@ -8,7 +8,9 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "tokenizer": {
@@ -16,24 +18,42 @@
           "type": "ngram",
           "min_gram": 3,
           "max_gram": 10,
-          "token_chars": ["letter", "digit"]
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       },
       "analyzer": {
         "om_analyzer": {
           "tokenizer": "letter",
-          "filter": ["lowercase", "om_stemmer"]
+          "filter": [
+            "word_delimiter_filter",
+            "lowercase",
+            "om_stemmer",
+            "om_plural_stemmer"
+          ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "om_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
         "om_stemmer": {
           "type": "stemmer",
           "name": "english"
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
+        },
+        "word_delimiter_filter": {
+          "type": "word_delimiter",
+          "preserve_original": true
         }
       }
     }
@@ -263,7 +283,7 @@
           }
         }
       },
-      "pageType" : {
+      "pageType": {
         "type": "keyword"
       },
       "relatedEntities": {
@@ -360,7 +380,7 @@
           }
         }
       },
-      "parent" : {
+      "parent": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -407,7 +427,7 @@
           }
         }
       },
-      "children" : {
+      "children": {
         "properties": {
           "id": {
             "type": "keyword",

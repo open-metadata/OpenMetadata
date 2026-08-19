@@ -302,6 +302,26 @@ class IntakeFormValidatorTest {
   // ---------------------------------------------------------------------------
 
   @Test
+  void validate_namesTheFieldWhenItsLabelIsBlank() {
+    IntakeFormRequiredField unlabelled =
+        new IntakeFormRequiredField()
+            .withFieldPath("extension.testTable")
+            .withFieldLabel("")
+            .withFieldKind(FieldKind.CUSTOM_PROPERTY);
+    IntakeForm form = newEnabledForm(List.of(unlabelled));
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> IntakeFormValidator.validate(validDataProduct(), Entity.DATA_PRODUCT));
+
+    assertTrue(
+        thrown.getMessage().contains("extension.testTable"),
+        "an unlabelled required field must still be named: " + thrown.getMessage());
+  }
+
+  @Test
   void validate_skipsRequiredFieldEntryWithBlankFieldPath() {
     IntakeFormRequiredField blank =
         new IntakeFormRequiredField()
