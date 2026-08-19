@@ -67,7 +67,12 @@ export class AlertClass {
       displayName,
       description: config.description ?? `Description for ${displayName}`,
       alertType: config.alertType,
-      resources: config.resources ?? ['all'],
+      // "all" is only a resource type for Notification alerts. An Observability alert
+      // sent with it is rejected with `Resource type all not found`, so default those
+      // to a concrete entity instead.
+      resources:
+        config.resources ??
+        (config.alertType === 'Observability' ? ['testCase'] : ['all']),
       input: {},
       destinations: config.destinations ?? [
         {
