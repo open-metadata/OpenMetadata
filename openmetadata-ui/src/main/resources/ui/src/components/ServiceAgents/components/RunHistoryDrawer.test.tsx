@@ -37,12 +37,13 @@ const emptyTotals = {
   errors: 0,
 };
 
+// `useAgentRuns` hands the drawer its runs oldest-first, so the rail reads left to right.
 const mockRuns: AgentRun[] = [
   {
-    id: 'run-latest',
-    status: 'success',
-    startedAt: 'May 27, 2026 · 08:10',
-    duration: 3.8,
+    id: 'run-oldest',
+    status: 'partial',
+    startedAt: 'May 25, 2026 · 08:10',
+    duration: 4.1,
     totals: emptyTotals,
     steps: [],
   },
@@ -55,10 +56,10 @@ const mockRuns: AgentRun[] = [
     steps: [],
   },
   {
-    id: 'run-oldest',
-    status: 'partial',
-    startedAt: 'May 25, 2026 · 08:10',
-    duration: 4.1,
+    id: 'run-latest',
+    status: 'success',
+    startedAt: 'May 27, 2026 · 08:10',
+    duration: 3.8,
     totals: emptyTotals,
     steps: [],
   },
@@ -308,12 +309,14 @@ describe('RunHistoryDrawer', () => {
   });
 
   describe('run history rail', () => {
+    const getCards = () => screen.getAllByTestId('run-history-item');
+
     it('should keep the rail free of horizontal padding so the cards stay aligned', () => {
       // The cards share the drawer's left edge with the heading, the stat tiles and the Steps card.
       // Any inline padding — or a negative margin compensating for one — breaks that alignment.
       renderDrawer();
 
-      const rail = screen.getAllByTestId('run-history-item')[0].parentElement;
+      const rail = getCards()[0].parentElement;
       const railClass = rail?.className ?? '';
 
       ['tw:p-1', 'tw:px-', 'tw:pl-', 'tw:-mx-', 'tw:-ml-'].forEach((cls) =>
@@ -321,12 +324,29 @@ describe('RunHistoryDrawer', () => {
       );
     });
 
+    it('should render the cards oldest-first and select the rightmost one', () => {
+      renderDrawer();
+
+      const cards = getCards();
+
+      expect(cards.map((card) => card.textContent)).toEqual([
+        expect.stringContaining('May 25, 2026'),
+        expect.stringContaining('May 26, 2026'),
+        expect.stringContaining('May 27, 2026'),
+      ]);
+      expect(cards.at(-1)?.className).toContain('tw:border-utility-brand-600');
+      expect(cards[0].className).toContain('tw:border-secondary');
+    });
+
     it('should mark selection with a border of the same width as unselected cards', () => {
       // A selected card must not change size, and its edge must stay inside the card's own box: the
       // rail is a scroll container, so an outward glow would be clipped.
       renderDrawer();
 
-      const [selected, unselected] = screen.getAllByTestId('run-history-item');
+      const cards = getCards();
+      // The newest run is selected by default and is the last card, not the first.
+      const selected = cards.at(-1) as HTMLElement;
+      const unselected = cards[0];
       // Asserted as "both carry the same valid width utility" rather than a literal width: a
       // hardcoded `tw:border-2` has to be edited whenever the design changes, and the edit that
       // narrowed it once shipped `tw:border-` — no width at all, since Tailwind has no such class.

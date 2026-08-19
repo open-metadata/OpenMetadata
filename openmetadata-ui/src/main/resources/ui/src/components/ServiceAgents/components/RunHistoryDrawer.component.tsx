@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AlignLeft } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
@@ -82,9 +82,29 @@ interface RunHistoryProps {
 
 const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
+  const railRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  // The rail only fits four or five of the ten cards, and the default selection is the newest run —
+  // which is now the rightmost card, outside the initial scroll window. Drive `scrollLeft` directly
+  // instead of `scrollIntoView`: the drawer body is `overflow-y-auto`, so `scrollIntoView` would also
+  // move it vertically.
+  useEffect(() => {
+    const rail = railRef.current;
+    const card = selectedRef.current;
+
+    if (!rail || !card) {
+      return;
+    }
+
+    rail.scrollLeft =
+      card.offsetLeft - (rail.clientWidth - card.clientWidth) / 2;
+  }, [runs, selectedId]);
 
   return (
-    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1">
+    <Box
+      className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1"
+      ref={railRef}>
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -104,6 +124,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
             }`}
             data-testid="run-history-item"
             key={r.id}
+            ref={isSelected ? selectedRef : undefined}
             type="button"
             onClick={() => onSelect(r.id)}>
             <div
@@ -160,16 +181,19 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
 
+  // `runs` is oldest-first, so the newest run — the sensible default selection — is the last one.
+  const latestRun = runs.at(-1);
+
   useEffect(() => {
-    if (runs.length > 0 && !runs.some((r) => r.id === selId)) {
+    if (latestRun && !runs.some((r) => r.id === selId)) {
       const initialRun = initialRunId
         ? runs.find((r) => r.id === initialRunId)
         : undefined;
-      setSelId((initialRun ?? runs[0]).id);
+      setSelId((initialRun ?? latestRun).id);
     }
-  }, [runs, initialRunId, selId]);
+  }, [runs, latestRun, initialRunId, selId]);
 
-  const run = runs.find((r) => r.id === selId) ?? runs[0];
+  const run = runs.find((r) => r.id === selId) ?? latestRun;
   const m = run ? RUN_META[run.status] : undefined;
   const runLabel = m ? t(m.labelKey) : '';
   const tot = run?.totals;
