@@ -10,12 +10,19 @@
 #  limitations under the License.
 """MSSQL synonym discovery, identifier parsing, and target mapping"""
 
+import traceback
+from collections.abc import Callable
 from typing import Optional
 
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+
 from metadata.ingestion.source.database.mssql.models import (
+    MssqlSynonym,
     MssqlSynonymTarget,
     SynonymUnresolvedReason,
 )
+from metadata.ingestion.source.database.mssql.queries import MSSQL_GET_SYNONYMS
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -173,3 +180,56 @@ class SynonymMap:
 
     def is_empty(self) -> bool:
         return not self._targets
+
+
+def build_synonym_map(
+    engine: Engine,
+    database_names: list[str],
+    fqn_builder: Callable[[str, str, str], str],
+    max_entries: int = MAX_SYNONYM_ENTRIES,
+) -> SynonymMap:
+    """
+    Sweep sys.synonyms across every in-scope database and index by target FQN.
+
+    Runs before any table is produced, because a synonym's target commonly lives
+    in a different database than the synonym itself and the alias has to be
+    attached to the target's create request.
+
+    A database that cannot be read (dropped mid-run, offline, or no VIEW
+    DEFINITION grant) is logged and skipped: partial synonym coverage is better
+    than no metadata at all.
+    """
+    synonym_map = SynonymMap(max_entries=max_entries)
+
+    for database_name in database_names:
+        escaped_database = database_name.replace("]", "]]")
+        try:
+            with engine.connect() as connection:
+                rows = connection.execute(text(MSSQL_GET_SYNONYMS.format(database_name=escaped_database))).all()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not read synonyms from database [{database_name}]: {exc}")
+            continue
+
+        for row in rows:
+            synonym = MssqlSynonym(
+                synonym_schema=row.synonym_schema,
+                synonym_name=row.synonym_name,
+                base_object_name=row.base_object_name,
+            )
+            alias_fqn = fqn_builder(database_name, synonym.synonym_schema, synonym.synonym_name)
+
+            target, reason = parse_base_object_name(synonym.base_object_name, database_name)
+            if reason is not None or target is None:
+                # parse_base_object_name guarantees exactly one of (target, reason) is set;
+                # the `target is None` check is here purely so type narrowing lets us treat
+                # `target` as non-optional below.
+                synonym_map.record_unresolved(alias_fqn, reason or SynonymUnresolvedReason.UNRESOLVED)
+                continue
+
+            synonym_map.add(
+                target_fqn=fqn_builder(target.database, target.schema_name, target.table),
+                alias_fqn=alias_fqn,
+            )
+
+    return synonym_map

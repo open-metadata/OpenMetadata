@@ -10,6 +10,10 @@
 #  limitations under the License.
 """MSSQL synonym discovery unit tests"""
 
+from unittest.mock import MagicMock
+
+from metadata.ingestion.api.status import Status
+from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import (
     MssqlSynonym,
     MssqlSynonymTarget,
@@ -18,6 +22,7 @@ from metadata.ingestion.source.database.mssql.models import (
 from metadata.ingestion.source.database.mssql.queries import MSSQL_GET_SYNONYMS
 from metadata.ingestion.source.database.mssql.synonyms import (
     SynonymMap,
+    build_synonym_map,
     parse_base_object_name,
     split_sql_server_identifier,
 )
@@ -233,3 +238,135 @@ class TestSynonymMap:
         assert "svc.core.dbo.a" in stored_fqns
         assert "svc.core.dbo.b" in stored_fqns
         assert "svc.core.dbo.c" not in stored_fqns
+
+
+def _fqn_builder(database, schema, table):
+    return f"svc.{database}.{schema}.{table}"
+
+
+def _engine_returning(rows_by_database):
+    """Mock a SQLAlchemy engine whose execute() returns per-database synonym rows"""
+    engine = MagicMock()
+    connection = engine.connect.return_value.__enter__.return_value
+
+    def execute(statement, *_args, **_kwargs):
+        rendered = str(statement)
+        for database, rows in rows_by_database.items():
+            if f"[{database}]" in rendered:
+                result = MagicMock()
+                result.all.return_value = rows
+                return result
+        result = MagicMock()
+        result.all.return_value = []
+        return result
+
+    connection.execute.side_effect = execute
+    return engine
+
+
+def _row(synonym_schema, synonym_name, base_object_name):
+    row = MagicMock()
+    row.synonym_schema = synonym_schema
+    row.synonym_name = synonym_name
+    row.base_object_name = base_object_name
+    return row
+
+
+class TestBuildSynonymMap:
+    def test_cross_database_synonym_maps_to_its_target(self):
+        engine = _engine_returning({"analytics_core": [_row("dbo", "orders", "[analytics_master].[dbo].[orders]")]})
+
+        synonym_map = build_synonym_map(
+            engine=engine,
+            database_names=["analytics_core"],
+            fqn_builder=_fqn_builder,
+        )
+
+        assert synonym_map.aliases_for("svc.analytics_master.dbo.orders") == ["svc.analytics_core.dbo.orders"]
+
+    def test_remote_target_is_recorded_unresolved(self):
+        engine = _engine_returning({"analytics_core": [_row("dbo", "orders", "[LINK].[db].[dbo].[orders]")]})
+
+        synonym_map = build_synonym_map(
+            engine=engine,
+            database_names=["analytics_core"],
+            fqn_builder=_fqn_builder,
+        )
+
+        assert synonym_map.unresolved() == [("svc.analytics_core.dbo.orders", "RemoteTargetUnmapped")]
+
+    def test_a_failing_database_does_not_abort_the_sweep(self):
+        engine = MagicMock()
+        connection = engine.connect.return_value.__enter__.return_value
+
+        def execute(statement, *_args, **_kwargs):
+            if "[broken]" in str(statement):
+                raise RuntimeError("permission denied")
+            result = MagicMock()
+            result.all.return_value = [_row("dbo", "orders", "[master_db].[dbo].[orders]")]
+            return result
+
+        connection.execute.side_effect = execute
+
+        synonym_map = build_synonym_map(
+            engine=engine,
+            database_names=["broken", "good"],
+            fqn_builder=_fqn_builder,
+        )
+
+        assert synonym_map.aliases_for("svc.master_db.dbo.orders") is not None
+
+    def test_database_name_with_bracket_is_escaped(self):
+        engine = _engine_returning({})
+
+        build_synonym_map(
+            engine=engine,
+            database_names=["we]ird"],
+            fqn_builder=_fqn_builder,
+        )
+
+        connection = engine.connect.return_value.__enter__.return_value
+        rendered = str(connection.execute.call_args[0][0])
+        assert "[we]]ird].sys.synonyms" in rendered
+
+
+class TestMssqlSourceAliases:
+    def test_get_table_aliases_returns_none_for_an_empty_map(self):
+        source = MagicMock(spec=MssqlSource)
+        source.synonym_map = SynonymMap()
+
+        assert MssqlSource.get_table_aliases(source, table_name="orders", schema_name="dbo") is None
+
+    def test_get_table_aliases_resolves_the_current_table(self):
+        source = MagicMock(spec=MssqlSource)
+        source.synonym_map = SynonymMap()
+        source.synonym_map.add("svc.analytics_master.dbo.orders", "svc.analytics_core.dbo.orders")
+        source.context.get.return_value.database = "analytics_master"
+        source._build_table_fqn.side_effect = _fqn_builder
+
+        aliases = MssqlSource.get_table_aliases(source, table_name="orders", schema_name="dbo")
+
+        assert aliases == ["svc.analytics_core.dbo.orders"]
+
+    def test_close_warns_for_each_unresolved_synonym(self):
+        source = MagicMock(spec=MssqlSource)
+        source.status = Status()
+        source.synonym_map = SynonymMap()
+        source.synonym_map.record_unresolved(
+            "svc.analytics_core.dbo.orders", SynonymUnresolvedReason.REMOTE_TARGET_UNMAPPED
+        )
+
+        MssqlSource.close(source)
+
+        assert source.status.warnings == [
+            {"svc.analytics_core.dbo.orders": "Synonym target unresolved: RemoteTargetUnmapped"}
+        ]
+
+    def test_close_reports_no_warnings_when_nothing_is_unresolved(self):
+        source = MagicMock(spec=MssqlSource)
+        source.status = Status()
+        source.synonym_map = SynonymMap()
+
+        MssqlSource.close(source)
+
+        assert source.status.warnings == []
