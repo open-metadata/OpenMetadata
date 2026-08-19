@@ -1,0 +1,117 @@
+#  Copyright 2025 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Merge Queue Watch
+
+# Fans in the completion of every workflow that runs on `merge_group`, so a
+# merge-queue failure is pushed to Slack instead of requiring someone to poll
+# https://github.com/open-metadata/OpenMetadata/queue/main by hand.
+#
+# `workflow_run` always executes the copy of this file on the default branch,
+# so changes here only take effect once merged.
+on:
+  workflow_run:
+    workflows:
+      - "Integration Tests - MySQL + Elasticsearch"
+      - "Integration Tests - PostgreSQL + Elasticsearch + Redis"
+      - "Integration Tests - PostgreSQL + OpenSearch"
+      - "Java Checkstyle"
+      - "OpenMetadata Service Unit Tests"
+      - "PostgreSQL PR RDF E2E Tests"
+      - "Postgresql PR Playwright E2E Tests"
+      - "Python Checkstyle"
+      - "SonarCloud + Jest Coverage"
+      - "TypeScript Type Generation"
+      - "UI Checkstyle"
+      - "Validate JSON/YAML"
+      - "py-tests"
+      - "py-tests-postgres"
+      - "py-tests-shared"
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pull-requests: read
+
+# One notification per queued PR per failing workflow.
+concurrency:
+  group: merge-queue-watch-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.name }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Notify Slack
+    if: >-
+      github.event.workflow_run.event == 'merge_group' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+       github.event.workflow_run.conclusion == 'timed_out')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve queued pull request
+        id: pr
+        env:
+          # gh-readonly-queue/main/pr-31646-<base-sha>
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          number=$(printf '%s' "$HEAD_BRANCH" | sed -n 's#^gh-readonly-queue/[^/]*/pr-\([0-9]\{1,\}\)-.*$#\1#p')
+          if [ -z "$number" ]; then
+            echo "Could not parse a PR number out of '$HEAD_BRANCH'; skipping." >&2
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pr_json=$(gh api "repos/$REPO/pulls/$number" 2>/dev/null || echo '{}')
+          {
+            echo "found=true"
+            echo "number=$number"
+            echo "title=$(printf '%s' "$pr_json" | jq -r '.title // ""')"
+            echo "author=$(printf '%s' "$pr_json" | jq -r '.user.login // ""')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to Slack
+        if: steps.pr.outputs.found == 'true'
+        env:
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+          # Channel ID rather than #name so a channel rename cannot break this.
+          # Override without a code change via the MERGE_QUEUE_SLACK_CHANNEL repo variable.
+          SLACK_CHANNEL: ${{ vars.MERGE_QUEUE_SLACK_CHANNEL || 'C0B6Q6KDMJN' }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_AUTHOR: ${{ steps.pr.outputs.author }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_CHANNEL:-}" ]; then
+            echo "::error::No Slack channel resolved; MERGE_QUEUE_SLACK_CHANNEL is set to an empty value."
+            exit 1
+          fi
+          queue_branch=$(printf '%s' "$HEAD_BRANCH" | cut -d/ -f2)
+          text=$(printf '%s\n%s\n%s' \
+            ":rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
+            "<${REPO_URL}/pull/${PR_NUMBER}|#${PR_NUMBER} ${PR_TITLE}> (@${PR_AUTHOR})" \
+            "<${RUN_URL}|Failed run> · <${REPO_URL}/queue/${queue_branch}|Merge queue>")
+          payload=$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$text" \
+            '{channel: $channel, text: $text, unfurl_links: false, unfurl_media: false}')
+          response=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data "$payload")
+          if [ "$(printf '%s' "$response" | jq -r '.ok')" != "true" ]; then
+            echo "::error::Slack API rejected the message: $response"
+            exit 1
+          fi
