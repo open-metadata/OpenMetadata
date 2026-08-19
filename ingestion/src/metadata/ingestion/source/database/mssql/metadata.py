@@ -295,9 +295,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
+                    self.set_inspector(database_name=new_database)
                     self._load_description_maps()
                     self._load_partition_details_map()
-                    self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
