@@ -567,40 +567,68 @@ export async function applyDashboardCertificationFilter(
 }
 
 /**
- * Polls the incident status API until an incident for `testCaseFqn` appears
- * within the [failTs-60s, failTs+120s] window.
- * Call this immediately after `addTestCaseResult` to guarantee the incident
- * document is indexed before any UI assertions.
- * Pass `expectedStatus` to also wait until the incident reaches that resolution
- * status (e.g. "Resolved") — useful after posting a status transition.
+ * Polls the incident search API until an incident for `testCaseFqn` appears
+ * within the [eventTs-60s, eventTs+120s] window.
+ * Call this after creating or updating an incident to guarantee the search
+ * document contains the state required by subsequent UI assertions.
+ * Assignee transitions filter on `updatedAt` because they update an existing
+ * incident whose original `timestamp` remains unchanged.
  */
 export async function waitForIncidentToBeIndexed(
   apiContext: APIRequestContext,
   testCaseFqn: string,
-  failTs: number,
-  expectedStatus?: string
+  eventTs: number,
+  expectedStatus?: string,
+  expectedAssignee?: string
 ): Promise<void> {
   await expect
     .poll(
       async () => {
         const res = await apiContext.get(
-          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
-            `&startTs=${failTs - 60_000}` +
-            `&endTs=${failTs + 120_000}`
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list',
+          {
+            params: {
+              latest: true,
+              startTs: eventTs - 60_000,
+              endTs: eventTs + 120_000,
+              dateField: expectedAssignee ? 'updatedAt' : 'timestamp',
+              testCaseFQN: testCaseFqn,
+              ...(expectedStatus && {
+                testCaseResolutionStatusType: expectedStatus,
+              }),
+              ...(expectedAssignee && { assignee: expectedAssignee }),
+            },
+          }
         );
+
+        if (!res.ok()) {
+          return false;
+        }
+
         const body = await res.json();
 
         return (body.data ?? []).some(
           (i: {
             testCaseReference?: { fullyQualifiedName?: string };
             testCaseResolutionStatusType?: string;
+            testCaseResolutionStatusDetails?: {
+              assignee?: { name?: string };
+            };
           }) => {
             if (i.testCaseReference?.fullyQualifiedName !== testCaseFqn) {
               return false;
             }
 
-            return expectedStatus
-              ? i.testCaseResolutionStatusType === expectedStatus
+            if (
+              expectedStatus &&
+              i.testCaseResolutionStatusType !== expectedStatus
+            ) {
+              return false;
+            }
+
+            return expectedAssignee
+              ? i.testCaseResolutionStatusDetails?.assignee?.name ===
+                  expectedAssignee
               : true;
           }
         );
