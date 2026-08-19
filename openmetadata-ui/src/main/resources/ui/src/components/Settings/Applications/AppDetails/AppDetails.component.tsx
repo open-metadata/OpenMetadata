@@ -532,7 +532,7 @@ const AppDetails = () => {
   return (
     <PageLayoutV1
       className="app-details-page-layout"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col className="d-flex" flex="auto">
           <Button
