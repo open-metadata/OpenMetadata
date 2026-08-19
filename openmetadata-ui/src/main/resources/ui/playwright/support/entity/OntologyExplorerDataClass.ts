@@ -191,3 +191,51 @@ export class OntologyExplorerCardinalityData {
     await this.glossary.delete(apiContext);
   }
 }
+
+// ---------------------------------------------------------------------------
+// GlossaryTermRelationsGraph spec data
+// ---------------------------------------------------------------------------
+
+export class GlossaryTermRelationsGraphData {
+  // Same-glossary group: termA has relatedTo termB and seeAlso termD; termC is unrelated.
+  static readonly glossary = new Glossary();
+  static readonly termA = new GlossaryTerm(this.glossary);
+  static readonly termB = new GlossaryTerm(this.glossary);
+  static readonly termC = new GlossaryTerm(this.glossary);
+  static readonly termD = new GlossaryTerm(this.glossary);
+
+  // Cross-glossary group: termInX (glossaryX) has relatedTo termInY (glossaryY).
+  static readonly glossaryX = new Glossary();
+  static readonly glossaryY = new Glossary();
+  static readonly termInX = new GlossaryTerm(this.glossaryX);
+  static readonly termInY = new GlossaryTerm(this.glossaryY);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.glossary.create(apiContext),
+      this.glossaryX.create(apiContext),
+      this.glossaryY.create(apiContext),
+    ]);
+    await Promise.all([
+      this.termA.create(apiContext),
+      this.termB.create(apiContext),
+      this.termC.create(apiContext),
+      this.termD.create(apiContext),
+      this.termInX.create(apiContext),
+      this.termInY.create(apiContext),
+    ]);
+    // termA is patched twice (relatedTo termB, seeAlso termD) — must be sequential.
+    await addTermRelation(apiContext, this.termA, this.termB, 'relatedTo');
+    await addTermRelation(apiContext, this.termA, this.termD, 'seeAlso');
+    await addTermRelation(apiContext, this.termInX, this.termInY, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    // Each glossary cascade-deletes its child terms via ?recursive=true&hardDelete=true.
+    await Promise.all([
+      this.glossary.delete(apiContext),
+      this.glossaryX.delete(apiContext),
+      this.glossaryY.delete(apiContext),
+    ]);
+  }
+}
