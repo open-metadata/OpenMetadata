@@ -1398,11 +1398,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1412,11 +1414,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: subDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: subDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1511,11 +1515,13 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -2091,11 +2097,13 @@ export const assignDomainToEntity = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
