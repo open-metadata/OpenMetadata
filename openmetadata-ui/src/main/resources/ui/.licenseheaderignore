@@ -38,6 +38,8 @@
 *.webp
 *.ico
 *.ttf
+*.mp4
+*.webm
 
 # Ignore files
 ".dockerignore"
