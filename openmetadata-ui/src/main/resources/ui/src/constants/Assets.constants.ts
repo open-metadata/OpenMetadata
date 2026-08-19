@@ -20,7 +20,7 @@ import {
   FileCheck02,
   Server04,
   Settings02,
-  SlashCircle01,
+  SlashDivider
 } from '@untitledui/icons';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -37,14 +37,6 @@ import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
-import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as AIFrameworkControl } from '../assets/svg/entity/ai-framework-control.svg';
@@ -54,6 +46,7 @@ import { ReactComponent as APICollection } from '../assets/svg/entity/api-collec
 import { ReactComponent as APIEndpoint } from '../assets/svg/entity/api-endpoint.svg';
 import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
 import { ReactComponent as AuditReport } from '../assets/svg/entity/audit-report.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
 import { ReactComponent as Chart } from '../assets/svg/entity/chart.svg';
 import { ReactComponent as Classification } from '../assets/svg/entity/classification.svg';
 import { ReactComponent as Column } from '../assets/svg/entity/column.svg';
@@ -73,6 +66,7 @@ import { ReactComponent as DynamicAgent } from '../assets/svg/entity/dynamic-age
 import { ReactComponent as GlossaryTerm } from '../assets/svg/entity/glossary-term.svg';
 import { ReactComponent as Glossary } from '../assets/svg/entity/glossary.svg';
 import { ReactComponent as IngestionPipeline } from '../assets/svg/entity/ingestion-pipeline.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
 import { ReactComponent as LLMService } from '../assets/svg/entity/llm-service.svg';
 import { ReactComponent as Marketplace } from '../assets/svg/entity/marketplace.svg';
 import { ReactComponent as MCPService } from '../assets/svg/entity/mcp-service.svg';
@@ -97,6 +91,12 @@ import { ReactComponent as TestCase } from '../assets/svg/entity/test-case.svg';
 import { ReactComponent as TestDefinition } from '../assets/svg/entity/test-definition.svg';
 import { ReactComponent as TestSuite } from '../assets/svg/entity/test-suite.svg';
 import { ReactComponent as Topic } from '../assets/svg/entity/topic.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
+import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -259,6 +259,7 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.GLOSSARY_TERM,
   EntityType.CLASSIFICATION,
   EntityType.TAG,
+  EntityType.ALERT,
   EntityType.DATA_PRODUCT,
   EntityType.DOMAIN,
   EntityType.TEST_CASE,
@@ -274,6 +275,13 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.METRIC,
   EntityType.KNOWLEDGE_PAGE,
   EntityType.KNOWLEDGE_CENTER,
+  'tagCategory',
+  'announcement',
+  'conversation',
+  'task',
+  'services',
+  'automator',
+  'notification',
   'folder',
   'contextFile',
   'contextMemory',
@@ -813,6 +821,6 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-quaternary',
     bgClass: 'tw:bg-tertiary',
     borderClass: 'tw:border-utility-gray-200',
-    icon: SlashCircle01,
+    icon: SlashDivider,
   },
 };

@@ -64,6 +64,7 @@ import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import {
   ENTITY_ICON_BG_SIZE_MAP,
+  EntityIconBgSize,
   EntityIconSize,
   getEntityIcon,
 } from './EntityIconUtils';
@@ -867,7 +868,10 @@ class SearchClassBase {
     return ENTITY_ICON_MAPPER;
   }
 
-  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconSize) {
+  public getEntityIconWithBg(
+    entityType?: string,
+    iconSize?: EntityIconBgSize
+  ) {
     const config =
       iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
 
