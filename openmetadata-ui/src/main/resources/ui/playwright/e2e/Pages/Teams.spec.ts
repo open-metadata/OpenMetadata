@@ -830,6 +830,35 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
+  test('Total User Count should update after a member is deactivated', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+
+    await user.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw-stale-count-${id}`,
+      displayName: `pw stale count ${id}`,
+      description: 'playwright team for userCount staleness',
+      teamType: 'Group',
+      users: [user.responseData.id],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('1');
+
+    await user.delete(apiContext, false);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('0');
+
+    await afterAction();
+  });
+
   test.describe('Show Deleted toggle', () => {
     let deletedTeam: TeamClass;
     let activeTeam: TeamClass;
