@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -197,26 +197,24 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/apiServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/apiCollections', {
+    const service = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create service',
+      createPath: '/api/v1/services/apiServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    const entity = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create collection',
+      createPath: '/api/v1/apiCollections',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
-
-    const apiEndpointResponse = await apiContext.post('/api/v1/apiEndpoints', {
+    const apiEndpoint = await createOrFetch(apiContext, {
+      label: 'ApiCollectionClass.create endpoint',
+      createPath: '/api/v1/apiEndpoints',
+      fqnSegments: [this.service.name, this.entity.name, this.apiEndpoint.name],
       data: this.apiEndpoint,
     });
-
-    const service = await okJson(serviceResponse, 'ApiCollectionClass.create');
-    const entity = await okJson(entityResponse, 'ApiCollectionClass.create');
-    const apiEndpoint = await okJson(
-      apiEndpointResponse,
-      'ApiCollectionClass.create'
-    );
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
