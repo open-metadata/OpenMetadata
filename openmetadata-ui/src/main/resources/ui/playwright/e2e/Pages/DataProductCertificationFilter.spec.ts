@@ -24,6 +24,7 @@ import { sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const CERTIFICATION_FILTER_LABEL = 'Certification';
+const CERTIFICATION_FIELD = 'certification.tagLabel.tagFQN';
 
 const domain = new Domain();
 const goldCertification = new TagClass({ classification: 'Certification' });
@@ -61,17 +62,12 @@ const assignCertification = async (
   expect(response.status()).toBe(200);
 };
 
-
-const lowercaseKey = (value: string) => value.toLowerCase();
-
-
-const ensureFilterOptionVisible = async (
+const resolveCertificationOptionKey = async (
   page: Page,
-  optionKey: string,
   searchText: string
-) => {
+): Promise<string> => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
+  let resolvedKey = '';
 
   await expect(async () => {
     const isMenuOpen = await menu.isVisible().catch(() => false);
@@ -81,22 +77,36 @@ const ensureFilterOptionVisible = async (
         .click();
       await menu.waitFor({ state: 'visible' });
     }
+
+    const aggregateResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/aggregate') &&
+        response.url().includes(CERTIFICATION_FIELD)
+    );
     await menu.getByTestId('search-input').fill(searchText);
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
+    const body = await (await aggregateResponse).json();
+    const buckets: Array<{ key: string }> =
+      body?.aggregations?.[`sterms#${CERTIFICATION_FIELD}`]?.buckets ?? [];
+    const match = buckets.find((bucket) =>
+      bucket.key.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    if (!match) {
+      throw new Error(
+        `No certification bucket matched "${searchText}". Server returned keys: ${JSON.stringify(
+          buckets.map((bucket) => bucket.key)
+        )}`
+      );
     }
+
+    resolvedKey = match.key;
+    await menu.getByTestId(resolvedKey).waitFor({ state: 'visible' });
   }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+
+  return resolvedKey;
 };
 
-const filterByCertification = async (
-  page: Page,
-  optionKey: string,
-  searchText: string
-) => {
-  await ensureFilterOptionVisible(page, optionKey, searchText);
+const applyCertificationFilter = async (page: Page, optionKey: string) => {
   const option = page.getByTestId('drop-down-menu').getByTestId(optionKey);
 
   const queryResponse = page.waitForResponse((response) => {
@@ -119,93 +129,96 @@ const navigateToDataProducts = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
-test.describe('Data Products - Certification filter', { tag: '@Governance' }, () => {
-  test.describe.configure({ mode: 'serial' });
-  test.slow();
+test.describe(
+  'Data Products - Certification filter',
+  { tag: '@Governance' },
+  () => {
+    test.slow();
 
-  test.beforeAll('Setup certified data products', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    test.beforeAll('Setup certified data products', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
 
-    await domain.create(apiContext);
-    await goldCertification.create(apiContext);
-    await silverCertification.create(apiContext);
-    await goldDataProduct.create(apiContext);
-    await silverDataProduct.create(apiContext);
+      await domain.create(apiContext);
+      await goldCertification.create(apiContext);
+      await silverCertification.create(apiContext);
+      await goldDataProduct.create(apiContext);
+      await silverDataProduct.create(apiContext);
 
-    await assignCertification(apiContext, goldDataProduct, goldCertification);
-    await assignCertification(
-      apiContext,
-      silverDataProduct,
-      silverCertification
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await goldDataProduct.delete(apiContext);
-    await silverDataProduct.delete(apiContext);
-    await goldCertification.delete(apiContext);
-    await silverCertification.delete(apiContext);
-    await domain.delete(apiContext);
-
-    await afterAction();
-  });
-
-  test.beforeEach('Visit home page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('lists only certifications assigned to data products', async ({
-    page,
-  }) => {
-    await test.step('Navigate to the Data Products page', async () => {
-      await navigateToDataProducts(page);
-    });
-
-    await test.step('Certification quick filter is available', async () => {
-      await expect(
-        page.getByTestId(`search-dropdown-${CERTIFICATION_FILTER_LABEL}`)
-      ).toBeVisible();
-    });
-
-    await test.step('Assigned certifications are searchable', async () => {
-      await ensureFilterOptionVisible(
-        page,
-        lowercaseKey(goldCertification.responseData.fullyQualifiedName),
-        goldCertification.responseData.name
+      await assignCertification(apiContext, goldDataProduct, goldCertification);
+      await assignCertification(
+        apiContext,
+        silverDataProduct,
+        silverCertification
       );
-      await ensureFilterOptionVisible(
-        page,
-        lowercaseKey(silverCertification.responseData.fullyQualifiedName),
-        silverCertification.responseData.name
-      );
-      await page.keyboard.press('Escape');
-    });
-  });
 
-  test('filtering by a certification narrows the listing', async ({ page }) => {
-    await test.step('Navigate to the Data Products page', async () => {
-      await navigateToDataProducts(page);
+      await afterAction();
     });
 
-    await test.step('Apply the gold certification filter', async () => {
-      await filterByCertification(
-        page,
-        lowercaseKey(goldCertification.responseData.fullyQualifiedName),
-        goldCertification.responseData.name
-      );
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await goldDataProduct.delete(apiContext);
+      await silverDataProduct.delete(apiContext);
+      await goldCertification.delete(apiContext);
+      await silverCertification.delete(apiContext);
+      await domain.delete(apiContext);
+
+      await afterAction();
     });
 
-    await test.step('Only the gold-certified data product remains', async () => {
-      await expect(
-        page.getByText(goldDataProduct.responseData.displayName)
-      ).toBeVisible();
-      await expect(
-        page.getByText(silverDataProduct.responseData.displayName)
-      ).toBeHidden();
+    test.beforeEach('Visit home page', async ({ page }) => {
+      await redirectToHomePage(page);
     });
-  });
-});
+
+    test('lists only certifications assigned to data products', async ({
+      page,
+    }) => {
+      await test.step('Navigate to the Data Products page', async () => {
+        await navigateToDataProducts(page);
+      });
+
+      await test.step('Certification quick filter is available', async () => {
+        await expect(
+          page.getByTestId(`search-dropdown-${CERTIFICATION_FILTER_LABEL}`)
+        ).toBeVisible();
+      });
+
+      await test.step('Assigned certifications are searchable', async () => {
+        await resolveCertificationOptionKey(
+          page,
+          goldCertification.responseData.name
+        );
+        await resolveCertificationOptionKey(
+          page,
+          silverCertification.responseData.name
+        );
+        await page.keyboard.press('Escape');
+      });
+    });
+
+    test('filtering by a certification narrows the listing', async ({
+      page,
+    }) => {
+      await test.step('Navigate to the Data Products page', async () => {
+        await navigateToDataProducts(page);
+      });
+
+      await test.step('Apply the gold certification filter', async () => {
+        const goldOptionKey = await resolveCertificationOptionKey(
+          page,
+          goldCertification.responseData.name
+        );
+        await applyCertificationFilter(page, goldOptionKey);
+      });
+
+      await test.step('Only the gold-certified data product remains', async () => {
+        await expect(
+          page.getByText(goldDataProduct.responseData.displayName)
+        ).toBeVisible();
+        await expect(
+          page.getByText(silverDataProduct.responseData.displayName)
+        ).toBeHidden();
+      });
+    });
+  }
+);
