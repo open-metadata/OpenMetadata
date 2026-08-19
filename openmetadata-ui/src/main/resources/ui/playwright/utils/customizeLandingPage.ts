@@ -53,6 +53,11 @@ const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
     )
     .first();
 
+export const isLandingPageWidgetConfigured = async (
+  page: Page,
+  widgetKey: string
+) => (await getLandingPageWidgetSlot(page, widgetKey).count()) > 0;
+
 const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const slot = getLandingPageWidgetSlot(page, widgetKey);
 
