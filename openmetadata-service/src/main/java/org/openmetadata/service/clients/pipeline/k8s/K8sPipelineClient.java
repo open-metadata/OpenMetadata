@@ -67,7 +67,6 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
@@ -175,6 +174,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private static final String NO_LOGS_MESSAGE = "No logs available for pod: ";
   private static final String NO_PODS_MESSAGE = "No pods found for this pipeline";
   private static final String FAILED_LOGS_MESSAGE = "Failed to retrieve logs: ";
+  private static final String K8S_STATUS_DESERIALIZATION_WARNING =
+      "Pod/job status details are unavailable because the bundled Kubernetes client could not "
+          + "parse fields returned by the Kubernetes cluster";
 
   // Error messages
   private static final String NAMESPACE_NOT_EXISTS_ERROR =
@@ -889,78 +891,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
-    // READ-ONLY: Check for queued K8s jobs without storing anything
-    String pipelineName = sanitizeName(ingestionPipeline.getName());
-    List<PipelineStatus> queuedStatuses = new ArrayList<>();
-
-    try {
-      String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-      V1JobList jobs =
-          batchApi
-              .listNamespacedJob(k8sConfig.getNamespace())
-              .labelSelector(labelSelector)
-              .execute();
-
-      for (V1Job job : jobs.getItems()) {
-        // Only return jobs that are QUEUED (created but not started)
-        if (isJobQueued(job)) {
-          String runId =
-              StringUtils.defaultIfBlank(
-                  job.getMetadata().getLabels() != null
-                      ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
-                      : null,
-                  job.getMetadata().getName());
-
-          Long startTime =
-              job.getMetadata().getCreationTimestamp() != null
-                  ? job.getMetadata().getCreationTimestamp().toInstant().toEpochMilli()
-                  : null;
-
-          // Create READ-ONLY status object (not persisted)
-          PipelineStatus queuedStatus =
-              new PipelineStatus()
-                  .withRunId(runId)
-                  .withPipelineState(PipelineStatusType.QUEUED)
-                  .withStartDate(startTime)
-                  .withTimestamp(startTime);
-
-          queuedStatuses.add(queuedStatus);
-        }
-      }
-
-    } catch (ApiException e) {
-      LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
-    } catch (IllegalArgumentException e) {
-      // client-java could not deserialize a job returned by a newer Kubernetes
-      // than its models (see getServiceStatusInternal). Treat as "no queued jobs
-      // visible" rather than propagating the error to the caller.
-      LOG.warn(
-          "Could not deserialize queued job status (client-java lags the cluster's "
-              + "Kubernetes version): {}",
-          e.getMessage());
-    }
-
-    return queuedStatuses;
-  }
-
-  private boolean isJobQueued(V1Job job) {
-    if (job.getStatus() == null) {
-      return true; // Job created but status not yet set = queued
-    }
-
-    Integer active = job.getStatus().getActive();
-    Integer succeeded = job.getStatus().getSucceeded();
-    Integer failed = job.getStatus().getFailed();
-
-    // Check if job is being deleted (has deletion timestamp)
-    if (job.getMetadata() != null && job.getMetadata().getDeletionTimestamp() != null) {
-      return false; // Job is being terminated, not queued
-    }
-
-    // Queued = no active pods, no completed pods, no failed pods, and not being deleted
-    return (active == null || active == 0)
-        && (succeeded == null || succeeded == 0)
-        && (failed == null || failed == 0);
+    return List.of();
   }
 
   @Override
@@ -969,9 +900,29 @@ public class K8sPipelineClient extends PipelineServiceClient {
     String serviceAccount = k8sConfig.getServiceAccountName();
 
     try {
+      boolean statusDetailsUnavailable = false;
+
       // Test basic namespace access
-      coreApi.listNamespacedPod(namespace).limit(1).execute();
-      batchApi.listNamespacedJob(namespace).limit(1).execute();
+      try {
+        coreApi.listNamespacedPod(namespace).limit(1).execute();
+      } catch (IllegalArgumentException e) {
+        statusDetailsUnavailable = true;
+        LOG.warn(
+            "Kubernetes namespace {} is reachable but pod status could not be deserialized "
+                + "(client-java models likely lag the cluster's Kubernetes version): {}",
+            namespace,
+            e.getMessage());
+      }
+      try {
+        batchApi.listNamespacedJob(namespace).limit(1).execute();
+      } catch (IllegalArgumentException e) {
+        statusDetailsUnavailable = true;
+        LOG.warn(
+            "Kubernetes namespace {} is reachable but job status could not be deserialized "
+                + "(client-java models likely lag the cluster's Kubernetes version): {}",
+            namespace,
+            e.getMessage());
+      }
 
       // Test ConfigMap permissions (required for pipeline configuration)
       try {
@@ -996,6 +947,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
       }
 
       String message = String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount);
+      if (statusDetailsUnavailable) {
+        message = message + ". " + K8S_STATUS_DESERIALIZATION_WARNING;
+      }
 
       return buildHealthyStatus(getKubernetesVersion()).withReason(message);
 
@@ -1010,25 +964,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
               e.getResponseBody());
       LOG.error(error);
       return buildUnhealthyStatus(error);
-    } catch (IllegalArgumentException e) {
-      // The list calls above reached the API server successfully (any real
-      // access/RBAC failure would be an ApiException, handled above). An
-      // IllegalArgumentException here is thrown by the bundled Kubernetes client
-      // (client-java) when it cannot DESERIALIZE a pod/job in the response —
-      // typically because the
-      // cluster runs a newer Kubernetes than the client models and the response
-      // carries an unmodeled status field, e.g.:
-      //   IllegalArgumentException: The field `allocatedResources` in the JSON
-      //   string is not defined in the `V1PodStatus` properties
-      // Cluster access is fine, so report healthy instead of failing the whole
-      // /services/ingestionPipelines/status endpoint (which blanks the UI).
-      LOG.warn(
-          "Kubernetes namespace {} is reachable but a pod/job could not be deserialized "
-              + "(client-java models likely lag the cluster's Kubernetes version): {}",
-          namespace,
-          e.getMessage());
-      return buildHealthyStatus(getKubernetesVersion())
-          .withReason(String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount));
     }
   }
 
@@ -1108,11 +1043,23 @@ public class K8sPipelineClient extends PipelineServiceClient {
       Map<String, String> labelSelectorMap = new HashMap<>();
       labelSelectorMap.put(LABEL_PIPELINE, pipelineName);
 
-      V1PodList pods =
-          coreApi
-              .listNamespacedPod(k8sConfig.getNamespace())
-              .labelSelector(buildLabelSelector(labelSelectorMap))
-              .execute();
+      V1PodList pods;
+      try {
+        pods =
+            coreApi
+                .listNamespacedPod(k8sConfig.getNamespace())
+                .labelSelector(buildLabelSelector(labelSelectorMap))
+                .execute();
+      } catch (IllegalArgumentException e) {
+        // client-java cannot deserialize a pod returned by a newer Kubernetes version when the
+        // response contains a field that is not present in the bundled client models.
+        LOG.warn(
+            "Could not deserialize pod while fetching logs for pipeline {} (client-java models "
+                + "likely lag the cluster's Kubernetes version): {}",
+            pipelineName,
+            e.getMessage());
+        return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
+      }
 
       // Early return if no pods found - avoid processing empty lists
       if (pods.getItems().isEmpty()) {
@@ -1154,16 +1101,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     } catch (ApiException e) {
       LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
-      return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
-    } catch (IllegalArgumentException e) {
-      // client-java could not deserialize a pod returned by a newer Kubernetes
-      // than its models (see getServiceStatusInternal). Return a graceful message
-      // instead of propagating the error.
-      LOG.warn(
-          "Could not deserialize pod while fetching logs for pipeline {} (client-java lags "
-              + "the cluster's Kubernetes version): {}",
-          pipelineName,
-          e.getMessage());
       return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
     }
   }
