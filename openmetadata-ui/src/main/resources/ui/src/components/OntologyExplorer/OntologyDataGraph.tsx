@@ -27,7 +27,10 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
-import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
+import {
+  DATA_MODE_MAX_RENDER_COUNT,
+  EDGE_STROKE_COLOR,
+} from './OntologyExplorer.constants';
 import {
   OntologyEdge,
   OntologyGraphData,
@@ -41,6 +44,7 @@ import {
 } from './utils/graphBuilders';
 import {
   formatRelationLabel,
+  getCanvasColor,
   getEffectiveRelationColor,
 } from './utils/graphStyles';
 
@@ -299,6 +303,25 @@ const OntologyDataGraph = ({
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
     [relationTypes]
+  );
+  const renderedSemanticEdges = useMemo(
+    () =>
+      semanticEdges.map((layout) => {
+        const relationshipType = relationshipTypeByName.get(
+          layout.edge.relationType
+        );
+        const rawColor =
+          getEffectiveRelationColor(
+            layout.edge.relationType,
+            relationshipType
+          ) ?? 'var(--color-border-brand)';
+
+        return {
+          ...layout,
+          color: getCanvasColor(rawColor, EDGE_STROKE_COLOR),
+        };
+      }),
+    [relationshipTypeByName, semanticEdges]
   );
   const rows = Math.ceil(visibleTerms.length / COLUMN_COUNT);
   const minimumCanvasHeight = Math.max(
@@ -574,38 +597,22 @@ const OntologyDataGraph = ({
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
           width={canvasWidth}>
-          {semanticEdges.map(({ edge, path }, index) => {
-            const relationshipType = relationshipTypeByName.get(
-              edge.relationType
-            );
-            const edgeColor =
-              getEffectiveRelationColor(edge.relationType, relationshipType) ??
-              'var(--color-border-brand)';
-
-            return (
-              <path
-                d={path}
-                data-testid="ontology-data-semantic-edge"
-                fill="none"
-                key={`${edge.from}-${edge.to}-${edge.relationType}-${index}`}
-                opacity="0.85"
-                stroke={edgeColor}
-                strokeDasharray="6 5"
-                strokeWidth="1.8"
-              />
-            );
-          })}
+          {renderedSemanticEdges.map(({ color, edge, path }, index) => (
+            <path
+              d={path}
+              data-testid="ontology-data-semantic-edge"
+              fill="none"
+              key={`${edge.from}-${edge.to}-${edge.relationType}-${index}`}
+              opacity="0.85"
+              stroke={color}
+              strokeDasharray="6 5"
+              strokeWidth="1.8"
+            />
+          ))}
         </svg>
 
-        {semanticEdges.map(({ edge, labelLeft, labelTop }, index) => {
-          const relationshipType = relationshipTypeByName.get(
-            edge.relationType
-          );
-          const edgeColor =
-            getEffectiveRelationColor(edge.relationType, relationshipType) ??
-            'var(--color-border-brand)';
-
-          return (
+        {renderedSemanticEdges.map(
+          ({ color, edge, labelLeft, labelTop }, index) => (
             <span
               className={classNames(
                 'tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2',
@@ -615,15 +622,15 @@ const OntologyDataGraph = ({
               data-testid="ontology-data-semantic-edge-label"
               key={`${edge.from}-${edge.to}-${edge.relationType}-label-${index}`}
               style={{
-                borderColor: edgeColor,
-                color: edgeColor,
+                borderColor: color,
+                color,
                 left: labelLeft,
                 top: labelTop,
               }}>
               {formatRelationLabel(edge.relationType).toLocaleLowerCase()}
             </span>
-          );
-        })}
+          )
+        )}
 
         {visibleTerms.map((term, index) => {
           const assets = assetsByTerm.get(term.id) ?? [];
