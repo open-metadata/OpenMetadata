@@ -26,30 +26,37 @@ permissions:
   contents: read
 
 jobs:
-  validate-json-yaml:
+  authorize-pr:
+    name: Authorize PR
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
     permissions:
+      contents: read
       pull-requests: write
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+      - name: Checkout trusted workflow source
         if: ${{ github.event_name == 'pull_request_target' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Authorize PR
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: ./.github/actions/authorize-pr
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
+          pull-request-number: ${{ github.event.pull_request.number }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
 
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
+  validate-json-yaml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: authorize-pr
+    if: ${{ needs.authorize-pr.result == 'success' }}
+    permissions:
+      pull-requests: write
+    steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:

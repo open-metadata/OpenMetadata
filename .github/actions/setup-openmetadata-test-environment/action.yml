@@ -60,15 +60,6 @@ inputs:
 runs:
   using: composite
   steps:
-    # ---- Install Ubuntu Dependencies ---------------------------------------------
-    - name: Install Ubuntu dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
-      shell: bash
-    # ------------------------------------------------------------------------------
-
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK ${{ inputs.java-version }}
       if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
@@ -91,63 +82,14 @@ runs:
       shell: bash
     # ------------------------------------------------------------------------------
 
-    # ---- Setup Python Test Environment -------------------------------------------
-    - name: Setup Python ${{ inputs.python-version }}
-      id: setup-python
+    # ---- Setup Python environment -----------------------------------------------
+    - name: Setup Python environment
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/setup-python@v6
+      uses: ./.github/actions/setup-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-
-    - name: Install uv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: astral-sh/setup-uv@v7
-
-    # Cache the ingestion Python venv across runs. Key on the *resolved*
-    # Python patch version (setup-python may resolve "3.10" to a different
-    # tool-cache path after a runner-image bump — old venv shebangs would
-    # then dangle) plus hashFiles of the ingestion dep manifests and this
-    # action file so a package change or install-script edit invalidates
-    # cleanly. Intentionally no restore-keys: a partial restore would keep
-    # dependencies deleted from the manifest, letting tests silently
-    # import undeclared packages. Cache miss = fresh install, always.
-    # Skipped in fast-mode / lightweight-ingestion — those consumers restore
-    # a pre-seeded fixture and never touch the venv.
-    - name: Cache ingestion Python venv
-      id: cache-python-venv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/cache@v4
-      with:
-        path: env
-        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
-
-    - name: Generate Models
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        # Belt-and-suspenders: even with the resolved-patch key above, if
-        # the restored venv's interpreter can't run, rebuild from scratch
-        # rather than fail Generate Models with an opaque shebang error.
-        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
-          rm -rf env
-          python3 -m venv env
-        fi
-        source env/bin/activate
-        sudo make install_antlr_cli
-        uv pip install "${{ github.workspace }}/ingestion[dev]"
-        make generate
-      shell: bash
-
-    - name: Install Python Dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
-      run: |
-        source env/bin/activate
-        uv pip install "setuptools<81"
-        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
-        uv pip install "${{ github.workspace }}/ingestion[all]"
-        uv pip install "${{ github.workspace }}/ingestion[test]"
-        uv pip install nox
-      shell: bash
+        dependency-profile: ${{ inputs.install-test-dependencies == 'true' && 'test' || 'dev' }}
+    # ------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------

@@ -42,6 +42,7 @@ jobs:
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -72,12 +73,12 @@ jobs:
         role-session-name: github-ci-aws-e2e-tests
         aws-region: ${{ secrets.E2E_AWS_REGION }}
 
-    - name: Setup Openmetadata Test Environment (without server)
+    - name: Setup Python environment
       if: matrix.e2e-test == 'python-unittests'
-      uses: ./.github/actions/setup-openmetadata-test-environment
+      uses: ./.github/actions/setup-python-environment
       with:
         python-version: '3.10'
-        install-server: 'false'
+        dependency-profile: test
 
     - name: Setup Openmetadata Test Environment
       if: matrix.e2e-test != 'python-unittests'
@@ -354,6 +355,7 @@ jobs:
     needs: [check-debug, py-cli-e2e-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Verify all expected CLI E2E jobs completed
         env:
@@ -368,6 +370,7 @@ jobs:
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - py-cli-e2e-tests
       - check-debug

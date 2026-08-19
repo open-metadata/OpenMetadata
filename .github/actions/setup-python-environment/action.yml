@@ -1,0 +1,66 @@
+name: Setup Python environment
+description: Set up the Python runtime, cached virtual environment, generated models, and ingestion dependencies
+
+inputs:
+  python-version:
+    description: Python version to install
+    required: true
+  dependency-profile:
+    description: Python dependency profile (format, dev, or test)
+    required: false
+    default: test
+
+runs:
+  using: composite
+  steps:
+    - name: Install Python Ubuntu dependencies
+      if: ${{ inputs.dependency-profile == 'format' }}
+      run: sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      shell: bash
+
+    - name: Install Python test Ubuntu dependencies
+      if: ${{ inputs.dependency-profile != 'format' }}
+      run: |
+        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev python3-dev libkrb5-dev tdsodbc
+        ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+      shell: bash
+
+    - name: Setup Python ${{ inputs.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Cache ingestion Python venv
+      uses: actions/cache@v4
+      with:
+        path: env
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-python-environment/action.yml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+
+    - name: Generate Models
+      run: |
+        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
+          rm -rf env
+          python3 -m venv env
+        fi
+        source env/bin/activate
+        sudo make install_antlr_cli
+        uv pip install "${{ github.workspace }}/ingestion[dev]"
+        make generate
+      shell: bash
+
+    - name: Install Python test dependencies
+      if: ${{ inputs.dependency-profile == 'test' }}
+      run: |
+        source env/bin/activate
+        uv pip install "setuptools<81"
+        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+        uv pip install "${{ github.workspace }}/ingestion[all]"
+        uv pip install "${{ github.workspace }}/ingestion[test]"
+        uv pip install nox
+      shell: bash
