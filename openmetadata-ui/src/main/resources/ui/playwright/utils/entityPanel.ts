@@ -186,7 +186,12 @@ export const openEntitySummaryPanel = async ({
 
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
-    await entityResultCard.getByTestId('description-text').click();
+    // Rich descriptions can contain links, images, and attachment controls.
+    // A coordinate click on the container may hit one of those children and
+    // open its popover instead of the entity summary panel.
+    await entityResultCard
+      .getByTestId('description-text')
+      .dispatchEvent('click');
 
     return;
   }
@@ -197,7 +202,7 @@ export const openEntitySummaryPanel = async ({
     await knowledgeCenterItem.click();
   }
 
-  await entityResultCard.getByTestId('description-text').click();
+  await entityResultCard.getByTestId('description-text').dispatchEvent('click');
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(

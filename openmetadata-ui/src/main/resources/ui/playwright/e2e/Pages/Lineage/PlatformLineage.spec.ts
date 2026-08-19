@@ -34,6 +34,10 @@ import { test } from '../../fixtures/pages';
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
 const table = new TableClass(tableNameWithSlash);
 
+// All tests use the same table created by the file-level beforeAll. Running
+// them fully parallel repeats that hook for the same generated table name.
+test.describe.configure({ mode: 'default' });
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
   await table.create(apiContext);
@@ -52,6 +56,12 @@ test.beforeAll(async ({ browser }) => {
     ],
   });
 
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+  await table.delete(apiContext);
   await afterAction();
 });
 
