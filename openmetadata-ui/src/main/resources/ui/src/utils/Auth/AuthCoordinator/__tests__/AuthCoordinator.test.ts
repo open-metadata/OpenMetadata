@@ -272,6 +272,57 @@ describe('AuthCoordinator', () => {
       expect(renewer).not.toHaveBeenCalled();
     });
 
+    it('fires the renewer when the token is within the pre-expiry buffer (proactive refresh)', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('near-expiry-jwt');
+      // 30s of lifetime left; EXPIRY_THRESHOLD_MILLES = 60s per the mock.
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: Math.floor(Date.now() / 1000) + 30,
+        isExpired: false,
+        timeoutExpiry: 0,
+      });
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+      // renewer is called via ensureFreshToken → runExclusive; give the
+      // async chain a couple more ticks so the leader path resolves.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(renewer).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT call the renewer when the token has no exp claim', async () => {
+      // A token that decodes but lacks `exp` used to slip past the near-
+      // expiry check because extractDetailsFromToken returns
+      // timeoutExpiry: 0 for the missing-exp branch — same value it uses
+      // for the near-expiry-buffer branch. onTabVisible must distinguish
+      // "no usable expiry" from "expiry is imminent" and leave a no-exp
+      // token alone (next 401 drives the refresh instead).
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('no-exp-jwt');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: undefined,
+        isExpired: false,
+        timeoutExpiry: 0,
+      });
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+
+      expect(renewer).not.toHaveBeenCalled();
+    });
+
     it('fires exactly one renewer call even when the tab is re-focused rapidly during an in-flight refresh', async () => {
       // Renewer never resolves during the test so we can hammer the
       // visibility handler while the first refresh is still in flight —

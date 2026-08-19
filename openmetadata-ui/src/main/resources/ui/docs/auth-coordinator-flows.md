@@ -35,7 +35,9 @@ race with the first 401.
 | 3 | Cold-load, expired token (Bug 1) | `initializeAuthState` sees `isExpired` → `await authCoordinator.ensureFreshToken()` **before** flipping `isAuthenticated`. If it succeeds, app renders authenticated; if it fails, user sees `/signin`. **Awaits `renewerReady`** so the lazy authenticator's mount has time to register. | `useApplicationStore.ts:76-133` |
 | 4 | In-session 401 | Response interceptor: `isRefreshableAuthError(401,url)` → enqueue request → `pumpQueue` → `ensureFreshToken` → drain queue with new token. First-of-cycle 401 fires `onRefreshStart` → stores redirect path. Concurrent 401s share the same `inflight` promise. | `AuthCoordinator.ts:install` |
 | 5 | Proactive timer fires | `bufferMs = 60_000` before `expiresAt` → `ensureFreshToken` runs silently. Emits `refreshed` (no state change; user was already authenticated). New timer scheduled from the fresh `expiresAt`. Never runs when `expiresAt <= 0` (opaque token guard). | `ProactiveTimer.ts` |
-| 6 | Tab focus, fresh token | `onTabVisible` decodes stored token → not expired → **reschedules timer only, no network call**. | `AuthCoordinator.ts:onTabVisible` |
+| 6 | Tab focus, fresh token (outside 60s pre-expiry buffer) | `onTabVisible` decodes stored token → not expired, plenty of headroom → **reschedules timer only, no network call**. | `AuthCoordinator.ts:onTabVisible` |
+| 6a | Tab focus, near-expiry (< 60s left, still valid) | Same as case 6 through the storage read → `msUntilExpiry <= EXPIRY_THRESHOLD_MILLES` → `ensureFreshToken()`. This is the proactive-refresh buffer; matches `ProactiveTimer`'s own `bufferMs`. | Same |
+| 6b | Tab focus, token has no `exp` claim | No usable expiry to reason about → **early return, no network call**. The next real 401 will drive the refresh. | Same |
 | 7 | Tab focus, expired token | Storage → `isExpired` → `ensureFreshToken()`. Rapid re-focus during in-flight is deduped via `this.inflight`. | Same |
 | 8 | Tab focus, signed out (no token) | Early return, **zero network calls**. Pinned by `AuthCoordinator.test.ts › tab visibility gating`. | Same |
 | 9 | Cross-tab, both expired | Web Locks pick leader. Leader calls renewer → `setOidcToken` → `notifyDone({idToken,expiresAt})`. Follower receives `done` payload, calls `applyRefreshed` **with the leader's payload directly** (no storage re-read race). Both tabs emit `refreshed` → both flip `isAuthenticated`. | `CrossTabLock.ts` + `AuthCoordinator.ts:doRefresh` |
@@ -86,6 +88,8 @@ These properties hold for every provider — regressing any is a P1:
 | Renewer registration race safety | `AuthCoordinator.test.ts › ensureFreshToken waits for renewer registration…` |
 | Signed-out tab: no refresh on focus | `AuthCoordinator.test.ts › tab visibility gating › does NOT call the renewer when storage has no token` |
 | Fresh tab: no refresh on focus | `AuthCoordinator.test.ts › tab visibility gating › does NOT call the renewer when the stored token is still fresh` |
+| Near-expiry: proactive refresh on focus | `AuthCoordinator.test.ts › tab visibility gating › fires the renewer when the token is within the pre-expiry buffer` |
+| No-exp claim: no refresh on focus | `AuthCoordinator.test.ts › tab visibility gating › does NOT call the renewer when the token has no exp claim` |
 | Rapid re-focus dedup | `AuthCoordinator.test.ts › tab visibility gating › fires exactly one renewer call…` |
 | Cross-tab leader/follower with `done` payload | `CrossTabLock.test.ts › follower receives leader payload…` |
 | Cross-tab `failed` broadcast | `CrossTabLock.test.ts › runExclusive broadcasts failed when the leader work throws` |

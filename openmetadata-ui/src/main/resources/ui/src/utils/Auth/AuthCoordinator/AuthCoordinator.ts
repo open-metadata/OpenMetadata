@@ -153,20 +153,31 @@ export class AuthCoordinator {
       if (!token) {
         return;
       }
-      const { exp, isExpired, timeoutExpiry } = extractDetailsFromToken(token);
-      if (
-        isExpired ||
-        (typeof timeoutExpiry === 'number' && timeoutExpiry <= 0)
-      ) {
+      const { exp, isExpired } = extractDetailsFromToken(token);
+      if (isExpired) {
         await this.ensureFreshToken();
 
         return;
       }
-      if (typeof exp === 'number' && exp > 0) {
-        this.timer.schedule(exp * 1000, () => {
-          this.ensureFreshToken().catch(() => undefined);
-        });
+      // A missing / non-positive `exp` (e.g. a non-JWT / opaque token, or a
+      // spec-violating id_token) has no usable expiry — don't proactively
+      // refresh on every tab focus. Leave the token in place; the next real
+      // 401 will drive a refresh via the axios interceptor.
+      if (typeof exp !== 'number' || exp <= 0) {
+        return;
       }
+      // Fire a proactive refresh when the remaining lifetime is inside the
+      // pre-expiry buffer; otherwise just reschedule the timer with the
+      // correct remaining time (no network call).
+      const msUntilExpiry = exp * 1000 - Date.now();
+      if (msUntilExpiry <= EXPIRY_THRESHOLD_MILLES) {
+        await this.ensureFreshToken();
+
+        return;
+      }
+      this.timer.schedule(exp * 1000, () => {
+        this.ensureFreshToken().catch(() => undefined);
+      });
     } catch {
       // Storage read errors fall through: the next real 401 will drive the
       // refresh via the axios interceptor.
