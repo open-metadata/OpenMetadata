@@ -2277,6 +2277,9 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  // Matches the wording io.kubernetes:client-java's generated models use for a field the bundled
+  // schema does not know about; the version is pinned in this module's pom.xml. An upgrade that
+  // changes this wording needs a matching update here and in the tests that hardcode it.
   private boolean isUnknownFieldDeserializationError(IllegalArgumentException exception) {
     String message = exception.getMessage();
     return message != null && message.contains("is not defined in the `");

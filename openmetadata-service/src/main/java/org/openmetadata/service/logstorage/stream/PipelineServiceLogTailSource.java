@@ -52,7 +52,7 @@ public class PipelineServiceLogTailSource implements LogTailSource {
     final Map<String, String> page = reader.read(Integer.toString(chunkIndex));
     String error = page == null ? null : page.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
     if (error != null) {
-      throw new IOException(error);
+      throw new LogSourceUnavailableException(error);
     }
     final String chunk = extractContent(page);
     final String fresh = freshContent(chunk);

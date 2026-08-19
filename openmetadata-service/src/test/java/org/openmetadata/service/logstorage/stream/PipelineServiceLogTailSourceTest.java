@@ -146,7 +146,7 @@ class PipelineServiceLogTailSourceTest {
                     "Kubernetes pod status could not be parsed"),
             null);
 
-    assertThrows(IOException.class, source::readNext);
+    assertThrows(LogSourceUnavailableException.class, source::readNext);
   }
 
   /**
