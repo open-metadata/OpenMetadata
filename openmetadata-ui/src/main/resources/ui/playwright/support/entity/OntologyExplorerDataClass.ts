@@ -393,3 +393,40 @@ export class OntologyExplorerIsolatedToggleData {
     await this.toggleGlossary.delete(apiContext);
   }
 }
+
+// ---------------------------------------------------------------------------
+// OntologyExplorerFilters.spec.ts data — two glossaries, one with a relation
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerFiltersData {
+  // glossary: term1 relatedTo term2 (1 relation for filter stats assertions)
+  static readonly glossary = new Glossary();
+  static readonly term1 = new GlossaryTerm(this.glossary);
+  static readonly term2 = new GlossaryTerm(this.glossary);
+
+  // glossary2: term3 and term4 with no relations (isolated, for 0-relation stats)
+  static readonly glossary2 = new Glossary();
+  static readonly term3 = new GlossaryTerm(this.glossary2);
+  static readonly term4 = new GlossaryTerm(this.glossary2);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.glossary.create(apiContext),
+      this.glossary2.create(apiContext),
+    ]);
+    await Promise.all([
+      this.term1.create(apiContext),
+      this.term2.create(apiContext),
+      this.term3.create(apiContext),
+      this.term4.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.term1, this.term2, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.glossary.delete(apiContext),
+      this.glossary2.delete(apiContext),
+    ]);
+  }
+}
