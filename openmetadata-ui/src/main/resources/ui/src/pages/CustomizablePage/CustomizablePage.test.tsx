@@ -27,6 +27,10 @@ import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { CustomizablePage } from './CustomizablePage';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
