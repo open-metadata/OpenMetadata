@@ -40,8 +40,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -59,15 +59,22 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import {
+  ENTITY_ICON_BG_SIZE_MAP,
+  EntityIconBgSize,
+  EntityIconSize,
+  getEntityIcon,
+} from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
-import { EntityIconSize, getEntityIcon, getServiceIcon } from './TableUtils';
+import { getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
@@ -854,6 +861,22 @@ class SearchClassBase {
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
     return [];
+  }
+
+  public getEntityIconMapper(): typeof ENTITY_ICON_MAPPER {
+    return ENTITY_ICON_MAPPER;
+  }
+
+  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconBgSize) {
+    const config =
+      iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
+
+    return getEntityIconWithBg(
+      entityType,
+      config?.containerProps,
+      config?.iconProps,
+      this.getEntityIconMapper()
+    );
   }
 
   public getIndexGroupLabel(index: string) {
