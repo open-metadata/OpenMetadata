@@ -4068,6 +4068,7 @@
     "pipeline-killed-successfully": "Avslutade körande arbetsflöden för {{pipelineName}}",
     "pipeline-not-deployed": "Pipelinen är inte distribuerad",
     "pipeline-scheduler-message": "Inmatningsschemaläggaren kan inte svara. Kontakta {{brandName}}-supporten. Tack.",
+    "pipeline-service-unreachable-agent-actions": "Det går inte att nå pipelinetjänsten. Agenter och deras körhistorik visas i sitt senast registrerade tillstånd, och agentåtgärder förblir otillgängliga tills tjänsten svarar igen.",
     "pipeline-will-trigger-manually": "Pipelinen utlöses endast manuellt.",
     "pipeline-will-triggered-manually": "Pipelinen utlöses endast manuellt",
     "platform-insight-description": "Förstå den metadata som finns tillgänglig i din tjänst och håll koll på täckningen av de viktigaste KPI:erna.",
