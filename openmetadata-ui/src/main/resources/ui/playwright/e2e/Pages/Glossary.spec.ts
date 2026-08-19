@@ -101,6 +101,7 @@ import {
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
+import { getTableColumnsCount } from '../../utils/table';
 import { performUserLogin } from '../../utils/user';
 
 const user1 = new UserClass();
@@ -1194,7 +1195,12 @@ test.describe('Glossary tests', () => {
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      // 1 table + all flattened columns (propagated as DERIVED tags via async update-by-query)
+      await goToAssetsTab(
+        page,
+        glossaryTerm1.data.displayName,
+        1 + getTableColumnsCount(table.children)
+      );
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
