@@ -17,6 +17,7 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import MSSQL_GET_SYNONYMS
 from metadata.ingestion.source.database.mssql.synonyms import (
+    SynonymMap,
     parse_base_object_name,
     split_sql_server_identifier,
 )
@@ -156,3 +157,65 @@ class TestParseBaseObjectName:
 
         assert target is None
         assert reason is SynonymUnresolvedReason.UNRESOLVED
+
+
+class TestSynonymMap:
+    def test_aliases_are_returned_sorted(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.master.dbo.orders", "svc.z_core.dbo.orders")
+        synonym_map.add("svc.master.dbo.orders", "svc.a_core.dbo.orders")
+
+        assert synonym_map.aliases_for("svc.master.dbo.orders") == [
+            "svc.a_core.dbo.orders",
+            "svc.z_core.dbo.orders",
+        ]
+
+    def test_unknown_target_returns_none(self):
+        assert SynonymMap().aliases_for("svc.master.dbo.orders") is None
+
+    def test_duplicate_alias_is_stored_once(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+        synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+
+        assert synonym_map.aliases_for("svc.master.dbo.orders") == ["svc.core.dbo.orders"]
+
+    def test_consumed_target_is_not_reported_unresolved(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+        synonym_map.aliases_for("svc.master.dbo.orders")
+
+        assert synonym_map.unresolved() == []
+
+    def test_unconsumed_target_is_reported_unresolved(self):
+        synonym_map = SynonymMap()
+        synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+
+        assert synonym_map.unresolved() == [("svc.core.dbo.orders", SynonymUnresolvedReason.UNRESOLVED.value)]
+
+    def test_explicitly_recorded_unresolved_is_reported(self):
+        synonym_map = SynonymMap()
+        synonym_map.record_unresolved("svc.core.dbo.remote_orders", SynonymUnresolvedReason.REMOTE_TARGET_UNMAPPED)
+
+        assert synonym_map.unresolved() == [("svc.core.dbo.remote_orders", "RemoteTargetUnmapped")]
+
+    def test_cap_rejects_further_entries(self):
+        synonym_map = SynonymMap(max_entries=2)
+
+        assert synonym_map.add("svc.master.dbo.a", "svc.core.dbo.a") is True
+        assert synonym_map.add("svc.master.dbo.b", "svc.core.dbo.b") is True
+        assert synonym_map.add("svc.master.dbo.c", "svc.core.dbo.c") is False
+        assert synonym_map.aliases_for("svc.master.dbo.c") is None
+
+    def test_cap_counts_targets_not_aliases(self):
+        synonym_map = SynonymMap(max_entries=1)
+
+        assert synonym_map.add("svc.master.dbo.a", "svc.core.dbo.a") is True
+        assert synonym_map.add("svc.master.dbo.a", "svc.other.dbo.a") is True
+
+    def test_is_empty(self):
+        synonym_map = SynonymMap()
+
+        assert synonym_map.is_empty() is True
+        synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+        assert synonym_map.is_empty() is False

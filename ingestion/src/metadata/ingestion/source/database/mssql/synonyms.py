@@ -22,6 +22,8 @@ logger = ingestion_logger()
 
 DEFAULT_MSSQL_SCHEMA = "dbo"
 
+MAX_SYNONYM_ENTRIES = 5000
+
 
 def split_sql_server_identifier(raw: str) -> list[str]:
     """
@@ -104,3 +106,54 @@ def parse_base_object_name(
         ),
         None,
     )
+
+
+class SynonymMap:
+    """
+    Target FQN -> alias FQNs, with consumption tracking.
+
+    Bounded by an explicit target cap: the map is built from a whole-service
+    sys.synonyms snapshot, so on a pathological catalog it would otherwise grow
+    without limit and exhaust memory mid-run.
+    """
+
+    def __init__(self, max_entries: int = MAX_SYNONYM_ENTRIES):
+        self._max_entries = max_entries
+        self._targets: dict[str, set[str]] = {}
+        self._consumed: set[str] = set()
+        self._explicit_unresolved: list[tuple[str, str]] = []
+        self._cap_warned = False
+
+    def add(self, target_fqn: str, alias_fqn: str) -> bool:
+        if target_fqn not in self._targets and len(self._targets) >= self._max_entries:
+            if not self._cap_warned:
+                logger.warning(
+                    f"Synonym map reached its cap of {self._max_entries} targets; "
+                    f"further synonyms are ignored for this run"
+                )
+                self._cap_warned = True
+            return False
+        self._targets.setdefault(target_fqn, set()).add(alias_fqn)
+        return True
+
+    def aliases_for(self, target_fqn: str) -> Optional[list[str]]:  # noqa: UP045
+        aliases = self._targets.get(target_fqn)
+        if not aliases:
+            return None
+        self._consumed.add(target_fqn)
+        return sorted(aliases)
+
+    def record_unresolved(self, alias_fqn: str, reason: SynonymUnresolvedReason) -> None:
+        self._explicit_unresolved.append((alias_fqn, reason.value))
+
+    def unresolved(self) -> list[tuple[str, str]]:
+        never_consumed = [
+            (alias_fqn, SynonymUnresolvedReason.UNRESOLVED.value)
+            for target_fqn, aliases in self._targets.items()
+            if target_fqn not in self._consumed
+            for alias_fqn in sorted(aliases)
+        ]
+        return self._explicit_unresolved + never_consumed
+
+    def is_empty(self) -> bool:
+        return not self._targets
