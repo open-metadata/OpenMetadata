@@ -70,7 +70,9 @@ import {
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from '../../utils/Lineage/LineagePureUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -431,7 +433,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               onSelectionChange={() => void 0}>
               {LINEAGE_IMPACT_OPTIONS.map((option) => (
                 <Dropdown.Item
-                  icon={option.icon as FC<{ className?: string }>}
+                  icon={
+                    (() =>
+                      searchClassBase.getEntityIconWithBg(
+                        option.entityType,
+                        EntityIconSize.Size14
+                      )) as FC<{ className?: string }>
+                  }
                   id={option.key}
                   key={option.key}
                   label={option.label}
