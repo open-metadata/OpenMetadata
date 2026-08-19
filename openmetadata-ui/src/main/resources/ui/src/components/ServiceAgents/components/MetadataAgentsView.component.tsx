@@ -36,7 +36,6 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolderIngestion from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
@@ -54,7 +53,7 @@ interface MetadataAgentsViewProps {
   addAgentSlot?: ReactNode;
   agents: Agent[];
   ingestionPipelineList: IngestionPipeline[];
-  /** First load — spans the airflow status call and the pipeline fetch it gates. */
+  /** First load of the pipeline fetch — before it lands, an empty list means "not known yet". */
   isLoading?: boolean;
   serviceCategory: ServiceCategory;
   serviceDetails: ServicesType;
@@ -79,7 +78,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isAirflowAvailable, isFetchingStatus, platform } = useAirflowStatus();
+  const { platform } = useAirflowStatus();
   const { theme } = useApplicationStore();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
@@ -207,23 +206,19 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
-  const emptyPlaceholder = useMemo(() => {
-    // The pipeline fetch is skipped while the service is unreachable, so an empty list here means
-    // "could not load", not "none exist" — say which.
-    if (!isFetchingStatus && !isAirflowAvailable) {
-      return (
-        <ErrorPlaceHolderIngestion cardClassName={AGENTS_EMPTY_CARD_CLASS} />
-      );
-    }
-
-    return getErrorPlaceHolder(
-      agents.length,
-      platform === DISABLED,
-      theme,
-      undefined,
-      AGENTS_EMPTY_CARD_CLASS
-    );
-  }, [agents.length, isAirflowAvailable, isFetchingStatus, platform, theme]);
+  // The pipeline fetch now runs regardless of the airflow status, so an empty list here really
+  // does mean "none exist". The unreachable case is carried by `AirflowMessageBanner` instead.
+  const emptyPlaceholder = useMemo(
+    () =>
+      getErrorPlaceHolder(
+        agents.length,
+        platform === DISABLED,
+        theme,
+        undefined,
+        AGENTS_EMPTY_CARD_CLASS
+      ),
+    [agents.length, platform, theme]
+  );
 
   const extraMenuItems = useMemo(
     () =>
