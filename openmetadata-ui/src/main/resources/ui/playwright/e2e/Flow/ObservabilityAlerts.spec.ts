@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import { type Page } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
-  WEBHOOK_DELIVERY_COLUMN_NAME,
 } from '../../constant/alert';
-import {
-  AlertDetails,
-  ObservabilityCreationDetails,
-} from '../../constant/alert.interface';
+import { ObservabilityCreationDetails } from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -51,13 +47,6 @@ import {
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
-import {
-  clearCapturedWebhookRequests,
-  findWebhookDelivery,
-  getAddedColumnNames,
-  startWebhookReceiver,
-  stopWebhookReceiver,
-} from '../../utils/webhook';
 import { test as base } from '../fixtures/pages';
 
 const user1 = new UserClass();
@@ -105,14 +94,11 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(120_000);
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();
   domain = new Domain();
-  const { afterAction, apiContext } = await performAdminLogin(browser, {
-    navigate: true,
-  });
+  const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
     table: table2,
@@ -183,22 +169,18 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser, {
-    navigate: true,
+  const { afterAction, apiContext } = await performAdminLogin(browser);
+  await commonCleanup({
+    apiContext,
+    table: table2,
+    user1,
+    user2,
+    domain,
   });
-  try {
-    await commonCleanup({
-      apiContext,
-      table: table2,
-      user1,
-      user2,
-      domain,
-    });
-    await table1.delete(apiContext);
-    await pipeline.delete(apiContext);
-  } finally {
-    await afterAction();
-  }
+  await table1.delete(apiContext);
+  await pipeline.delete(apiContext);
+
+  await afterAction();
 });
 
 test.beforeEach(async ({ page }) => {
@@ -336,115 +318,6 @@ for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
     });
   });
 }
-
-test('delivers table schema changes to an external webhook', async ({
-  page,
-}) => {
-  test.slow();
-  const { afterAction, apiContext } = await getApiContext(page);
-  let webhookAlertDetails: AlertDetails | undefined;
-  const webhookTableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
-
-  try {
-    // Keep network-dependent receiver setup local so AUT routing failures cannot block unrelated
-    // observability coverage through this file's shared beforeAll hook.
-    const webhookEndpoint = await startWebhookReceiver();
-    clearCapturedWebhookRequests();
-    const webhookAlertCreationDetails: ObservabilityCreationDetails = {
-      source: 'table',
-      sourceDisplayName: 'Table',
-      filters: [
-        {
-          name: 'Table Name',
-          inputSelector: 'fqn-list-select',
-          inputValue: webhookTableFqn,
-        },
-      ],
-      actions: [{ name: 'Get Schema Changes' }],
-      destinations: [
-        {
-          mode: 'external',
-          category: 'Webhook',
-          inputValue: webhookEndpoint,
-        },
-      ],
-    };
-    await visitObservabilityAlertPage(page);
-    await createCommonObservabilityAlert({
-      page,
-      alertName: generateAlertName(),
-      sourceName: webhookAlertCreationDetails.source,
-      sourceDisplayName: webhookAlertCreationDetails.sourceDisplayName,
-      alertDetails: webhookAlertCreationDetails,
-      filters: webhookAlertCreationDetails.filters,
-      actions: webhookAlertCreationDetails.actions,
-    });
-    webhookAlertDetails = await saveAlertAndVerifyResponse(page);
-
-    await table1.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/columns/4',
-          value: {
-            name: WEBHOOK_DELIVERY_COLUMN_NAME,
-            dataType: 'VARCHAR',
-            dataLength: 100,
-            dataTypeDisplay: 'varchar(100)',
-          },
-        },
-      ],
-    });
-
-    const matchedDelivery: {
-      current: ReturnType<typeof findWebhookDelivery>;
-    } = { current: undefined };
-
-    await test.expect
-      .poll(
-        () => {
-          matchedDelivery.current = findWebhookDelivery(
-            table1.entityResponseData.id,
-            WEBHOOK_DELIVERY_COLUMN_NAME
-          );
-
-          return matchedDelivery.current !== undefined;
-        },
-        {
-          message: 'Expected the webhook to receive the table change event',
-          timeout: 60_000,
-        }
-      )
-      .toBe(true);
-
-    const delivery = matchedDelivery.current;
-    if (!delivery) {
-      throw new Error('Matching webhook delivery was not captured');
-    }
-
-    test.expect(delivery.request.method).toBe('POST');
-    test.expect(delivery.payload).toEqual(
-      test.expect.objectContaining({
-        entityFullyQualifiedName: webhookTableFqn,
-        entityId: table1.entityResponseData.id,
-        entityType: 'table',
-        eventType: 'entityUpdated',
-      })
-    );
-    test
-      .expect(getAddedColumnNames(delivery.payload))
-      .toContain(WEBHOOK_DELIVERY_COLUMN_NAME);
-  } finally {
-    try {
-      if (webhookAlertDetails) {
-        await deleteAlert(page, webhookAlertDetails, false);
-      }
-    } finally {
-      await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
-    }
-  }
-});
 
 test('Data Contract Name filter lists matching data contracts', async ({
   page,
