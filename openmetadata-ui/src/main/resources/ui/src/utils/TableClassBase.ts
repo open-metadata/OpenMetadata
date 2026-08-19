@@ -72,6 +72,7 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
   | DetailPageWidgetKeys.PARTITIONED_KEYS
+  | DetailPageWidgetKeys.TABLE_ALIASES
   | DetailPageWidgetKeys.ASSET_HEALTH;
 
 class TableClassBase {
@@ -89,6 +90,7 @@ class TableClassBase {
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
       [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
     };
   }
@@ -232,6 +234,14 @@ class TableClassBase {
         y: 8,
         static: false,
       },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_ALIASES],
+        i: DetailPageWidgetKeys.TABLE_ALIASES,
+        w: 2,
+        x: 6,
+        y: 9,
+        static: false,
+      },
     ];
   }
 
@@ -336,6 +346,8 @@ class TableClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS];
       case DetailPageWidgetKeys.PARTITIONED_KEYS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS];
+      case DetailPageWidgetKeys.TABLE_ALIASES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_ALIASES];
       case DetailPageWidgetKeys.ASSET_HEALTH:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH];
       default:
