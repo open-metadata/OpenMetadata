@@ -111,6 +111,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: 'ai',
       mode: 'ai',
+      source: 'manual',
     });
   });
 
@@ -123,6 +124,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: 'ai',
       mode: DEFAULT_APP_MODE,
+      source: 'manual',
     });
   });
 
@@ -134,6 +136,7 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: null,
       mode: 'ai',
+      source: 'manual',
     });
   });
 
@@ -146,7 +149,40 @@ describe('writeAppMode', () => {
     expect(JSON.parse(raw ?? '')).toEqual({
       personaAppMode: null,
       mode: 'ai',
+      source: 'manual',
     });
+  });
+
+  it('records the source when `options.source` is passed', () => {
+    writeAppMode('ai', null, { source: 'boot' });
+
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: null,
+      mode: 'ai',
+      source: 'boot',
+    });
+  });
+
+  it('does NOT write the cross-tab hint for `source: "boot"` writes', () => {
+    writeAppMode('ai', null, { source: 'boot' });
+
+    // Boot-provisional writes must not leak to sibling tabs as an
+    // authoritative "user chose this" hint — the hint only carries
+    // deliberate user choices (`manual`) and resolver conclusions
+    // (`resolver`), not synchronous best-guesses.
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).toBeNull();
+  });
+
+  it('writes the cross-tab hint for `source: "resolver"` writes', () => {
+    writeAppMode('ai', null, { source: 'resolver' });
+
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).not.toBeNull();
   });
 
   it('writes the cross-tab hint to localStorage', () => {

@@ -67,8 +67,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
@@ -166,7 +166,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   // Default values
   private static final String DEFAULT_CRON_SCHEDULE = "0 0 * * *";
-  private static final String DEFAULT_TASK_KEY = "ingestion_task";
   private static final String POD_PREFIX = "Pod: ";
   private static final String NAMESPACE_PREFIX = " in namespace: ";
   private static final String KUBERNETES_CLUSTER_PREFIX = "Kubernetes cluster - namespace: ";
@@ -603,7 +602,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             correlationId);
       }
       return buildSuccessResponse(
-          "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName));
+              "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName))
+          .withRunId(runId);
 
     } catch (ApiException e) {
       LOG.error(
@@ -887,72 +887,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  /**
+   * Returns nothing on purpose. This client mints the run ID when triggering (see {@link
+   * #runPipeline}) and reports it back on the response, so the server persists the {@code queued}
+   * status itself. Listing Jobs here on every run-history read would cost an API server round trip
+   * for state we already hold.
+   */
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
-    // READ-ONLY: Check for queued K8s jobs without storing anything
-    String pipelineName = sanitizeName(ingestionPipeline.getName());
-    List<PipelineStatus> queuedStatuses = new ArrayList<>();
-
-    try {
-      String labelSelector = LABEL_PIPELINE + "=" + pipelineName;
-      V1JobList jobs =
-          batchApi
-              .listNamespacedJob(k8sConfig.getNamespace())
-              .labelSelector(labelSelector)
-              .execute();
-
-      for (V1Job job : jobs.getItems()) {
-        // Only return jobs that are QUEUED (created but not started)
-        if (isJobQueued(job)) {
-          String runId =
-              StringUtils.defaultIfBlank(
-                  job.getMetadata().getLabels() != null
-                      ? job.getMetadata().getLabels().get(LABEL_RUN_ID)
-                      : null,
-                  job.getMetadata().getName());
-
-          Long startTime =
-              job.getMetadata().getCreationTimestamp() != null
-                  ? job.getMetadata().getCreationTimestamp().toInstant().toEpochMilli()
-                  : null;
-
-          // Create READ-ONLY status object (not persisted)
-          PipelineStatus queuedStatus =
-              new PipelineStatus()
-                  .withRunId(runId)
-                  .withPipelineState(PipelineStatusType.QUEUED)
-                  .withStartDate(startTime)
-                  .withTimestamp(startTime);
-
-          queuedStatuses.add(queuedStatus);
-        }
-      }
-
-    } catch (ApiException e) {
-      LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
-    }
-
-    return queuedStatuses;
-  }
-
-  private boolean isJobQueued(V1Job job) {
-    if (job.getStatus() == null) {
-      return true; // Job created but status not yet set = queued
-    }
-
-    Integer active = job.getStatus().getActive();
-    Integer succeeded = job.getStatus().getSucceeded();
-    Integer failed = job.getStatus().getFailed();
-
-    // Check if job is being deleted (has deletion timestamp)
-    if (job.getMetadata() != null && job.getMetadata().getDeletionTimestamp() != null) {
-      return false; // Job is being terminated, not queued
-    }
-
-    // Queued = no active pods, no completed pods, no failed pods, and not being deleted
-    return (active == null || active == 0)
-        && (succeeded == null || succeeded == 0)
-        && (failed == null || failed == 0);
+    return List.of();
   }
 
   @Override
@@ -1118,10 +1061,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
         return Map.of("logs", NO_LOGS_MESSAGE + podName);
       }
 
-      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
-      if (taskKey == null) {
-        taskKey = DEFAULT_TASK_KEY;
-      }
+      String taskKey =
+          PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().value());
 
       return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 

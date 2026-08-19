@@ -41,6 +41,7 @@ import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/datab
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
@@ -63,6 +64,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
   deleteContextMemory,
@@ -75,6 +77,7 @@ import {
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -383,6 +386,9 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
@@ -511,6 +517,7 @@ const ContextCenterMemoriesPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
+      <DocumentTitle title={t('label.memory-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={headerActions}

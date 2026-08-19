@@ -22,6 +22,11 @@ import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
 interface AgentOverflowMenuProps {
   allowedActions?: string[];
+  /**
+   * Every item in this menu reaches the pipeline service, so the whole menu closes down when it
+   * is unreachable rather than each item failing on click.
+   */
+  isDisabled?: boolean;
   permissions?: AgentActionPermissions;
   status: AgentStatus;
   enabled?: boolean;
@@ -38,6 +43,7 @@ interface MenuItem {
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   allowedActions,
   enabled,
+  isDisabled,
   onAction,
   permissions = NO_AGENT_PERMISSIONS,
   status,
@@ -134,9 +140,11 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
         className={
           'tw:grid tw:size-8.5 tw:cursor-pointer tw:place-items-center' +
           ' tw:rounded-lg tw:border tw:border-secondary' +
-          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none'
+          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none' +
+          ' tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
         }
-        data-testid="more-actions">
+        data-testid="more-actions"
+        isDisabled={isDisabled}>
         <DotsVertical size={18} />
       </AriaButton>
       <Dropdown.Popover data-testid="actions-dropdown">

@@ -18,10 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.ai.AuditReport;
+import org.openmetadata.schema.entity.ai.AuditReportArtifact;
 import org.openmetadata.schema.entity.ai.AuditReportFormat;
+import org.openmetadata.schema.entity.ai.AuditReportManifest;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -91,6 +97,120 @@ class AuditPackGeneratorTest {
     AuditReport differentRequester = domainReport(domainId).withUpdatedBy("bob");
     AuditPackGenerator.stampRequestSignature(differentRequester);
     assertNotEquals(first.getRequestSignature(), differentRequester.getRequestSignature());
+  }
+
+  @Nested
+  class ArtifactSelection {
+
+    private static final byte[] PDF_BYTES = {'%', 'P', 'D', 'F'};
+
+    @AfterEach
+    void clearRenderer() {
+      AuditPackGenerator.setPdfRenderer(null);
+    }
+
+    @Test
+    void jsonFormatNeverInvokesTheRenderer() {
+      AuditPackGenerator.setPdfRenderer(
+          (document, manifest) -> {
+            throw new AssertionError("renderer must not be called for a Json pack");
+          });
+
+      assertEquals(
+          List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Json)));
+    }
+
+    @Test
+    void pdfFormatEmitsOnlyThePdfWhenARendererIsRegistered() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.of(PDF_BYTES));
+
+      List<AuditReportArtifact> artifacts = artifactsFor(AuditReportFormat.Pdf);
+
+      assertEquals(List.of(AuditReportFormat.Pdf), formatsOf(artifacts));
+      assertTrue(artifacts.get(0).getDownloadUrl().startsWith("data:application/pdf;base64,"));
+    }
+
+    @Test
+    void bothFormatEmitsJsonAndPdf() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.of(PDF_BYTES));
+
+      assertEquals(
+          List.of(AuditReportFormat.Json, AuditReportFormat.Pdf),
+          formatsOf(artifactsFor(AuditReportFormat.Both)));
+    }
+
+    /** A Completed pack must always carry something downloadable. */
+    @Test
+    void pdfFormatFallsBackToJsonWhenNoRendererIsRegistered() {
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
+    @Test
+    void pdfFormatFallsBackToJsonWhenTheRendererDeclines() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.empty());
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
+    /**
+     * Renderers are supplied by the distribution. One that ignores the never-throw contract must
+     * not take the pack down with it — the exception would otherwise reach run(...) and mark the
+     * whole report Failed.
+     */
+    @Test
+    void pdfFormatFallsBackToJsonWhenTheRendererThrows() {
+      AuditPackGenerator.setPdfRenderer(
+          (document, manifest) -> {
+            throw new IllegalStateException("template blew up");
+          });
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
+    @Test
+    void bothFormatStillEmitsJsonWhenTheRendererThrows() {
+      AuditPackGenerator.setPdfRenderer(
+          (document, manifest) -> {
+            throw new IllegalStateException("template blew up");
+          });
+
+      assertEquals(
+          List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Both)));
+    }
+
+    /** A null Optional violates the contract too, and must not NPE the job. */
+    @Test
+    void pdfFormatFallsBackToJsonWhenTheRendererReturnsNull() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> null);
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
+    @Test
+    void bothFormatStillEmitsJsonWhenTheRendererDeclines() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.empty());
+
+      assertEquals(
+          List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Both)));
+    }
+
+    @Test
+    void unsetFormatKeepsTheHistoricalJsonOnlyBehaviour() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.of(PDF_BYTES));
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(null)));
+    }
+
+    private List<AuditReportArtifact> artifactsFor(AuditReportFormat format) {
+      AuditPackDocument document =
+          new AuditPackDocument("id", "pack", "Estate", null, null, null, NOW, List.of());
+      return AuditPackGenerator.buildArtifacts(
+          new AuditReport().withFormat(format), document, new AuditReportManifest());
+    }
+
+    private List<AuditReportFormat> formatsOf(List<AuditReportArtifact> artifacts) {
+      return artifacts.stream().map(AuditReportArtifact::getFormat).toList();
+    }
   }
 
   private AuditReport report(AuditReportStatus status, Long startedAt) {
