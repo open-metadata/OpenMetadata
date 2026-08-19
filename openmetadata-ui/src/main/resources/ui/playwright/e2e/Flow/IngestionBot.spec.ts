@@ -42,7 +42,10 @@ const test = base.extend<{
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     const page = await browser.newPage();
-    await page.goto('/');
+    // Establish the application origin without booting the SPA. Navigating to
+    // `/` starts the unauthenticated redirect to `/signin`; that redirect can
+    // destroy the execution context while setToken writes to IndexedDB.
+    await page.goto('/manifest.json');
 
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
