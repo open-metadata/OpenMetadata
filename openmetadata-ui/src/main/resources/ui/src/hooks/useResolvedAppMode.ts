@@ -14,14 +14,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
-import { EntityType } from '../enums/entity.enum';
 import { Document } from '../generated/entity/docStore/document';
 import {
   PersonaPreferences,
   UICustomization,
 } from '../generated/system/ui/uiCustomization';
 import { AppMode } from '../generated/type/personaPreferences';
-import { getDocumentByFQN } from '../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+} from '../rest/queries/docStoreQuery';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import {
@@ -36,8 +39,6 @@ import {
   writeAppMode,
 } from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
-
-const PERSONA_APP_MODE_QUERY_KEY = 'persona-app-mode-doc';
 
 /**
  * Translate the admin-facing `AppMode` enum stored on a persona into the
@@ -118,6 +119,9 @@ export const useResolvedAppMode = (): boolean => {
   const defaultPersonaName = useApplicationStore(
     (state) => state.currentUser?.defaultPersona?.name
   );
+  const defaultPersonaFqn = useApplicationStore(
+    (state) => state.currentUser?.defaultPersona?.fullyQualifiedName
+  );
   const currentUser = useApplicationStore((state) => state.currentUser);
   const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
   // `applicationsLoaded` alone is NOT safe as the "give up on the
@@ -159,20 +163,30 @@ export const useResolvedAppMode = (): boolean => {
     return () => clearTimeout(id);
   }, [applicationsLoaded]);
 
-  const hasDefaultPersona = Boolean(defaultPersonaId && defaultPersonaName);
+  const personaFqn = personaDocFqn(
+    defaultPersonaFqn ? { fullyQualifiedName: defaultPersonaFqn } : null
+  );
+  // Folds `personaFqn` in so this can never disagree with the query's
+  // `enabled` condition below — if it did, a persona with an id/name but
+  // no fullyQualifiedName would leave the query permanently disabled
+  // (`isPending` stays true in React Query v5) while the effect below
+  // keeps waiting on `isPersonaPending`, deadlocking the resolver.
+  const hasDefaultPersona = Boolean(
+    defaultPersonaId && defaultPersonaName && personaFqn
+  );
 
   // Persona docs are edited server-side (admin UI). If we cached forever,
   // an admin flipping the persona's appMode wouldn't take effect until the
   // user closed and re-opened the tab. A 5-min stale window + refetch on
   // window focus keeps edits reasonably fresh without turning the resolver
-  // into a chatty consumer.
+  // into a chatty consumer. Goes through the same `docStore` cache slot
+  // (docStoreQuery.ts) that useCustomPages/MyDataPage use, so an admin's
+  // save (CustomizablePage's queryClient.setQueryData) is visible here too.
   const { data: personaDoc, isPending: isPersonaPending } = useQuery({
-    queryKey: [PERSONA_APP_MODE_QUERY_KEY, defaultPersonaName],
-    queryFn: () =>
-      getDocumentByFQN(`${EntityType.PERSONA}.${defaultPersonaName}`),
-    enabled: hasDefaultPersona,
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: hasDefaultPersona && !!personaFqn,
     staleTime: 5 * 60 * 1000,
-    gcTime: Infinity,
     refetchOnWindowFocus: true,
     retry: false,
   });
