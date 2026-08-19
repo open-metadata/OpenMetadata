@@ -1,0 +1,187 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext } from '@playwright/test';
+import {
+  addRelationTypeWithCardinality,
+  addRelationTypesWithCardinality,
+  addTermRelation,
+} from '../../utils/ontologyExplorer';
+import { uuid } from '../../utils/common';
+import { Glossary } from '../glossary/Glossary';
+import { GlossaryTerm } from '../glossary/GlossaryTerm';
+
+// Unique per module load (i.e. per worker) so that parallel workers create
+// distinct relation type names. The glossary and term names are random by
+// default (generated inside Glossary/GlossaryTerm), so only the global
+// relation-type names need an explicit suffix.
+const RUN_ID = uuid();
+
+// ---------------------------------------------------------------------------
+// E2E spec data — catalog with three terms and four relation types
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerE2EData {
+  static readonly catalog = new Glossary();
+  static readonly termProduct = new GlossaryTerm(this.catalog);
+  static readonly termCategory = new GlossaryTerm(this.catalog);
+  static readonly termBrand = new GlossaryTerm(this.catalog);
+  static readonly CUSTOM_OWNS_RELATION = `pw-e2e-owns-${RUN_ID}`;
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await this.catalog.create(apiContext);
+    await Promise.all([
+      this.termProduct.create(apiContext),
+      this.termCategory.create(apiContext),
+      this.termBrand.create(apiContext),
+    ]);
+
+    await addRelationTypeWithCardinality(apiContext, {
+      name: this.CUSTOM_OWNS_RELATION,
+      displayName: 'GP Owns',
+      cardinality: 'ONE_TO_MANY',
+    });
+
+    // termProduct is patched twice (partOf termCategory, relatedTo termBrand)
+    // so these must remain sequential to avoid a PATCH race.
+    await addTermRelation(apiContext, this.termProduct, this.termCategory, 'partOf');
+    await addTermRelation(apiContext, this.termBrand, this.termCategory, 'partOf');
+    await addTermRelation(apiContext, this.termProduct, this.termBrand, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      this.termCategory,
+      this.termBrand,
+      this.CUSTOM_OWNS_RELATION
+    );
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    // Glossary.delete uses ?recursive=true&hardDelete=true — all child terms
+    // are cascade-deleted; no need to delete each term individually.
+    await this.catalog.delete(apiContext);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cardinality spec data — glossary with 12 terms covering all cardinality types
+// ---------------------------------------------------------------------------
+
+type RelationTypeSpec = {
+  name: string;
+  displayName: string;
+  cardinality: string;
+  sourceMax?: number | null;
+  targetMax?: number | null;
+};
+
+export class OntologyExplorerCardinalityData {
+  static readonly CUSTOM_RELATION_NAMES = {
+    ONE_TO_ONE: `pw-c-oto-${RUN_ID}`,
+    ONE_TO_MANY: `pw-c-otm-${RUN_ID}`,
+    MANY_TO_ONE: `pw-c-mto-${RUN_ID}`,
+    MANY_TO_MANY: `pw-c-mtm-${RUN_ID}`,
+    CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
+  } as const;
+
+  // Each relation type gets its own isolated source-target pair so no single
+  // term accumulates multiple cardinality-constrained relations, which would
+  // trigger backend re-validation failures on the second PATCH.
+  static readonly glossary = new Glossary();
+  static readonly otoSrc = new GlossaryTerm(this.glossary);
+  static readonly otoDst = new GlossaryTerm(this.glossary);
+  static readonly otmSrc = new GlossaryTerm(this.glossary);
+  static readonly otmDst = new GlossaryTerm(this.glossary);
+  static readonly mtoSrc = new GlossaryTerm(this.glossary);
+  static readonly mtoDst = new GlossaryTerm(this.glossary);
+  static readonly mtmSrc = new GlossaryTerm(this.glossary);
+  static readonly mtmDst = new GlossaryTerm(this.glossary);
+  static readonly cusSrc = new GlossaryTerm(this.glossary);
+  static readonly cusDst = new GlossaryTerm(this.glossary);
+  static readonly relSrc = new GlossaryTerm(this.glossary);
+  static readonly relDst = new GlossaryTerm(this.glossary);
+
+  private static get ALL_CUSTOM_TYPES(): RelationTypeSpec[] {
+    return [
+      {
+        name: this.CUSTOM_RELATION_NAMES.ONE_TO_ONE,
+        displayName: 'PW One To One',
+        cardinality: 'ONE_TO_ONE',
+      },
+      {
+        name: this.CUSTOM_RELATION_NAMES.ONE_TO_MANY,
+        displayName: 'PW One To Many',
+        cardinality: 'ONE_TO_MANY',
+      },
+      {
+        name: this.CUSTOM_RELATION_NAMES.MANY_TO_ONE,
+        displayName: 'PW Many To One',
+        cardinality: 'MANY_TO_ONE',
+      },
+      {
+        name: this.CUSTOM_RELATION_NAMES.MANY_TO_MANY,
+        displayName: 'PW Many To Many',
+        cardinality: 'MANY_TO_MANY',
+      },
+      {
+        name: this.CUSTOM_RELATION_NAMES.CUSTOM_1_M,
+        displayName: 'PW Custom 1:M',
+        cardinality: 'CUSTOM',
+        sourceMax: 1,
+        targetMax: null,
+      },
+    ];
+  }
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await this.glossary.create(apiContext);
+
+    // All 12 terms are independent POSTs — parallelize for speed.
+    await Promise.all([
+      this.otoSrc.create(apiContext),
+      this.otoDst.create(apiContext),
+      this.otmSrc.create(apiContext),
+      this.otmDst.create(apiContext),
+      this.mtoSrc.create(apiContext),
+      this.mtoDst.create(apiContext),
+      this.mtmSrc.create(apiContext),
+      this.mtmDst.create(apiContext),
+      this.cusSrc.create(apiContext),
+      this.cusDst.create(apiContext),
+      this.relSrc.create(apiContext),
+      this.relDst.create(apiContext),
+    ]);
+
+    // Add all custom relation types in a single batch RMW to minimise the
+    // conflict window with concurrent parallel workers.
+    const types = this.ALL_CUSTOM_TYPES;
+    await addRelationTypesWithCardinality(apiContext, types);
+    // Idempotency guard: a concurrent worker with a stale snapshot can
+    // overwrite our types between the add above and the term patches below.
+    await addRelationTypesWithCardinality(apiContext, types);
+
+    // Each source term is patched exactly once, so all 6 relations can be
+    // issued in parallel without any write-write conflict.
+    await Promise.all([
+      addTermRelation(apiContext, this.otoSrc, this.otoDst, this.CUSTOM_RELATION_NAMES.ONE_TO_ONE),
+      addTermRelation(apiContext, this.otmSrc, this.otmDst, this.CUSTOM_RELATION_NAMES.ONE_TO_MANY),
+      addTermRelation(apiContext, this.mtoSrc, this.mtoDst, this.CUSTOM_RELATION_NAMES.MANY_TO_ONE),
+      addTermRelation(apiContext, this.mtmSrc, this.mtmDst, this.CUSTOM_RELATION_NAMES.MANY_TO_MANY),
+      addTermRelation(apiContext, this.cusSrc, this.cusDst, this.CUSTOM_RELATION_NAMES.CUSTOM_1_M),
+      addTermRelation(apiContext, this.relSrc, this.relDst, 'relatedTo'),
+    ]);
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    // Cascade-deletes all 12 child terms.
+    await this.glossary.delete(apiContext);
+  }
+}
