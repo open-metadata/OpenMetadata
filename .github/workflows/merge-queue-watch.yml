@@ -56,6 +56,12 @@ jobs:
        github.event.workflow_run.conclusion == 'timed_out')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       - name: Resolve queued pull request
         id: pr
         env:
@@ -94,24 +100,4 @@ jobs:
           PR_AUTHOR: ${{ steps.pr.outputs.author }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: |
-          set -euo pipefail
-          if [ -z "${SLACK_CHANNEL:-}" ]; then
-            echo "::error::No Slack channel resolved; MERGE_QUEUE_SLACK_CHANNEL is set to an empty value."
-            exit 1
-          fi
-          queue_branch=$(printf '%s' "$HEAD_BRANCH" | cut -d/ -f2)
-          text=$(printf '%s\n%s\n%s' \
-            ":rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
-            "<${REPO_URL}/pull/${PR_NUMBER}|#${PR_NUMBER} ${PR_TITLE}> (@${PR_AUTHOR})" \
-            "<${RUN_URL}|Failed run> · <${REPO_URL}/queue/${queue_branch}|Merge queue>")
-          payload=$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$text" \
-            '{channel: $channel, text: $text, unfurl_links: false, unfurl_media: false}')
-          response=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
-            -H 'Content-Type: application/json; charset=utf-8' \
-            --data "$payload")
-          if [ "$(printf '%s' "$response" | jq -r '.ok')" != "true" ]; then
-            echo "::error::Slack API rejected the message: $response"
-            exit 1
-          fi
+        run: .github/scripts/notify-merge-queue-slack.sh

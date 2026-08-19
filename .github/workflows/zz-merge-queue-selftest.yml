@@ -1,0 +1,43 @@
+#  TEMPORARY — delete before merging PR #31744.
+#
+#  `workflow_run` and `workflow_dispatch` both require the workflow file to be
+#  present on the default branch, so neither can validate the Slack half of
+#  Merge Queue Watch from a topic branch. A `push` trigger runs the branch's own
+#  copy, so this fires the real notify script with synthetic event values to
+#  confirm the bot token, channel membership, and payload are all good.
+
+name: ZZ Merge Queue Selftest (temporary)
+
+on:
+  push:
+    branches:
+      - chore/merge-queue-slack-notify
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: Post a test merge-queue notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Post to Slack via the real notify script
+        env:
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+          SLACK_CHANNEL: ${{ vars.MERGE_QUEUE_SLACK_CHANNEL || 'C0B6Q6KDMJN' }}
+          TEXT_PREFIX: "[SELFTEST — ignore] "
+          WORKFLOW_NAME: UI Checkstyle
+          CONCLUSION: failure
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: "31744"
+          PR_TITLE: Notify Slack when a PR fails in the merge queue
+          PR_AUTHOR: ${{ github.actor }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          HEAD_BRANCH: gh-readonly-queue/main/pr-31744-${{ github.sha }}
+        run: .github/scripts/notify-merge-queue-slack.sh
