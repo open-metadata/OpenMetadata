@@ -132,6 +132,8 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1725,7 +1727,29 @@ public class TableRepository extends EntityRepository<Table> {
   protected void entitySpecificCleanup(String deletedBy, Table table) {
     deleteResidualTestCases(table, deletedBy);
     deleteResidualExecutableTestSuite(table, deletedBy);
-    deleteProfilerData(table);
+  }
+
+  /**
+   * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
+   * inside the delete transaction: a table with a long profiling history can own millions of
+   * profiler rows, and draining them inline holds every row lock for the life of the request. Two
+   * ordering properties keep that safe, and they cover different failures. Running after the delete
+   * has committed means a rolled-back delete can never purge a live table's history, since those
+   * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
+   * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
+   * recorded later -- see {@link CollectionDAO.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
+   */
+  @Override
+  protected void postDelete(Table table, boolean hardDelete) {
+    super.postDelete(table, hardDelete);
+    if (hardDelete) {
+      long deletedAt = System.currentTimeMillis();
+      AsyncService.getInstance()
+          .executeDatabaseTask(
+              DatabaseOperation.PROFILER_CLEANUP,
+              "profiler-purge:" + table.getFullyQualifiedName(),
+              () -> deleteProfilerData(table, deletedAt));
+    }
   }
 
   /**
@@ -1734,11 +1758,20 @@ public class TableRepository extends EntityRepository<Table> {
    * system profiles are stored under the table FQN; column profiles under each (possibly nested)
    * column FQN, which is why those need a descendant purge.
    */
-  private void deleteProfilerData(Table table) {
+  private void deleteProfilerData(Table table, long deletedAt) {
     String tableFqn = table.getFullyQualifiedName();
-    int deleted = daoCollection.profilerDataTimeSeriesDao().deleteTableProfilerData(tableFqn);
-    if (deleted > 0) {
-      LOG.info("Purged {} profiler row(s) for hard-deleted table {}", deleted, tableFqn);
+    try {
+      int deleted =
+          daoCollection.profilerDataTimeSeriesDao().deleteTableProfilerData(tableFqn, deletedAt);
+      if (deleted > 0) {
+        LOG.info("Purged {} profiler row(s) for hard-deleted table {}", deleted, tableFqn);
+      }
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Failed to purge profiler data for hard-deleted table {}. "
+              + "The orphaned time-series cleanup will reclaim it unless the FQN is reused.",
+          tableFqn,
+          exception);
     }
   }
 
