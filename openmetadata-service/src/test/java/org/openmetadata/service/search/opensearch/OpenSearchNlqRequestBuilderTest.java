@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,13 +45,22 @@ class OpenSearchNlqRequestBuilderTest {
   private static final String RBAC_MARKER = "rbac_marker";
 
   private SearchRepository searchRepository;
+  private SearchRepository previousSearchRepository;
 
   @BeforeEach
   void setUp() {
+    // Entity.searchRepository is process-global and the JVM is reused across test classes, so the
+    // previous value is restored in tearDown to keep other tests order-independent.
+    previousSearchRepository = Entity.getSearchRepository();
     searchRepository = mock(SearchRepository.class);
     when(searchRepository.getIndexNameWithoutAlias(anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     Entity.setSearchRepository(searchRepository);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Entity.setSearchRepository(previousSearchRepository);
   }
 
   @Test
