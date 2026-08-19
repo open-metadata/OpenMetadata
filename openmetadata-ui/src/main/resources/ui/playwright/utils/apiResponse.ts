@@ -36,6 +36,16 @@ export const okJson = async <T = any>(
 };
 
 /**
+ * Quote an FQN segment that contains the separator.
+ *
+ * `.` separates FQN segments, so a name like `PW%domain.1e518933` is read as two
+ * segments and a lookup for the literal name 404s. The quoted form resolves.
+ * Confirmed against a running server: unquoted 404, quoted 200.
+ */
+export const quoteFqnSegment = (name: string): string =>
+  /["."]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
+
+/**
  * POST that treats "already exists" as success.
  *
  * The nightly topology runs many Playwright processes against a single server,
