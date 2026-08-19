@@ -123,6 +123,7 @@ class SynonymMap:
         self._consumed: set[str] = set()
         self._explicit_unresolved: list[tuple[str, str]] = []
         self._cap_warned = False
+        self._unresolved_cap_warned = False
 
     def add(self, target_fqn: str, alias_fqn: str) -> bool:
         if target_fqn not in self._targets and len(self._targets) >= self._max_entries:
@@ -137,6 +138,13 @@ class SynonymMap:
         return True
 
     def aliases_for(self, target_fqn: str) -> Optional[list[str]]:  # noqa: UP045
+        """
+        Return sorted aliases for a target; marks target as consumed.
+
+        Calling this method signals that the target was ingested and will exclude
+        it from unresolved() reporting. Meant to be called exactly once per target
+        when it is successfully discovered and added to the catalog.
+        """
         aliases = self._targets.get(target_fqn)
         if not aliases:
             return None
@@ -144,6 +152,14 @@ class SynonymMap:
         return sorted(aliases)
 
     def record_unresolved(self, alias_fqn: str, reason: SynonymUnresolvedReason) -> None:
+        if len(self._explicit_unresolved) >= self._max_entries:
+            if not self._unresolved_cap_warned:
+                logger.warning(
+                    f"Unresolved synonym list reached its cap of {self._max_entries}; "
+                    f"further unresolved entries are ignored for this run"
+                )
+                self._unresolved_cap_warned = True
+            return
         self._explicit_unresolved.append((alias_fqn, reason.value))
 
     def unresolved(self) -> list[tuple[str, str]]:

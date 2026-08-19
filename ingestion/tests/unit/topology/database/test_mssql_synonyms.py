@@ -219,3 +219,17 @@ class TestSynonymMap:
         assert synonym_map.is_empty() is True
         synonym_map.add("svc.master.dbo.orders", "svc.core.dbo.orders")
         assert synonym_map.is_empty() is False
+
+    def test_unresolved_cap_bounds_explicit_entries(self):
+        synonym_map = SynonymMap(max_entries=2)
+
+        synonym_map.record_unresolved("svc.core.dbo.a", SynonymUnresolvedReason.REMOTE_TARGET_UNMAPPED)
+        synonym_map.record_unresolved("svc.core.dbo.b", SynonymUnresolvedReason.REMOTE_TARGET_UNMAPPED)
+        synonym_map.record_unresolved("svc.core.dbo.c", SynonymUnresolvedReason.REMOTE_TARGET_UNMAPPED)
+
+        # Only the first 2 entries should be stored (capped at max_entries)
+        assert len(synonym_map.unresolved()) == 2
+        stored_fqns = [u[0] for u in synonym_map.unresolved()]
+        assert "svc.core.dbo.a" in stored_fqns
+        assert "svc.core.dbo.b" in stored_fqns
+        assert "svc.core.dbo.c" not in stored_fqns
