@@ -474,7 +474,10 @@ async function renderPlaywrightSummary({ github, context, core }) {
         classification: 'Blocking',
         metric: 'Environment setup',
         observed: `${displayMetric(performanceMetrics.maxEnvironmentSeconds)} s`,
-        target: '≤ 300 s',
+        // Transitional 480 s ceiling while the chromium apt cache is
+        // populating across branches — see the BLOCKING_TARGET_DETAILS
+        // comment in evaluate_playwright_performance.py.
+        target: '≤ 480 s',
         passed: performanceTargets.environmentAtMostFiveMinutes,
       },
       {
