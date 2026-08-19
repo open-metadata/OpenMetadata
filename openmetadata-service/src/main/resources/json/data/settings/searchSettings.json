@@ -2885,6 +2885,10 @@
         {
           "name": "columns.description",
           "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        },
+        {
+          "name": "aliases",
+          "description": "Alternate SQL names such as SQL Server synonyms that resolve to this table. Searching an alias returns the canonical table."
         }
       ]
     },

@@ -89,6 +89,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
     }
 
     doc.put("locationPath", table.getLocationPath());
+    doc.put("aliases", table.getAliases());
     doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("processedLineage", table.getProcessedLineage());
@@ -111,6 +112,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
     fields.put("columnNamesFuzzy", 3.0f);
+    fields.put("aliases", 5.0f);
     return fields;
   }
 }
