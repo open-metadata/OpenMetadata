@@ -133,8 +133,9 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
     2. Sorts tags by tagFQN
     3. Sorts tableConstraints by type and columns
     4. Sorts owners by FQN/name/id
-    5. Removes volatile EntityReference fields (href, deleted, inherited)
-    6. Normalizes schemaDefinition whitespace
+    5. Sorts aliases lexicographically
+    6. Removes volatile EntityReference fields (href, deleted, inherited)
+    7. Normalizes schemaDefinition whitespace
     """
     # _remove_volatile_fields is Union[Dict, List, Any] because it recurses into nested
     # lists, but called here on a top-level create-request dict it always returns a dict
@@ -168,7 +169,7 @@ def generate_source_hash(create_request: C, exclude_fields: Optional[Dict] = Non
     and generate a stable hash value.
 
     The normalization process ensures hash stability by:
-    - Sorting lists (columns, tags, constraints, owners) by deterministic keys
+    - Sorting lists (columns, tags, constraints, owners, aliases) by deterministic keys
     - Removing volatile fields (href, deleted, inherited) from entity references
     - Normalizing whitespace in DDL/SQL definitions
     """
