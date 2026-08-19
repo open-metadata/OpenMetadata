@@ -97,6 +97,20 @@ import {
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
 
+const LINEAGE_IMPACT_OPTION_ICONS: Record<
+  EImpactLevel,
+  FC<{ className?: string }>
+> = Object.fromEntries(
+  LINEAGE_IMPACT_OPTIONS.map((option) => [
+    option.key,
+    (() =>
+      searchClassBase.getEntityIconWithBg(
+        option.entityType,
+        EntityIconSize.Size14
+      )) as FC<{ className?: string }>,
+  ])
+) as Record<EImpactLevel, FC<{ className?: string }>>;
+
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
@@ -433,13 +447,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               onSelectionChange={() => void 0}>
               {LINEAGE_IMPACT_OPTIONS.map((option) => (
                 <Dropdown.Item
-                  icon={
-                    (() =>
-                      searchClassBase.getEntityIconWithBg(
-                        option.entityType,
-                        EntityIconSize.Size14
-                      )) as FC<{ className?: string }>
-                  }
+                  icon={LINEAGE_IMPACT_OPTION_ICONS[option.key]}
                   id={option.key}
                   key={option.key}
                   label={option.label}
