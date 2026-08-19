@@ -11,34 +11,27 @@ endif
 
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
-	python -m pip install $(INGESTION_DIR)/
-
-.PHONY: install_dev_env
-install_dev_env:  ## Install all dependencies for development (in edit mode)
-	pip install --upgrade pip "setuptools<81"
-	pip install nox
-	pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
+	uv pip install $(INGESTION_DIR)/
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+	uv pip install -e "$(INGESTION_DIR)/"
+	uv pip install --group "$(INGESTION_DIR)/pyproject.toml:dev"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-	python -m pip install "$(INGESTION_DIR)[test]/"
+	uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	uv pip install -e "$(INGESTION_DIR)[all,airflow,great-expectations]"
+	uv pip install --group "$(INGESTION_DIR)/pyproject.toml:test"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-	python -m pip install "$(INGESTION_DIR)[all]/"
+	uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	uv pip install "$(INGESTION_DIR)[all]"
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
+	uv pip install $(ROOT_DIR)/openmetadata-airflow-apis/ "setuptools~=70.3.0"
 
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
@@ -70,22 +63,14 @@ check_import_layers:  ## Fail if a module imports a higher layer (import-cost gu
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml -n auto $(INGESTION_DIR)/tests/unit
+	cd $(INGESTION_DIR) && nox --no-venv -s unit-tests
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
-.PHONY: unit_ingestion_dev_env
-unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Only for local development!
-	# Ignores tests:
-	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
-	pytest -c $(INGESTION_DIR)/pyproject.toml $(INGESTION_DIR)/tests/unit \
-	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
-	 	--ignore-glob="*airflow*"
-
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-append --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+	cd $(INGESTION_DIR) && nox --no-venv -s integration-tests
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage

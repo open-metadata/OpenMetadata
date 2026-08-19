@@ -42,7 +42,7 @@ and Docker infrastructure.
   not exist under `ingestion/`):
   ```bash
   make prerequisites
-  source env/bin/activate && cd ingestion && make install_dev_env && cd ..
+  source env/bin/activate && cd ingestion && make install_test && cd ..
   make generate                    # regenerate models after any schema change
   make yarn_install_cache
   make install_test precommit_install   # activate the commit-time format/license gate (pre-commit)
