@@ -4068,6 +4068,7 @@
     "pipeline-killed-successfully": "Laufende Workflows für {{pipelineName}} erfolgreich beendet.",
     "pipeline-not-deployed": "Pipeline ist nicht bereitgestellt.",
     "pipeline-scheduler-message": "Der Ingestion Scheduler kann nicht antworten. Bitte wende dich an den {{brandName}}-Support. Vielen Dank.",
+    "pipeline-service-unreachable-agent-actions": "Der Pipeline-Dienst ist nicht erreichbar. Agenten und ihr Ausführungsverlauf werden in ihrem zuletzt erfassten Zustand angezeigt, und Agentenaktionen bleiben nicht verfügbar, bis der Dienst wieder antwortet.",
     "pipeline-will-trigger-manually": "Die Pipeline wird nur manuell ausgelöst.",
     "pipeline-will-triggered-manually": "Die Pipeline wird nur manuell ausgelöst",
     "platform-insight-description": "Verstehen Sie die verfügbaren Metadaten in Ihrem Service und halten Sie den Fortschritt der wichtigsten KPIs im Auge.",
