@@ -568,7 +568,6 @@ class RestSource(ApiServiceSource):
         except Exception as err:
             warning = f"Error while processing schema fields: {err}"
             logger.warning(warning)
-            self.status.warning(schema_ref, warning)
             if parent_refs and (schema_ref in parent_refs):
                 parent_refs.pop()
                 logger.debug(f"Popping {schema_ref} from parent_refs due to processing error")

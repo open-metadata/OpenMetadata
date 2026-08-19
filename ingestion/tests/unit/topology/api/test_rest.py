@@ -1001,21 +1001,25 @@ class TestRest:
         assert result[0].dataType == DataTypeTopic.STRING
         assert self.rest_source.status.warnings == []
 
-    def test_process_schema_fields_reports_parsing_warning(self):
-        self.rest_source.json_response = {
-            "components": {
-                "schemas": {
-                    "Broken": {
-                        "type": "object",
-                        "properties": [],
+    def test_process_schema_fields_reports_single_parsing_warning(self):
+        info = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": ["invalid"]},
                     }
                 }
             }
         }
 
-        result = self.rest_source.process_schema_fields("#/components/schemas/Broken")
+        self.rest_source._activate_handler()
+        try:
+            result = self.rest_source._get_request_schema(info)
+        finally:
+            self.rest_source._deactivate_handler()
 
-        assert result is None
+        assert result is not None
+        assert result.schemaFields is None
         assert len(self.rest_source.status.warnings) == 1
         assert "Error while processing schema fields" in next(iter(self.rest_source.status.warnings[0].values()))
 
