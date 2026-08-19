@@ -1,0 +1,69 @@
+# Keep a MAIN-scoped copy of the Playwright chromium apt-deps cache alive.
+#
+# Why this workflow exists: GitHub Actions cache scoping means a workflow run
+# can only restore caches created on its own ref or on the default branch.
+# Merge-queue refs (gh-readonly-queue/main/pr-N-sha) are unique per queue
+# entry and deleted after the run — so an apt cache populated during a
+# merge_group run is unreachable by every other queue entry. Unless a run ON
+# MAIN has saved this cache, every merge-queue shard misses it, falls back to
+# `apt-get install` against the Azure Ubuntu mirror, and the whole matrix
+# goes red whenever that mirror has a bad day (runs 32157314266, 32166970973,
+# 32209207109 — zero tests executed, all shards dead in setup).
+#
+# This job saves the same cache key the Playwright reusable workflow restores
+# (`playwright-chromium-deps-v2` + identical package list), from main's
+# scope, so every merge_group / PR / nightly run downstream gets a hit and
+# never talks to the mirror on the hot path.
+#
+# Triggers:
+#   * schedule (6h)      — keeps the cache warm; GitHub evicts caches unused
+#                          for 7 days and LRU-evicts beyond the 10 GB repo
+#                          budget, so a periodic touch guarantees presence.
+#   * workflow_dispatch  — populate immediately (first run, or after an
+#                          eviction during an incident).
+#   * push to main touching the reusable workflow — the package list and the
+#                          `version:` key live there; any change repopulates
+#                          the new key right away instead of waiting ≤6 h,
+#                          during which every queue run would take the
+#                          mirror-dependent miss path.
+#
+# IMPORTANT: the package list and `version:` below MUST stay identical to the
+# two "Cache Playwright system deps" steps in playwright-e2e-reusable.yml —
+# a drifted list populates a key nobody restores. Update both files together.
+name: Populate Playwright apt cache
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/playwright-e2e-reusable.yml
+      - .github/workflows/populate-playwright-apt-cache.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: populate-playwright-apt-cache
+  cancel-in-progress: false
+
+jobs:
+  populate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Populate Playwright system deps cache
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        with:
+          packages: >-
+            fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
+            fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
+            xfonts-cyrillic xfonts-scalable
+            libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
+            libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
+          version: playwright-chromium-deps-v2

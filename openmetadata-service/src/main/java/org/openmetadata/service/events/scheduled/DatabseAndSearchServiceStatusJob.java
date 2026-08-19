@@ -1,7 +1,7 @@
 package org.openmetadata.service.events.scheduled;
 
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.JOB_CONTEXT_METER_REGISTRY;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -11,10 +11,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexMetrics;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
+@DisallowConcurrentExecution
 public class DatabseAndSearchServiceStatusJob implements Job {
   private static final String SERVICE_COUNTER = "omd_service_unreachable";
   private static final String SERVICE_NAME = "service_name";
@@ -30,20 +32,26 @@ public class DatabseAndSearchServiceStatusJob implements Job {
         (PrometheusMeterRegistry)
             jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_METER_REGISTRY);
     checkDatabaseStatus(meterRegistry);
-    checkElasticSearchStatus(meterRegistry);
-    refreshSearchIndexMetrics(meterRegistry);
+    if (checkElasticSearchStatus(meterRegistry)) {
+      refreshSearchIndexMetrics(meterRegistry);
+    } else {
+      LOG.debug("Skipping search index metrics refresh because search is unhealthy");
+    }
   }
 
-  private void checkElasticSearchStatus(PrometheusMeterRegistry meterRegistry) {
+  private boolean checkElasticSearchStatus(PrometheusMeterRegistry meterRegistry) {
     try {
       SearchHealthStatus status =
           Entity.getSearchRepository().getSearchClient().getSearchHealthStatus();
-      if (status.getStatus().equals(UNHEALTHY_STATUS)) {
+      if (status == null || !HEALTHY_STATUS.equals(status.getStatus())) {
         publishUnhealthyCounter(meterRegistry, SERVICE_NAME, SEARCH_SERVICE_NAME);
+        return false;
       }
+      return true;
     } catch (Exception ex) {
-      LOG.error("Elastic Search Health Check encountered issues: {}", ex.getMessage());
+      LOG.error("Elastic Search Health Check encountered issues", ex);
       publishUnhealthyCounter(meterRegistry, SERVICE_NAME, SEARCH_SERVICE_NAME);
+      return false;
     }
   }
 
@@ -51,7 +59,7 @@ public class DatabseAndSearchServiceStatusJob implements Job {
     try {
       Entity.getCollectionDAO().systemDAO().testConnection();
     } catch (Exception ex) {
-      LOG.error("Database Health Check encountered issues: {}", ex.getMessage());
+      LOG.error("Database Health Check encountered issues", ex);
       publishUnhealthyCounter(meterRegistry, SERVICE_NAME, DATABASE_SERVICE_NAME);
     }
   }

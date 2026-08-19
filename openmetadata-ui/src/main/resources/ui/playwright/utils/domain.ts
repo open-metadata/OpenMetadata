@@ -1760,6 +1760,46 @@ export const expandLineageSection = async (page: Page) => {
 };
 
 /**
+ * Expands the lineage section and waits for the populated lineage graph to
+ * render, reloading if it does not.
+ *
+ * `PortsLineageView` decides between the graph and the empty placeholder from
+ * the lineage /portsView response's port arrays, and it builds nodes only on
+ * mount. That endpoint sources rows and total from two separate queries and
+ * drops records whose entity cannot be resolved without adjusting the total,
+ * so it can answer with empty port arrays next to a non-zero total. When it
+ * does, the component paints the empty placeholder (`.ports-lineage-view-empty`,
+ * which has no `toggle-fullscreen-btn`) and holds it until the component
+ * remounts — so waiting alone can never recover, but a reload can. Use this in
+ * tests that assert on or interact with the graph itself.
+ */
+export const waitForLineageGraph = async (page: Page) => {
+  const lineageView = page.getByTestId('ports-lineage-view');
+
+  await expect
+    .poll(
+      async () => {
+        await expandLineageSection(page);
+
+        if (await lineageView.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return false;
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+};
+
+/**
  * Verifies the port counts displayed in the InputOutputPortsTab.
  */
 export const verifyPortCounts = async (

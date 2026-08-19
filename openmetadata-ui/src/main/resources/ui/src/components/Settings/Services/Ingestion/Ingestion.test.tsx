@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { ingestionProps } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import Ingestion from './Ingestion.component';
@@ -56,7 +57,16 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
+jest.mock(
+  '../../../ServiceAgents/components/DeploymentSummaryCard.component',
+  () => jest.fn().mockImplementation(() => <div>DeploymentSummaryCard</div>)
+);
+
 describe('Ingestion', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render the error placeHolder if airflow is not available', async () => {
     await act(async () => {
       render(
@@ -72,6 +82,50 @@ describe('Ingestion', () => {
     });
 
     expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
+  });
+
+  it('should not render the error placeHolder while the airflow status is still being fetched', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isAirflowAvailable: false,
+            isFetchingStatus: true,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+  });
+
+  it('should hide the deployment summary card while the agents are loading', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isFetchingStatus: true,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.queryByText('DeploymentSummaryCard')).toBeNull();
+  });
+
+  it('should render the deployment summary card once the status has settled', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
   });
 
   it('should render the AddIngestionButton when create permission is granted', async () => {
@@ -97,6 +151,29 @@ describe('Ingestion', () => {
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  it('should refresh only the visible sub-tab list', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    fireEvent.click(screen.getByTestId('agent-group-refresh'));
+
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledTimes(1);
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledWith(
+      ServiceAgentSubTabs.METADATA
+    );
+  });
+
+  it('should disable the refresh control while the list is loading', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} isLoading />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByTestId('agent-group-refresh')).toBeDisabled();
   });
 
   it('should not render the AddIngestionButton if no Create ingestion pipeline permission', async () => {

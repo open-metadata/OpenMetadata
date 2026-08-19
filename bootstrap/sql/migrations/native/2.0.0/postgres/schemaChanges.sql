@@ -487,3 +487,13 @@ CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON s
 CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
 CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
 CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    PRIMARY KEY (userId)
+);

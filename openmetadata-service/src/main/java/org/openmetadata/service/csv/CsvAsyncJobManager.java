@@ -15,6 +15,7 @@ package org.openmetadata.service.csv;
 
 import jakarta.ws.rs.BadRequestException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,12 +33,31 @@ import org.openmetadata.service.jobs.JobDAO;
 public final class CsvAsyncJobManager {
   public static final String CSV_JOB_HANDLER_NAME = "CsvImportExportJobHandler";
   public static final String RESULT_STORAGE_SPOOL = "spool";
+  public static final String EXPORT_COMPLETED_MESSAGE = "Export completed.";
+  public static final String LINEAGE_ENTITY_TYPE = "lineage";
+  public static final String AUDIT_ENTITY_TYPE = "auditLog";
+  private static final String EXPORT_QUEUED_MESSAGE = "Export queued.";
+  private static final String IMPORT_QUEUED_MESSAGE = "Import queued.";
+
+  /** Exports that are not scoped to a single entity tree. */
+  private static final String ALL_TARGETS = "*";
+
   // Import payloads are carried in the job-args column and parsed in memory, so
   // unbounded CSVs would bloat the jobs table and the server heap. Oversized
   // imports are rejected up front with a 400 instead of failing mid-job.
   public static final int MAX_IMPORT_CSV_BYTES = 20 * 1024 * 1024;
   public static final int MAX_IMPORT_CSV_ROWS = 100_000;
   private static final int DEFAULT_LOG_LIMIT = 100;
+
+  // Retention. The per-user cap is the hard bound on how much export payload the
+  // jobs table can ever hold: users x RETAINED_EXPORTS_PER_USER x max result size.
+  // The TTL and the row prune bound it further in time.
+  public static final int RETAINED_EXPORTS_PER_USER = 5;
+  public static final Duration RESULT_TTL = Duration.ofHours(24);
+  // A job whose worker has not heartbeated within this window has no live owner.
+  public static final Duration RUNNING_JOB_STALE_AFTER = Duration.ofMinutes(5);
+  private static final int CLEANUP_BATCH_SIZE = 500;
+
   private static final CsvAsyncJobManager INSTANCE = new CsvAsyncJobManager();
 
   private volatile JobDAO dao;
@@ -50,8 +70,6 @@ public final class CsvAsyncJobManager {
 
   public static void initialize(JobDAO dao) {
     INSTANCE.dao = dao;
-    INSTANCE.markStaleJobsFailed();
-    CsvExportSpool.sweepExpired();
   }
 
   public CsvAsyncJob createJob(
@@ -76,35 +94,68 @@ public final class CsvAsyncJobManager {
             .setCsv(csv)
             .setVersioningEntityType(versioningEntityType);
     String message =
-        operation == CsvAsyncJob.Operation.IMPORT ? "Import queued." : "Export queued.";
-    long jobId =
-        dao.insertTrackedJobInternal(
-            getJobType(operation),
-            CSV_JOB_HANDLER_NAME,
-            JsonUtils.pojoToJson(args),
-            createdBy,
-            null,
-            0,
-            0,
-            message);
-    addLog(jobId, CsvAsyncJobLog.Level.INFO, message);
-    return getJob(String.valueOf(jobId));
+        operation == CsvAsyncJob.Operation.IMPORT ? IMPORT_QUEUED_MESSAGE : EXPORT_QUEUED_MESSAGE;
+    return insertJob(args, createdBy, jobTypeOf(operation), message);
   }
 
   public CsvAsyncJob createSearchExportJob(
       String indexName, String createdBy, CsvAsyncJobArgs.SearchExportArgs searchExport) {
-    CsvAsyncJobArgs args =
-        new CsvAsyncJobArgs()
-            .setOperation(CsvAsyncJob.Operation.EXPORT)
-            .setEntityType(indexName)
-            .setTargetFqn("*")
-            .setDryRun(false)
-            .setRecursive(false)
-            .setSearchExport(searchExport);
-    String message = "Export queued.";
+    return insertExportJob(
+        exportArgs(indexName, ALL_TARGETS).setSearchExport(searchExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
+  }
+
+  public CsvAsyncJob createLineageExportJob(
+      String createdBy, CsvAsyncJobArgs.LineageExportArgs lineageExport) {
+    return insertExportJob(
+        exportArgs(LINEAGE_ENTITY_TYPE, lineageExport.getFqn()).setLineageExport(lineageExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
+  }
+
+  public CsvAsyncJob createAuditExportJob(
+      String createdBy, CsvAsyncJobArgs.AuditExportArgs auditExport) {
+    return insertExportJob(
+        exportArgs(AUDIT_ENTITY_TYPE, ALL_TARGETS).setAuditExport(auditExport),
+        createdBy,
+        BackgroundJob.JobType.AUDIT_EXPORT);
+  }
+
+  private static CsvAsyncJobArgs exportArgs(String entityType, String targetFqn) {
+    return new CsvAsyncJobArgs()
+        .setOperation(CsvAsyncJob.Operation.EXPORT)
+        .setEntityType(entityType)
+        .setTargetFqn(targetFqn)
+        .setDryRun(false)
+        .setRecursive(false);
+  }
+
+  /** Audit export jobs are typed separately so they stay out of the CSV jobs tray. */
+  public CsvAsyncJob getAuditExportJob(String jobId) {
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : toCsvJob(dao.findAuditExportJobById(id));
+  }
+
+  /**
+   * The stored export payload. Read only when serving a download — {@link #getJob} deliberately
+   * leaves it out so status polling does not transfer the whole export on every tick.
+   */
+  public String getExportResult(String jobId) {
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : dao.findCsvJobResultById(id);
+  }
+
+  private CsvAsyncJob insertExportJob(
+      CsvAsyncJobArgs args, String createdBy, BackgroundJob.JobType jobType) {
+    return insertJob(args, createdBy, jobType, EXPORT_QUEUED_MESSAGE);
+  }
+
+  private CsvAsyncJob insertJob(
+      CsvAsyncJobArgs args, String createdBy, BackgroundJob.JobType jobType, String message) {
     long jobId =
         dao.insertTrackedJobInternal(
-            getJobType(CsvAsyncJob.Operation.EXPORT),
+            jobType.name(),
             CSV_JOB_HANDLER_NAME,
             JsonUtils.pojoToJson(args),
             createdBy,
@@ -113,12 +164,20 @@ public final class CsvAsyncJobManager {
             0,
             message);
     addLog(jobId, CsvAsyncJobLog.Level.INFO, message);
-    return getJob(String.valueOf(jobId));
+    return findJobOfType(String.valueOf(jobId), jobType);
+  }
+
+  /**
+   * Each job type has its own lookup, and they do not overlap: {@link #getJob} filters to
+   * CSV_IMPORT/CSV_EXPORT, so reading an audit export through it yields null.
+   */
+  private CsvAsyncJob findJobOfType(String jobId, BackgroundJob.JobType jobType) {
+    return jobType == BackgroundJob.JobType.AUDIT_EXPORT ? getAuditExportJob(jobId) : getJob(jobId);
   }
 
   public CsvAsyncJob getJob(String jobId) {
-    BackgroundJob backgroundJob = dao.findCsvJobById(parseJobId(jobId));
-    return toCsvJob(backgroundJob);
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : toCsvJob(dao.findCsvJobById(id));
   }
 
   public List<CsvAsyncJob> listJobs(String createdBy, int limit) {
@@ -144,21 +203,24 @@ public final class CsvAsyncJobManager {
     completeJob(jobId, JsonUtils.pojoToJson(result), message, progress, total);
   }
 
-  // Export payloads are spooled to a local file; the job row only keeps a
-  // small storage reference so listing/fetching jobs never drags the CSV along.
+  // The compressed CSV lives in the job row so any server can serve the download —
+  // the node that ran the export is rarely the one the load balancer routes the
+  // download to. The list query selects NULL AS result, so this never bloats the tray.
   public void completeExportJob(
-      String jobId, String csvData, String message, int progress, int total) {
-    long bytes = CsvExportSpool.write(jobId, csvData);
-    completeJob(jobId, spoolResultReference(bytes), message, progress, total);
+      String jobId, String createdBy, String csvData, int progress, int total) {
+    completeCompressedExportJob(
+        jobId, createdBy, CsvExportPayload.compress(csvData), progress, total);
   }
 
-  // For exports that stream directly into the spool file (e.g. search-result
-  // exports) instead of materializing the CSV as a string first.
-  public void completeSpooledExportJob(String jobId, String message, int progress, int total) {
-    long bytes = CsvExportSpool.size(jobId);
-    completeJob(jobId, spoolResultReference(bytes), message, progress, total);
+  // For exports that stream into a compressing buffer (e.g. search-result exports)
+  // instead of materializing the CSV as a string first.
+  public void completeCompressedExportJob(
+      String jobId, String createdBy, String encodedResult, int progress, int total) {
+    completeJob(jobId, encodedResult, EXPORT_COMPLETED_MESSAGE, progress, total);
+    enforceResultCap(createdBy);
   }
 
+  /** True for legacy jobs whose CSV was written to a local file before results moved into the row. */
   public boolean isSpoolResultReference(String result) {
     boolean isSpooled = false;
     if (result != null && result.trim().startsWith("{")) {
@@ -170,10 +232,6 @@ public final class CsvAsyncJobManager {
       }
     }
     return isSpooled;
-  }
-
-  private String spoolResultReference(long bytes) {
-    return JsonUtils.pojoToJson(Map.of("storage", RESULT_STORAGE_SPOOL, "bytes", bytes));
   }
 
   public void failJob(String jobId, String error) {
@@ -298,20 +356,70 @@ public final class CsvAsyncJobManager {
     dao.insertLog(UUID.randomUUID().toString(), jobId, now(), level.name(), message);
   }
 
-  private void markStaleJobsFailed() {
-    if (dao != null) {
-      dao.markStaleRunningCsvJobsFailed(now());
+  /**
+   * One pass of retention for CSV and audit export jobs. Safe to run concurrently from every
+   * server: each statement is either idempotent or scoped to rows no live worker owns.
+   *
+   * <p>Table-wide row pruning lives in {@link
+   * org.openmetadata.service.jobs.BackgroundJobCleanupScheduler}, since {@code background_jobs} is
+   * shared with other job types.
+   */
+  public void runCleanupOnce() {
+    if (dao == null) {
+      return;
+    }
+    long now = now();
+    dao.markStaleRunningCsvJobsFailed(now, now - RUNNING_JOB_STALE_AFTER.toMillis());
+    releaseExpiredResults(now);
+    // Ages out files left by jobs that completed before results moved into the
+    // job row. Once those have expired this call, and the spool, can go.
+    CsvExportSpool.sweepExpired();
+  }
+
+  private void releaseExpiredResults(long now) {
+    int released = dao.releaseExpiredExportResults(now - RESULT_TTL.toMillis());
+    if (released > 0) {
+      LOG.info("Released {} expired CSV export results", released);
     }
   }
 
-  private String getJobType(CsvAsyncJob.Operation operation) {
+  /**
+   * Releases the payload of this user's older exports so a busy user cannot pin an unbounded amount
+   * of CSV in the jobs table. The rows survive; only the downloadable result goes.
+   */
+  private void enforceResultCap(String createdBy) {
+    List<Long> ids =
+        dao.findExportResultsOverUserCap(createdBy, RETAINED_EXPORTS_PER_USER, CLEANUP_BATCH_SIZE);
+    if (!ids.isEmpty()) {
+      dao.releaseExportResults(ids);
+      LOG.debug("Released {} export results over the per-user cap for {}", ids.size(), createdBy);
+    }
+  }
+
+  private BackgroundJob.JobType jobTypeOf(CsvAsyncJob.Operation operation) {
     return operation == CsvAsyncJob.Operation.IMPORT
-        ? BackgroundJob.JobType.CSV_IMPORT.name()
-        : BackgroundJob.JobType.CSV_EXPORT.name();
+        ? BackgroundJob.JobType.CSV_IMPORT
+        : BackgroundJob.JobType.CSV_EXPORT;
   }
 
   private long parseJobId(String jobId) {
     return Long.parseLong(jobId);
+  }
+
+  /**
+   * Job ids arrive from request paths, so anything that is not a {@code background_jobs} primary key
+   * — non-numeric, or numeric but wider than a long — simply matches no row. Returning null lets the
+   * resource answer 404 instead of letting {@code NumberFormatException} surface as a 500. Internal
+   * callers keep using {@link #parseJobId}, where a bad id is a programming error worth throwing on.
+   */
+  private static Long lookupIdOrNull(String jobId) {
+    Long id;
+    try {
+      id = Long.parseLong(jobId);
+    } catch (NumberFormatException e) {
+      id = null;
+    }
+    return id;
   }
 
   private long now() {

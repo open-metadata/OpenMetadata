@@ -34,6 +34,7 @@ import {
   TestCase,
 } from '../../../generated/tests/testCase';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -112,6 +113,7 @@ export const useTestCaseDetailPage = ({
 }: UseTestCaseDetailPageProps = {}): UseTestCaseDetailPageResult => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const queryClient = useQueryClient();
 
   const {
@@ -290,7 +292,8 @@ export const useTestCaseDetailPage = ({
               version,
               activeKey
             )
-          : testCaseDetailsPath
+          : testCaseDetailsPath,
+        { state: location.state }
       );
     }
   };
@@ -383,7 +386,8 @@ export const useTestCaseDetailPage = ({
             testCaseFQN,
             toString(testCase?.version) ?? '',
             activeTab
-          )
+          ),
+      { state: location.state }
     );
   };
 
@@ -394,10 +398,11 @@ export const useTestCaseDetailPage = ({
           testCaseFQN,
           toString(newVersion),
           activeTab
-        )
+        ),
+        { state: location.state }
       );
     },
-    [testCaseFQN, activeTab]
+    [testCaseFQN, activeTab, location.state]
   );
   const fetchCurrentVersion = async (id: string) => {
     try {

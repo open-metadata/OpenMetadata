@@ -37,12 +37,13 @@ const emptyTotals = {
   errors: 0,
 };
 
+// `useAgentRuns` hands the drawer its runs oldest-first, so the rail reads left to right.
 const mockRuns: AgentRun[] = [
   {
-    id: 'run-latest',
-    status: 'success',
-    startedAt: 'May 27, 2026 · 08:10',
-    duration: 3.8,
+    id: 'run-oldest',
+    status: 'partial',
+    startedAt: 'May 25, 2026 · 08:10',
+    duration: 4.1,
     totals: emptyTotals,
     steps: [],
   },
@@ -55,10 +56,10 @@ const mockRuns: AgentRun[] = [
     steps: [],
   },
   {
-    id: 'run-oldest',
-    status: 'partial',
-    startedAt: 'May 25, 2026 · 08:10',
-    duration: 4.1,
+    id: 'run-latest',
+    status: 'success',
+    startedAt: 'May 27, 2026 · 08:10',
+    duration: 3.8,
     totals: emptyTotals,
     steps: [],
   },
@@ -209,5 +210,118 @@ describe('RunHistoryDrawer', () => {
     );
 
     expect(useAgentRuns).toHaveBeenCalledWith(agent.fqn, true, fetchRuns);
+  });
+
+  describe('steps section', () => {
+    // The suite-level mock uses mockImplementation; a per-test mockReturnValue would outlive the
+    // test and leak into the next one, so restore the default after each.
+    afterEach(() => {
+      (useAgentRuns as jest.Mock).mockImplementation(() => ({
+        runs: mockRuns,
+        isLoading: false,
+      }));
+    });
+
+    it('should show an empty placeholder when the selected run has no steps', () => {
+      // Every fixture run ships `steps: []`, so this is the default state.
+      renderDrawer();
+
+      expect(screen.getByTestId('run-steps-empty')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.no-steps-available')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('RunStepRow')).not.toBeInTheDocument();
+    });
+
+    it('should render step rows instead of the placeholder when steps exist', () => {
+      (useAgentRuns as jest.Mock).mockReturnValue({
+        runs: [
+          {
+            ...mockRuns[0],
+            steps: [
+              {
+                name: 'Pod Diagnostics',
+                status: 'success',
+                records: 1,
+                filtered: 0,
+                updated: 0,
+                warnings: 0,
+                errors: 0,
+              },
+            ],
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderDrawer();
+
+      expect(screen.getByText('RunStepRow')).toBeInTheDocument();
+      expect(screen.queryByTestId('run-steps-empty')).not.toBeInTheDocument();
+    });
+
+    it('should drop the header rule when there are no steps to separate', () => {
+      renderDrawer();
+
+      const header = screen.getByText('label.steps').parentElement;
+
+      expect(header?.className).not.toContain('tw:border-b');
+    });
+  });
+
+  describe('run history rail', () => {
+    const getCards = () => screen.getAllByTestId('run-history-item');
+
+    it('should keep the rail free of horizontal padding so the cards stay aligned', () => {
+      // The cards share the drawer's left edge with the heading, the stat tiles and the Steps card.
+      // Any inline padding — or a negative margin compensating for one — breaks that alignment.
+      renderDrawer();
+
+      const rail = getCards()[0].parentElement;
+      const railClass = rail?.className ?? '';
+
+      ['tw:p-1', 'tw:px-', 'tw:pl-', 'tw:-mx-', 'tw:-ml-'].forEach((cls) =>
+        expect(railClass).not.toContain(cls)
+      );
+    });
+
+    it('should render the cards oldest-first and select the rightmost one', () => {
+      renderDrawer();
+
+      const cards = getCards();
+
+      expect(cards.map((card) => card.textContent)).toEqual([
+        expect.stringContaining('May 25, 2026'),
+        expect.stringContaining('May 26, 2026'),
+        expect.stringContaining('May 27, 2026'),
+      ]);
+      expect(cards.at(-1)?.className).toContain('tw:border-utility-brand-600');
+      expect(cards[0].className).toContain('tw:border-secondary');
+    });
+
+    it('should mark selection with a border of the same width as unselected cards', () => {
+      // A selected card must not change size, and its edge must stay inside the card's own box: the
+      // rail is a scroll container, so an outward glow would be clipped.
+      renderDrawer();
+
+      const cards = getCards();
+      // The newest run is selected by default and is the last card, not the first.
+      const selected = cards.at(-1) as HTMLElement;
+      const unselected = cards[0];
+      // Asserted as "both carry the same valid width utility" rather than a literal width: a
+      // hardcoded `tw:border-2` has to be edited whenever the design changes, and the edit that
+      // narrowed it once shipped `tw:border-` — no width at all, since Tailwind has no such class.
+      const borderWidthClass = (element: HTMLElement) =>
+        element.className
+          .split(' ')
+          .find((entry) => /^tw:border(-\d+)?$/.test(entry));
+
+      expect(borderWidthClass(selected)).toBeDefined();
+      expect(borderWidthClass(unselected)).toBe(borderWidthClass(selected));
+
+      expect(selected.className).toContain('tw:border-utility-brand-600');
+      expect(selected.className).not.toContain('tw:outline-4');
+      expect(unselected.className).toContain('tw:border-secondary');
+    });
   });
 });
