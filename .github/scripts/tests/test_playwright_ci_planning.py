@@ -1893,11 +1893,13 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
             }
         )
     )
+    # 481 > 480-s ceiling (transitional env target — see
+    # BLOCKING_TARGET_DETAILS in evaluate_playwright_performance.py).
     phase_file.write_text(
         json.dumps(
             {
                 "lane": "chromium",
-                "environmentSeconds": 301,
+                "environmentSeconds": 481,
                 "executionSeconds": 1,
             }
         )
