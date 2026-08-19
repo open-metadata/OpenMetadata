@@ -150,6 +150,9 @@ def _normalize_for_hash(data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: UP006
     if "owners" in result and isinstance(result["owners"], list):
         result["owners"] = sorted(result["owners"], key=_get_entity_reference_sort_key)
 
+    if "aliases" in result and isinstance(result["aliases"], list):
+        result["aliases"] = sorted(result["aliases"], key=str)
+
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
 
