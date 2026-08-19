@@ -59,13 +59,13 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { getEntityIconWithBg } from './Assets/AssetsUtils';
 import {
-  ENTITY_ICON_BG_SIZE_MAP,
   EntityIconBgSize,
   EntityIconSize,
+  ENTITY_ICON_BG_SIZE_MAP,
   getEntityIcon,
 } from './EntityIconUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
@@ -76,7 +76,6 @@ import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
-
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
@@ -868,10 +867,7 @@ class SearchClassBase {
     return ENTITY_ICON_MAPPER;
   }
 
-  public getEntityIconWithBg(
-    entityType?: string,
-    iconSize?: EntityIconBgSize
-  ) {
+  public getEntityIconWithBg(entityType?: string, iconSize?: EntityIconBgSize) {
     const config =
       iconSize !== undefined ? ENTITY_ICON_BG_SIZE_MAP[iconSize] : undefined;
 

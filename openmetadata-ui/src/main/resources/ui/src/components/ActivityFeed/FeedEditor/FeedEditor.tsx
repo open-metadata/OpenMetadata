@@ -41,6 +41,7 @@ import {
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   suggestions,
   userMentionItemWithAvatar,
@@ -49,7 +50,6 @@ import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
@@ -175,7 +175,10 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           : '';
 
         const iconString = ReactDOMServer.renderToString(
-          searchClassBase.getEntityIconWithBg(item.type ?? '', EntityIconSize.Size14)
+          searchClassBase.getEntityIconWithBg(
+            item.type ?? '',
+            EntityIconSize.Size14
+          )
         );
 
         const typeSpan = !breadcrumbEle

@@ -68,7 +68,8 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.PERSONA]: ENTITY_ICON_MAPPER[EntityType.PERSONA].icon,
   [EntityType.ROLE]: ENTITY_ICON_MAPPER[EntityType.ROLE].icon,
   [EntityType.POLICY]: ENTITY_ICON_MAPPER[EntityType.POLICY].icon,
-  [EntityType.EVENT_SUBSCRIPTION]: ENTITY_ICON_MAPPER[EntityType.EVENT_SUBSCRIPTION].icon,
+  [EntityType.EVENT_SUBSCRIPTION]:
+    ENTITY_ICON_MAPPER[EntityType.EVENT_SUBSCRIPTION].icon,
   [EntityType.USER]: ENTITY_ICON_MAPPER[EntityType.USER].icon,
   [EntityType.INGESTION_PIPELINE]:
     ENTITY_ICON_MAPPER[EntityType.INGESTION_PIPELINE].icon,

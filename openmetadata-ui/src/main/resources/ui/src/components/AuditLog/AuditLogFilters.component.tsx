@@ -33,9 +33,9 @@ import {
   getAuditLogCategoryLabel,
 } from '../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getCanonicalEntityType } from '../../utils/ExplorePureUtils';
-import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';

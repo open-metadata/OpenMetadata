@@ -78,10 +78,10 @@ import { EventType } from '../../generated/type/changeEvent';
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
+import { EntityIconSize } from '../EntityIconUtils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
-import { EntityIconSize } from '../EntityIconUtils';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
@@ -1248,7 +1248,10 @@ export const getSourceOptionsFromResourceList = (
           <Checkbox checked={selectedResource?.includes(resource)} />
         )}
         {showIcon &&
-          searchClassBase.getEntityIconWithBg(resource ?? '', EntityIconSize.Size14)}
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            EntityIconSize.Size14
+          )}
         <span>{getEntityNameLabel(resource ?? '')}</span>
       </div>
     ),

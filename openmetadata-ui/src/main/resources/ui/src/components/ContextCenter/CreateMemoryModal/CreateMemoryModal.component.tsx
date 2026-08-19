@@ -92,12 +92,12 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';

@@ -135,7 +135,10 @@ export default forwardRef<
               </span>
             </div>
             <Space align="center">
-              {searchClassBase.getEntityIconWithBg(item.type, EntityIconSize.Size14)}
+              {searchClassBase.getEntityIconWithBg(
+                item.type,
+                EntityIconSize.Size14
+              )}
               <Typography className="truncate w-max-200">
                 {item.label}
               </Typography>

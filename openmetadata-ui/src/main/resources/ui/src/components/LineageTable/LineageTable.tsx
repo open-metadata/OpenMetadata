@@ -59,6 +59,7 @@ import {
   getLineageByEntityCount,
   getLineageDataByFQN,
 } from '../../rest/lineageAPI';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
@@ -70,7 +71,6 @@ import {
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from '../../utils/Lineage/LineagePureUtils';
-import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { stringToHTML } from '../../utils/StringUtils';

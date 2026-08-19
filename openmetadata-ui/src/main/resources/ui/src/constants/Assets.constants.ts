@@ -20,7 +20,7 @@ import {
   FileCheck02,
   Server04,
   Settings02,
-  SlashDivider
+  SlashDivider,
 } from '@untitledui/icons';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';

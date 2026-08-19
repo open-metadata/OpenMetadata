@@ -22,8 +22,8 @@ import { AssetsOfEntity } from '../../../../components/Glossary/GlossaryTerms/ta
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
-import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import {
   ADDITIONAL_FILTER_KEYS,

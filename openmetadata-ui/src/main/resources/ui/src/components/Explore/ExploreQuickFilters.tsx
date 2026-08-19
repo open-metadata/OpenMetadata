@@ -22,6 +22,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   getCombinedQueryFilterObject,
@@ -33,7 +34,6 @@ import {
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { EntityIconSize } from '../../utils/EntityIconUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
