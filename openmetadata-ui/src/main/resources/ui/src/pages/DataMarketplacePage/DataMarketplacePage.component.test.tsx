@@ -56,6 +56,10 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => null)
+);
+
 jest.mock('../../utils/DataMarketplace/DataMarketplaceClassBase', () => ({
   __esModule: true,
   default: {
