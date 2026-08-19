@@ -18,6 +18,7 @@ import {
   Card,
   EmptyPlaceholder,
   SlideoutMenu,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AlignLeft, LinkExternal02 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
@@ -229,11 +230,13 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             <Icon height={18} width={18} />
           </span>
           <div className="tw:flex-1 tw:min-w-0">
-            <div
-              className="tw:text-md tw:font-bold tw:text-primary tw:leading-none tw:truncate"
-              data-testid="agent-name">
+            <Typography
+              ellipsis={{ rows: 1 }}
+              size="text-md"
+              title={agent.name}
+              weight="bold">
               {agent.name}
-            </div>
+            </Typography>
             <div className="tw:text-xs tw:text-quaternary">
               {t('label.run-history-and-details')}
             </div>
