@@ -11,12 +11,8 @@
 
 name: Merge Queue Watch
 
-# Fans in the completion of every workflow that runs on `merge_group`, so a
-# merge-queue failure is pushed to Slack instead of requiring someone to poll
-# https://github.com/open-metadata/OpenMetadata/queue/main by hand.
-#
-# `workflow_run` always executes the copy of this file on the default branch,
-# so changes here only take effect once merged.
+# `workflow_run` always executes the copy of this file on the default branch, so
+# changes here only take effect once merged.
 on:
   workflow_run:
     workflows:
@@ -41,7 +37,6 @@ permissions:
   contents: read
   pull-requests: read
 
-# One notification per queued PR per failing workflow.
 concurrency:
   group: merge-queue-watch-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.name }}
   cancel-in-progress: false
@@ -76,20 +71,29 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Title and author are decoration; the PR number, workflow name and run
-          # URL all come from the event payload. A lookup failure must therefore
-          # degrade the message, never suppress the alert — but it is surfaced as
-          # a warning rather than swallowed, so a persistently broken token or
-          # rate limit is visible in the run.
+          # Title and author are decoration, so a lookup failure degrades the
+          # message rather than suppressing the alert. 4xx other than 429 fails
+          # again identically; only 429, 5xx and network errors are retried.
           pr_json=""
+          body=$(mktemp)
           for attempt in 1 2 3; do
-            if pr_json=$(gh api "repos/$REPO/pulls/$number"); then
+            if err=$(gh api "repos/$REPO/pulls/$number" 2>&1 >"$body"); then
+              pr_json=$(cat "$body")
               break
             fi
-            echo "Attempt ${attempt}: could not fetch PR #${number} metadata." >&2
-            pr_json=""
+            status=$(printf '%s' "$err" | sed -n 's/.*(HTTP \([0-9]\{3\}\)).*/\1/p')
+            echo "Attempt ${attempt} failed for PR #${number}: ${err}" >&2
+            case "$status" in
+              4[0-9][0-9])
+                if [ "$status" != "429" ]; then
+                  echo "HTTP ${status} will not change on retry; giving up early." >&2
+                  break
+                fi
+                ;;
+            esac
             [ "$attempt" -lt 3 ] && sleep $((attempt * 3))
           done
+          rm -f "$body"
           if [ -z "$pr_json" ]; then
             echo "::warning::Could not fetch metadata for PR #${number}; notifying with links only."
             pr_json='{}'
@@ -105,8 +109,7 @@ jobs:
         if: steps.pr.outputs.found == 'true'
         env:
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
-          # Channel ID rather than #name so a channel rename cannot break this.
-          # Override without a code change via the MERGE_QUEUE_SLACK_CHANNEL repo variable.
+          # ID rather than #name so a channel rename cannot break this.
           SLACK_CHANNEL: ${{ vars.MERGE_QUEUE_SLACK_CHANNEL || 'C0B6Q6KDMJN' }}
           WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}

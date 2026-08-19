@@ -10,9 +10,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Posts a merge-queue failure to Slack. Kept out of the workflow YAML so the
-# self-test exercises this exact code path rather than a copy of it.
-#
 # Required env: SLACK_BOT_USER_OAUTH_TOKEN, SLACK_CHANNEL, WORKFLOW_NAME,
 #   CONCLUSION, RUN_URL, PR_NUMBER, PR_TITLE, PR_AUTHOR, REPO_URL, HEAD_BRANCH
 # Optional env: TEXT_PREFIX
@@ -29,8 +26,7 @@ done
 
 queue_branch=$(printf '%s' "$HEAD_BRANCH" | cut -d/ -f2)
 
-# Title and author are best-effort: the PR lookup can fail while the alert is
-# still worth sending, so the message must read correctly without them.
+# Title and author are best-effort; the message must read correctly without them.
 link_text="#${PR_NUMBER}"
 if [ -n "${PR_TITLE:-}" ]; then
   link_text="${link_text} ${PR_TITLE}"
