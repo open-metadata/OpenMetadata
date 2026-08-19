@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -18,6 +19,7 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
@@ -44,6 +46,7 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
+import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -72,11 +75,12 @@ const SettingsAppModePage = withSuspenseFallback(
   )
 );
 
-export const CustomizablePage = () => {
+const CustomizablePageContent = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const { document, setDocument, currentPage, getPage, setCurrentPageType } =
@@ -126,6 +130,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -170,6 +178,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -238,6 +250,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -298,6 +314,10 @@ export const CustomizablePage = () => {
         });
       }
       setDocument(response);
+      queryClient.setQueryData(
+        docStoreQueryKey(document.fullyQualifiedName ?? ''),
+        response
+      );
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -489,4 +509,24 @@ export const CustomizablePage = () => {
     default:
       return <ErrorPlaceHolder />;
   }
+};
+
+/**
+ * The content has many exits — a loader, a no-persona placeholder, a
+ * per-page-type customizer, and an unknown-page fallback — and only the
+ * customizers carry a title of their own. Setting one here, before the
+ * content, gives every branch a floor while letting a customizer that
+ * registers its own Helmet later still win.
+ */
+export const CustomizablePage = () => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <DocumentTitle
+        title={t('label.customize-entity', { entity: t('label.page') })}
+      />
+      <CustomizablePageContent />
+    </>
+  );
 };
