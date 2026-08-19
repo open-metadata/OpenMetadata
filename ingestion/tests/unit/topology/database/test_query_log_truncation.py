@@ -122,3 +122,36 @@ def test_the_notice_fires_once_per_run(source_class, method_name, expected_messa
 
     warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
     assert len([message for message in warnings if "resultLimit" in message]) == 1
+
+
+def _failing_engine(exc: Exception):
+    engine = MagicMock()
+    engine.connect.side_effect = exc
+    return engine
+
+
+def test_lineage_continues_when_one_engine_query_fails():
+    """A DMV/permission error on one connection (e.g. one MSSQL database on an
+    ingest-all-databases run) must not abort lineage for the other connections."""
+    source = MagicMock()
+    source.get_engine.return_value = [
+        _failing_engine(Exception("VIEW SERVER STATE denied")),
+        _engine_yielding(2),
+    ]
+    source.get_sql_statement.return_value = "SELECT 1"
+    source.config.serviceName = "my_service"
+    source.dialect.value = "mssql"
+    source.get_database_name.return_value = "my_database"
+    source.get_schema_name.return_value = "my_schema"
+    source.source_config.resultLimit = 100
+    source.start = datetime(2026, 8, 1)
+    source.end = datetime(2026, 8, 1) + timedelta(days=1)
+    source._result_limit_warned = False
+    source.warn_if_query_log_truncated = QueryParserSource.warn_if_query_log_truncated.__get__(source)
+
+    bound = LineageSource.yield_table_query.__get__(source)
+
+    queries = list(bound())
+
+    # The healthy engine's two rows still come through despite the first engine failing.
+    assert len(queries) == 2

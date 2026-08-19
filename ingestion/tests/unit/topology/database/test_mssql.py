@@ -311,6 +311,22 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
+    def test_get_stored_procedures_records_status_on_query_error(self):
+        """A failure listing stored procedures is recorded in status, not raised."""
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.status = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.connect.side_effect = Exception("SELECT permission denied on sys.sql_modules")
+        self.mssql.engine = mock_engine
+
+        results = list(self.mssql.get_stored_procedures())
+
+        self.assertEqual(results, [])
+        self.mssql.status.failed.assert_called_once()
+
 
 class TestUpdateMssqlIschemaNames:
     """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
@@ -507,6 +523,22 @@ class TestUpdateMssqlIschemaNames:
 
         with (
             patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["bad_db"])),
+            patch.object(MssqlSource, "_load_description_maps"),
+            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == []
+        self.mssql.status.failed.assert_called_once()
+
+    def test_failed_single_database_recorded_in_status(self):
+        """In single-database mode a connection failure is recorded in status and not yielded,
+        matching the ingest-all-databases branch instead of aborting the run."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        self.mssql.config.serviceConnection.root.config.database = "only_db"
+        self.mssql.status = MagicMock()
+
+        with (
             patch.object(MssqlSource, "_load_description_maps"),
             patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
         ):
@@ -746,6 +778,25 @@ class TestMssqlQueryStoreSelection:
         assert "sys.dm_exec_procedure_stats" in statement
 
 
+class TestMssqlDateformat:
+    """The server dateformat probe degrades to the default instead of crashing."""
+
+    def test_returns_none_when_config_query_fails(self):
+        engine = MagicMock()
+        engine.connect.side_effect = Exception("VIEW SERVER STATE denied")
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) is None
+
+    def test_returns_configured_dateformat(self):
+        engine = MagicMock()
+        row = MagicMock()
+        row._asdict.return_value = {"Set Option": "dateformat", "Value": "dmy"}
+        conn = engine.connect.return_value.__enter__.return_value
+        conn.execute.return_value.all.return_value = [row]
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) == "dmy"
+
+
 class TestMssqlPerDatabaseQueryStore:
     """Per-database Query Store engine iteration for ingest-all-databases runs."""
 
@@ -852,6 +903,37 @@ class TestMssqlPerDatabaseQueryStore:
         source._databases_to_scan = lambda: iter([])
 
         assert list(source.get_engine()) == [source.engine]
+
+    def test_falls_back_to_dmv_when_database_enumeration_fails(self):
+        """A permission error enumerating databases falls back to the single instance-wide
+        connection instead of aborting query history for the whole run."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source._databases_to_scan = MagicMock(side_effect=Exception("VIEW ANY DATABASE denied"))
+
+        assert list(source.get_engine()) == [source.engine]
+
+    def test_skips_database_when_engine_construction_fails(self):
+        """A database whose engine cannot be built is skipped; the remaining databases are
+        still read, so one bad database does not kill the rest."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        good_engine = MagicMock()
+        source._databases_to_scan = lambda: iter(["BadDb", "GoodDb"])
+
+        def build(database):
+            if database == "BadDb":
+                raise RuntimeError("login failed for user on BadDb")
+            return good_engine
+
+        source._engine_for_database = build
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ):
+            engines = list(source.get_engine())
+
+        assert engines == [good_engine]
+        good_engine.dispose.assert_called_once()
 
     def test_stored_procedure_engines_follow_get_engine(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=False)

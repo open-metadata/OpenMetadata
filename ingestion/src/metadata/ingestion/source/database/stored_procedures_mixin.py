@@ -91,9 +91,19 @@ class StoredProcedureLineageMixin(ABC):
         Yield query and stored procedure object for lineage processing.
         """
         for engine in self.get_stored_procedure_engines():
-            query = self.get_stored_procedure_sql_statement()
-            with engine.connect() as conn:
-                results = conn.execute(text(query)).all()
+            try:
+                query = self.get_stored_procedure_sql_statement()
+                with engine.connect() as conn:
+                    results = conn.execute(text(query)).all()
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error fetching stored procedure query history due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                continue
 
             for row in results:
                 try:
