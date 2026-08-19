@@ -23,9 +23,7 @@ def test_create_table_request_accepts_aliases():
         aliases=["mssql_service.analytics_core.dbo.orders"],
     )
 
-    assert [model_str(alias) for alias in request.aliases] == [
-        "mssql_service.analytics_core.dbo.orders"
-    ]
+    assert [model_str(alias) for alias in request.aliases] == ["mssql_service.analytics_core.dbo.orders"]
 
 
 def test_aliases_defaults_to_none():

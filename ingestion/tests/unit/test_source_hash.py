@@ -25,20 +25,14 @@ def _request(aliases):
 
 
 def test_source_hash_is_stable_across_alias_ordering():
-    first = generate_source_hash(
-        _request(["svc.db_a.dbo.orders", "svc.db_b.dbo.orders"])
-    )
-    second = generate_source_hash(
-        _request(["svc.db_b.dbo.orders", "svc.db_a.dbo.orders"])
-    )
+    first = generate_source_hash(_request(["svc.db_a.dbo.orders", "svc.db_b.dbo.orders"]))
+    second = generate_source_hash(_request(["svc.db_b.dbo.orders", "svc.db_a.dbo.orders"]))
 
     assert first == second
 
 
 def test_source_hash_changes_when_an_alias_is_added():
     without = generate_source_hash(_request(["svc.db_a.dbo.orders"]))
-    with_extra = generate_source_hash(
-        _request(["svc.db_a.dbo.orders", "svc.db_b.dbo.orders"])
-    )
+    with_extra = generate_source_hash(_request(["svc.db_a.dbo.orders", "svc.db_b.dbo.orders"]))
 
     assert without != with_extra
