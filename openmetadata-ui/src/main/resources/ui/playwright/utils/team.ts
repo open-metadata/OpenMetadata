@@ -254,12 +254,16 @@ export const addTeamHierarchy = async (
 ) => {
   const addTeamModal = page.locator('[role="dialog"].ant-modal').last();
 
-  // Fetching the add button and clicking on it
-  if (index && index > 0) {
-    await page.click('[data-testid="add-placeholder-button"]', { force: true });
-  } else {
-    await page.click('[data-testid="add-team"]', { force: true });
-  }
+  // The backend fans delete/job notifications out to every socket of the logged-in
+  // user, so a parallel worker's toast can land over this button. Success toasts
+  // carry no close button and self-dismiss after 3.5s, so the fix is to click
+  // WITHOUT `force`: the hit-target check then waits the toast out. With `force`
+  // the click was dispatched into the toast and the modal never opened.
+  const addButton = page.getByTestId(
+    index && index > 0 ? 'add-placeholder-button' : 'add-team'
+  );
+  await expect(addButton).toBeEnabled();
+  await addButton.click();
 
   await expect(addTeamModal).toBeVisible();
   await expect(page.locator('[data-testid="name"]')).toBeVisible();
