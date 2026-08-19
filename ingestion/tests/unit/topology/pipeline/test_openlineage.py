@@ -12,6 +12,7 @@ from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -446,9 +447,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_valid_inputs_outputs(
-        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
-    ):
+    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached):
         """Test with valid input and output lists."""
         # Setup
         mock_get_by_name_cached.return_value = None
@@ -542,10 +541,8 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         source_table = self._mock_table_with_columns("first_name", "last_name")
         target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
-        mock_get_by_name_cached.side_effect = (
-            lambda entity_class, fqn_str, **kwargs: target_table
-            if fqn_str == "database.schema.case_test_target"
-            else source_table
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
+            target_table if fqn_str == "database.schema.case_test_target" else source_table
         )
 
         inputs = [
@@ -799,9 +796,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(
-            self.open_lineage_source, "_resolve_table", return_value=resolved
-        ), patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_null_facets,
                 outputs_null_column_lineage,
@@ -837,9 +835,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(
-            self.open_lineage_source, "_resolve_table", return_value=resolved
-        ), patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_facets_list,
                 outputs_column_lineage_list,
