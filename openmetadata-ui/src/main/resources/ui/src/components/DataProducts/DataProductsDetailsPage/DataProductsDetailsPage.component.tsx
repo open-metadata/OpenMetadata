@@ -611,8 +611,13 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    await onUpdate(updatedDetails);
-    setIsStyleEditing(false);
+    try {
+      await onUpdate(updatedDetails);
+    } catch {
+      // Error is already handled by the parent component
+    } finally {
+      setIsStyleEditing(false);
+    }
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -1028,13 +1033,18 @@ const DataProductsDetailsPage = ({
         open={isMetadataEditing}
         onCancel={() => setIsMetadataEditing(false)}
         onSubmit={async (values) => {
-          await onUpdate({
-            ...dataProduct,
-            dataProductType: values.dataProductType,
-            visibility: values.visibility,
-            portfolioPriority: values.portfolioPriority,
-          });
-          setIsMetadataEditing(false);
+          try {
+            await onUpdate({
+              ...dataProduct,
+              dataProductType: values.dataProductType,
+              visibility: values.visibility,
+              portfolioPriority: values.portfolioPriority,
+            });
+          } catch {
+            // Error is already handled by the parent component
+          } finally {
+            setIsMetadataEditing(false);
+          }
         }}
       />
     </>
