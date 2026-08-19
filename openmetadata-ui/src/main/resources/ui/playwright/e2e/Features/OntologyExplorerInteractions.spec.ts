@@ -111,7 +111,10 @@ test.describe('Cross-glossary term hydration', () => {
   test.beforeEach(async ({ page }) => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, CrossGlossaryData.salesGlossary.responseData.id);
+    await applyGlossaryFilter(
+      page,
+      CrossGlossaryData.salesGlossary.responseData.id
+    );
     await waitForGraphLoaded(page);
   });
 
@@ -121,8 +124,12 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[CrossGlossaryData.termRevenue.responseData.id]).toBeDefined();
-    expect(positions[CrossGlossaryData.termExpense.responseData.id]).toBeDefined();
+    expect(
+      positions[CrossGlossaryData.termRevenue.responseData.id]
+    ).toBeDefined();
+    expect(
+      positions[CrossGlossaryData.termExpense.responseData.id]
+    ).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {

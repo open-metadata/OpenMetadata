@@ -310,7 +310,10 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
 
       // Deselect glossary2 — clicks the already-selected ID to uncheck it.
-      await applyMultiGlossaryFilter(page, FiltersData.glossary2.responseData.id);
+      await applyMultiGlossaryFilter(
+        page,
+        FiltersData.glossary2.responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -397,9 +400,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       );
 
       await page.getByTestId('search-dropdown-Glossary').click();
-      await page
-        .getByTestId(FiltersData.glossary.responseData.id)
-        .click();
+      await page.getByTestId(FiltersData.glossary.responseData.id).click();
       await page.getByTestId('update-btn').click();
       await waitForGraphLoaded(page);
 

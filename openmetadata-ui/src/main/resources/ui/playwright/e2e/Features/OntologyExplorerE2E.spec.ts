@@ -216,7 +216,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
 
     const categoryName =
-      E2EData.termCategory.responseData.displayName ?? E2EData.termCategory.responseData.name;
+      E2EData.termCategory.responseData.displayName ??
+      E2EData.termCategory.responseData.name;
     await page
       .getByTestId('ontology-graph-search')
       .locator('input')

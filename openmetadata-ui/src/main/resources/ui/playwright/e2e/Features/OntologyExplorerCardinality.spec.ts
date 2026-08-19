@@ -54,7 +54,9 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
         CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE
       );
 
-      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
+      expect(
+        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE]
+      ).toEqual({
         startLabelText: '1',
         endLabelText: '1',
       });
@@ -68,7 +70,9 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
         CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY
       );
 
-      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
+      expect(
+        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY]
+      ).toEqual({
         startLabelText: '1',
         endLabelText: 'M',
       });
@@ -82,7 +86,9 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
         CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE
       );
 
-      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
+      expect(
+        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE]
+      ).toEqual({
         startLabelText: 'M',
         endLabelText: '1',
       });
@@ -96,7 +102,9 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
         CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY
       );
 
-      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
+      expect(
+        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY]
+      ).toEqual({
         startLabelText: 'M',
         endLabelText: 'M',
       });
@@ -110,7 +118,9 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
         CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M
       );
 
-      expect(cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
+      expect(
+        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M]
+      ).toEqual({
         startLabelText: '1',
         endLabelText: 'M',
       });
@@ -138,8 +148,12 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
 
       expect(
         relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE) ||
-          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY) ||
-          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE) ||
+          relationTypes.has(
+            CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY
+          ) ||
+          relationTypes.has(
+            CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE
+          ) ||
           relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY)
       ).toBe(true);
     });

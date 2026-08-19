@@ -438,7 +438,8 @@ test.describe('Ontology Explorer', () => {
       await expect(outgoing.or(incoming)).toBeVisible({ timeout: 5000 });
 
       const relatedName =
-        PageData.term2.responseData.displayName ?? PageData.term2.responseData.name;
+        PageData.term2.responseData.displayName ??
+        PageData.term2.responseData.name;
       await expect(
         page
           .getByTestId('entity-summary-panel-container')
@@ -604,7 +605,10 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.multiRelGlossary.responseData.id);
+      await applyGlossaryFilter(
+        page,
+        PageData.multiRelGlossary.responseData.id
+      );
       await waitForGraphLoaded(page);
 
       const edges = await readGraphEdges(page);

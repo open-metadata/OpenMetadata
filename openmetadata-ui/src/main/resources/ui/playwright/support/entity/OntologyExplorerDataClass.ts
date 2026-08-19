@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { uuid } from '../../utils/common';
 import {
   addRelationTypesWithCardinality,
   addTermRelation,
 } from '../../utils/ontologyExplorer';
-import { uuid } from '../../utils/common';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 
@@ -59,9 +59,24 @@ export class OntologyExplorerE2EData {
 
     // termProduct is patched twice (partOf termCategory, relatedTo termBrand)
     // so these must remain sequential to avoid a PATCH race.
-    await addTermRelation(apiContext, this.termProduct, this.termCategory, 'partOf');
-    await addTermRelation(apiContext, this.termBrand, this.termCategory, 'partOf');
-    await addTermRelation(apiContext, this.termProduct, this.termBrand, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      this.termProduct,
+      this.termCategory,
+      'partOf'
+    );
+    await addTermRelation(
+      apiContext,
+      this.termBrand,
+      this.termCategory,
+      'partOf'
+    );
+    await addTermRelation(
+      apiContext,
+      this.termProduct,
+      this.termBrand,
+      'relatedTo'
+    );
     await addTermRelation(
       apiContext,
       this.termCategory,
@@ -177,11 +192,36 @@ export class OntologyExplorerCardinalityData {
     // Each source term is patched exactly once, so all 6 relations can be
     // issued in parallel without any write-write conflict.
     await Promise.all([
-      addTermRelation(apiContext, this.otoSrc, this.otoDst, this.CUSTOM_RELATION_NAMES.ONE_TO_ONE),
-      addTermRelation(apiContext, this.otmSrc, this.otmDst, this.CUSTOM_RELATION_NAMES.ONE_TO_MANY),
-      addTermRelation(apiContext, this.mtoSrc, this.mtoDst, this.CUSTOM_RELATION_NAMES.MANY_TO_ONE),
-      addTermRelation(apiContext, this.mtmSrc, this.mtmDst, this.CUSTOM_RELATION_NAMES.MANY_TO_MANY),
-      addTermRelation(apiContext, this.cusSrc, this.cusDst, this.CUSTOM_RELATION_NAMES.CUSTOM_1_M),
+      addTermRelation(
+        apiContext,
+        this.otoSrc,
+        this.otoDst,
+        this.CUSTOM_RELATION_NAMES.ONE_TO_ONE
+      ),
+      addTermRelation(
+        apiContext,
+        this.otmSrc,
+        this.otmDst,
+        this.CUSTOM_RELATION_NAMES.ONE_TO_MANY
+      ),
+      addTermRelation(
+        apiContext,
+        this.mtoSrc,
+        this.mtoDst,
+        this.CUSTOM_RELATION_NAMES.MANY_TO_ONE
+      ),
+      addTermRelation(
+        apiContext,
+        this.mtmSrc,
+        this.mtmDst,
+        this.CUSTOM_RELATION_NAMES.MANY_TO_MANY
+      ),
+      addTermRelation(
+        apiContext,
+        this.cusSrc,
+        this.cusDst,
+        this.CUSTOM_RELATION_NAMES.CUSTOM_1_M
+      ),
       addTermRelation(apiContext, this.relSrc, this.relDst, 'relatedTo'),
     ]);
   }
@@ -276,8 +316,18 @@ export class OntologyExplorerPageData {
     ]);
     await addTermRelation(apiContext, this.term1, this.term2, 'relatedTo');
     // multiRelTermA is patched twice — must stay sequential.
-    await addTermRelation(apiContext, this.multiRelTermA, this.multiRelTermB, 'relatedTo');
-    await addTermRelation(apiContext, this.multiRelTermA, this.multiRelTermB, 'partOf');
+    await addTermRelation(
+      apiContext,
+      this.multiRelTermA,
+      this.multiRelTermB,
+      'relatedTo'
+    );
+    await addTermRelation(
+      apiContext,
+      this.multiRelTermA,
+      this.multiRelTermB,
+      'partOf'
+    );
   }
 
   static async teardown(apiContext: APIRequestContext): Promise<void> {
@@ -306,7 +356,12 @@ export class OntologyExplorerComboData {
       this.connectedTermB.create(apiContext),
       this.isolatedTerm.create(apiContext),
     ]);
-    await addTermRelation(apiContext, this.connectedTermA, this.connectedTermB, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      this.connectedTermA,
+      this.connectedTermB,
+      'relatedTo'
+    );
   }
 
   static async teardown(apiContext: APIRequestContext): Promise<void> {
@@ -333,7 +388,12 @@ export class OntologyExplorerCrossGlossaryData {
       this.termRevenue.create(apiContext),
       this.termExpense.create(apiContext),
     ]);
-    await addTermRelation(apiContext, this.termRevenue, this.termExpense, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      this.termRevenue,
+      this.termExpense,
+      'relatedTo'
+    );
   }
 
   static async teardown(apiContext: APIRequestContext): Promise<void> {
@@ -386,7 +446,12 @@ export class OntologyExplorerIsolatedToggleData {
       this.toggleTermB.create(apiContext),
       this.toggleTermIso.create(apiContext),
     ]);
-    await addTermRelation(apiContext, this.toggleTermA, this.toggleTermB, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      this.toggleTermA,
+      this.toggleTermB,
+      'relatedTo'
+    );
   }
 
   static async teardown(apiContext: APIRequestContext): Promise<void> {

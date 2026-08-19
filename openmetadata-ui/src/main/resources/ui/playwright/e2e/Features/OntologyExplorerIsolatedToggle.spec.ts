@@ -40,7 +40,10 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      ToggleData.toggleGlossary.responseData.id
+    );
 
     const positions = await readNodePositions(page);
 
@@ -62,7 +65,10 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      ToggleData.toggleGlossary.responseData.id
+    );
 
     await page.getByTestId('ontology-isolated-toggle').click();
     await waitForNodeAbsent(page, ToggleData.toggleTermIso.responseData.id);
@@ -87,7 +93,10 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(page, ToggleData.toggleGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      ToggleData.toggleGlossary.responseData.id
+    );
 
     await page.getByTestId('ontology-isolated-toggle').click();
     await waitForNodeAbsent(page, ToggleData.toggleTermIso.responseData.id);
