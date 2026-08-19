@@ -65,7 +65,7 @@ export class Glossary extends EntityClass {
     this.responseData = await createOrFetch(apiContext, {
       label: 'Glossary.create',
       createPath: '/api/v1/glossaries',
-      entityFqn: this.data.name,
+      fqnSegments: [this.data.name],
       data: apiData,
     });
 

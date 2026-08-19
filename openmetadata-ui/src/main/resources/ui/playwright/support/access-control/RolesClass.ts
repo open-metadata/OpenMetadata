@@ -44,7 +44,7 @@ export class RolesClass {
     const data = await createOrFetch(apiContext, {
       label: 'RolesClass.create',
       createPath: '/api/v1/roles',
-      entityFqn: this.data.name,
+      fqnSegments: [this.data.name],
       data: { ...this.data, policies },
     });
     this.responseData = data;

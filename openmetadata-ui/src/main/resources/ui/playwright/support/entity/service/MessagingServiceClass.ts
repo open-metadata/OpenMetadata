@@ -47,7 +47,7 @@ export class MessagingServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'MessagingServiceClass.create',
       createPath: '/api/v1/services/messagingServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

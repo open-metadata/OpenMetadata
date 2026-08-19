@@ -49,7 +49,7 @@ export class StorageServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'StorageServiceClass.create',
       createPath: '/api/v1/services/storageServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

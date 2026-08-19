@@ -94,13 +94,13 @@ export class ChartClass extends EntityClass {
     this.serviceResponseData = await createOrFetch(apiContext, {
       label: 'ChartClass.create',
       createPath: '/api/v1/services/dashboardServices',
-      entityFqn: this.service.name,
+      fqnSegments: [this.service.name],
       data: this.service,
     });
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'ChartClass.create',
       createPath: '/api/v1/charts',
-      entityFqn: `${this.service.name}.${this.entity.name}`,
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 

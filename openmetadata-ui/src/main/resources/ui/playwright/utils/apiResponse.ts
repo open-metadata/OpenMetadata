@@ -36,14 +36,34 @@ export const okJson = async <T = any>(
 };
 
 /**
- * Quote an FQN segment that contains the separator.
+ * Mirrors `FullyQualifiedName.needsQuoting` on the server: a segment has to be
+ * quoted when it contains the separator or a quote of its own.
+ */
+const needsQuoting = (name: string): boolean =>
+  name.includes('.') || name.includes('"');
+
+/**
+ * Quote one raw name the way the server's `FullyQualifiedName.quoteName` does —
+ * note the escape doubles the quote (`"` becomes `""`), it does not backslash it.
  *
- * `.` separates FQN segments, so a name like `PW%domain.1e518933` is read as two
- * segments and a lookup for the literal name 404s. The quoted form resolves.
- * Confirmed against a running server: unquoted 404, quoted 200.
+ * `.` separates FQN segments, so the name `PW%domain.1e518933` reads as two
+ * segments and a lookup for it 404s while the quoted form returns 200 (checked
+ * against a running server). Names are generated per fixture, so treat any
+ * segment as capable of carrying a separator rather than auditing them one by one.
  */
 export const quoteFqnSegment = (name: string): string =>
-  /["."]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
+  needsQuoting(name) ? `"${name.replace(/"/g, '""')}"` : name;
+
+/**
+ * Build an FQN from raw name segments, quoting each one.
+ *
+ * Callers pass the parts they already hold — `[service, database, schema, table]`
+ * — instead of interpolating them into a string themselves, so a separator
+ * appearing in any future fixture name is handled here rather than silently
+ * producing a lookup for an FQN that does not exist.
+ */
+export const buildFqn = (...segments: string[]): string =>
+  segments.map(quoteFqnSegment).join('.');
 
 /**
  * POST that treats "already exists" as success.
@@ -63,22 +83,26 @@ export const quoteFqnSegment = (name: string): string =>
  * Domains are not allowed`. Only request fields the collection actually declares
  * — `policies` and `roles`, for instance, do not accept `domains` and answer an
  * unknown field with a 400.
+ *
+ * `fqnSegments` are the entity's raw name parts, outermost first. They are quoted
+ * and joined here so no call site has to know the FQN escaping rules.
  */
 export const createOrFetch = async <T = any>(
   apiContext: APIRequestContext,
   options: {
     label: string;
     createPath: string;
-    entityFqn: string;
+    fqnSegments: string[];
     data: object;
     fetchPath?: string;
     fields?: string;
   }
 ): Promise<T> => {
-  const { label, createPath, entityFqn, data, fetchPath, fields } = options;
+  const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
   const createResponse = await apiContext.post(createPath, { data });
 
   if (createResponse.status() === 409) {
+    const entityFqn = buildFqn(...fqnSegments);
     const lookupPath = fetchPath ?? `${createPath}/name`;
     const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
     const getResponse = await apiContext.get(

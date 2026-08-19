@@ -105,13 +105,13 @@ export class MlModelClass extends EntityClass {
     this.serviceResponseData = await createOrFetch(apiContext, {
       label: 'MlModelClass.create',
       createPath: '/api/v1/services/mlmodelServices',
-      entityFqn: this.service.name,
+      fqnSegments: [this.service.name],
       data: this.service,
     });
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'MlModelClass.create',
       createPath: '/api/v1/mlmodels',
-      entityFqn: `${this.service.name}.${this.entity.name}`,
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 

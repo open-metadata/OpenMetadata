@@ -46,7 +46,7 @@ export class MetadataServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'MetadataServiceClass.create',
       createPath: '/api/v1/services/metadataServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

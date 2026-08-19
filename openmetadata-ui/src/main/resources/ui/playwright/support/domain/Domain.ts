@@ -13,11 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
-import {
-  createOrFetch,
-  okJson,
-  quoteFqnSegment,
-} from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -68,7 +64,7 @@ export class Domain extends EntityClass {
     const data = await createOrFetch(apiContext, {
       label: 'Domain.create',
       createPath: '/api/v1/domains',
-      entityFqn: quoteFqnSegment(this.data.name),
+      fqnSegments: [this.data.name],
       data: this.data,
     });
     this.responseData = data;

@@ -46,7 +46,7 @@ export class ApiServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'ApiServiceClass.create',
       createPath: '/api/v1/services/apiServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

@@ -54,7 +54,7 @@ export class PolicyClass {
     const data = await createOrFetch(apiContext, {
       label: 'PoliciesClass.create',
       createPath: '/api/v1/policies',
-      entityFqn: this.data.name,
+      fqnSegments: [this.data.name],
       data: { ...this.data, rules },
     });
     this.responseData = data;

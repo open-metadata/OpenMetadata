@@ -46,7 +46,7 @@ export class PipelineServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'PipelineServiceClass.create',
       createPath: '/api/v1/services/pipelineServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

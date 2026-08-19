@@ -95,7 +95,7 @@ export class MetricClass extends EntityClass {
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'MetricClass.create',
       createPath: '/api/v1/metrics',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

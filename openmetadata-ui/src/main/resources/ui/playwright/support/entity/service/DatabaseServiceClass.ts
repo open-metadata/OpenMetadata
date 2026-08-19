@@ -57,7 +57,7 @@ export class DatabaseServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'DatabaseServiceClass.create',
       createPath: '/api/v1/services/databaseServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

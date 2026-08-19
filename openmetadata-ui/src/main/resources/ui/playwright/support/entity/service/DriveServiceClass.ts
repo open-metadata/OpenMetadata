@@ -60,7 +60,7 @@ export class DriveServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'DriveServiceClass.create',
       createPath: `/api/v1/${EntityTypeEndpoint.DriveService}`,
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

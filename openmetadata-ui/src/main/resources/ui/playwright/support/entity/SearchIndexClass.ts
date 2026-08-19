@@ -156,13 +156,13 @@ export class SearchIndexClass extends EntityClass {
     this.serviceResponseData = await createOrFetch(apiContext, {
       label: 'SearchIndexClass.create',
       createPath: '/api/v1/services/searchServices',
-      entityFqn: this.service.name,
+      fqnSegments: [this.service.name],
       data: this.service,
     });
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'SearchIndexClass.create',
       createPath: '/api/v1/searchIndexes',
-      entityFqn: `${this.service.name}.${this.entity.name}`,
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 

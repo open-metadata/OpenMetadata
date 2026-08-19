@@ -70,7 +70,7 @@ export class DashboardServiceClass extends EntityClass {
     const service = await createOrFetch(apiContext, {
       label: 'DashboardServiceClass.create',
       createPath: '/api/v1/services/dashboardServices',
-      entityFqn: this.entity.name,
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 

@@ -148,13 +148,13 @@ export class TopicClass extends EntityClass {
     this.serviceResponseData = await createOrFetch(apiContext, {
       label: 'TopicClass.create',
       createPath: '/api/v1/services/messagingServices',
-      entityFqn: this.service.name,
+      fqnSegments: [this.service.name],
       data: this.service,
     });
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'TopicClass.create',
       createPath: '/api/v1/topics',
-      entityFqn: `${this.service.name}.${this.entity.name}`,
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 

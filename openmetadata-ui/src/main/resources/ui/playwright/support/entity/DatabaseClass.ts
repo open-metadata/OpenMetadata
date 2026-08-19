@@ -135,32 +135,33 @@ export class DatabaseClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceFqn = this.service.name;
-    const databaseFqn = `${serviceFqn}.${this.entity.name}`;
-    const schemaFqn = `${databaseFqn}.${this.schema.name}`;
-
     const service = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create service',
       createPath: '/api/v1/services/databaseServices',
-      entityFqn: serviceFqn,
+      fqnSegments: [this.service.name],
       data: this.service,
     });
     const entity = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create database',
       createPath: '/api/v1/databases',
-      entityFqn: databaseFqn,
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
     const schema = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create schema',
       createPath: '/api/v1/databaseSchemas',
-      entityFqn: schemaFqn,
+      fqnSegments: [this.service.name, this.entity.name, this.schema.name],
       data: this.schema,
     });
     const table = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create table',
       createPath: '/api/v1/tables',
-      entityFqn: `${schemaFqn}.${this.table.name}`,
+      fqnSegments: [
+        this.service.name,
+        this.entity.name,
+        this.schema.name,
+        this.table.name,
+      ],
       data: this.table,
     });
 
