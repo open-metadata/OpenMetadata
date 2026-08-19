@@ -27,6 +27,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -55,6 +58,7 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -293,6 +297,7 @@ class MssqlUnitTest(TestCase):
             "definition": "def1",
             "language": "SQL",
             "owner": "owner",
+            "routine_type": "PROCEDURE",
         }
         row2 = MagicMock()
         row2._asdict.return_value = {
@@ -300,17 +305,32 @@ class MssqlUnitTest(TestCase):
             "definition": "def2",
             "language": "SQL",
             "owner": "owner",
+            "routine_type": "PROCEDURE",
+        }
+        row3 = MagicMock()
+        row3._asdict.return_value = {
+            "name": "ufn_include",
+            "definition": "def3",
+            "language": "SQL",
+            "owner": "owner",
+            "routine_type": "FUNCTION",
         }
 
         mock_conn = MagicMock()
-        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_conn.execute.return_value.all.return_value = [row1, row2, row3]
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.mssql.get_stored_procedures())
 
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "sp_include")
+        # sp_exclude is filtered out by storedProcedureFilterPattern; the function is not
+        # filtered just for being a function -- both a procedure and a function survive.
+        self.assertEqual(len(results), 2)
+        self.assertEqual({r.name for r in results}, {"sp_include", "ufn_include"})
+        self.assertEqual(
+            {r.name: r.routine_type for r in results},
+            {"sp_include": "PROCEDURE", "ufn_include": "FUNCTION"},
+        )
 
 
 class TestUpdateMssqlIschemaNames:
@@ -429,6 +449,40 @@ class TestUpdateMssqlIschemaNames:
         assert results[0].description is None
         assert results[0].storedProcedureCode.code == "CREATE PROC sp_normal AS SELECT 1"
 
+    def test_yield_stored_procedure_sets_type_for_procedure(self):
+        """A PROCEDURE routine yields storedProcedureType=StoredProcedure."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(
+            name="usp_normal",
+            language="SQL",
+            definition="CREATE PROC usp_normal AS SELECT 1",
+            routine_type="PROCEDURE",
+        )
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureType == StoredProcedureType.StoredProcedure
+
+    def test_yield_stored_procedure_sets_type_for_function(self):
+        """A FUNCTION routine yields storedProcedureType=Function, not the StoredProcedure default."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(
+            name="ufn_calc",
+            language="SQL",
+            definition="CREATE FUNCTION ufn_calc() RETURNS INT AS BEGIN RETURN 1; END",
+            routine_type="FUNCTION",
+        )
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureType == StoredProcedureType.Function
+
     def test_get_encrypted_procedures_caches_per_schema(self):
         """_get_encrypted_procedures queries once per schema and caches"""
         self._setup_stored_procedure_context()
@@ -515,6 +569,29 @@ class TestUpdateMssqlIschemaNames:
 
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
+
+
+class TestMssqlGetStoredProceduresQuery:
+    """MSSQL_GET_STORED_PROCEDURES must include functions, not just procedures, and must
+    not regress the object types sys.procedures used to cover (regular, extended, CLR).
+    """
+
+    def test_selects_both_procedures_and_functions(self):
+        assert "ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')" in MSSQL_GET_STORED_PROCEDURES
+
+    def test_no_longer_restricted_to_sys_procedures(self):
+        # sys.procedures only contains procedure-like objects (P/X/RF/PC) and would silently
+        # drop every function row even with the WHERE clause widened above.
+        assert "sys.procedures" not in MSSQL_GET_STORED_PROCEDURES
+
+    def test_join_does_not_filter_by_object_type(self):
+        # A type allowlist here (e.g. o.type IN ('P','FN','TF','IF')) would silently drop CLR
+        # stored procedures (type 'PC'), which this connector already supports via
+        # Language.External -- name+schema alone is unambiguous, no type filter is needed.
+        assert "o.type" not in MSSQL_GET_STORED_PROCEDURES
+
+    def test_selects_routine_type_for_downstream_classification(self):
+        assert "ROUTINE_TYPE AS routine_type" in MSSQL_GET_STORED_PROCEDURES
 
 
 class MssqlIdentityColumnTest(TestCase):

@@ -333,16 +333,18 @@ MSSQL_GET_STORED_PROCEDURES = textwrap.dedent(
     """
 SELECT
   ROUTINE_NAME AS name,
-  NULL AS owner,            
+  NULL AS owner,
   ROUTINE_BODY AS language,
+  ROUTINE_TYPE AS routine_type,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
-JOIN sys.sql_modules l on l.object_id = p.object_id
- WHERE ROUTINE_TYPE = 'PROCEDURE'
+JOIN sys.objects o ON o.name = r.ROUTINE_NAME
+                   AND SCHEMA_NAME(o.schema_id) = r.ROUTINE_SCHEMA
+JOIN sys.sql_modules l on l.object_id = o.object_id
+ WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
    AND ROUTINE_CATALOG = '{database_name}'
    AND ROUTINE_SCHEMA = '{schema_name}'
-    """  # noqa: W291
+    """
 )
 
 MSSQL_GET_ENCRYPTED_STORED_PROCEDURES = textwrap.dedent(

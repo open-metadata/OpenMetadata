@@ -11,7 +11,7 @@
 """MSSQL source module"""
 
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
@@ -48,6 +48,7 @@ from metadata.ingestion.source.database.mssql.constants import (
 )
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
+    STORED_PROC_TYPE_MAP,
     MssqlStoredProcedure,
 )
 from metadata.ingestion.source.database.mssql.queries import (
@@ -230,7 +231,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """
         Looks up partition details from the map built by set_partition_details_map.
         """
@@ -367,6 +368,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     database_name=self.context.get().database,
                     schema_name=self.context.get().database_schema,
                 ),
+                storedProcedureType=STORED_PROC_TYPE_MAP.get(stored_procedure.routine_type),
             )
             yield Either(right=stored_procedure_request)
             self.register_record_stored_proc_request(stored_procedure_request)
