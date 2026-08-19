@@ -27,7 +27,7 @@ def load_script(name: str):
 
 
 def test_execution_target_matches_wrapper_ceiling():
-    # Wrapper is 25m (playwright-postgresql-e2e.yml:1092). The gate must
+    # Wrapper is 25m (playwright-e2e-reusable.yml). The gate must
     # match — the 21m gate was pre-PR-#30689 and marked healthy shards as
     # failures. If someone changes one without the other, this test fires.
     evaluator = load_script("evaluate_playwright_performance")

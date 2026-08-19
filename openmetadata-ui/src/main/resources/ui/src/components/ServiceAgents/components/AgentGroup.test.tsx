@@ -25,6 +25,15 @@ jest.mock('./AgentCardSkeleton.component', () =>
   jest.fn().mockImplementation(() => <p>AgentCardSkeleton</p>)
 );
 
+const mockAirflowStatus = jest.fn();
+
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: () => mockAirflowStatus(),
+  })
+);
+
 const mockOnAction = jest.fn();
 const mockOnLogs = jest.fn();
 const mockOnRun = jest.fn();
@@ -75,6 +84,43 @@ const renderGroup = (
 describe('AgentGroup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+  });
+
+  it('should replace the add-agent slot with a placeholder while the status call is in flight', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: true,
+      platform: 'Airflow',
+    });
+
+    renderGroup([baseAgent], undefined, {
+      addAgentSlot: <button data-testid="add-agent-slot">add</button>,
+    });
+
+    expect(screen.getByTestId('add-agent-skeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-agent-slot')).toBeNull();
+    // The list itself does not wait on that status.
+    expect(screen.getByText('AgentCard')).toBeInTheDocument();
+  });
+
+  it('should render the add-agent slot once the status call has answered', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+
+    renderGroup([baseAgent], undefined, {
+      addAgentSlot: <button data-testid="add-agent-slot">add</button>,
+    });
+
+    expect(screen.getByTestId('add-agent-slot')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-agent-skeleton')).toBeNull();
   });
 
   it('should render a card per agent and no empty placeholder', () => {

@@ -97,14 +97,18 @@ class CustomizeMyDataPageClassBase {
     return undefined;
   }
 
+  public getExcludedWidgetFqns(): string[] {
+    return [];
+  }
+
   public getWidgetsFromKey(
     widgetKey: string
   ): ComponentType<WidgetCommonProps> {
     return getMyDataWidgetFromKey(widgetKey);
   }
 
-  public getWidgetImageFromKey(widgetKey: string, size?: number): string {
-    return getMyDataWidgetImageFromKey(widgetKey, size);
+  public getWidgetImageFromKey(widgetKey: string): string {
+    return getMyDataWidgetImageFromKey(widgetKey);
   }
 
   public getWidgetHeight(widgetName: string) {
