@@ -265,7 +265,7 @@ const MarketPlaceAppDetails = () => {
     <PageLayoutV1
       leftPanel={leftPanel}
       leftPanelWidth={260}
-      pageTitle={t('label.application-plural')}>
+      pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col span={24}>
           <Typography.Title className="p-md m-0 p-t-xss" level={2}>
