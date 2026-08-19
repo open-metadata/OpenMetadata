@@ -2638,6 +2638,54 @@ public class SearchRepository {
         entityType);
   }
 
+  /**
+   * Propagate tag removal to children of an asset. When a tag is removed from a parent entity
+   * (e.g. a Table) via the Glossary Term Assets tab, the child entities (columns, test suites,
+   * test cases) still hold the Derived tag in their ES docs. This method explicitly removes the
+   * tag from all child ES docs so the cascade is symmetric with the add path.
+   *
+   * @param assetRef the asset whose tag was removed
+   * @param tagFQN the FQN of the tag being removed
+   */
+  public void propagateTagRemovalToChildren(EntityReference assetRef, String tagFQN) {
+    IndexMapping indexMapping = entityIndexMap.get(assetRef.getType());
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases =
+        filterChildAliasesByCapability(
+            indexMapping, capability -> capability == null || !capability.isTimeSeries());
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+    TagLabel removedTag =
+        new TagLabel().withTagFQN(tagFQN).withLabelType(TagLabel.LabelType.DERIVED);
+    String script = generateDeleteTagLabelListScript();
+    Map<String, Object> params = Map.of("tagDeleted", List.of(removedTag));
+    String parentField = assetRef.getType() + ".id";
+    String entityId = assetRef.getId().toString();
+    deferIfFlushScopeActive(
+        () -> {
+          try {
+            searchClient.updateChildren(
+                childAliases,
+                new ImmutablePair<>(parentField, entityId),
+                new ImmutablePair<>(script, params));
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to propagate tag removal [{}] from {} [{}] to children",
+                tagFQN,
+                assetRef.getType(),
+                assetRef.getFullyQualifiedName(),
+                e);
+          }
+        },
+        "propagateTagRemovalToChildren",
+        entityId,
+        assetRef.getFullyQualifiedName(),
+        assetRef.getType());
+  }
+
   private void propagateToDomainChildren(
       String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
       throws IOException {

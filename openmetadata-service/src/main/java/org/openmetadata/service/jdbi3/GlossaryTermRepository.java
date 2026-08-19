@@ -1435,6 +1435,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        // Propagate tag removal to child entities (columns, test suites, test cases)
+        searchRepository.propagateTagRemovalToChildren(ref, term.getFullyQualifiedName());
       }
     }
 
@@ -1474,6 +1476,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      // Propagate tag removal to child entities (columns, test suites, test cases)
+      searchRepository.propagateTagRemovalToChildren(
+          table.getEntityReference(), term.getFullyQualifiedName());
     }
   }
 
