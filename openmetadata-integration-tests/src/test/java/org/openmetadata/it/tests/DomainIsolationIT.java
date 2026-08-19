@@ -30,6 +30,8 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -37,10 +39,14 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -217,6 +223,96 @@ public class DomainIsolationIT {
   // TaskResourceIT.testDomainOnlyUserCanOnlyListTasksFromAllowedDomains (a domain-only user there
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is
   // additionally exercised by playwright DomainIsolation/DomainTaskIsolation.spec.ts.
+
+  @Test
+  void test_incidentListing_restrictedUserSeesOnlyOwnDomainIncidents(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain ownDomain = createDomain(admin, p + "_d1", cleanup);
+      Domain foreignDomain = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
+      Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
+
+      String testDefinitionFqn =
+          admin
+              .testDefinitions()
+              .list(new ListParams().withLimit(1))
+              .getData()
+              .get(0)
+              .getFullyQualifiedName();
+      String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
+      String foreignIncidentFqn =
+          createIncident(admin, foreignTable, p + "_foreign_tc", testDefinitionFqn);
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, ownDomain, cleanup);
+
+      // Incident listing isolation is driven through search RBAC, which is gated on the global
+      // enableAccessControl setting.
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("Incident manager listing honours domain isolation")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> visible = incidentTestCaseFqns(restricted);
+                assertTrue(
+                    visible.contains(ownIncidentFqn),
+                    "Own-domain incident visible. Saw: " + visible);
+                assertFalse(
+                    visible.contains(foreignIncidentFqn),
+                    "Foreign-domain incident hidden. Saw: " + visible);
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /** Creates a column-level test case on {@code table} plus an open incident for it. */
+  private String createIncident(
+      OpenMetadataClient admin, Table table, String name, String testDefinitionFqn) {
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(name)
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                    .withTestDefinition(testDefinitionFqn));
+    admin
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withSeverity(Severity.Severity2));
+    return testCase.getFullyQualifiedName();
+  }
+
+  private Set<String> incidentTestCaseFqns(OpenMetadataClient client) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/search/list",
+                null,
+                RequestOptions.builder().queryParam("limit", "1000").build());
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode incident : MAPPER.readTree(response).path("data")) {
+      JsonNode reference = incident.path("testCaseReference");
+      if (reference.hasNonNull("fullyQualifiedName")) {
+        fqns.add(reference.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
+  }
 
   private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
     CreateDomain create =
