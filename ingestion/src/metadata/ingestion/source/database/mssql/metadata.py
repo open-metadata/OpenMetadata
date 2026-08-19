@@ -37,6 +37,7 @@ from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -113,7 +114,6 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.stored_procedure_desc_map = {}
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
         self.check_constraint_columns_map: dict[tuple[str, str], set[str]] = {}
-        self._current_table_key: Optional[tuple[str, str]] = None  # noqa: UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -163,32 +163,29 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
     def get_columns_and_constraints(self, schema_name, table_name, db_name, inspector, table_type=None):
         """
-        Tracks the table currently being processed so process_additional_table_constraints
-        can look up its CHECK constraints. self.context.get().table isn't usable here: it's
-        only updated once this table's entity is yielded, i.e. after this call returns.
+        Adds a CHECK constraint for columns with a column-level CHECK constraint,
+        looked up from the map built by set_check_constraint_map. schema_name/table_name
+        are plain call arguments here (unlike the process_additional_table_constraints
+        hook, which only gets a column with no table context), so this needs no shared
+        state and is safe under the threaded databaseSchema topology node.
         """
-        self._current_table_key = (schema_name, table_name)
-        return super().get_columns_and_constraints(
+        columns, table_constraints, foreign_columns = super().get_columns_and_constraints(
             schema_name=schema_name,
             table_name=table_name,
             db_name=db_name,
             inspector=inspector,
             table_type=table_type,
         )
-
-    def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
-        """
-        Adds a CHECK constraint for columns with a column-level CHECK constraint,
-        looked up from the map built by set_check_constraint_map.
-        """
-        checked_columns = self.check_constraint_columns_map.get(self._current_table_key, set())
-        if column.get("name") in checked_columns:
-            table_constraints.append(
-                TableConstraint(
-                    constraintType=ConstraintType.CHECK,
-                    columns=[column.get("name")],
+        checked_columns = self.check_constraint_columns_map.get((schema_name, table_name), set())
+        for column in columns or []:
+            if model_str(column.name) in checked_columns:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.CHECK,
+                        columns=[model_str(column.name)],
+                    )
                 )
-            )
+        return columns, table_constraints, foreign_columns
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
