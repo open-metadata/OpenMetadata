@@ -205,7 +205,8 @@
             "FOREIGN_KEY",
             "SORT_KEY",
             "DIST_KEY",
-            "CLUSTER_KEY"
+            "CLUSTER_KEY",
+            "CHECK"
           ]
         },
         "columns": {

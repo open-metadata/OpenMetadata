@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.table import ConstraintType, TableConstraint
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -42,6 +43,7 @@ from metadata.ingestion.source.database.mssql.models import (
     MssqlStoredProcedure,
 )
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_CHECK_CONSTRAINTS,
     MSSQL_GET_DATABASE,
     MSSQL_GET_DATABASE_COMMENTS,
     MSSQL_GET_ENCRYPTED_STORED_PROCEDURES,
@@ -110,6 +112,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
+        self.check_constraint_columns_map: dict[tuple[str, str], set[str]] = {}
+        self._current_table_key: Optional[tuple[str, str]] = None  # noqa: UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -144,6 +148,47 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.stored_procedure_desc_map = {
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
+
+    def set_check_constraint_map(self) -> None:
+        """
+        Fetches column-level CHECK constraints for every table in the current database.
+        """
+        self.check_constraint_columns_map.clear()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(MSSQL_GET_CHECK_CONSTRAINTS)).all()
+        for row in results:
+            self.check_constraint_columns_map.setdefault((row.schema_name, row.table_name), set()).add(
+                row.column_name
+            )
+
+    def get_columns_and_constraints(self, schema_name, table_name, db_name, inspector, table_type=None):
+        """
+        Tracks the table currently being processed so process_additional_table_constraints
+        can look up its CHECK constraints. self.context.get().table isn't usable here: it's
+        only updated once this table's entity is yielded, i.e. after this call returns.
+        """
+        self._current_table_key = (schema_name, table_name)
+        return super().get_columns_and_constraints(
+            schema_name=schema_name,
+            table_name=table_name,
+            db_name=db_name,
+            inspector=inspector,
+            table_type=table_type,
+        )
+
+    def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
+        """
+        Adds a CHECK constraint for columns with a column-level CHECK constraint,
+        looked up from the map built by set_check_constraint_map.
+        """
+        checked_columns = self.check_constraint_columns_map.get(self._current_table_key, set())
+        if column.get("name") in checked_columns:
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.CHECK,
+                    columns=[column.get("name")],
+                )
+            )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
@@ -212,10 +257,21 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 logger.debug(traceback.format_exc())
                 logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
+    def _load_check_constraint_map(self) -> None:
+        """
+        Resets and loads column-level CHECK constraint details for the current database.
+        """
+        try:
+            self.set_check_constraint_map()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not load MSSQL check constraints, continuing without them: %s", exc)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self._load_description_maps()
+            self._load_check_constraint_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -237,6 +293,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 try:
                     self._load_description_maps()
                     self.set_inspector(database_name=new_database)
+                    self._load_check_constraint_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

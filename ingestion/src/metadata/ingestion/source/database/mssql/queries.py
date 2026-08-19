@@ -466,3 +466,24 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")
+
+# Returns one row per column-level CHECK constraint in the database. Table-level
+# CHECK constraints (parent_column_id = 0, e.g. multi-column expressions) are
+# excluded: OM's TableConstraint has no expression field, so there's no reliable
+# column to attribute them to. Disabled constraints (WITH NOCHECK) are excluded
+# since they aren't actually enforced. One query for the whole database, not one
+# per table.
+MSSQL_GET_CHECK_CONSTRAINTS = textwrap.dedent(
+    """
+SELECT
+    s.name AS schema_name,
+    t.name AS table_name,
+    c.name AS column_name
+FROM sys.check_constraints cc
+JOIN sys.tables t  ON cc.parent_object_id = t.object_id
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+JOIN sys.columns c ON c.object_id = cc.parent_object_id AND c.column_id = cc.parent_column_id
+WHERE cc.parent_column_id <> 0
+  AND cc.is_disabled = 0
+"""
+)
