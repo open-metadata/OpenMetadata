@@ -215,6 +215,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
@@ -276,7 +277,9 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DomainListing/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/DataProduct/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
