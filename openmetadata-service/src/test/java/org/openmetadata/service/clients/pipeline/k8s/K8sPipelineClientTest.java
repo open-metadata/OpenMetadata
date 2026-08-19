@@ -779,6 +779,19 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetQueuedPipelineStatusHandlesUnsupportedJobFields() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
+        .thenReturn(listJobRequest);
+    when(listJobRequest.execute())
+        .thenThrow(new IllegalArgumentException("allocatedResources is not defined"));
+
+    assertTrue(client.getQueuedPipelineStatus(pipeline).isEmpty());
+  }
+
+  @Test
   void testGetLastIngestionLogsPrefersMainPodAndReturnsTaskLogs() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
 
@@ -844,6 +857,21 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetLastIngestionLogsHandlesUnsupportedPodFields() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
+        .thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(new IllegalArgumentException("allocatedResources is not defined"));
+
+    Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
+
+    assertTrue(failureLogs.get("logs").contains("Failed to retrieve logs"));
+  }
+
+  @Test
   void testGetServiceStatusHealthyWhenPermissionsAreAvailable() throws Exception {
     when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
     when(listPodRequest.limit(1)).thenReturn(listPodRequest);
@@ -899,6 +927,56 @@ class K8sPipelineClientTest {
     PipelineServiceClientResponse secretFailure = client.getServiceStatus();
     assertEquals(500, secretFailure.getCode());
     assertTrue(secretFailure.getReason().contains("missing Secret permissions"));
+  }
+
+  @Test
+  void testGetServiceStatusToleratesUnsupportedPodAndJobFields() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(new IllegalArgumentException("allocatedResources is not defined"));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute())
+        .thenThrow(new IllegalArgumentException("observedGeneration is not defined"));
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenReturn(null);
+
+    when(coreApi.listNamespacedSecret(eq(NAMESPACE))).thenReturn(listSecretRequest);
+    when(listSecretRequest.limit(1)).thenReturn(listSecretRequest);
+    when(listSecretRequest.execute()).thenReturn(null);
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("Pod/job status details are unavailable"));
+    verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
+    verify(coreApi).listNamespacedSecret(eq(NAMESPACE));
+  }
+
+  @Test
+  void testGetServiceStatusStillChecksPermissionsAfterUnsupportedPodFields() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(new IllegalArgumentException("allocatedResources is not defined"));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(403, "forbidden configmaps"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("missing ConfigMap permissions"));
+    verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
   }
 
   @Test
