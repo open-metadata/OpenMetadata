@@ -13,6 +13,20 @@
 import { APIRequestContext, APIResponse } from '@playwright/test';
 
 /**
+ * Fallback for the response body when a caller does not name a type.
+ *
+ * Prefer passing one — `okJson<ResponseDataType>(res, label)` — and the support
+ * classes now do at every site where the value escapes the method. This alias
+ * exists for the remaining callers that read a field straight off the body:
+ * `APIResponse.json()` is itself `Promise<any>`, and the generated response types
+ * declare `id` and `fullyQualifiedName` optional, so a stricter default makes
+ * specs that legitimately rely on them fail to compile. Naming the escape hatch
+ * keeps it deliberate and greppable rather than an implicit `any` per call.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ResponseBody = any;
+
+/**
  * Read a response body, failing at the request that actually broke.
  *
  * `await response.json()` on its own returns the *error* body for a non-2xx
@@ -22,7 +36,7 @@ import { APIRequestContext, APIResponse } from '@playwright/test';
  * surfacing as a 30s `waitForResponse` timeout several steps downstream.
  * Throwing here keeps the blame on the call that failed.
  */
-export const okJson = async <T = any>(
+export const okJson = async <T = ResponseBody>(
   response: APIResponse,
   label: string
 ): Promise<T> => {
@@ -87,7 +101,7 @@ export const buildFqn = (...segments: string[]): string =>
  * `fqnSegments` are the entity's raw name parts, outermost first. They are quoted
  * and joined here so no call site has to know the FQN escaping rules.
  */
-export const createOrFetch = async <T = any>(
+export const createOrFetch = async <T = ResponseBody>(
   apiContext: APIRequestContext,
   options: {
     label: string;
