@@ -29,7 +29,7 @@ import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
-import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import DeploymentSummaryCard from '../../../ServiceAgents/components/DeploymentSummaryCard.component';
 import MetadataAgentsView from '../../../ServiceAgents/components/MetadataAgentsView.component';
 import { IngestionProps } from './ingestion.interface';
@@ -86,15 +86,11 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
-  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
-    () => airflowInformation,
-    [airflowInformation]
-  );
+  const { platform } = useMemo(() => airflowInformation, [airflowInformation]);
 
-  // The pipeline fetch is gated on the airflow status, so the agent list is only meaningful
-  // once both have settled. Until then the widgets show placeholder cards rather than an
-  // empty state that would read as "this service has no agents".
-  const isAgentsLoading = isFetchingStatus || Boolean(isLoading);
+  // Only the pipeline fetch. The airflow status is deliberately not folded in — it gates the
+  // actions on the agents, not whether the agents can be listed.
+  const isAgentsLoading = Boolean(isLoading);
 
   const showAddAgent = useMemo(
     () =>
@@ -156,14 +152,18 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   }, [agentCounts, t]);
 
-  // Only once the status call has answered — `isAirflowAvailable` is seeded `false`, so
-  // checking it alone flashes the setup guide on every load.
-  if (!isFetchingStatus && !isAirflowAvailable) {
-    return <ErrorPlaceHolderIngestion />;
-  }
-
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
+      {/* Carries the reason the pipeline service cannot be reached. It is the one place that
+          explains why the agent controls below are disabled, so the tab keeps listing the agents
+          instead of being replaced by a setup guide. */}
+      <AirflowMessageBanner
+        className="tw:mb-4"
+        unreachableFallbackMessage={t(
+          'message.pipeline-service-unreachable-agent-actions'
+        )}
+      />
+
       {/* `agents` is one page of the list; the Metadata badge count is the service's real total.
           Held back until that list is real — its counts read as "0 agents" otherwise. */}
       {!isAgentsLoading && (
@@ -188,7 +188,6 @@ const Ingestion: React.FC<IngestionProps> = ({
           collateAgentPagingInfo={collateAgentPagingInfo}
           collateAgentsList={collateAgentsList}
           isCollateAgentLoading={isCollateAgentLoading}
-          isLoading={isFetchingStatus}
           serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           workflowStartAt={workflowStartAt}

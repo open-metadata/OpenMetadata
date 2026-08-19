@@ -89,6 +89,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
+import { AgentType } from '../../generated/entity/services/ingestionPipelines/agentType';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
@@ -599,7 +600,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
-          pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
+          agentType: AgentType.Metadata,
           limit,
         });
 
@@ -1606,8 +1607,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [decodedServiceFQN, serviceCategory]);
 
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so the list
+  // and its run history are readable whether or not the pipeline service answers. Only the actions
+  // on them need that status — see `useAgentActionAvailability`.
   useEffect(() => {
-    if (isAirflowAvailable && !isOpenMetadataService) {
+    if (!isOpenMetadataService) {
       isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
@@ -1615,13 +1619,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [
-    isAirflowAvailable,
-    searchText,
-    ingestionPageSize,
-    statusFilter,
-    typeFilter,
-  ]);
+  }, [searchText, ingestionPageSize, statusFilter, typeFilter]);
 
   useEffect(() => {
     if (isCollateAIWidgetSupported) {
