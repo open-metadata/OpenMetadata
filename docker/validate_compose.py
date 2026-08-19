@@ -9,6 +9,15 @@ Output uses plain `print(flush=True)` rather than metadata.utils.logger: that mo
 `basicConfig` never sets a level, so the root logger stays at WARNING and every INFO
 progress line is silently dropped — the reason CI failures here used to arrive with no
 diagnostics at all.
+
+Every HTTP call is bounded by the time actually left, and the post-deadline diagnostic
+pass gets its own small budget. A flat per-request timeout larger than the caller's
+margin would let one stalled Airflow call carry the process past the outer `timeout`,
+which killed the very diagnostics this script exists to print.
+
+The wait is governed by VALIDATION_TIMEOUT_SECONDS on the host, forwarded here as
+VALIDATE_COMPOSE_TIMEOUT_SECONDS. VALIDATE_COMPOSE_MAX_RETRIES remains an explicit
+escape hatch that overrides that deadline; nothing in-tree sets it.
 """
 
 import os
@@ -17,7 +26,6 @@ import time
 
 import requests
 
-REQUESTS_TIMEOUT = 60 * 5
 AIRFLOW_URL = "http://localhost:8080"
 USERNAME = "admin"
 PASSWORD = "admin"
@@ -25,8 +33,20 @@ PASSWORD = "admin"
 DAG_ID = "sample_data"
 TASK_ID = "ingest_using_recipe"
 
+# Upper bound for a single poll request. Well under any caller margin, so a stalled
+# Airflow cannot outlive the deadline.
+POLL_REQUEST_TIMEOUT = 30
+# Floor, so a request issued moments before the deadline still gets a fair chance
+# rather than failing on a sub-second timeout.
+MIN_REQUEST_TIMEOUT = 5
+# The diagnostic pass runs *after* the deadline, inside the caller's margin, so it is
+# capped hard: total wall clock and per request.
+DIAGNOSTIC_BUDGET_SECONDS = 20
+DIAGNOSTIC_REQUEST_TIMEOUT = 8
+
 _access_token: str | None = None
 _last_dag_logs_supported: bool | None = None
+_deadline: float | None = None
 
 
 def log(message: str) -> None:
@@ -49,18 +69,29 @@ def resolve_timeout_seconds(poll_interval_seconds: int) -> int:
     """
     Wall-clock budget for the whole wait.
 
-    VALIDATE_COMPOSE_MAX_RETRIES is honoured for backwards compatibility (callers
-    such as run_local_docker_rdf.sh express the budget that way) and converted into
-    seconds so there is a single deadline to reason about.
+    VALIDATE_COMPOSE_MAX_RETRIES, if set, overrides the forwarded deadline and is
+    expressed as a retry count; it is kept as an escape hatch for operators.
     """
-    max_retries = os.getenv("VALIDATE_COMPOSE_MAX_RETRIES")
-    if max_retries is not None:
+    if os.getenv("VALIDATE_COMPOSE_MAX_RETRIES") is not None:
         return get_env_int("VALIDATE_COMPOSE_MAX_RETRIES", 60) * poll_interval_seconds
 
     return get_env_int("VALIDATE_COMPOSE_TIMEOUT_SECONDS", 600)
 
 
-def get_access_token() -> str | None:
+def remaining_seconds() -> float:
+    """Time left before the wait deadline; infinite until main() sets one."""
+    if _deadline is None:
+        return float("inf")
+
+    return _deadline - time.monotonic()
+
+
+def poll_request_timeout() -> float:
+    """Bound a poll request by whatever budget is actually left."""
+    return max(MIN_REQUEST_TIMEOUT, min(POLL_REQUEST_TIMEOUT, remaining_seconds()))
+
+
+def get_access_token(timeout: float) -> str | None:
     """Get OAuth access token for the Airflow 3.x API."""
     global _access_token
 
@@ -72,7 +103,7 @@ def get_access_token() -> str | None:
             f"{AIRFLOW_URL}/auth/token",
             headers={"Content-Type": "application/json"},
             json={"username": USERNAME, "password": PASSWORD},
-            timeout=30,
+            timeout=timeout,
         )
     except requests.exceptions.RequestException as exc:
         log(f"Could not reach the Airflow token endpoint: {exc}")
@@ -86,15 +117,7 @@ def get_access_token() -> str | None:
     return None
 
 
-def get_auth_headers() -> dict | None:
-    token = get_access_token()
-    if not token:
-        return None
-
-    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-
-def airflow_get(path: str) -> requests.Response | None:
+def airflow_get(path: str, timeout: float) -> requests.Response | None:
     """
     GET an Airflow API path, refreshing the cached token on 401.
 
@@ -104,12 +127,14 @@ def airflow_get(path: str) -> requests.Response | None:
     """
     global _access_token
 
-    headers = get_auth_headers()
-    if headers is None:
+    token = get_access_token(timeout)
+    if not token:
         return None
 
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
     try:
-        response = requests.get(f"{AIRFLOW_URL}{path}", headers=headers, timeout=REQUESTS_TIMEOUT)
+        response = requests.get(f"{AIRFLOW_URL}{path}", headers=headers, timeout=timeout)
     except requests.exceptions.RequestException as exc:
         log(f"Error calling {path}: {exc}")
         return None
@@ -122,34 +147,39 @@ def airflow_get(path: str) -> requests.Response | None:
     return response
 
 
-def get_last_run_info() -> tuple[str | None, str | None]:
-    """Pick up the latest sample_data DAG run id and state, if there is one yet."""
-    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns")
+def get_last_run_info() -> tuple[str | None, str | None, bool]:
+    """
+    Latest sample_data DAG run id and state.
+
+    The third element reports whether the poll itself succeeded, so the caller can
+    tell "Airflow has no run yet" apart from "we could not reach Airflow" — during the
+    ~40s startup window those are very different things.
+    """
+    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns", poll_request_timeout())
     if response is None:
-        return None, None
+        return None, None, False
 
     if response.status_code != 200:
         log(f"Error getting DAG runs: {response.status_code} - {response.text}")
-        return None, None
+        return None, None, False
 
     dag_runs = response.json().get("dag_runs") or []
     if not dag_runs:
-        log("No DAG runs found yet, waiting...")
-        return None, None
+        return None, None, True
 
     dag_run = sorted(dag_runs, key=lambda run: run.get("logical_date") or "", reverse=True)[0]
 
-    return dag_run.get("dag_run_id"), (dag_run.get("state") or "").lower()
+    return dag_run.get("dag_run_id"), (dag_run.get("state") or "").lower(), True
 
 
-def print_last_run_logs() -> None:
+def print_last_run_logs(timeout: float) -> None:
     """Show the task logs, when the OpenMetadata Airflow plugin route is available."""
     global _last_dag_logs_supported
 
     if _last_dag_logs_supported is False:
         return
 
-    response = airflow_get(f"/api/v2/openmetadata/last_dag_logs?dag_id={DAG_ID}&task_id={TASK_ID}")
+    response = airflow_get(f"/api/v2/openmetadata/last_dag_logs?dag_id={DAG_ID}&task_id={TASK_ID}", timeout)
     if response is None:
         return
 
@@ -166,7 +196,7 @@ def print_last_run_logs() -> None:
     log(response.text)
 
 
-def print_task_instance_states(dag_run_id: str) -> None:
+def print_task_instance_states(dag_run_id: str, timeout: float) -> None:
     """
     Report per-task state for the run.
 
@@ -174,7 +204,7 @@ def print_task_instance_states(dag_run_id: str) -> None:
     stuck or dead" when the deadline is hit — without it the failure is
     indistinguishable from a hang.
     """
-    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns/{dag_run_id}/taskInstances")
+    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns/{dag_run_id}/taskInstances", timeout)
     if response is None or response.status_code != 200:
         return
 
@@ -188,15 +218,41 @@ def print_task_instance_states(dag_run_id: str) -> None:
 
 
 def dump_diagnostics(dag_run_id: str | None) -> None:
+    """
+    Best-effort failure detail, on a hard budget.
+
+    Runs after the deadline has already passed, so it lives entirely inside the
+    caller's margin below the outer `timeout`. Each step is skipped rather than
+    allowed to overrun — partial diagnostics beat being SIGTERMed with none.
+    """
+    budget_end = time.monotonic() + DIAGNOSTIC_BUDGET_SECONDS
+
+    def step_timeout() -> float | None:
+        left = budget_end - time.monotonic()
+        if left <= 1:
+            return None
+        return min(DIAGNOSTIC_REQUEST_TIMEOUT, left)
+
     if dag_run_id:
-        print_task_instance_states(dag_run_id)
-    print_last_run_logs()
+        timeout = step_timeout()
+        if timeout is None:
+            log("Diagnostic budget exhausted; skipping task-instance states.")
+        else:
+            print_task_instance_states(dag_run_id, timeout)
+
+    timeout = step_timeout()
+    if timeout is None:
+        log("Diagnostic budget exhausted; skipping task log fetch.")
+        return
+    print_last_run_logs(timeout)
 
 
 def main() -> None:
+    global _deadline
+
     poll_interval_seconds = get_env_int("VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS", 10)
     timeout_seconds = resolve_timeout_seconds(poll_interval_seconds)
-    deadline = time.monotonic() + timeout_seconds
+    _deadline = time.monotonic() + timeout_seconds
 
     log(f"Waiting up to {timeout_seconds}s for the {DAG_ID} DAG (polling every {poll_interval_seconds}s).")
 
@@ -204,11 +260,11 @@ def main() -> None:
     state: str | None = None
 
     while True:
-        dag_run_id, state = get_last_run_info()
+        dag_run_id, state, polled = get_last_run_info()
 
         if dag_run_id and state == "success":
             log(f"DAG run: [{dag_run_id}, {state}]")
-            print_last_run_logs()
+            print_last_run_logs(poll_request_timeout())
             log("Sample data ingestion completed successfully!")
             return
 
@@ -217,12 +273,14 @@ def main() -> None:
             dump_diagnostics(dag_run_id)
             raise SystemExit(f"Sample data ingestion failed. DAG run state: {state}")
 
-        if not dag_run_id:
-            log("Waiting for DAG run to start...")
-        else:
+        if dag_run_id:
             log(f"DAG run [{dag_run_id}] is {state}. Waiting for completion...")
+        elif polled:
+            log("Airflow has no DAG run yet. Waiting for it to start...")
+        else:
+            log("Could not reach the Airflow API. Retrying...")
 
-        remaining = deadline - time.monotonic()
+        remaining = remaining_seconds()
         if remaining <= 0:
             break
 
@@ -233,8 +291,7 @@ def main() -> None:
     raise SystemExit(
         f"Sample data ingestion did not finish within {timeout_seconds}s "
         f"(last observed run={dag_run_id}, state={state}). Raise "
-        "VALIDATE_COMPOSE_MAX_RETRIES / VALIDATION_TIMEOUT_SECONDS if the run above "
-        "was still making progress."
+        "VALIDATION_TIMEOUT_SECONDS if the run above was still making progress."
     )
 
 

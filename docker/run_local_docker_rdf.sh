@@ -55,8 +55,10 @@ if [[ $startFuseki == "true" ]]; then
   export RDF_BASE_URI="${RDF_BASE_URI:-https://open-metadata.org/}"
   export RDF_DATASET="${RDF_DATASET:-openmetadata}"
   # RDF listeners slow down sample-data ingestion enough that the default 5-minute
-  # validation window is too aggressive for CI.
-  export VALIDATE_COMPOSE_MAX_RETRIES="${VALIDATE_COMPOSE_MAX_RETRIES:-60}"
+  # validation window is too aggressive for CI. VALIDATION_TIMEOUT_SECONDS is the only
+  # knob: it sets the outer `timeout` and the validator's deadline is derived from it.
+  # Do not reintroduce VALIDATE_COMPOSE_MAX_RETRIES here — it overrides that deadline,
+  # so raising VALIDATION_TIMEOUT_SECONDS would silently have no effect.
   export VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
   export VALIDATION_TIMEOUT_SECONDS="${VALIDATION_TIMEOUT_SECONDS:-900}"
   export APP_RUN_WAIT_TIMEOUT_SECONDS="${APP_RUN_WAIT_TIMEOUT_SECONDS:-900}"

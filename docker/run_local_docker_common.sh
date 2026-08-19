@@ -582,8 +582,17 @@ run_local_docker_main() {
     # the RDF lane believed it had granted 600s.
     validate_compose_retry_interval="${VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS:-10}"
     # Leave the inner deadline below the outer `timeout` so we exit with the
-    # validator's own diagnostics instead of being SIGTERMed mid-report.
-    validate_compose_timeout=$(( validation_timeout_seconds > 60 ? validation_timeout_seconds - 30 : validation_timeout_seconds ))
+    # validator's own diagnostics instead of being SIGTERMed mid-report. The margin
+    # has to cover the validator's whole post-deadline diagnostic pass
+    # (DIAGNOSTIC_BUDGET_SECONDS plus one in-flight poll), so 30s is too thin.
+    if [ "$validation_timeout_seconds" -gt 180 ]; then
+      validate_compose_margin=60
+    elif [ "$validation_timeout_seconds" -gt 60 ]; then
+      validate_compose_margin=30
+    else
+      validate_compose_margin=0
+    fi
+    validate_compose_timeout=$(( validation_timeout_seconds - validate_compose_margin ))
 
     validate_compose_env=(
       -e "VALIDATE_COMPOSE_TIMEOUT_SECONDS=${validate_compose_timeout}"
