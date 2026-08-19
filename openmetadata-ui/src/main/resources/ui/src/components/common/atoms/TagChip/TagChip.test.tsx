@@ -17,20 +17,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../../../utils/IconUtils', () => ({
-  renderIcon: jest.fn(() => <span data-testid="tag-icon" />),
-}));
-
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, ...props }: Record<string, unknown>) => (
-    <div {...props}>{children as React.ReactNode}</div>
-  ),
-  Typography: ({ children, ...props }: Record<string, unknown>) => (
-    <span {...props}>{children as React.ReactNode}</span>
-  ),
-  ButtonUtility: (props: Record<string, unknown>) => <button {...props} />,
-}));
-
 describe('TagChip color styling', () => {
   it('tints the background and colors the label when tagColor is provided', () => {
     render(
