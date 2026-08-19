@@ -10307,23 +10307,19 @@ public interface CollectionDAO {
     }
 
     // A table FQN is always service.database.schema.table, so table_entity.fqnHash is always four
-    // '.'-joined MD5 segments. Column profile rows are keyed by the column FQN, whose hash carries
-    // at least one extra segment (more for nested columns), so a column row only resolves to its
-    // parent table after the trailing segments are dropped. Comparing the raw hash never matched,
-    // which silently purged every column profile of every live table on each run (issue #27041).
+    // '.'-joined MD5 segments -- exactly 131 characters. A column profile is keyed by the column
+    // FQN, whose hash extends that with at least one more segment (more for nested columns), so
+    // truncating to 131 yields its parent table's hash, and is a no-op for table-level rows that
+    // are already that length. Comparing the raw hash never matched, which silently purged every
+    // column profile of every live table on each run (issue #27041).
     //
-    // Resolving the parent from the outer row keeps a single equality, so both planners can serve
-    // this as a hash anti-join. Correlating the other way (entityFQNHash LIKE te.fqnHash || '.%')
-    // computes the pattern from the inner row, which leaves no equijoin key and degrades to a
-    // nested loop over table_entity per profiler row -- measured at 32s vs 106ms on Postgres 15 and
-    // 76s vs 247ms on MySQL 8 over 5k tables / 105k rows, both returning the same orphan set.
-    String MYSQL_PARENT_TABLE_HASH =
-        "SUBSTRING_INDEX(profiler_data_time_series.entityFQNHash, '.', 4)";
-    String POSTGRES_PARENT_TABLE_HASH =
-        "split_part(pdts.entityFQNHash, '.', 1) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 2) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 3) || '.' "
-            + "|| split_part(pdts.entityFQNHash, '.', 4)";
+    // Resolving the parent from the outer row keeps a single equality, so both planners serve this
+    // as a hash anti-join. Correlating the other way (entityFQNHash LIKE te.fqnHash || '.%') builds
+    // the pattern from the inner row, leaving no equijoin key, and degrades to a nested loop over
+    // table_entity per profiler row: 32s vs 106ms on Postgres 15, 76s vs 247ms on MySQL 8 over 5k
+    // tables / 105k rows. 1.9.9/postgres/postDataMigrationSQLScript.sql resolves the same parent
+    // for the same reason, noting it is "much faster than LIKE".
+    String PARENT_TABLE_HASH = "LEFT(pdts.entityFQNHash, 131)";
 
     // profiler_data_time_series has no id column (unique key is
     // entityFQNHash + extension + operation + timestamp), so we limit by
@@ -10331,14 +10327,10 @@ public interface CollectionDAO {
     // This bounds the rows deleted per batch, matching the other orphan-cleanup queries.
     @ConnectionAwareSqlUpdate(
         value =
-            "DELETE FROM profiler_data_time_series "
+            "DELETE FROM profiler_data_time_series AS pdts "
                 + "WHERE NOT EXISTS ("
-                + "  SELECT 1 FROM table_entity te "
-                + "  WHERE te.fqnHash = CASE WHEN profiler_data_time_series.extension = '"
-                + TABLE_COLUMN_PROFILE_EXTENSION
-                + "' THEN "
-                + MYSQL_PARENT_TABLE_HASH
-                + " ELSE profiler_data_time_series.entityFQNHash END"
+                + "  SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + ") "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -10348,12 +10340,8 @@ public interface CollectionDAO {
                 + "WHERE ctid IN ("
                 + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
                 + "  WHERE NOT EXISTS ("
-                + "    SELECT 1 FROM table_entity te "
-                + "    WHERE te.fqnHash = CASE WHEN pdts.extension = '"
-                + TABLE_COLUMN_PROFILE_EXTENSION
-                + "' THEN "
-                + POSTGRES_PARENT_TABLE_HASH
-                + " ELSE pdts.entityFQNHash END"
+                + "    SELECT 1 FROM table_entity te WHERE te.fqnHash = "
+                + PARENT_TABLE_HASH
                 + "  ) "
                 + "  LIMIT :limit"
                 + ")",
