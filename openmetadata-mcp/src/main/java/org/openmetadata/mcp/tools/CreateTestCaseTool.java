@@ -112,8 +112,12 @@ public class CreateTestCaseTool implements McpTool {
     limits.enforceLimits(catalogSecurityContext, createResourceContext, operationContext);
     authorizer.authorize(catalogSecurityContext, operationContext, createResourceContext);
 
-    repository.prepare(testCase, false);
+    // The overwrite check runs here too, before prepare: setFullyQualifiedName above already
+    // resolved the name, and a caller denied on EDIT_ALL must not have had a test suite written
+    // for them either.
     CommonUtils.authorizeOverwrite(authorizer, catalogSecurityContext, Entity.TEST_CASE, testCase);
+
+    repository.prepare(testCase, false);
 
     LOG.info(
         "Creating test case '{}' with definition '{}' for entity: {}",
