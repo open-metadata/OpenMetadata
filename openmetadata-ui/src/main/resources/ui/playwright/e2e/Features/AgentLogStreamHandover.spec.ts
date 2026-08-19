@@ -327,6 +327,20 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
   test('Scrolling a live log pauses auto-follow and the toolbar toggle resumes it', async ({
     page,
   }) => {
+    // This scenario's declared waits cannot fit the 60s project default: the
+    // steps below carry expect.poll budgets of 60s (wrap relayout) + 30s
+    // (gestureless drag) + 60s (append while paused) + 60s (append while
+    // followed), plus ~15s attribute expects between them. Those budgets are
+    // deliberate — the mock closes every connection, so appends arrive on the
+    // client's reconnect-backoff cadence, which stretches under shard load.
+    // With the default ceiling the test killed itself mid-poll while the
+    // stream was legitimately still backing off (merge-queue runs
+    // 32238830063, 32244090565, 32248621065, 32249698790: "Test timeout of
+    // 60000ms exceeded" with the line count about to grow). Budget = sum of
+    // declared polls + interaction slack; a genuine assertion failure still
+    // fails fast via the per-expect 15s timeouts.
+    test.setTimeout(240_000);
+
     await openAgentLogs(page, {
       terminal: false,
       lineCount: SCROLLABLE_LOG_LINE_COUNT,
