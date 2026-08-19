@@ -529,6 +529,19 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Method to fetch the extensions of the table
         """
 
+    def get_table_aliases(
+        self,
+        table_name: str,  # pyright: ignore[reportUnusedParameter]
+        schema_name: str,  # pyright: ignore[reportUnusedParameter]
+    ) -> Optional[List[str]]:  # noqa: UP006, UP045
+        """
+        Alternate fully qualified SQL names that resolve to this table.
+
+        Connectors that expose alias objects (SQL Server and Oracle synonyms)
+        override this. The list is source-managed: it is recomputed from the
+        source on every run and replaces whatever is stored.
+        """
+
     def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
@@ -604,6 +617,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                 owners=self.get_owner_ref(table_name=table_name),
                 locationPath=self.get_location_path(table_name=table_name, schema_name=schema_name),
                 extension=self.get_table_extensions(table_name=table_name, table_type=table_type),
+                aliases=self.get_table_aliases(table_name=table_name, schema_name=schema_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
