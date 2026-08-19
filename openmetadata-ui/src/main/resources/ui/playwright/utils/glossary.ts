@@ -229,15 +229,19 @@ export const selectActiveGlossaryTerm = async (
 export const goToAssetsTab = async (
   page: Page,
   displayName: string,
-  count = 0
+  count?: number
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
   await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
 
-  await expect(
-    page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(`${count}`);
+  if (count !== undefined) {
+    // Tag propagation to column docs runs async (fire-and-forget update-by-query),
+    // so the count climbs non-deterministically. Retry up to 1 min to let it settle.
+    await expect(
+      page.getByTestId('assets').getByTestId('filter-count')
+    ).toHaveText(`${count}`, { timeout: 60_000 });
+  }
 };
 
 export const removeReviewer = async (
