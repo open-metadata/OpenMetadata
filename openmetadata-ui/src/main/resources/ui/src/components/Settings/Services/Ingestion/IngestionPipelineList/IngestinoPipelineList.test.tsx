@@ -23,11 +23,12 @@ import {
 } from '../../../../../rest/ingestionPipelineAPI';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
-jest.mock(
-  '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
-  }
+jest.mock('../../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
+  jest
+    .fn()
+    .mockImplementation(({ unreachableFallbackMessage }) => (
+      <p data-fallback={unreachableFallbackMessage}>AirflowMessageBanner</p>
+    ))
 );
 
 jest.mock(
@@ -39,10 +40,6 @@ jest.mock(
     })),
   })
 );
-
-jest.mock('../../../../common/Loader/Loader', () => {
-  return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
-});
 
 jest.mock('../IngestionListTable/IngestionListTable', () => {
   return jest
@@ -110,40 +107,50 @@ describe('IngestionPipelineList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setUrl();
-  });
-
-  it('should show loader until get status of airflow', () => {
-    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-      isAirflowAvailable: false,
-      isFetchingStatus: true,
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
     }));
-
-    render(
-      <BrowserRouter>
-        <IngestionPipelineList
-          serviceName={ServiceCategory.DASHBOARD_SERVICES}
-        />
-      </BrowserRouter>
-    );
-
-    expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 
-  it('should show error placeholder for airflow not available', () => {
-    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+  it.each([
+    [
+      'is still being fetched',
+      { isAirflowAvailable: false, isFetchingStatus: true },
+    ],
+    [
+      'reports it unavailable',
+      { isAirflowAvailable: false, isFetchingStatus: false },
+    ],
+  ])(
+    'should list the pipelines while the airflow status %s',
+    async (_label, status) => {
+      (useAirflowStatus as jest.Mock).mockImplementation(() => status);
+
+      await renderList();
+
+      expect(screen.getByText('IngestionListTable')).toBeInTheDocument();
+      expect(getIngestionPipelines).toHaveBeenCalled();
+    }
+  );
+
+  it('should disable the bulk re-deploy button when the pipeline service is unreachable', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
       isAirflowAvailable: false,
       isFetchingStatus: false,
     }));
 
-    render(
-      <BrowserRouter>
-        <IngestionPipelineList
-          serviceName={ServiceCategory.DASHBOARD_SERVICES}
-        />
-      </BrowserRouter>
-    );
+    await renderList();
 
-    expect(screen.getByText('Airflow not available')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('rowSelection'));
+
+    expect(screen.getByTestId('bulk-re-deploy-button')).toBeDisabled();
+    // The fallback is opt-in — without it a thrown status call leaves the disabled button
+    // unexplained.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-fallback',
+      'message.pipeline-service-unreachable-agent-actions'
+    );
   });
 
   it('should not call deployIngestionPipelineById after bulk deploy button click without pipeline selection', async () => {

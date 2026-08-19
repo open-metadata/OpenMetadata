@@ -20,17 +20,39 @@ import { useAirflowStatus } from '../../../context/AirflowStatusProvider/Airflow
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
-const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
+interface AirflowMessageBannerProps extends SpaceProps {
+  /**
+   * Shown when the service is unreachable but the status call carried no `reason` — a thrown call
+   * has none. Opt-in and caller-supplied, because what to say depends on what the caller left on
+   * screen: the agent tabs keep their lists with disabled controls and have to explain that, while
+   * the connection setup and success screens have nothing to explain. Omit to keep the original
+   * behaviour of rendering nothing without a `reason`.
+   */
+  unreachableFallbackMessage?: string;
+}
+
+const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
+  className,
+  unreachableFallbackMessage,
+}) => {
   const { reason, isAirflowAvailable, isFetchingStatus, platform } =
     useAirflowStatus();
 
-  if (isFetchingStatus || isEmpty(reason)) {
+  if (isFetchingStatus) {
     return null;
   }
 
-  // For hybrid runner, always show the banner even if status is 200
-  // For other platforms, only show when Airflow is not available
-  if (platform !== AIRFLOW_HYBRID && isAirflowAvailable) {
+  // For hybrid runner, always show the banner even if status is 200 — but it has nothing to say
+  // without a reason. For other platforms, only show when Airflow is not available.
+  if (isAirflowAvailable) {
+    if (platform !== AIRFLOW_HYBRID || isEmpty(reason)) {
+      return null;
+    }
+  }
+
+  const message = isEmpty(reason) ? unreachableFallbackMessage : reason;
+
+  if (isEmpty(message)) {
     return null;
   }
 
@@ -39,11 +61,12 @@ const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
       align="center"
       className={classNames('airflow-message-banner', className)}
       data-testid="no-airflow-placeholder"
+      role="status"
       size={16}>
       <IconRetry className="align-middle" height={24} width={24} />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
-        markdown={reason ?? ''}
+        markdown={message ?? ''}
       />
     </Space>
   );
