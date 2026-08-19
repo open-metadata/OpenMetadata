@@ -4169,7 +4169,8 @@ public class SearchRepository {
   public JsonObject aggregate(
       String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
-    return aggregate(query, entityType, searchAggregation, filter, null);
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
   public JsonObject aggregate(

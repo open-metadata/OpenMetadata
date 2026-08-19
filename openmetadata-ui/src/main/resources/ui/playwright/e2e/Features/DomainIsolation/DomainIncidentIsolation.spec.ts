@@ -77,18 +77,20 @@ const test = base.extend<{ adminPage: Page; noDomainPage: Page }>({
 const openIncidentManager = async (page: Page): Promise<string[]> => {
   await redirectToHomePage(page);
 
-  const incidentResponse = page.waitForResponse(
-    (response) =>
-      response
-        .url()
-        .includes(
-          '/dataQuality/testCases/testCaseIncidentStatus/search/list'
-        ) && response.status() === 200
+  // Matched on URL only. Narrowing the predicate by status would never resolve on an error
+  // response, turning a failing API into an opaque timeout instead of a status assertion.
+  const incidentResponse = page.waitForResponse((response) =>
+    response
+      .url()
+      .includes('/dataQuality/testCases/testCaseIncidentStatus/search/list')
   );
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
   const response = await incidentResponse;
 
+  expect(response.status()).toBe(200);
+
   await waitForAllLoadersToDisappear(page);
+
   await expect(page.getByTestId('incident-filter-bar')).toBeVisible();
 
   const body = await response.json();
@@ -99,107 +101,128 @@ const openIncidentManager = async (page: Page): Promise<string[]> => {
   );
 };
 
-test.describe('Domain isolation - incident manager listing @domain-isolation', () => {
-  test.slow(true);
+test.describe(
+  'Domain isolation - incident manager listing',
+  { tag: ['@domain-isolation'] },
+  () => {
+    test.beforeAll(
+      'Setup domain, tables, incidents and users',
+      async ({ browser }) => {
+        // test.slow() does not extend a hook's timeout, so set an explicit budget for creating the
+        // entities and waiting for both incidents to be indexed.
+        test.setTimeout(3 * 60 * 1000);
 
-  test.beforeAll(
-    'Setup domain, tables, incidents and users',
-    async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        try {
+          await Promise.all([
+            adminUser.create(apiContext),
+            noDomainUser.create(apiContext),
+            tenant.create(apiContext),
+            restrictedTable.create(apiContext),
+            domainlessTable.create(apiContext),
+          ]);
+
+          await Promise.all([
+            adminUser.setAdminRole(apiContext),
+            // The role carries the domain policy; the empty domain list is the point of this spec —
+            // the user is subject to hasDomain() but owns no domain, so only domainless assets are
+            // theirs.
+            assignDomainOnlyAccess(apiContext, noDomainUser, []),
+            assignDomainToTable(
+              apiContext,
+              restrictedTable.entityResponseData?.id ?? '',
+              tenant
+            ),
+          ]);
+
+          // The table must carry its domain before the incident is indexed — the incident document
+          // inherits its domains from the test case, which inherits them from the table.
+          // seedFailedIncidents polls until each incident is searchable, so the assertions below
+          // never race Elasticsearch.
+          const [[restrictedTestCase], [domainlessTestCase]] =
+            await Promise.all([
+              seedFailedIncidents({
+                apiContext,
+                table: restrictedTable,
+                count: 1,
+              }),
+              seedFailedIncidents({
+                apiContext,
+                table: domainlessTable,
+                count: 1,
+              }),
+            ]);
+
+          restrictedTestCaseName = restrictedTestCase['name'] as string;
+          restrictedTestCaseFqn = restrictedTestCase[
+            'fullyQualifiedName'
+          ] as string;
+          domainlessTestCaseName = domainlessTestCase['name'] as string;
+          domainlessTestCaseFqn = domainlessTestCase[
+            'fullyQualifiedName'
+          ] as string;
+
+          await enableDisableSearchRBAC(apiContext, true);
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       try {
-        await adminUser.create(apiContext);
-        await adminUser.setAdminRole(apiContext);
-        await noDomainUser.create(apiContext);
+        await enableDisableSearchRBAC(apiContext, false);
 
-        await tenant.create(apiContext);
+        // Tables first: the domain is deleted once nothing references it any more.
+        await Promise.all([
+          safeDelete(() => restrictedTable.delete(apiContext)),
+          safeDelete(() => domainlessTable.delete(apiContext)),
+        ]);
 
-        // The role carries the domain policy; the empty domain list is the point of this spec — the
-        // user is subject to hasDomain() but owns no domain, so only domainless assets are theirs.
-        await assignDomainOnlyAccess(apiContext, noDomainUser, []);
-
-        await restrictedTable.create(apiContext);
-        await assignDomainToTable(
-          apiContext,
-          restrictedTable.entityResponseData?.id ?? '',
-          tenant
-        );
-        await domainlessTable.create(apiContext);
-
-        // seedFailedIncidents polls until each incident is searchable, so the assertions below never
-        // race Elasticsearch indexing.
-        const [restrictedTestCase] = await seedFailedIncidents({
-          apiContext,
-          table: restrictedTable,
-          count: 1,
-        });
-        const [domainlessTestCase] = await seedFailedIncidents({
-          apiContext,
-          table: domainlessTable,
-          count: 1,
-        });
-
-        restrictedTestCaseName = restrictedTestCase['name'] as string;
-        restrictedTestCaseFqn = restrictedTestCase[
-          'fullyQualifiedName'
-        ] as string;
-        domainlessTestCaseName = domainlessTestCase['name'] as string;
-        domainlessTestCaseFqn = domainlessTestCase[
-          'fullyQualifiedName'
-        ] as string;
-
-        await enableDisableSearchRBAC(apiContext, true);
+        await Promise.all([
+          safeDelete(() => tenant.delete(apiContext)),
+          safeDelete(() => noDomainUser.delete(apiContext)),
+          safeDelete(() => adminUser.delete(apiContext)),
+        ]);
       } finally {
         await afterAction();
       }
-    }
-  );
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await enableDisableSearchRBAC(apiContext, false);
-      await safeDelete(() => restrictedTable.delete(apiContext));
-      await safeDelete(() => domainlessTable.delete(apiContext));
-      await safeDelete(() => tenant.delete(apiContext));
-      await safeDelete(() => noDomainUser.delete(apiContext));
-      await safeDelete(() => adminUser.delete(apiContext));
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('user without a domain cannot see incidents belonging to a domain', async ({
-    noDomainPage,
-  }) => {
-    const listedFqns = await openIncidentManager(noDomainPage);
-
-    await test.step('the domained incident is withheld', async () => {
-      expect(listedFqns).not.toContain(restrictedTestCaseFqn);
-
-      await expect(
-        noDomainPage
-          .getByTestId('test-case-incident-manager-table')
-          .getByRole('link', { name: restrictedTestCaseName })
-      ).toHaveCount(0);
     });
 
-    await test.step('the domainless incident is still listed', async () => {
+    test('user without a domain cannot see incidents belonging to a domain', async ({
+      noDomainPage,
+    }) => {
+      const listedFqns = await openIncidentManager(noDomainPage);
+
+      await test.step('the domained incident is withheld', async () => {
+        expect(listedFqns).not.toContain(restrictedTestCaseFqn);
+
+        await expect(
+          noDomainPage
+            .getByTestId('test-case-incident-manager-table')
+            .getByRole('link', { name: restrictedTestCaseName })
+        ).toHaveCount(0);
+      });
+
+      await test.step('the domainless incident is still listed', async () => {
+        expect(listedFqns).toContain(domainlessTestCaseFqn);
+
+        await expect(
+          noDomainPage
+            .getByTestId('test-case-incident-manager-table')
+            .getByRole('link', { name: domainlessTestCaseName })
+        ).toBeVisible();
+      });
+    });
+
+    test('admin sees incidents from every domain', async ({ adminPage }) => {
+      const listedFqns = await openIncidentManager(adminPage);
+
+      expect(listedFqns).toContain(restrictedTestCaseFqn);
       expect(listedFqns).toContain(domainlessTestCaseFqn);
-
-      await expect(
-        noDomainPage
-          .getByTestId('test-case-incident-manager-table')
-          .getByRole('link', { name: domainlessTestCaseName })
-      ).toBeVisible();
     });
-  });
-
-  test('admin sees incidents from every domain', async ({ adminPage }) => {
-    const listedFqns = await openIncidentManager(adminPage);
-
-    expect(listedFqns).toContain(restrictedTestCaseFqn);
-    expect(listedFqns).toContain(domainlessTestCaseFqn);
-  });
-});
+  }
+);

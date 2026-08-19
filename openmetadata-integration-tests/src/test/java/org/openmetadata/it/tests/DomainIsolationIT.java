@@ -260,13 +260,15 @@ public class DomainIsolationIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                Set<String> visible = incidentTestCaseFqns(restricted);
-                assertTrue(
-                    visible.contains(ownIncidentFqn),
-                    "Own-domain incident visible. Saw: " + visible);
-                assertFalse(
-                    visible.contains(foreignIncidentFqn),
-                    "Foreign-domain incident hidden. Saw: " + visible);
+                for (boolean latest : new boolean[] {false, true}) {
+                  Set<String> visible = incidentTestCaseFqns(restricted, latest);
+                  assertTrue(
+                      visible.contains(ownIncidentFqn),
+                      "Own-domain incident visible (latest=" + latest + "). Saw: " + visible);
+                  assertFalse(
+                      visible.contains(foreignIncidentFqn),
+                      "Foreign-domain incident hidden (latest=" + latest + "). Saw: " + visible);
+                }
               });
     } finally {
       drain(cleanup);
@@ -295,7 +297,13 @@ public class DomainIsolationIT {
     return testCase.getFullyQualifiedName();
   }
 
-  private Set<String> incidentTestCaseFqns(OpenMetadataClient client) throws Exception {
+  /**
+   * @param latest {@code true} exercises the aggregation branch of the listing, which picks the
+   *     latest status per test case through a different server path than the plain search listing.
+   *     Both must enforce the caller's policies, otherwise {@code latest=true} is a trivial bypass.
+   */
+  private Set<String> incidentTestCaseFqns(OpenMetadataClient client, boolean latest)
+      throws Exception {
     String response =
         client
             .getHttpClient()
@@ -303,7 +311,10 @@ public class DomainIsolationIT {
                 HttpMethod.GET,
                 "/v1/dataQuality/testCases/testCaseIncidentStatus/search/list",
                 null,
-                RequestOptions.builder().queryParam("limit", "1000").build());
+                RequestOptions.builder()
+                    .queryParam("limit", "1000")
+                    .queryParam("latest", String.valueOf(latest))
+                    .build());
     Set<String> fqns = new HashSet<>();
     for (JsonNode incident : MAPPER.readTree(response).path("data")) {
       JsonNode reference = incident.path("testCaseReference");
