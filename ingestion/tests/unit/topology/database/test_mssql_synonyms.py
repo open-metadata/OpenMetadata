@@ -10,8 +10,9 @@
 #  limitations under the License.
 """MSSQL synonym discovery unit tests"""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import (
@@ -367,6 +368,88 @@ class TestMssqlSourceAliases:
         source.status = Status()
         source.synonym_map = SynonymMap()
 
+        MssqlSource.close(source)
+
+        assert source.status.warnings == []
+
+
+class TestInScopeDatabaseNames:
+    """
+    _in_scope_database_names() is the sweep's routing logic: it decides which
+    databases prepare() sweeps at all. prepare() wraps the sweep in a broad
+    except, so a regression here would silently produce an empty synonym map
+    rather than fail loudly.
+    """
+
+    def test_returns_only_the_configured_database_when_not_ingesting_all(self):
+        source = MagicMock(spec=MssqlSource)
+        source.service_connection = MagicMock(ingestAllDatabases=False, database="analytics_core")
+
+        result = MssqlSource._in_scope_database_names(source)
+
+        assert result == ["analytics_core"]
+        source.get_database_names_raw.assert_not_called()
+
+    def test_excludes_a_database_matching_the_filter_pattern(self):
+        # Covers the plain-name filtering path (useFqnForFiltering=False). The
+        # useFqnForFiltering=True branch is not covered here: exercising it
+        # would require asserting against fqn.build's/quote_name's exact output
+        # format, coupling this test to internals unrelated to the routing
+        # logic under test.
+        source = MagicMock(spec=MssqlSource)
+        source.service_connection = MagicMock(ingestAllDatabases=True)
+        source.metadata = MagicMock()
+        source.config = MagicMock(serviceName="svc")
+        source.source_config = MagicMock(
+            useFqnForFiltering=False,
+            databaseFilterPattern=FilterPattern(excludes=["^analytics_master$"]),
+        )
+        source.get_database_names_raw.return_value = ["analytics_core", "analytics_master"]
+
+        result = MssqlSource._in_scope_database_names(source)
+
+        assert result == ["analytics_core"]
+
+
+class TestMssqlSourcePrepare:
+    def test_prepare_wires_the_sweep_into_synonym_map(self):
+        source = MagicMock(spec=MssqlSource)
+        source.engine = MagicMock()
+        source._in_scope_database_names.return_value = ["analytics_core"]
+        expected_map = SynonymMap()
+        expected_map.add("svc.analytics_master.dbo.orders", "svc.analytics_core.dbo.orders")
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.metadata.build_synonym_map",
+            return_value=expected_map,
+        ) as mock_build:
+            MssqlSource.prepare(source)
+
+        mock_build.assert_called_once_with(
+            engine=source.engine,
+            database_names=["analytics_core"],
+            fqn_builder=source._build_table_fqn,
+        )
+        assert source.synonym_map is expected_map
+
+    def test_prepare_leaves_the_existing_synonym_map_untouched_when_the_sweep_fails(self):
+        source = MagicMock(spec=MssqlSource)
+        source.engine = MagicMock()
+        # What __init__ would have set before prepare() ever ran.
+        source.synonym_map = SynonymMap()
+        source._in_scope_database_names.return_value = ["analytics_core"]
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.metadata.build_synonym_map",
+            side_effect=RuntimeError("permission denied"),
+        ):
+            MssqlSource.prepare(source)
+
+        assert source.synonym_map is not None
+        assert source.synonym_map.is_empty() is True
+        assert source.synonym_map.aliases_for("svc.analytics_master.dbo.orders") is None
+
+        source.status = Status()
         MssqlSource.close(source)
 
         assert source.status.warnings == []
