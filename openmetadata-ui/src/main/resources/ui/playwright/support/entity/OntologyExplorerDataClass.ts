@@ -12,7 +12,6 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import {
-  addRelationTypeWithCardinality,
   addRelationTypesWithCardinality,
   addTermRelation,
 } from '../../utils/ontologyExplorer';
@@ -45,11 +44,18 @@ export class OntologyExplorerE2EData {
       this.termBrand.create(apiContext),
     ]);
 
-    await addRelationTypeWithCardinality(apiContext, {
-      name: this.CUSTOM_OWNS_RELATION,
-      displayName: 'GP Owns',
-      cardinality: 'ONE_TO_MANY',
-    });
+    // Use the batch variant so the idempotency guard (double-call) is available.
+    // A concurrent worker that issues a stale PUT between setup and the term
+    // patches below can silently drop this type; the second call re-asserts it.
+    const E2E_CUSTOM_TYPE = [
+      {
+        name: this.CUSTOM_OWNS_RELATION,
+        displayName: 'GP Owns',
+        cardinality: 'ONE_TO_MANY',
+      },
+    ];
+    await addRelationTypesWithCardinality(apiContext, E2E_CUSTOM_TYPE);
+    await addRelationTypesWithCardinality(apiContext, E2E_CUSTOM_TYPE);
 
     // termProduct is patched twice (partOf termCategory, relatedTo termBrand)
     // so these must remain sequential to avoid a PATCH race.
