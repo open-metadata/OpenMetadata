@@ -831,7 +831,6 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
           },
           "ngram": {
