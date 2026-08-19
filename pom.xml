@@ -735,10 +735,13 @@
         <artifactId>azure-identity</artifactId>
         <version>1.15.2</version>
       </dependency>
+      <!-- Pin all transitive io.netty:* to one patched line via the BOM (netty-codec-http et al.
+           arrive transitively through reactor-netty-http and others). 4.1.137.Final clears the
+           CorsHandler Vary-header cache-poisoning / info-disclosure issue, CVE-2026-59903. -->
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.136.Final</version>
+        <version>4.1.137.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
