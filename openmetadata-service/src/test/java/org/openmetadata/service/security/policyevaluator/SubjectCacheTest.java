@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -174,6 +175,59 @@ public class SubjectCacheTest {
 
     verify(userRepository, times(1))
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteUserWriteDropsThatUserContext() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    // A user's FQN is the lower-cased name while the cache is keyed by the principal name as the
+    // request presented it, so the match has to be case-insensitive to hit anything at all.
+    SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemotePersonaWriteDropsAllUserContexts() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.PERSONA, UUID.randomUUID(), "analyst");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteTeamWriteDropsAllUserContexts() {
+    // A team's defaultPersona reaches users as inheritedPersonas, and membership/hierarchy edits
+    // change which teams contribute — all of which arrive as a TEAM message, not a PERSONA one.
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteUnrelatedWriteLeavesUserContextWarm() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator()
+        .invalidate(Entity.TABLE, UUID.randomUUID(), "service.database.schema.table");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, never())
+        .getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean());
   }
 
   @Test
