@@ -1,36 +1,39 @@
-# Keep a MAIN-scoped copy of the Playwright chromium apt-deps cache alive.
+# Keep MAIN-scoped copies of every cache the Playwright pipeline restores.
 #
-# Why this workflow exists: GitHub Actions cache scoping means a workflow run
-# can only restore caches created on its own ref or on the default branch.
-# Merge-queue refs (gh-readonly-queue/main/pr-N-sha) are unique per queue
-# entry and deleted after the run — so an apt cache populated during a
-# merge_group run is unreachable by every other queue entry. Unless a run ON
-# MAIN has saved this cache, every merge-queue shard misses it, falls back to
-# `apt-get install` against the Azure Ubuntu mirror, and the whole matrix
-# goes red whenever that mirror has a bad day (runs 32157314266, 32166970973,
-# 32209207109 — zero tests executed, all shards dead in setup).
+# Why this workflow exists — two GitHub Actions cache mechanics compound:
 #
-# This job saves the same cache key the Playwright reusable workflow restores
-# (`playwright-chromium-deps-v2` + identical package list), from main's
-# scope, so every merge_group / PR / nightly run downstream gets a hit and
-# never talks to the mirror on the hot path.
+# 1. SCOPING: a workflow run can only restore caches created on its own ref
+#    or on the default branch. Merge-queue refs (gh-readonly-queue/main/...)
+#    and PR merge refs are unique per entry and die after the run — caches
+#    saved there are unreachable by every other run. Only main-scoped copies
+#    are universally restorable.
+# 2. EVICTION: the repo cache budget is 10 GB, LRU-evicted. When ephemeral
+#    refs are allowed to SAVE caches, per-queue-entry duplicates (~700 MB
+#    yarn + ~250 MB browser each) blow the budget within the hour and evict
+#    the main-scoped copies — observed at 17.5 GB with 49/50 caches on
+#    ephemeral refs, the main apt cache evicted ~30 minutes after creation.
+#    That eviction turns every downstream "cache hit" into a cold fetch
+#    against apt mirrors / registry.yarnpkg.com / the Playwright CDN, and a
+#    bad day on any of those takes the whole matrix down (runs 32157314266,
+#    32166970973, 32209207109, 32222855561, 32233411840).
+#
+# The fix has two halves: playwright-e2e-reusable.yml uses RESTORE-ONLY
+# cache steps (no saves from ephemeral refs), and THIS workflow is the one
+# writer — it saves the yarn, browser, and apt caches from main's scope so
+# every downstream run gets a hit.
 #
 # Triggers:
-#   * schedule (6h)      — keeps the cache warm; GitHub evicts caches unused
-#                          for 7 days and LRU-evicts beyond the 10 GB repo
-#                          budget, so a periodic touch guarantees presence.
-#   * workflow_dispatch  — populate immediately (first run, or after an
-#                          eviction during an incident).
-#   * push to main touching the reusable workflow — the package list and the
-#                          `version:` key live there; any change repopulates
-#                          the new key right away instead of waiting ≤6 h,
-#                          during which every queue run would take the
-#                          mirror-dependent miss path.
+#   * schedule (6h)      — keeps last_accessed fresh and re-saves after any
+#                          eviction or runner-image roll.
+#   * workflow_dispatch  — populate immediately (first run / mid-incident).
+#   * push to main touching the reusable workflow, this file, or yarn.lock —
+#                          key inputs changed; repopulate the new keys right
+#                          away instead of waiting ≤6 h.
 #
-# IMPORTANT: the package list and `version:` below MUST stay identical to the
-# two "Cache Playwright system deps" steps in playwright-e2e-reusable.yml —
-# a drifted list populates a key nobody restores. Update both files together.
-name: Populate Playwright apt cache
+# IMPORTANT: the cache keys and the apt package list below MUST stay
+# identical to their counterparts in playwright-e2e-reusable.yml — a drifted
+# key populates a cache nobody restores. Update both files together.
+name: Populate Playwright CI caches
 
 on:
   schedule:
@@ -42,6 +45,8 @@ on:
     paths:
       - .github/workflows/playwright-e2e-reusable.yml
       - .github/workflows/populate-playwright-apt-cache.yml
+      - openmetadata-ui/src/main/resources/ui/yarn.lock
+      - openmetadata-ui/src/main/resources/ui/.nvmrc
 
 permissions:
   contents: read
@@ -53,8 +58,54 @@ concurrency:
 jobs:
   populate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+
+      # actions/cache (save-capable) is deliberate here and ONLY here: this
+      # workflow runs on main, so its post-job save creates the main-scoped
+      # copy every other run restores. Key must match the restore-only steps
+      # in playwright-e2e-reusable.yml.
+      - name: Yarn package cache (main-scoped writer)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+
+      - name: Warm yarn cache
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+      - name: Playwright browser cache (main-scoped writer)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      - name: Warm Chromium browser cache
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright install chromium
+
       - name: Populate Playwright system deps cache
         uses: awalsh128/cache-apt-pkgs-action@v1.5.1
         with:
