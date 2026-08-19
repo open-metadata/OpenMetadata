@@ -239,3 +239,157 @@ export class GlossaryTermRelationsGraphData {
     ]);
   }
 }
+
+// ---------------------------------------------------------------------------
+// OntologyExplorer.spec.ts data — 3 glossaries
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerPageData {
+  // glossary: term1 relatedTo term2
+  static readonly glossary = new Glossary();
+  static readonly term1 = new GlossaryTerm(this.glossary);
+  static readonly term2 = new GlossaryTerm(this.glossary);
+
+  // glossary2: isolated terms (no relations) — used to trigger empty state
+  static readonly glossary2 = new Glossary();
+  static readonly term3 = new GlossaryTerm(this.glossary2);
+  static readonly term4 = new GlossaryTerm(this.glossary2);
+
+  // multiRelGlossary: two relation types between the same term pair
+  static readonly multiRelGlossary = new Glossary();
+  static readonly multiRelTermA = new GlossaryTerm(this.multiRelGlossary);
+  static readonly multiRelTermB = new GlossaryTerm(this.multiRelGlossary);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.glossary.create(apiContext),
+      this.glossary2.create(apiContext),
+      this.multiRelGlossary.create(apiContext),
+    ]);
+    await Promise.all([
+      this.term1.create(apiContext),
+      this.term2.create(apiContext),
+      this.term3.create(apiContext),
+      this.term4.create(apiContext),
+      this.multiRelTermA.create(apiContext),
+      this.multiRelTermB.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.term1, this.term2, 'relatedTo');
+    // multiRelTermA is patched twice — must stay sequential.
+    await addTermRelation(apiContext, this.multiRelTermA, this.multiRelTermB, 'relatedTo');
+    await addTermRelation(apiContext, this.multiRelTermA, this.multiRelTermB, 'partOf');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.glossary.delete(apiContext),
+      this.glossary2.delete(apiContext),
+      this.multiRelGlossary.delete(apiContext),
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OntologyExplorerInteractions — Isolated nodes + relation filter combo
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerComboData {
+  static readonly comboGlossary = new Glossary();
+  static readonly connectedTermA = new GlossaryTerm(this.comboGlossary);
+  static readonly connectedTermB = new GlossaryTerm(this.comboGlossary);
+  static readonly isolatedTerm = new GlossaryTerm(this.comboGlossary);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await this.comboGlossary.create(apiContext);
+    await Promise.all([
+      this.connectedTermA.create(apiContext),
+      this.connectedTermB.create(apiContext),
+      this.isolatedTerm.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.connectedTermA, this.connectedTermB, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await this.comboGlossary.delete(apiContext);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OntologyExplorerInteractions — Cross-glossary term hydration
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerCrossGlossaryData {
+  static readonly salesGlossary = new Glossary();
+  static readonly financeGlossary = new Glossary();
+  static readonly termRevenue = new GlossaryTerm(this.salesGlossary);
+  static readonly termExpense = new GlossaryTerm(this.financeGlossary);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.salesGlossary.create(apiContext),
+      this.financeGlossary.create(apiContext),
+    ]);
+    await Promise.all([
+      this.termRevenue.create(apiContext),
+      this.termExpense.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.termRevenue, this.termExpense, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await Promise.all([
+      this.salesGlossary.delete(apiContext),
+      this.financeGlossary.delete(apiContext),
+    ]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OntologyExplorerInteractions — Embedded scope (Relations Graph tab)
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerEmbeddedData {
+  static readonly embeddedGlossary = new Glossary();
+  static readonly termA = new GlossaryTerm(this.embeddedGlossary);
+  static readonly termB = new GlossaryTerm(this.embeddedGlossary);
+  static readonly termC = new GlossaryTerm(this.embeddedGlossary);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await this.embeddedGlossary.create(apiContext);
+    await Promise.all([
+      this.termA.create(apiContext),
+      this.termB.create(apiContext),
+      this.termC.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.termA, this.termB, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await this.embeddedGlossary.delete(apiContext);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OntologyExplorerIsolatedToggle.spec.ts data
+// ---------------------------------------------------------------------------
+
+export class OntologyExplorerIsolatedToggleData {
+  static readonly toggleGlossary = new Glossary();
+  static readonly toggleTermA = new GlossaryTerm(this.toggleGlossary);
+  static readonly toggleTermB = new GlossaryTerm(this.toggleGlossary);
+  static readonly toggleTermIso = new GlossaryTerm(this.toggleGlossary);
+
+  static async setup(apiContext: APIRequestContext): Promise<void> {
+    await this.toggleGlossary.create(apiContext);
+    await Promise.all([
+      this.toggleTermA.create(apiContext),
+      this.toggleTermB.create(apiContext),
+      this.toggleTermIso.create(apiContext),
+    ]);
+    await addTermRelation(apiContext, this.toggleTermA, this.toggleTermB, 'relatedTo');
+  }
+
+  static async teardown(apiContext: APIRequestContext): Promise<void> {
+    await this.toggleGlossary.delete(apiContext);
+  }
+}

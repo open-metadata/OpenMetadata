@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { OntologyExplorerIsolatedToggleData as D } from '../../support/entity/OntologyExplorerDataClass';
 import {
-  addTermRelation,
   createApiContext,
-  defined,
-  deleteEntities,
   disposeApiContext,
   navigateAndFilterByGlossary,
   readNodePositions,
@@ -27,38 +23,15 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-let toggleGlossary: Glossary | undefined;
-let toggleTermA: GlossaryTerm | undefined;
-let toggleTermB: GlossaryTerm | undefined;
-let toggleTermIso: GlossaryTerm | undefined;
-
-test.beforeEach(async ({ browser }) => {
+test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  toggleGlossary = new Glossary();
-  toggleTermA = new GlossaryTerm(toggleGlossary);
-  toggleTermB = new GlossaryTerm(toggleGlossary);
-  toggleTermIso = new GlossaryTerm(toggleGlossary);
-
-  await toggleGlossary.create(apiContext);
-  await toggleTermA.create(apiContext);
-  await toggleTermB.create(apiContext);
-  await toggleTermIso.create(apiContext);
-  await addTermRelation(apiContext, toggleTermA, toggleTermB, 'relatedTo');
-
+  await D.setup(apiContext);
   await disposeApiContext(afterAction, apiContext);
 });
 
-test.afterEach(async ({ browser }) => {
+test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createApiContext(browser);
-  if (toggleGlossary) {
-    await deleteEntities(
-      apiContext,
-      toggleTermA,
-      toggleTermB,
-      toggleTermIso,
-      toggleGlossary
-    );
-  }
+  await D.teardown(apiContext);
   await disposeApiContext(afterAction, apiContext);
 });
 
@@ -67,23 +40,20 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(
-      page,
-      defined(toggleGlossary, 'toggleGlossary').responseData.id
-    );
+    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[defined(toggleTermIso, 'toggleTermIso').responseData.id],
+      positions[D.toggleTermIso.responseData.id],
       'isolated term must be visible because showIsolatedNodes defaults to true'
     ).toBeDefined();
     expect(
-      positions[defined(toggleTermA, 'toggleTermA').responseData.id],
+      positions[D.toggleTermA.responseData.id],
       'connected term A must also be visible'
     ).toBeDefined();
     expect(
-      positions[defined(toggleTermB, 'toggleTermB').responseData.id],
+      positions[D.toggleTermB.responseData.id],
       'connected term B must also be visible'
     ).toBeDefined();
   });
@@ -92,29 +62,23 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(
-      page,
-      defined(toggleGlossary, 'toggleGlossary').responseData.id
-    );
+    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(
-      page,
-      defined(toggleTermIso, 'toggleTermIso').responseData.id
-    );
+    await waitForNodeAbsent(page, D.toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[defined(toggleTermIso, 'toggleTermIso').responseData.id],
+      positions[D.toggleTermIso.responseData.id],
       'isolated term must be hidden after toggling showIsolatedNodes OFF'
     ).toBeUndefined();
     expect(
-      positions[defined(toggleTermA, 'toggleTermA').responseData.id],
+      positions[D.toggleTermA.responseData.id],
       'connected term A must still be visible'
     ).toBeDefined();
     expect(
-      positions[defined(toggleTermB, 'toggleTermB').responseData.id],
+      positions[D.toggleTermB.responseData.id],
       'connected term B must still be visible'
     ).toBeDefined();
   });
@@ -123,27 +87,18 @@ test.describe('Ontology Explorer — isolated nodes toggle', () => {
     page,
   }) => {
     test.slow();
-    await navigateAndFilterByGlossary(
-      page,
-      defined(toggleGlossary, 'toggleGlossary').responseData.id
-    );
+    await navigateAndFilterByGlossary(page, D.toggleGlossary.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(
-      page,
-      defined(toggleTermIso, 'toggleTermIso').responseData.id
-    );
+    await waitForNodeAbsent(page, D.toggleTermIso.responseData.id);
 
     await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodePresent(
-      page,
-      defined(toggleTermIso, 'toggleTermIso').responseData.id
-    );
+    await waitForNodePresent(page, D.toggleTermIso.responseData.id);
 
     const positions = await readNodePositions(page);
 
     expect(
-      positions[defined(toggleTermIso, 'toggleTermIso').responseData.id],
+      positions[D.toggleTermIso.responseData.id],
       'isolated term must be restored after toggling showIsolatedNodes back ON'
     ).toBeDefined();
   });
