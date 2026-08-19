@@ -18,6 +18,7 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
@@ -72,7 +73,7 @@ const SettingsAppModePage = withSuspenseFallback(
   )
 );
 
-export const CustomizablePage = () => {
+const CustomizablePageContent = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
@@ -489,4 +490,24 @@ export const CustomizablePage = () => {
     default:
       return <ErrorPlaceHolder />;
   }
+};
+
+/**
+ * The content has many exits — a loader, a no-persona placeholder, a
+ * per-page-type customizer, and an unknown-page fallback — and only the
+ * customizers carry a title of their own. Setting one here, before the
+ * content, gives every branch a floor while letting a customizer that
+ * registers its own Helmet later still win.
+ */
+export const CustomizablePage = () => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <DocumentTitle
+        title={t('label.customize-entity', { entity: t('label.page') })}
+      />
+      <CustomizablePageContent />
+    </>
+  );
 };

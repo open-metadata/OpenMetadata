@@ -29,6 +29,7 @@ import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -198,7 +199,7 @@ const UserPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.user')}>
+    <PageLayoutV1 pageTitle={getEntityName(userData) || t('label.user')}>
       <Users
         afterDeleteAction={afterDeleteAction}
         handlePaginate={handleEntityPaginate}
