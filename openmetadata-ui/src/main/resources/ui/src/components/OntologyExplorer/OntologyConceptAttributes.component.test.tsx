@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import {
   DataType,
@@ -204,6 +210,65 @@ describe('OntologyConceptAttributes', () => {
 
     expect(onTermUpdate).toHaveBeenCalled();
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('adds an attribute to a controlled concept draft without patching', () => {
+    const onAttributesChange = jest.fn();
+    render(
+      <OntologyConceptAttributes
+        isEditMode
+        attributes={[]}
+        variant="inspector"
+        onAttributesChange={onAttributesChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-attribute'));
+    fireEvent.change(
+      within(screen.getByTestId('attribute-name-input')).getByRole('textbox'),
+      { target: { value: 'subscriptionId' } }
+    );
+    fireEvent.click(screen.getByTestId('attribute-identifier-checkbox'));
+    fireEvent.change(
+      within(screen.getByTestId('attribute-unit-input')).getByRole('textbox'),
+      { target: { value: 'customer-id' } }
+    );
+    fireEvent.change(
+      within(screen.getByTestId('attribute-description-input')).getByRole(
+        'textbox'
+      ),
+      { target: { value: 'Stable subscription identifier' } }
+    );
+    fireEvent.click(screen.getByTestId('save-attribute'));
+
+    expect(onAttributesChange).toHaveBeenCalledWith([
+      {
+        dataType: DataType.String,
+        description: 'Stable subscription identifier',
+        id: 'generated-attribute-id',
+        isIdentifier: true,
+        name: 'subscriptionId',
+        unit: 'customer-id',
+      },
+    ]);
+    expect(mockPatchGlossaryTerm).not.toHaveBeenCalled();
+  });
+
+  it('removes an attribute from a controlled concept draft', () => {
+    const onAttributesChange = jest.fn();
+    render(
+      <OntologyConceptAttributes
+        isEditMode
+        attributes={ATTRIBUTES}
+        variant="inspector"
+        onAttributesChange={onAttributesChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('remove-attribute-rating'));
+
+    expect(onAttributesChange).toHaveBeenCalledWith([ATTRIBUTES[0]]);
+    expect(mockPatchGlossaryTerm).not.toHaveBeenCalled();
   });
 
   it('appends to existing attributes as a full-array add patch', async () => {

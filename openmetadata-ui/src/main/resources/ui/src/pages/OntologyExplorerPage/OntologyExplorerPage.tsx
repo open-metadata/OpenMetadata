@@ -17,6 +17,7 @@ import {
   Globe01,
   Grid01,
   LayersThree01,
+  Plus,
   Share07,
 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -51,6 +52,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { generateUUID } from '../../utils/StringUtils';
 
 type StudioMode = 'view' | 'edit' | 'query' | 'ai';
 type ViewSurface = 'graph' | 'tree';
@@ -150,6 +152,10 @@ const OntologyExplorerPage: React.FC = () => {
   const [generatedQuery, setGeneratedQuery] = useState<string>();
   const [isGlossaryMenuOpen, setIsGlossaryMenuOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [conceptDraft, setConceptDraft] = useState<{
+    defaultGlossaryId?: string;
+    id: string;
+  }>();
   const glossaryMenuRef = useRef<HTMLDivElement>(null);
   const glossaryMenuPanelRef = useRef<HTMLDivElement>(null);
   const [glossaryMenuAnchor, setGlossaryMenuAnchor] = useState<{
@@ -231,14 +237,28 @@ const OntologyExplorerPage: React.FC = () => {
   const selectedGlossary = glossaries.find(
     (glossary) => glossary.id === selectedGlossaryId
   );
-  const leaseGlossary =
-    selectedGlossary ??
-    glossaries.find((glossary) => glossary.id === authoringGlossaryId);
+  const authoringGlossary = glossaries.find(
+    (glossary) => glossary.id === authoringGlossaryId
+  );
+  const graphLeaseGlossary = selectedGlossary ?? authoringGlossary;
+  const leaseGlossary = conceptDraft
+    ? authoringGlossary ??
+      glossaries.find(
+        (glossary) => glossary.id === conceptDraft.defaultGlossaryId
+      )
+    : graphLeaseGlossary;
   const editLease = useOntologyEditLease({
     isActive: mode === 'edit' && Boolean(leaseGlossary),
     resourceId: leaseGlossary?.id,
     resourceType: EntityType.GLOSSARY,
   });
+  const isLeaseForCurrentGlossary =
+    !editLease.lock || editLease.lock.resourceId === leaseGlossary?.id;
+  const isLeaseOwned = editLease.isOwned && isLeaseForCurrentGlossary;
+  const editLeaseState =
+    editLease.isOwned && !isLeaseForCurrentGlossary
+      ? ('acquiring' as const)
+      : editLease.state;
   const selectedGlossaryIds = useMemo(
     () => (selectedGlossaryId ? [selectedGlossaryId] : []),
     [selectedGlossaryId]
@@ -265,6 +285,14 @@ const OntologyExplorerPage: React.FC = () => {
     ) ||
     checkPermission(
       Operation.EditEntityRelationship,
+      ResourceEntity.GLOSSARY_TERM,
+      permissions
+    );
+  const canCreateConcept =
+    canEditOntology ||
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.Create,
       ResourceEntity.GLOSSARY_TERM,
       permissions
     );
@@ -353,6 +381,9 @@ const OntologyExplorerPage: React.FC = () => {
         break;
       case 'edit':
         if (id === 'graph' || id === 'model') {
+          if (id === 'model') {
+            setConceptDraft(undefined);
+          }
           setEditSurface(id);
         }
 
@@ -527,7 +558,12 @@ const OntologyExplorerPage: React.FC = () => {
                   data-testid={`mode-tab-${tab.id}`}
                   key={tab.id}
                   type="button"
-                  onClick={() => setMode(tab.id)}>
+                  onClick={() => {
+                    if (tab.id !== 'edit') {
+                      setConceptDraft(undefined);
+                    }
+                    setMode(tab.id);
+                  }}>
                   {tab.label}
                 </button>
               ))}
@@ -602,11 +638,29 @@ const OntologyExplorerPage: React.FC = () => {
               ))}
             </div>
             <span className="tw:flex-1" />
-            {mode === 'edit' ? (
+            {mode === 'edit' && editSurface === 'graph' && canCreateConcept ? (
+              <Button
+                color="secondary"
+                data-testid="ontology-add-concept"
+                iconLeading={Plus}
+                isDisabled={Boolean(conceptDraft)}
+                size="xs"
+                onPress={() => {
+                  const defaultGlossaryId = graphLeaseGlossary?.id;
+                  setAuthoringGlossaryId(defaultGlossaryId);
+                  setConceptDraft({
+                    defaultGlossaryId,
+                    id: `ontology-concept-draft-${generateUUID()}`,
+                  });
+                }}>
+                {t('label.add-entity', { entity: t('label.concept') })}
+              </Button>
+            ) : null}
+            {mode === 'edit' && leaseGlossary ? (
               <OntologyEditLeaseStatus
-                hasResource={Boolean(leaseGlossary)}
+                hasResource
                 lock={editLease.lock}
-                state={editLease.state}
+                state={editLeaseState}
                 onRetry={editLease.retry}
               />
             ) : null}
@@ -671,14 +725,23 @@ const OntologyExplorerPage: React.FC = () => {
           ) : (
             <OntologyExplorer
               className="tw:min-h-0 tw:flex-1"
+              conceptDraftId={conceptDraft?.id}
+              defaultConceptGlossaryId={conceptDraft?.defaultGlossaryId}
               globalGlossaryIds={selectedGlossaryIds}
               height="100%"
               isAuthoringMode={mode === 'edit'}
-              isEditMode={mode === 'edit' && editLease.isOwned}
+              isEditMode={mode === 'edit' && isLeaseOwned}
               key={explorerRevision}
               scope="global"
               showHealth={mode === 'view'}
               surface={explorerSurface}
+              onConceptCreated={(concept) => {
+                setConceptDraft(undefined);
+                if (concept.glossary?.id) {
+                  setSelectedGlossaryId(concept.glossary.id);
+                }
+              }}
+              onConceptDraftClose={() => setConceptDraft(undefined)}
               onGlossariesChange={handleGlossariesChange}
               onGraphDataChange={handleGraphDataChange}
               onRelationTypesChange={handleRelationTypesChange}

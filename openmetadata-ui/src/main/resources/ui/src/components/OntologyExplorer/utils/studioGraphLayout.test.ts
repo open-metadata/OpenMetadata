@@ -44,6 +44,46 @@ describe('calculateStudioNodePositions', () => {
     ).toBe(3);
   });
 
+  it('reserves enough space between ranks for a relationship label', async () => {
+    const positions = await calculateStudioNodePositions(
+      [{ id: 'source' }, { id: 'target' }],
+      [
+        {
+          id: 'relationship',
+          source: 'source',
+          target: 'target',
+          data: { relationType: 'parentOf' },
+        },
+      ]
+    );
+
+    expect(positions.target.x - positions.source.x).toBeGreaterThanOrEqual(300);
+  });
+
+  it('separates nodes within a rank so curved relationships stay distinct', async () => {
+    const positions = await calculateStudioNodePositions(
+      [{ id: 'root' }, { id: 'child-a' }, { id: 'child-b' }],
+      [
+        {
+          id: 'edge-a',
+          source: 'root',
+          target: 'child-a',
+          data: { relationType: 'parentOf' },
+        },
+        {
+          id: 'edge-b',
+          source: 'root',
+          target: 'child-b',
+          data: { relationType: 'parentOf' },
+        },
+      ]
+    );
+
+    expect(
+      Math.abs(positions['child-a'].y - positions['child-b'].y)
+    ).toBeGreaterThanOrEqual(140);
+  });
+
   it('places isolated terms below the connected graph', async () => {
     const positions = await calculateStudioNodePositions(
       [{ id: 'root' }, { id: 'child' }, { id: 'isolated' }],

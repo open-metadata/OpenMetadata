@@ -12,6 +12,7 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { EntityReference } from '../../generated/entity/type';
 import { EntityStatus, Provenance } from '../../generated/type/termRelation';
@@ -40,6 +41,10 @@ export interface OntologyExplorerProps {
   onGraphDataChange?: (graphData: OntologyGraphData) => void;
   onRelationTypesChange?: (relationTypes: RelationshipType[]) => void;
   onSelectedNodeChange?: (node: OntologyNode | null) => void;
+  conceptDraftId?: string;
+  defaultConceptGlossaryId?: string;
+  onConceptCreated?: (concept: GlossaryTerm) => void;
+  onConceptDraftClose?: () => void;
   onRequestEdit?: () => void;
 }
 
@@ -64,6 +69,8 @@ export interface OntologyNode {
   originalGlossary?: string;
   glossaryName?: string;
   originalNode?: OntologyNode;
+  isDraft?: boolean;
+  isOptimistic?: boolean;
 }
 
 export interface OntologyEdge {

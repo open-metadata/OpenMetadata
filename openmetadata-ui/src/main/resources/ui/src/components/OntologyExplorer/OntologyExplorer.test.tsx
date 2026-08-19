@@ -12,13 +12,21 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
 import {
   OntologyGraphData,
   OntologyGraphHandle,
+  OntologyNode,
 } from './OntologyExplorer.interface';
+
+interface OntologyGraphMockProps {
+  nodes: OntologyNode[];
+}
+
+const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
 
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
@@ -29,7 +37,11 @@ jest.mock('./OntologyGraphG6', () => {
 
   return {
     __esModule: true,
-    default: forwardRef(() => <div data-testid="ontology-graph" />),
+    default: forwardRef((props: OntologyGraphMockProps, _ref) => {
+      mockOntologyGraph(props);
+
+      return <div data-testid="ontology-graph" />;
+    }),
   };
 });
 
@@ -54,6 +66,13 @@ jest.mock('./OntologyAuthoringInspector', () => ({
   ),
 }));
 
+jest.mock('./OntologyConceptDraftInspector', () => ({
+  __esModule: true,
+  default: ({ node }: { node: OntologyNode }) => (
+    <div data-testid="ontology-concept-draft-inspector">{node.label}</div>
+  ),
+}));
+
 const mockUseOntologyExplorer = useOntologyExplorer as jest.MockedFunction<
   typeof useOntologyExplorer
 >;
@@ -73,6 +92,14 @@ const assetNode = {
     serviceType: 'Snowflake',
   },
   type: 'dataAsset',
+};
+const secondaryTermNode = {
+  assetCount: 1,
+  fullyQualifiedName: 'DataStudio.SecondaryCluster',
+  id: 'DataStudio.SecondaryCluster',
+  label: 'Secondary Cluster',
+  loadedAssetCount: 0,
+  type: 'glossaryTerm',
 };
 const dataGraph: OntologyGraphData = {
   edges: [
@@ -150,6 +177,12 @@ function createExplorerState(
   };
 }
 
+function useStatefulExplorerMock(): ReturnType<typeof useOntologyExplorer> {
+  const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(null);
+
+  return createExplorerState({ selectedNode, setSelectedNode });
+}
+
 describe('OntologyExplorer Studio data controls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -209,6 +242,62 @@ describe('OntologyExplorer Studio data controls', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('expands the semantic edge layer when a term card is moved', () => {
+    const originalPointerEvent = window.PointerEvent;
+    Object.defineProperty(window, 'PointerEvent', {
+      configurable: true,
+      value: MouseEvent,
+    });
+    const state = createExplorerState({
+      explorationMode: 'data',
+      graphDataToShow: {
+        edges: [
+          {
+            from: termNode.id,
+            label: 'related',
+            relationType: 'relatedTo',
+            to: secondaryTermNode.id,
+          },
+        ],
+        nodes: [termNode, secondaryTermNode],
+      },
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="global" />);
+    const semanticEdge = screen.getByTestId('ontology-data-semantic-edge');
+    const edgeLayer = semanticEdge.closest('svg');
+    const initialWidth = Number(edgeLayer?.getAttribute('width'));
+    const initialHeight = Number(edgeLayer?.getAttribute('height'));
+    const secondaryCluster = screen.getByTestId(
+      `ontology-data-cluster-${secondaryTermNode.id}`
+    );
+    secondaryCluster.setPointerCapture = jest.fn();
+
+    fireEvent.pointerDown(secondaryCluster, {
+      clientX: 0,
+      clientY: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(secondaryCluster, {
+      clientX: 1_200,
+      clientY: 900,
+      pointerId: 1,
+    });
+
+    expect(Number(edgeLayer?.getAttribute('width'))).toBeGreaterThan(
+      initialWidth
+    );
+    expect(Number(edgeLayer?.getAttribute('height'))).toBeGreaterThan(
+      initialHeight
+    );
+
+    Object.defineProperty(window, 'PointerEvent', {
+      configurable: true,
+      value: originalPointerEvent,
+    });
+  });
+
   it('does not fan out asset requests for server-populated Data clusters', () => {
     const state = createExplorerState({ explorationMode: 'data' });
     mockUseOntologyExplorer.mockReturnValue(state);
@@ -241,6 +330,40 @@ describe('OntologyExplorer Studio data controls', () => {
       'ontology-slideout-open'
     );
     expect(onSelectedNodeChange).toHaveBeenCalledWith(termNode);
+  });
+
+  it('adds and selects an optimistic concept node for inline authoring', () => {
+    const onSelectedNodeChange = jest.fn();
+    mockUseOntologyExplorer.mockImplementation(useStatefulExplorerMock);
+
+    render(
+      <OntologyExplorer
+        isAuthoringMode
+        conceptDraftId="ontology-concept-draft-1"
+        scope="global"
+        onSelectedNodeChange={onSelectedNodeChange}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-concept-draft-inspector')
+    ).toHaveTextContent('label.new-entity');
+    expect(mockOntologyGraph).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'ontology-concept-draft-1',
+            isDraft: true,
+          }),
+        ]),
+      })
+    );
+    expect(onSelectedNodeChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'ontology-concept-draft-1',
+        isDraft: true,
+      })
+    );
   });
 
   it('opens the entity slideout for a concept in an embedded graph', () => {

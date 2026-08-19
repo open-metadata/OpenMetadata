@@ -17,9 +17,13 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
 interface ExplorerMockProps {
+  conceptDraftId?: string;
+  defaultConceptGlossaryId?: string;
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
+  onConceptDraftClose?: () => void;
   onGlossariesChange?: (glossaries: Glossary[]) => void;
+  onSelectedNodeChange?: (node: { glossaryId?: string } | null) => void;
   showHealth?: boolean;
   surface?: string;
 }
@@ -265,6 +269,83 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('submode-tab-model')).toBeInTheDocument();
     expect(screen.queryByTestId('submode-tab-term')).not.toBeInTheDocument();
     expect(screen.queryByTestId('submode-tab-bulk')).not.toBeInTheDocument();
+  });
+
+  it('starts an inline concept draft without selecting a glossary first', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    const addConceptButton = screen.getByTestId('ontology-add-concept');
+
+    expect(addConceptButton).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-edit-lease-status')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(addConceptButton);
+
+    const draftExplorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
+
+    expect(draftExplorerProps?.conceptDraftId).toMatch(
+      /^ontology-concept-draft-/
+    );
+    expect(draftExplorerProps?.defaultConceptGlossaryId).toBeUndefined();
+    expect(addConceptButton).toBeDisabled();
+
+    act(() => draftExplorerProps?.onConceptDraftClose?.());
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeEnabled();
+  });
+
+  it('prefills the inline draft with the selected Edit graph glossary', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    const explorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
+    const glossary: Glossary = {
+      description: 'Customer lifecycle ontology',
+      id: 'customer-lifecycle-id',
+      name: 'CustomerLifecycle',
+    };
+
+    act(() => explorerProps?.onGlossariesChange?.([glossary]));
+    fireEvent.click(screen.getByTestId('ontology-glossary-menu-trigger'));
+    fireEvent.click(screen.getByTestId(glossary.id));
+    fireEvent.click(screen.getByTestId('ontology-add-concept'));
+
+    expect(
+      mockOntologyExplorer.mock.calls.at(-1)?.[0].defaultConceptGlossaryId
+    ).toBe(glossary.id);
+  });
+
+  it('prefills the inline draft from a selected node in all-glossaries mode', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    const explorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
+    const glossary: Glossary = {
+      description: 'Customer lifecycle ontology',
+      id: 'customer-lifecycle-id',
+      name: 'CustomerLifecycle',
+    };
+
+    act(() => {
+      explorerProps?.onGlossariesChange?.([glossary]);
+      explorerProps?.onSelectedNodeChange?.({ glossaryId: glossary.id });
+    });
+
+    const addConceptButton = screen.getByTestId('ontology-add-concept');
+
+    expect(addConceptButton).toBeEnabled();
+
+    fireEvent.click(addConceptButton);
+
+    expect(
+      mockOntologyExplorer.mock.calls.at(-1)?.[0].defaultConceptGlossaryId
+    ).toBe(glossary.id);
   });
 
   it('switches Query to the visual builder surface', () => {

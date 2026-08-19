@@ -88,6 +88,7 @@ const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
 const TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
+const CANVAS_BOTTOM_PADDING = 24;
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
@@ -300,10 +301,24 @@ const OntologyDataGraph = ({
     [relationTypes]
   );
   const rows = Math.ceil(visibleTerms.length / COLUMN_COUNT);
-  const canvasHeight = Math.max(
+  const minimumCanvasHeight = Math.max(
     CANVAS_MIN_HEIGHT,
-    START_Y + rows * ROW_STEP + (hasMoreTerms ? 64 : 24)
+    START_Y + rows * ROW_STEP + (hasMoreTerms ? 64 : CANVAS_BOTTOM_PADDING)
   );
+  const { canvasHeight, canvasWidth } = useMemo(() => {
+    let nextHeight = minimumCanvasHeight;
+    let nextWidth = CANVAS_MIN_WIDTH;
+
+    positionByTermId.forEach((position) => {
+      nextHeight = Math.max(
+        nextHeight,
+        position.top + ROW_STEP + CANVAS_BOTTOM_PADDING
+      );
+      nextWidth = Math.max(nextWidth, position.left + CARD_WIDTH + START_X);
+    });
+
+    return { canvasHeight: nextHeight, canvasWidth: nextWidth };
+  }, [minimumCanvasHeight, positionByTermId]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wheelCleanupRef = useRef<(() => void) | null>(null);
@@ -387,12 +402,12 @@ const OntologyDataGraph = ({
     }
     const fitZoom = clampZoom(
       Math.min(
-        element.clientWidth / CANVAS_MIN_WIDTH,
+        element.clientWidth / canvasWidth,
         element.clientHeight / canvasHeight
       )
     );
     setView({
-      x: (element.clientWidth - CANVAS_MIN_WIDTH * fitZoom) / 2,
+      x: (element.clientWidth - canvasWidth * fitZoom) / 2,
       y: (element.clientHeight - canvasHeight * fitZoom) / 2,
       zoom: fitZoom,
     });
@@ -550,15 +565,15 @@ const OntologyDataGraph = ({
         className="tw:relative tw:origin-top-left"
         style={{
           height: canvasHeight,
-          minWidth: CANVAS_MIN_WIDTH,
           transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.zoom})`,
+          width: canvasWidth,
         }}
         onClick={handleCanvasClick}>
         <svg
           aria-hidden="true"
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
-          width={CANVAS_MIN_WIDTH}>
+          width={canvasWidth}>
           {semanticEdges.map(({ edge, path }, index) => {
             const relationshipType = relationshipTypeByName.get(
               edge.relationType

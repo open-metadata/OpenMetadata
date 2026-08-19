@@ -54,6 +54,7 @@ import ExportGraphPanel from './ExportGraphPanel';
 import GraphSettingsPanel from './GraphSettingsPanel';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyAuthoringInspector from './OntologyAuthoringInspector';
+import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
 import OntologyControlButtons from './OntologyControlButtons';
 import OntologyDataGraph from './OntologyDataGraph';
 import { OntologyEntityPanel } from './OntologyEntityPanel';
@@ -61,6 +62,7 @@ import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
   MergedEdge,
   OntologyExplorerProps,
+  OntologyNode,
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
 import OntologyHealthPanel from './OntologyHealthPanel';
@@ -188,6 +190,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   surface = 'graph',
   showHealth = false,
   globalGlossaryIds,
+  conceptDraftId,
+  defaultConceptGlossaryId,
+  onConceptCreated,
+  onConceptDraftClose,
   onStatsChange,
   onLoadingChange,
   onGlossariesChange,
@@ -258,6 +264,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
   const [selectedEdge, setSelectedEdge] = useState<MergedEdge | null>(null);
   const [isSavingRelation, setIsSavingRelation] = useState(false);
+  const [localConceptNode, setLocalConceptNode] = useState<OntologyNode | null>(
+    null
+  );
+  const handledConceptDraftIdRef = useRef<string>();
   const lastSelectedNodeRef = useRef(selectedNode);
   if (selectedNode) {
     lastSelectedNodeRef.current = selectedNode;
@@ -300,6 +310,141 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   );
   const searchInputRef = useRef(searchInput);
   searchInputRef.current = searchInput;
+
+  useEffect(() => {
+    if (
+      !conceptDraftId ||
+      handledConceptDraftIdRef.current === conceptDraftId
+    ) {
+      return;
+    }
+
+    handledConceptDraftIdRef.current = conceptDraftId;
+    const draftNode: OntologyNode = {
+      glossaryId: defaultConceptGlossaryId,
+      id: conceptDraftId,
+      isDraft: true,
+      label: t('label.new-entity', { entity: t('label.concept') }),
+      type: 'glossaryTermIsolated',
+    };
+    setSelectedEdge(null);
+    setSearchInput('');
+    setFilters((previousFilters) => ({
+      ...previousFilters,
+      relationTypes: [],
+      searchQuery: '',
+      showCrossGlossaryOnly: false,
+      viewMode: 'overview',
+    }));
+    if (explorationMode === 'data') {
+      handleModeChange('model');
+    }
+    setLocalConceptNode(draftNode);
+    setSelectedNode(draftNode);
+  }, [
+    conceptDraftId,
+    defaultConceptGlossaryId,
+    explorationMode,
+    handleModeChange,
+    setFilters,
+    setSelectedNode,
+    t,
+  ]);
+
+  const graphDataWithLocalConcept = useMemo(() => {
+    if (!localConceptNode) {
+      return graphDataToShow;
+    }
+
+    const currentGraphData = graphDataToShow ?? { edges: [], nodes: [] };
+    if (
+      currentGraphData.nodes.some((node) => node.id === localConceptNode.id)
+    ) {
+      return currentGraphData;
+    }
+
+    return {
+      ...currentGraphData,
+      nodes: [...currentGraphData.nodes, localConceptNode],
+    };
+  }, [graphDataToShow, localConceptNode]);
+
+  useEffect(() => {
+    if (!localConceptNode?.isOptimistic) {
+      return;
+    }
+
+    const persistedNode = graphDataToShow?.nodes.find(
+      (node) => node.id === localConceptNode.id
+    );
+    if (!persistedNode) {
+      return;
+    }
+
+    setLocalConceptNode(null);
+    setSelectedNode((currentNode) =>
+      currentNode?.id === persistedNode.id ? persistedNode : currentNode
+    );
+  }, [
+    graphDataToShow,
+    localConceptNode?.id,
+    localConceptNode?.isOptimistic,
+    setSelectedNode,
+  ]);
+
+  useEffect(() => {
+    if (conceptDraftId || !localConceptNode?.isDraft) {
+      return;
+    }
+
+    setLocalConceptNode(null);
+    setSelectedNode((currentNode) =>
+      currentNode?.isDraft ? null : currentNode
+    );
+  }, [conceptDraftId, localConceptNode?.isDraft, setSelectedNode]);
+
+  const handleConceptDraftChange = useCallback(
+    (update: Partial<OntologyNode>) => {
+      setLocalConceptNode((currentNode) =>
+        currentNode?.isDraft ? { ...currentNode, ...update } : currentNode
+      );
+      setSelectedNode((currentNode) =>
+        currentNode?.isDraft ? { ...currentNode, ...update } : currentNode
+      );
+    },
+    [setSelectedNode]
+  );
+
+  const handleConceptDraftCancel = useCallback(() => {
+    setLocalConceptNode((currentNode) =>
+      currentNode?.isDraft ? null : currentNode
+    );
+    setSelectedNode((currentNode) =>
+      currentNode?.isDraft ? null : currentNode
+    );
+    onConceptDraftClose?.();
+  }, [onConceptDraftClose, setSelectedNode]);
+
+  const handleConceptCreated = useCallback(
+    (concept: GlossaryTerm) => {
+      const createdNode: OntologyNode = {
+        description: concept.description,
+        fullyQualifiedName: concept.fullyQualifiedName,
+        glossaryId: concept.glossary?.id,
+        group: concept.glossary?.displayName ?? concept.glossary?.name,
+        id: concept.id,
+        isOptimistic: true,
+        label: concept.displayName ?? concept.name,
+        type: 'glossaryTermIsolated',
+      };
+      setLocalConceptNode(createdNode);
+      setSelectedNode(createdNode);
+      onConceptCreated?.(concept);
+      onConceptDraftClose?.();
+      handleRefresh();
+    },
+    [handleRefresh, onConceptCreated, onConceptDraftClose, setSelectedNode]
+  );
 
   const healthSummary = useMemo(() => {
     const derived = getOntologyHealthSummary(combinedGraphData, filters);
@@ -482,26 +627,29 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
-      !graphDataToShow || graphDataToShow.nodes.length === 0;
+      !graphDataWithLocalConcept ||
+      graphDataWithLocalConcept.nodes.length === 0;
     const relationTypeFilterIds = withoutOntologyAutocompleteAll(
       filters.relationTypes
     );
     const hasRelationFilter = relationTypeFilterIds.length > 0;
 
     const nodeTypeMap = new Map(
-      (graphDataToShow?.nodes ?? []).map((n) => [n.id, n.type])
+      (graphDataWithLocalConcept?.nodes ?? []).map((n) => [n.id, n.type])
     );
-    const termToTermEdges = (graphDataToShow?.edges ?? []).filter((e) => {
-      const fromType = nodeTypeMap.get(e.from);
-      const toType = nodeTypeMap.get(e.to);
+    const termToTermEdges = (graphDataWithLocalConcept?.edges ?? []).filter(
+      (e) => {
+        const fromType = nodeTypeMap.get(e.from);
+        const toType = nodeTypeMap.get(e.to);
 
-      return (
-        fromType !== ASSET_NODE_TYPE &&
-        fromType !== METRIC_NODE_TYPE &&
-        toType !== ASSET_NODE_TYPE &&
-        toType !== METRIC_NODE_TYPE
-      );
-    });
+        return (
+          fromType !== ASSET_NODE_TYPE &&
+          fromType !== METRIC_NODE_TYPE &&
+          toType !== ASSET_NODE_TYPE &&
+          toType !== METRIC_NODE_TYPE
+        );
+      }
+    );
     const hasNoMatchingRelationEdges =
       hasRelationFilter && termToTermEdges.length === 0;
     const hasNoSearchMatches = Boolean(
@@ -511,7 +659,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         graphSearchHighlight.highlightedGlossaryIds.length === 0
     );
 
-    if (fetchError && !loading && !graphDataToShow) {
+    if (fetchError && !loading && !graphDataWithLocalConcept) {
       return (
         <GraphEmptyState
           message={t('server.entity-fetch-error', {
@@ -556,7 +704,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return <SearchGraphEmptyState />;
     }
 
-    if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+    if (hasNoVisibleNodes && !loading && graphDataWithLocalConcept !== null) {
       if (filters.searchQuery.trim().length > 0) {
         return <SearchGraphEmptyState />;
       }
@@ -600,7 +748,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       );
     }
 
-    if (!graphDataToShow) {
+    if (!graphDataWithLocalConcept) {
       return null;
     }
 
@@ -626,7 +774,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           }>
           {scope === 'global' && explorationMode === 'data' ? (
             <OntologyDataGraph
-              data={graphDataToShow}
+              data={graphDataWithLocalConcept}
               glossaryColorMap={glossaryColorMap}
               hasMoreTerms={hasMoreDataTerms}
               isLoadingMoreTerms={isLoadingMore}
@@ -648,7 +796,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             />
           ) : (
             <OntologyGraph
-              edges={graphDataToShow.edges}
+              edges={graphDataWithLocalConcept.edges}
               expandedTermIds={
                 explorationMode === 'data' ? expandedTermIds : undefined
               }
@@ -673,7 +821,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               isAuthoringMode={isAuthoringMode}
               isEditMode={isEditMode}
               nodePositions={hierarchyBakedPositions}
-              nodes={graphDataToShow.nodes}
+              nodes={graphDataWithLocalConcept.nodes}
               ref={graphRef}
               relationTypes={relationTypes}
               selectedNodeId={
@@ -737,8 +885,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const showOnboardingEmptyState =
     !loading &&
-    graphDataToShow !== null &&
-    graphDataToShow.nodes.length === 0 &&
+    graphDataWithLocalConcept !== null &&
+    graphDataWithLocalConcept.nodes.length === 0 &&
     withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
     withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
     filters.viewMode === 'overview' &&
@@ -1049,7 +1197,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 selectedEdge.provenance !== Provenance.Inferred
             )}
             isSaving={isSavingRelation}
-            nodes={graphDataToShow?.nodes ?? []}
+            nodes={graphDataWithLocalConcept?.nodes ?? []}
             relationshipTypes={relationTypes}
             onClose={() => setSelectedEdge(null)}
             onDelete={handleRelationDelete}
@@ -1057,24 +1205,36 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           />
         ) : null}
         {showConceptInspector && selectedNode ? (
-          <OntologyAuthoringInspector
-            edges={(filteredGraphData?.edges ?? []).filter(
-              (edge) => edge.relationType !== ASSET_RELATION_TYPE
-            )}
-            isEditable={isEditMode}
-            key={selectedNode.id}
-            node={selectedNode}
-            nodes={filteredGraphData?.nodes ?? []}
-            relationTypes={relationTypes}
-            onCreateRelation={handleCreateRelation}
-            onRequestEdit={isEditMode ? undefined : onRequestEdit}
-            onShowDataAssets={() => handleModeChange('data')}
-            onShowFullDetails={() => {
-              if (selectedNode) {
-                handleGraphNodeDoubleClick(selectedNode);
-              }
-            }}
-          />
+          selectedNode.isDraft ? (
+            <OntologyConceptDraftInspector
+              glossaries={glossaries}
+              isLeaseOwned={isEditMode}
+              key={selectedNode.id}
+              node={selectedNode}
+              onCancel={handleConceptDraftCancel}
+              onChange={handleConceptDraftChange}
+              onCreated={handleConceptCreated}
+            />
+          ) : (
+            <OntologyAuthoringInspector
+              edges={(filteredGraphData?.edges ?? []).filter(
+                (edge) => edge.relationType !== ASSET_RELATION_TYPE
+              )}
+              isEditable={isEditMode}
+              key={selectedNode.id}
+              node={selectedNode}
+              nodes={filteredGraphData?.nodes ?? []}
+              relationTypes={relationTypes}
+              onCreateRelation={handleCreateRelation}
+              onRequestEdit={isEditMode ? undefined : onRequestEdit}
+              onShowDataAssets={() => handleModeChange('data')}
+              onShowFullDetails={() => {
+                if (selectedNode) {
+                  handleGraphNodeDoubleClick(selectedNode);
+                }
+              }}
+            />
+          )
         ) : null}
         {showHealth && !showConceptInspector && !selectedEdge ? (
           <OntologyHealthPanel

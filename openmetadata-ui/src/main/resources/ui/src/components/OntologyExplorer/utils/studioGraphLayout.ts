@@ -29,12 +29,12 @@ import { DagreLayout, EdgeData, NodeData } from '@antv/g6';
 import { NODE_HEIGHT } from './graphConfig';
 
 const STUDIO_NODE_WIDTH = 150;
-const STUDIO_RANK_GAP = 70;
-const STUDIO_NODE_GAP = 70;
+const STUDIO_RANK_GAP = 160;
+const STUDIO_NODE_GAP = 110;
 const STUDIO_OFFSET_X = 110;
 const STUDIO_OFFSET_Y = 60;
-const STUDIO_COMPONENT_GAP_X = 120;
-const STUDIO_COMPONENT_GAP_Y = 100;
+const STUDIO_COMPONENT_GAP_X = 180;
+const STUDIO_COMPONENT_GAP_Y = 140;
 const STUDIO_ISOLATED_ROW_GAP = 90;
 const STUDIO_ISOLATED_COLUMN_GAP = 220;
 const STUDIO_MAX_ISOLATED_COLUMNS = 4;
