@@ -2229,6 +2229,46 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
   }
 
+  /**
+   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases}
+   * list from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable}
+   * request, so created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics
+   * with no diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than
+   * merging it (as tags do). This test is the gate on that assumption.
+   */
+  @Test
+  void put_tableAliases_replaceNotMerge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("aliases_replace_table"), ns)
+            .withAliases(List.of("svc.core_a.dbo.orders"));
+    Table table = createEntity(createRequest);
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        table.getAliases(),
+        "initial aliases from the create request must be persisted");
+
+    // Retarget: the connector re-sends the full list, so the old alias must be gone.
+    // Re-fetch from the server (rather than trusting the PUT response's in-memory echo) so the
+    // assertion reflects what was actually persisted, not just what the request object carried.
+    createRequest.setAliases(List.of("svc.core_b.dbo.orders"));
+    client.tables().createOrUpdate(createRequest);
+    Table retargeted = client.tables().get(table.getId().toString());
+    assertEquals(
+        List.of("svc.core_b.dbo.orders"),
+        retargeted.getAliases(),
+        "aliases must be replaced wholesale, not merged with the previous run's list");
+
+    // Synonym dropped at the source: the connector re-sends with an empty list
+    createRequest.setAliases(List.of());
+    client.tables().createOrUpdate(createRequest);
+    Table cleared = client.tables().get(table.getId().toString());
+    assertTrue(
+        cleared.getAliases() == null || cleared.getAliases().isEmpty(),
+        "dropping every synonym must clear aliases");
+  }
+
   // ===================================================================
   // COLUMN GET VALIDATION TESTS
   // ===================================================================
