@@ -1476,6 +1476,7 @@
     "list": "清單",
     "list-entity": "列出 {{entity}}",
     "live": "即時",
+    "live-auto-scroll": "即時自動捲動",
     "live-indexing": "即時索引",
     "load-more": "載入更多",
     "loaded-x-of-y-entity": "{{loaded}}/{{total}} {{entity}}",

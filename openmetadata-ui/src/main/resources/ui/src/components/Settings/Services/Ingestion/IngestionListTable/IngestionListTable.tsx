@@ -31,12 +31,13 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
-import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { columnSorter } from '../../../../../utils/EntitySortUtils';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
@@ -63,6 +64,13 @@ import {
 } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
+
+// Derived from symbols already in scope rather than imported from antd directly: tw-guard blocks
+// new antd specifiers, and this file's table is legacy AntD that is not being migrated here.
+type AntdSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type AntdTableChangeHandler = NonNullable<
+  NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
+>;
 
 const INGESTION_EMPTY_CARD_CLASS = 'tw:relative tw:py-8';
 
@@ -94,6 +102,8 @@ function IngestionListTable({
   customRenderNameField,
   tableClassName,
   searchText,
+  sortOrder,
+  onSortChange,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -292,6 +302,44 @@ function IngestionListTable({
     ]
   );
 
+  const isServerSorted = !isUndefined(onSortChange);
+
+  const antdSortOrder = useMemo<AntdSortOrder>(() => {
+    let order: AntdSortOrder = null;
+    if (sortOrder === SORT_ORDER.ASC) {
+      order = 'ascend';
+    } else if (sortOrder === SORT_ORDER.DESC) {
+      order = 'descend';
+    }
+
+    return order;
+  }, [sortOrder]);
+
+  const toSortOrder = (order?: AntdSortOrder): SORT_ORDER | undefined => {
+    let updatedSortOrder: SORT_ORDER | undefined;
+    if (order === 'ascend') {
+      updatedSortOrder = SORT_ORDER.ASC;
+    } else if (order === 'descend') {
+      updatedSortOrder = SORT_ORDER.DESC;
+    }
+
+    return updatedSortOrder;
+  };
+
+  // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
+  // ours; everything else stays with the caller's handler, which must still receive every action.
+  const handleTableChange = useCallback<AntdTableChangeHandler>(
+    (pagination, filters, sorter, extra) => {
+      extraTableProps?.onChange?.(pagination, filters, sorter, extra);
+
+      if (extra.action === 'sort' && onSortChange) {
+        const order = Array.isArray(sorter) ? sorter[0]?.order : sorter.order;
+        onSortChange(toSortOrder(order));
+      }
+    },
+    [extraTableProps, onSortChange]
+  );
+
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
     () => [
       {
@@ -300,7 +348,13 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as FixedType,
-        sorter: getColumnSorter<IngestionPipeline, 'name'>('name'),
+        // Sort on the same value the cell renders (getEntityName), not the raw
+        // `name`: agents created from the UI get a machine-generated name that
+        // has no relation to the label the user sees. `sorter: true` hands
+        // ordering to the server so it spans every page, not just the loaded one.
+        ...(isServerSorted
+          ? { sorter: true, sortOrder: antdSortOrder }
+          : { sorter: columnSorter }),
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -404,6 +458,8 @@ function IngestionListTable({
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
       isLoading,
+      isServerSorted,
+      antdSortOrder,
     ]
   );
 
@@ -455,6 +511,7 @@ function IngestionListTable({
           scroll={data.length > 0 ? { x: 1300 } : undefined}
           size="small"
           {...extraTableProps}
+          onChange={handleTableChange}
         />
       </div>
 

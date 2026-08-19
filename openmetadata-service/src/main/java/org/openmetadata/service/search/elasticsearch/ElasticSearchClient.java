@@ -104,11 +104,6 @@ public class ElasticSearchClient implements SearchClient {
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
 
-  // How long a caller waits for a connection from the pool. HC5 defaults this to 3 minutes,
-  // so a saturated pool blocks a Jetty thread that long before failing. Fail fast instead.
-  private static final org.apache.hc.core5.util.Timeout CONNECTION_REQUEST_TIMEOUT =
-      org.apache.hc.core5.util.Timeout.ofSeconds(10);
-
   private volatile boolean isNewClientAvailable;
 
   private final String clusterAlias;
@@ -869,6 +864,14 @@ public class ElasticSearchClient implements SearchClient {
                   org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
+
+              // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+              // pipeline by default. Rest5Client / elasticsearch-java's transport also
+              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // so leaving both enabled makes the second pass run on already-inflated bytes
+              // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
+              // transport layer and let the ES client own decompression.
+              httpAsyncClientBuilder.disableContentCompression();
             });
 
         restClientBuilder.setRequestConfigCallback(
@@ -877,9 +880,12 @@ public class ElasticSearchClient implements SearchClient {
                     .setConnectTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
+                    .setConnectionRequestTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionRequestTimeoutSecs()))
                     .setResponseTimeout(
-                        org.apache.hc.core5.util.Timeout.ofSeconds(esConfig.getSocketTimeoutSecs()))
-                    .setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT));
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getSocketTimeoutSecs())));
 
         restClientBuilder.setCompressionEnabled(true);
 
