@@ -231,7 +231,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           </span>
           <div className="tw:flex-1 tw:min-w-0">
             <Typography
-              ellipsis={{ rows: 1 }}
+              ellipsis={{ rows: 1, tooltip: true }}
               size="text-md"
               title={agent.name}
               weight="bold">
