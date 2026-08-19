@@ -87,21 +87,23 @@ jobs:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
 
-      - name: Checkout trusted workflow source
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Authorize PR
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
-        uses: ./.github/actions/authorize-pr
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          pull-request-number: ${{ github.event.pull_request.number }}
+          check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: '30'
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
 
   # Produces the one artifact docker/development/Dockerfile needs, so shards can skip Maven.
   build-distribution:
@@ -204,11 +206,11 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Setup Python environment
-        uses: ./.github/actions/setup-python-environment
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ matrix.py-version }}
-          dependency-profile: test
+          install-server: 'false'
 
       - name: Download spaCy model
         uses: actions/download-artifact@v7

@@ -50,11 +50,11 @@ jobs:
         with:
           ref: ${{ env.BRANCH_NAME }}
 
-      - name: Setup Python environment
-        uses: ./.github/actions/setup-python-environment
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          dependency-profile: test
+          install-server: 'false'
 
       - name: Run Unit Tests
         run: |
