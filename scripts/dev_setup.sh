@@ -86,7 +86,8 @@ Options:
   --skip-ui            Skip `yarn install` for the frontend.
   --skip-generate      Skip `make generate` (Pydantic/TS model generation).
   --skip-precommit     Skip installing the pre-commit hooks.
-  --slim               Install ingestion `[dev]` only, not `[all-dev-env]`.
+  --slim               Install ingestion `dev` dependencies only, not the full
+                       test environment.
                        Much faster; omits most connector dependencies.
   --with-build         Also run `mvn clean install -DskipTests`.
   --with-docker        Also start docker/development/docker-compose.yml.
@@ -867,14 +868,14 @@ install_ingestion() {
     run make -C "$REPO_ROOT" install_dev
   else
     info "Installing the full dev environment; this pulls every connector's dependencies and takes a while."
-    run make -C "$REPO_ROOT" install_dev_env
+    run make -C "$REPO_ROOT" install_test
   fi
   ok "Ingestion framework installed"
 }
 
 generate_models() {
   # `make generate` wipes and regenerates ingestion/src/metadata/generated and
-  # the ANTLR parsers, then reinstalls the ingestion package.
+  # the ANTLR parsers.
   run make -C "$REPO_ROOT" generate
   ok "Generated Pydantic models and ANTLR parsers"
 }

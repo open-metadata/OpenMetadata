@@ -81,7 +81,7 @@ mvn test -pl openmetadata-integration-tests -Dtest=<NewIT>
 ```bash
 source env/bin/activate
 cd ingestion
-make unit_ingestion_dev_env
+make unit_ingestion
 python -m pytest tests/unit/<changed_path>/ --cov=metadata.<module> --cov-report=term-missing
 ```
 
