@@ -711,6 +711,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
@@ -853,6 +863,14 @@ public class ElasticSearchClient implements SearchClient {
                   org.apache.hc.core5.util.TimeValue.ofSeconds(30));
 
               httpAsyncClientBuilder.useSystemProperties();
+
+              // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
+              // pipeline by default. Rest5Client / elasticsearch-java's transport also
+              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // so leaving both enabled makes the second pass run on already-inflated bytes
+              // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
+              // transport layer and let the ES client own decompression.
+              httpAsyncClientBuilder.disableContentCompression();
             });
 
         restClientBuilder.setRequestConfigCallback(
@@ -861,6 +879,9 @@ public class ElasticSearchClient implements SearchClient {
                     .setConnectTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getConnectionTimeoutSecs()))
+                    .setConnectionRequestTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionRequestTimeoutSecs()))
                     .setResponseTimeout(
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));

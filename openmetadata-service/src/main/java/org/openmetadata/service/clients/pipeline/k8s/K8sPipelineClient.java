@@ -68,6 +68,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
@@ -165,7 +166,6 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   // Default values
   private static final String DEFAULT_CRON_SCHEDULE = "0 0 * * *";
-  private static final String DEFAULT_TASK_KEY = "ingestion_task";
   private static final String POD_PREFIX = "Pod: ";
   private static final String NAMESPACE_PREFIX = " in namespace: ";
   private static final String KUBERNETES_CLUSTER_PREFIX = "Kubernetes cluster - namespace: ";
@@ -605,7 +605,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
             correlationId);
       }
       return buildSuccessResponse(
-          "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName));
+              "Pipeline triggered successfully", Map.of("runId", runId, "jobName", jobName))
+          .withRunId(runId);
 
     } catch (ApiException e) {
       LOG.error(
@@ -889,6 +890,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  /**
+   * Returns nothing on purpose. This client mints the run ID when triggering (see {@link
+   * #runPipeline}) and reports it back on the response, so the server persists the {@code queued}
+   * status itself. Listing Jobs here on every run-history read would cost an API server round trip
+   * for state we already hold.
+   */
   @Override
   public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     return List.of();
@@ -1092,10 +1099,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
         return Map.of("logs", NO_LOGS_MESSAGE + podName);
       }
 
-      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
-      if (taskKey == null) {
-        taskKey = DEFAULT_TASK_KEY;
-      }
+      String taskKey =
+          PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().value());
 
       return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 

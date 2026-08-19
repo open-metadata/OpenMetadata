@@ -20,13 +20,47 @@ const getWidgetForFilters = async (
 ): Promise<Locator> => {
   const widget = await waitForLandingPageWidget(page, widgetKey);
 
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
   await expect(widget.getByTestId('widget-sort-by-dropdown')).toBeVisible();
 
   return widget;
+};
+
+/**
+ * Selects an Activity Feed widget filter and asserts it triggered a request to
+ * exactly the endpoint that filter owns.
+ *
+ * The path is compared against the response's pathname rather than with
+ * `includes()` — `/api/v1/activity` is a prefix of both `/api/v1/activity/my-feed`
+ * and `/api/v1/activity/following`, so a substring match would let any filter
+ * satisfy any assertion.
+ */
+export const selectActivityFeedFilterAndVerifyEndpoint = async (
+  page: Page,
+  widget: Locator,
+  filterName: string,
+  expectedPath: string
+) => {
+  await widget.getByTestId('widget-sort-by-dropdown').click();
+
+  const activityResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === expectedPath
+  );
+
+  await page.getByRole('menuitem', { name: filterName }).click();
+
+  const response = await activityResponse;
+
+  expect(response.status()).toBe(200);
+
+  await widget.getByTestId('entity-list-skeleton').waitFor({
+    state: 'detached',
+  });
 };
 
 export const verifyActivityFeedFilters = async (
@@ -38,57 +72,26 @@ export const verifyActivityFeedFilters = async (
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await widget.getByTestId('widget-sort-by-dropdown').click();
+  await selectActivityFeedFilterAndVerifyEndpoint(
+    page,
+    widget,
+    'My Data',
+    '/api/v1/activity/my-feed'
+  );
 
-  // Wait for either old or new feed API response with timeout
-  const myDataFilter = Promise.race([
-    page.waitForResponse(
-      (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=OWNER')
-    ),
-    page.waitForTimeout(5000),
-  ]);
-  await page.getByRole('menuitem', { name: 'My Data' }).click();
-  await myDataFilter;
+  await selectActivityFeedFilterAndVerifyEndpoint(
+    page,
+    widget,
+    'Following',
+    '/api/v1/activity/following'
+  );
 
-  await widget.locator('entity-list-skeleton').waitFor({
-    state: 'detached',
-  });
-
-  await widget.getByTestId('widget-sort-by-dropdown').click();
-  const followingFilter = Promise.race([
-    page.waitForResponse(
-      (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=FOLLOWS')
-    ),
-    page.waitForTimeout(5000),
-  ]);
-  await page.getByRole('menuitem', { name: 'Following' }).click();
-  await followingFilter;
-
-  await widget.locator('entity-list-skeleton').waitFor({
-    state: 'detached',
-  });
-
-  await widget.getByTestId('widget-sort-by-dropdown').click();
-  const allActivityFilter = Promise.race([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/feed') ||
-        response.url().includes('/api/v1/activities')
-    ),
-    page.waitForTimeout(5000),
-  ]);
-  await page.getByRole('menuitem', { name: 'All Activity' }).click();
-  await allActivityFilter;
-
-  await widget.locator('entity-list-skeleton').waitFor({
-    state: 'detached',
-  });
+  await selectActivityFeedFilterAndVerifyEndpoint(
+    page,
+    widget,
+    'All Activity',
+    '/api/v1/activity'
+  );
 };
 
 export const verifyDataFilters = async (
@@ -108,7 +111,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -122,7 +125,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -136,7 +139,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -160,7 +163,7 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 14 days' }).click();
   await last14DaysFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -177,7 +180,7 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
   await last7DaysFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -200,7 +203,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -214,7 +217,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -228,7 +231,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -300,7 +303,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -308,7 +311,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -316,7 +319,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -338,7 +341,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -351,7 +354,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -364,7 +367,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'High to Low' }).click();
   await highToLowFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -378,7 +381,7 @@ export const verifyDataAssetsFilters = async (
   await page.getByRole('menuitem', { name: 'Low to High' }).click();
   await lowToHighFilter;
 
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };

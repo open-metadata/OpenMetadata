@@ -153,6 +153,27 @@ describe('AgentCard', () => {
     ).toHaveLength(3);
   });
 
+  it('should render the run dots in the order given, oldest to newest', () => {
+    renderCard(baseAgent);
+
+    expect(
+      screen
+        .getAllByTestId('agent-run-dot')
+        .map((dot) => dot.getAttribute('data-run-status'))
+    ).toEqual(['success', 'failed', 'partial']);
+  });
+
+  it('should highlight the rightmost dot as the latest run', () => {
+    const dimmed = 'tw:opacity-[0.55]';
+    renderCard(baseAgent);
+
+    const dots = screen.getAllByTestId('agent-run-dot');
+
+    expect(dots[0]).toHaveClass(dimmed);
+    expect(dots[1]).toHaveClass(dimmed);
+    expect(dots[2]).not.toHaveClass(dimmed);
+  });
+
   it('should show recent runs for a queued agent with run history', () => {
     renderCard({ ...baseAgent, status: 'queued' });
 
@@ -217,7 +238,7 @@ describe('AgentCard', () => {
   });
 
   it('should open the latest run when clicking diagnose on a failed agent', () => {
-    renderCard({ ...baseAgent, status: 'failed', failStep: 'Source' });
+    renderCard({ ...baseAgent, status: 'failed' });
 
     fireEvent.click(screen.getByText('label.diagnose'));
 

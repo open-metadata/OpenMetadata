@@ -222,6 +222,10 @@ class K8sPipelineClientTest {
     assertTrue(createdJob.getMetadata().getName().startsWith("om-job-test-pipeline-"));
     assertEquals(
         "test-pipeline", createdJob.getMetadata().getLabels().get("app.kubernetes.io/pipeline"));
+    assertEquals(
+        createdJob.getMetadata().getLabels().get("app.kubernetes.io/run-id"),
+        response.getRunId(),
+        "The run ID must be reported back so the server can record the queued status");
   }
 
   @Test

@@ -38,6 +38,7 @@ import {
   navigateToMemories,
   scrollHierarchyToNode,
   scrollListingToCard,
+  searchAndGetDocumentRow,
   searchAndGetMemoryRow,
   uploadDisposableDocument,
   waitForDocumentInArchive,
@@ -1240,6 +1241,19 @@ test.describe('Context Center Permissions', () => {
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
+
+        await waitForDocumentProcessingComplete(apiContext, uploadedData.id);
+
+        await createAllPage.reload();
+        await waitForAllLoadersToDisappear(createAllPage);
+        await navigateToDocuments(createAllPage);
+
+        const row = await searchAndGetDocumentRow(createAllPage, fileName);
+        await expect(row).toBeVisible();
+        await expect(row.getByTestId('document-updated-by')).toHaveText(
+          createAllUser.responseData.name
+        );
+
         await apiContext
           .delete(
             `/api/v1/contextCenter/drive/files/${uploadedData.id}?hardDelete=true`

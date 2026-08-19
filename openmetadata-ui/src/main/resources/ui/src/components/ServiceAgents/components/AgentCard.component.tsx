@@ -101,6 +101,8 @@ const AgentCard: FC<AgentCardProps> = ({
     ) : (
       <Database01 size={15} />
     );
+  // Runs read oldest-to-newest, so the latest one is the rightmost dot.
+  const latestRunIndex = agent.recentRuns.length - 1;
 
   return (
     <Card
@@ -201,16 +203,6 @@ const AgentCard: FC<AgentCardProps> = ({
                     </strong>
                   </span>
                 )}
-                {isFailed && agent.failStep && (
-                  <Metric
-                    icon={<AlertCircle size={15} />}
-                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                      'label.before-error'
-                    )}`}
-                    tone="error"
-                    value={`${t('label.failed-at')} ${agent.failStep}`}
-                  />
-                )}
               </>
             )}
           </Box>
@@ -229,7 +221,8 @@ const AgentCard: FC<AgentCardProps> = ({
                   <button
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
                       RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
-                    }${index === 0 ? '' : ' tw:opacity-[0.55]'}`}
+                    }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
+                    data-run-status={run.status}
                     data-testid="agent-run-dot"
                     key={run.id}
                     title={t('message.run-status-click-details', {

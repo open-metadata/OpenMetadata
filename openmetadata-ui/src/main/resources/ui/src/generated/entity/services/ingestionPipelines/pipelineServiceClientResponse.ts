@@ -27,6 +27,12 @@ export interface PipelineServiceClientResponse {
      */
     reason?: string;
     /**
+     * Identifier of the run that was just triggered. Only set by orchestrators that mint the
+     * run ID themselves, which lets the server record the `queued` status instead of polling
+     * the orchestrator for it.
+     */
+    runId?: string;
+    /**
      * Ingestion version being used.
      */
     version?: string;
