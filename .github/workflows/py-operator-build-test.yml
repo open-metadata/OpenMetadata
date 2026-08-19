@@ -39,7 +39,7 @@ jobs:
     steps:
       - name: Checkout trusted workflow source
         if: ${{ github.event_name == 'pull_request_target' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -59,7 +59,7 @@ jobs:
     if: ${{ needs.authorize-pr.result == 'success' }}
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
+        uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
           android: true
@@ -70,7 +70,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true

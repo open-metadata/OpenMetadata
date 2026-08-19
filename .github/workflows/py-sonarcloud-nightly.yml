@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
+        uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
           android: true
@@ -46,7 +46,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-unit
           path: ingestion/.coverage
@@ -97,7 +97,7 @@ jobs:
               --ignore=tests/integration/sql_server
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # main
+        uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
           android: true
@@ -108,7 +108,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
@@ -150,7 +150,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
           # Do not add `filter: blob:none` — Sonar blames via JGit, which cannot
@@ -158,7 +158,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -174,7 +174,7 @@ jobs:
         shell: bash
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-*
           path: ingestion/coverage-data/
@@ -204,7 +204,7 @@ jobs:
         if: ${{ !cancelled() }}
         id: push-to-sonar
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
@@ -220,7 +220,7 @@ jobs:
 
       - name: Retry 'Push Results to Sonar'
         if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
