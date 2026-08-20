@@ -382,7 +382,7 @@ jobs:
       - name: Send Slack — header
         id: send-header
         if: env.SEND_SLACK_NOTIFICATION == 'true'
-        uses: slackapi/slack-github-action@v4
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -439,7 +439,7 @@ jobs:
 
       - name: Send Slack — thread reply
         if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
-        uses: slackapi/slack-github-action@v4
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
