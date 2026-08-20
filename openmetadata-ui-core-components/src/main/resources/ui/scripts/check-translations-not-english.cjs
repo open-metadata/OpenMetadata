@@ -29,6 +29,17 @@ const LANGS_DIR = path.join(ROOT, 'src', 'locale', 'languages');
 const ALLOWLIST_PATH = path.join(ROOT, 'scripts', 'translation-allowlist.json');
 const PRIMARY = 'en-us.json';
 
+// A value made up only of interpolation placeholders (e.g. "{{brandName}}") has
+// no translatable text, so it is legitimately identical across every locale and
+// must not be treated as an untranslated key.
+function isInterpolationOnly(value) {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.replace(/\{\{[^}]*\}\}/g, '').trim() === ''
+  );
+}
+
 function flatten(obj, prefix, out) {
   for (const [k, v] of Object.entries(obj)) {
     const full = prefix ? `${prefix}.${k}` : k;
@@ -70,6 +81,7 @@ for (const file of langFiles) {
 
   for (const [key, primaryValue] of Object.entries(primaryFlat)) {
     if (langAllowed.has(key)) continue;
+    if (isInterpolationOnly(primaryValue)) continue;
     const langValue = flat[key];
     if (langValue === primaryValue) {
       failures.push({ lang: langCode, key, value: primaryValue });
