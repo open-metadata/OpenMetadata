@@ -1672,6 +1672,20 @@ export const navigateToPortsTab = async (page: Page) => {
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
 
+  // Already on the ports tab: clicking the active tab is a no-op that fires no
+  // /portsView request — waiting on that response would hang until the test
+  // timeout. The selected tab exposes `aria-selected` via its `role="tab"`.
+  const isActive = await page
+    .getByRole('tab', { selected: true })
+    .getByTestId('input_output_ports')
+    .isVisible();
+
+  if (isActive) {
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
+
   const portsViewResponse = page.waitForResponse((response) =>
     response.url().includes('/portsView')
   );
