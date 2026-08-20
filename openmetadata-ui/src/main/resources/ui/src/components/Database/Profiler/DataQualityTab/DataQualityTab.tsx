@@ -28,6 +28,7 @@ import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -651,18 +652,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             data-testid={record.name}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
-            <Link
-              className="tw:block tw:min-w-0 tw:truncate"
-              state={{ breadcrumbData }}
-              title={getEntityName(record)}
-              to={{
-                pathname:
-                  observabilityRouterClassBase.getTestCaseDetailPagePath(
-                    record.fullyQualifiedName ?? ''
-                  ),
-              }}>
-              {getEntityName(record)}
-            </Link>
+            <Tooltip placement="top" title={getEntityName(record)}>
+              <Focusable>
+                <Link
+                  className="tw:block tw:min-w-0 tw:truncate"
+                  state={{ breadcrumbData }}
+                  to={{
+                    pathname:
+                      observabilityRouterClassBase.getTestCaseDetailPagePath(
+                        record.fullyQualifiedName ?? ''
+                      ),
+                  }}>
+                  {getEntityName(record)}
+                </Link>
+              </Focusable>
+            </Tooltip>
           </Box>
         </Table.Cell>
         {showTableColumn && (

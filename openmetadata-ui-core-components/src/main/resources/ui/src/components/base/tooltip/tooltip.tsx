@@ -1,5 +1,6 @@
 import { cx } from '@/utils/cx';
 import type { ReactNode } from 'react';
+import { forwardRef } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   TooltipProps as AriaTooltipProps,
@@ -7,6 +8,7 @@ import type {
 } from 'react-aria-components';
 import {
   Button as AriaButton,
+  Focusable as AriaFocusable,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
@@ -126,7 +128,7 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:text-xs tw:font-semibold tw:text-white">
+              <span className="tw:break-all tw:text-xs tw:font-semibold tw:text-white">
                 {title}
               </span>
 
@@ -145,21 +147,29 @@ export const Tooltip = ({
 
 type TooltipTriggerProps = AriaButtonProps;
 
-export const TooltipTrigger = ({
-  children,
-  className,
-  ...buttonProps
-}: TooltipTriggerProps) => {
+// AriaTooltipTrigger passes its hover/focus-open handlers down through
+// FocusableContext, not through cloned props or a plain ref - AriaButton never
+// reads that context (it only reads ButtonContext), so wrapping it directly
+// silently drops the tooltip's open/close wiring even though the ref itself
+// gets through. AriaFocusable is the react-aria primitive that actually reads
+// FocusableContext and clones the merged handlers onto its single child.
+export const TooltipTrigger = forwardRef<
+  HTMLButtonElement,
+  TooltipTriggerProps
+>(function TooltipTrigger({ children, className, ...buttonProps }, ref) {
   return (
-    <AriaButton
-      {...buttonProps}
-      className={(values) =>
-        cx(
-          'tw:h-max tw:w-max tw:outline-hidden',
-          typeof className === 'function' ? className(values) : className
-        )
-      }>
-      {children}
-    </AriaButton>
+    <AriaFocusable>
+      <AriaButton
+        ref={ref}
+        {...buttonProps}
+        className={(values) =>
+          cx(
+            'tw:h-max tw:w-max tw:outline-hidden',
+            typeof className === 'function' ? className(values) : className
+          )
+        }>
+        {children}
+      </AriaButton>
+    </AriaFocusable>
   );
-};
+});
