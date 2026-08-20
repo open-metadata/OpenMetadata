@@ -72,6 +72,7 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
@@ -172,10 +173,6 @@ const DomainDetails = ({
       (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
     [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
   );
-  const activeTab = useMemo(
-    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
-    [activeTabOverride, routeParams.tab]
-  ) as EntityTabs;
   const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
@@ -212,6 +209,10 @@ const DomainDetails = ({
   );
   const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
+  // Explicit selection (tree-view override or URL); undefined on the landing URL.
+  const selectedTab = (activeTabOverride ?? routeParams.tab) as
+    | EntityTabs
+    | undefined;
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -809,7 +810,7 @@ const DomainDetails = ({
       subDomainsCount,
       dataProductsCount,
       assetCount,
-      activeTab,
+      activeTab: selectedTab,
       onAddDataProduct,
       queryFilter,
       assetTabRef,
@@ -844,7 +845,7 @@ const DomainDetails = ({
     handleAssetClick,
     assetCount,
     dataProductsCount,
-    activeTab,
+    selectedTab,
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
@@ -853,6 +854,13 @@ const DomainDetails = ({
     fetchDomainAssets,
     handleTabChange,
   ]);
+
+  // Resolve to the first rendered tab when the selection is absent/not rendered.
+  const activeTab = getRenderedActiveTab(
+    tabs,
+    selectedTab,
+    EntityTabs.DOCUMENTATION
+  );
 
   useEffect(() => {
     fetchDomainPermission();
@@ -1035,6 +1043,7 @@ const DomainDetails = ({
 
         <GenericProvider<Domain>
           muiTags
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}
