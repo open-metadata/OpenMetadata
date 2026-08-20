@@ -28,7 +28,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -170,8 +170,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
         item.type ?? '',
         EntityIconSize.Size14
       );
-      const wrapper = document.createElement('div');
-      ReactDOM.render(
+      const markup = ReactDOMServer.renderToStaticMarkup(
         <div className="d-flex items-center gap-2">
           {icon}
           <div>
@@ -188,11 +187,17 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
               <span className="font-medium truncate w-56">{item.name}</span>
             </div>
           </div>
-        </div>,
-        wrapper
+        </div>
       );
+      const renderedDocument = new DOMParser().parseFromString(
+        markup,
+        'text/html'
+      );
+      const renderedItem = renderedDocument.body.firstElementChild;
 
-      return wrapper;
+      return renderedItem
+        ? (document.importNode(renderedItem, true) as HTMLElement)
+        : document.createElement('div');
     }, []);
     /**
      * Prepare modules for editor
