@@ -117,25 +117,24 @@ const openPipelineActions = async (page: Page) => {
 
   // AgentOverflowMenu recomputes its item list from the `permissions` prop on
   // every render, but the async per-FQN permission fetch can still be in
-  // flight when the menu is first opened — some items (edit-gated: redeploy,
-  // edit, pause/resume) are briefly absent. Close and reopen until the
-  // permission-gated items are present instead of polling a single stale
-  // open instance.
+  // flight when the menu is first opened. Wait for Edit: unlike Re-deploy, it
+  // is not conditional on whether the pipeline triggered by the previous test
+  // is still running.
   await expect
     .poll(
       async () => {
         await actionButton.click();
         await actionsDropdown.waitFor();
-        const hasReDeploy = await actionsDropdown
-          .getByTestId('re-deploy-button')
+        const hasEdit = await actionsDropdown
+          .getByTestId('edit-button')
           .isVisible()
           .catch(() => false);
-        if (!hasReDeploy) {
+        if (!hasEdit) {
           await page.keyboard.press('Escape');
           await actionsDropdown.waitFor({ state: 'hidden' });
         }
 
-        return hasReDeploy;
+        return hasEdit;
       },
       { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
     )
@@ -672,9 +671,6 @@ test.describe(
       const actionsDropdown = page.getByTestId('actions-dropdown');
 
       await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
-      await expect(
-        actionsDropdown.getByTestId('re-deploy-button')
-      ).toBeVisible();
       await expect(
         getAgentCard(page, ingestionPipelineName).getByTestId(
           'run-agent-button'
