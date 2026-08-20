@@ -38,6 +38,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -155,16 +156,18 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: remove the requester from the assignees. For
-      // non-workflow-managed tasks only, keep them when no one else is available so the
-      // task stays actionable; workflow-managed tasks (e.g. Data Access Requests) rely on
-      // the admin fallback below instead.
-      String updatedByEntityLink = resolveUpdatedByEntityLink(varHandler);
-      if (updatedByEntityLink != null) {
-        boolean removed = assigneeList.remove(updatedByEntityLink);
-        if (removed && assigneeList.isEmpty() && !workflowManagedTask) {
-          assigneeList.add(updatedByEntityLink);
-        }
+      // Prevent self-approval: remove the requester from the assignees. Task-managed workflows
+      // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
+      // workflows (glossary term / tag approval, certification changes, …) publish it as the
+      // global `updatedBy`. Both are checked because each variable is authoritative for its own
+      // workflow family — reading only one silently leaves the other's requester on the list. For
+      // non-workflow-managed tasks only, keep the requester when no one else is available so the
+      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
+      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
+      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
+      if (removedRequester && assigneeList.isEmpty() && !workflowManagedTask) {
+        assigneeList.addAll(preRemovalAssignees);
       }
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
@@ -175,7 +178,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
       if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
         List<String> admins = resolveAdminAssignees();
-        admins.remove(updatedByEntityLink);
+        admins.removeAll(requesterEntityLinks);
         assigneeList.addAll(admins);
         if (assigneeList.isEmpty()) {
           LOG.warn(
@@ -235,21 +238,47 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     return List.of();
   }
 
-  private String resolveUpdatedByEntityLink(WorkflowVariableHandler varHandler) {
-    String result = null;
+  /**
+   * Collects every possible requester entity-link surfaced by this execution. Task-managed
+   * workflows (DataAccessRequest, GlossaryApproval, RequestApproval) publish the requester as
+   * {@code taskUpdatedBy} via {@link
+   * org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables}; entity
+   * workflows (glossary-term / tag approval, certification changes, …) publish it as the global
+   * {@code updatedBy} variable set by the workflow trigger. Both are read every time — no
+   * fallback — so a workflow family that populates only one variable does not silently leak the
+   * requester onto its own approval task's assignees list.
+   */
+  private Set<String> resolveRequesterEntityLinks(
+      final WorkflowVariableHandler varHandler, final DelegateExecution execution) {
+    Set<String> requesterEntityLinks = new LinkedHashSet<>();
     try {
-      String updatedBy =
-          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
-      if (updatedBy != null && !updatedBy.trim().isEmpty()) {
-        result =
-            new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
-                .getLinkString();
+      // Flowable stores process variables as untyped Object; instanceof pattern-matches on String
+      // instead of a blind cast so a non-string / null variable does not throw and reintroduce the
+      // self-approval leak via the catch-all below (Copilot review, 2026-08-04).
+      Object taskUpdatedBy = execution.getVariable(WorkflowStartVariables.TASK_UPDATED_BY);
+      if (taskUpdatedBy instanceof String taskUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, taskUpdatedByStr);
       }
-    } catch (Exception e) {
+      Object globalUpdatedBy =
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (globalUpdatedBy instanceof String globalUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, globalUpdatedByStr);
+      }
+    } catch (Exception exc) {
       LOG.warn(
-          "Failed to retrieve updatedBy variable for self-approval prevention: {}", e.getMessage());
+          "Failed to retrieve updatedBy variables for self-approval prevention: {}",
+          exc.getMessage());
     }
-    return result;
+    return requesterEntityLinks;
+  }
+
+  private void addRequesterEntityLink(
+      final Set<String> requesterEntityLinks, final String updatedBy) {
+    if (updatedBy != null && !updatedBy.trim().isEmpty()) {
+      requesterEntityLinks.add(
+          new MessageParser.EntityLink("user", FullyQualifiedName.quoteName(updatedBy))
+              .getLinkString());
+    }
   }
 
   private List<String> resolveAdminAssignees() {

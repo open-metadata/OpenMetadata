@@ -1163,7 +1163,8 @@ export const confirmationDragAndDropGlossary = async (
     .getByTestId('confirmation-modal')
     .getByRole('button', { name: 'Move' })
     .click();
-  await patchGlossaryTermResponse;
+  const patchResponse = await patchGlossaryTermResponse;
+  expect(patchResponse.status()).toBe(200);
 };
 
 export const changeTermHierarchyFromModal = async (

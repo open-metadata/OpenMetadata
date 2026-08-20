@@ -4,11 +4,13 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -18,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -67,6 +70,36 @@ class TestCaseRepositoryTest {
   }
 
   @Test
+  void readsRevisionsThroughTheCallersDaoRatherThanTheGlobalOne() {
+    // A repository writes revisions through the daoCollection it captured at construction and then
+    // reads them straight back. Resolving the mutable Entity.getCollectionDAO() for that read can
+    // land on a different Jdbi's connection, and MySQL pins its REPEATABLE READ snapshot at the
+    // transaction's first read, so the rows just written come back missing.
+    UUID testCaseId = UUID.randomUUID();
+    CollectionDAO callerDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(callerDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            List.of(testCaseId.toString()), TestCaseRepository.TEST_SUITES_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    testCaseId,
+                    TestCaseRepository.TEST_SUITES_REVISION_EXTENSION,
+                    "{\"revision\":4}")));
+    CollectionDAO globalDAO = mock(CollectionDAO.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(globalDAO);
+
+      assertEquals(
+          Map.of(testCaseId, 4L),
+          TestCaseRepository.getTestSuiteRelationshipRevisions(callerDAO, List.of(testCaseId)));
+      verifyNoInteractions(globalDAO);
+    }
+  }
+
+  @Test
   void postUpdateHydratesTestSuitesBeforeLifecycleUpdate() {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
@@ -108,7 +141,7 @@ class TestCaseRepositoryTest {
 
   @Test
   void hardDeleteCleanupDeletesTestCaseResultsExactlyOnce() {
-    DeleteBoundaries boundaries = new DeleteBoundaries(TEST_CASE_FQN);
+    DeleteBoundaries boundaries = new DeleteBoundaries();
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       TestCaseRepository repository = boundaries.registerRepositories(entity);
@@ -140,6 +173,34 @@ class TestCaseRepositoryTest {
     }
   }
 
+  @Test
+  void bulkHardDeleteCleanupUsesOneBatchedDelete() {
+    DeleteBoundaries boundaries = new DeleteBoundaries();
+    String secondFqn = TEST_CASE_FQN + "_two";
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      TestCaseRepository repository = boundaries.registerRepositories(entity);
+      TestCase first =
+          testCase(UUID.randomUUID(), "first", entityReference(Entity.TEST_SUITE, "s"));
+      TestCase second =
+          testCase(UUID.randomUUID(), "second", entityReference(Entity.TEST_SUITE, "s"))
+              .withFullyQualifiedName(secondFqn);
+
+      repository.bulkEntitySpecificCleanup(List.of(first, second), "admin");
+
+      await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.searchDeletes.get() == 1);
+      assertEquals(List.of(TEST_CASE_FQN, secondFqn), boundaries.deletedTestCaseFQNs.get());
+      assertEquals(1, boundaries.dimensionDeletes.get());
+      assertEquals(1, boundaries.searchDeletes.get());
+      assertEquals(
+          "!doc['testCaseFQN.keyword'].empty && "
+              + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
+          boundaries.searchDeleteScript.get());
+      assertEquals(
+          Map.of("fqns", List.of(TEST_CASE_FQN, secondFqn)), boundaries.searchDeleteParams.get());
+    }
+  }
+
   /**
    * Mocks of the two boundaries a test case result delete reaches — the JDBI DAOs (the database) and
    * {@link SearchRepository} (the search cluster) — each counting how many times it is called.
@@ -148,11 +209,14 @@ class TestCaseRepositoryTest {
     private final AtomicInteger timeSeriesDeletes = new AtomicInteger();
     private final AtomicInteger dimensionDeletes = new AtomicInteger();
     private final AtomicInteger searchDeletes = new AtomicInteger();
+    private final AtomicReference<List<String>> deletedTestCaseFQNs = new AtomicReference<>();
+    private final AtomicReference<String> searchDeleteScript = new AtomicReference<>();
+    private final AtomicReference<Map<String, Object>> searchDeleteParams = new AtomicReference<>();
     private final Set<String> deleteThreadNames = ConcurrentHashMap.newKeySet();
     private final CollectionDAO collectionDAO = mock(CollectionDAO.class);
     private final SearchRepository searchRepository = mock(SearchRepository.class);
 
-    private DeleteBoundaries(String testCaseFqn) {
+    private DeleteBoundaries() {
       CollectionDAO.DataQualityDataTimeSeriesDAO dataQualityDao =
           mock(CollectionDAO.DataQualityDataTimeSeriesDAO.class);
       CollectionDAO.TestCaseDimensionResultTimeSeriesDAO dimensionDao =
@@ -165,14 +229,21 @@ class TestCaseRepositoryTest {
       doAnswer(
               invocation -> {
                 deleteThreadNames.add(Thread.currentThread().getName());
+                List<String> testCaseFQNs = invocation.getArgument(0);
+                deletedTestCaseFQNs.set(List.copyOf(testCaseFQNs));
                 return timeSeriesDeletes.incrementAndGet();
               })
           .when(dataQualityDao)
-          .deleteAll(testCaseFqn);
+          .deleteAllBatch(anyList());
       doAnswer(invocation -> dimensionDeletes.incrementAndGet())
           .when(dimensionDao)
-          .deleteAll(testCaseFqn);
-      doAnswer(invocation -> searchDeletes.incrementAndGet())
+          .deleteAllBatch(anyList());
+      doAnswer(
+              invocation -> {
+                searchDeleteScript.set(invocation.getArgument(1));
+                searchDeleteParams.set(Map.copyOf(invocation.getArgument(2)));
+                return searchDeletes.incrementAndGet();
+              })
           .when(searchRepository)
           .deleteByScript(eq(Entity.TEST_CASE_RESULT), anyString(), anyMap());
     }

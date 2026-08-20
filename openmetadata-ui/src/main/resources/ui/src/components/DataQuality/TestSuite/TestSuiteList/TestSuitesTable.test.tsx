@@ -167,11 +167,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...rest }) => (
-      <div {...rest}>{children}</div>
-    )),
+  Link: jest.fn().mockImplementation(({ children, state, ...rest }) => (
+    <div data-state={JSON.stringify(state)} {...rest}>
+      {children}
+    </div>
+  )),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
@@ -195,6 +195,11 @@ jest.mock(
 jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   __esModule: true,
   default: {
+    getDataQualityPagePath: jest
+      .fn()
+      .mockImplementation(
+        (tab: string, subTab: string) => `/data-quality/${tab}/${subTab}`
+      ),
     getTestSuitePath: jest
       .fn()
       .mockImplementation((fqn: string) => `/test-suites/${fqn}`),
@@ -463,6 +468,18 @@ describe('TestSuitesTable component', () => {
 
     expect(link).toBeInTheDocument();
     expect(link.textContent).toBe('svc.db.schema.table');
+    expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toStrictEqual({
+      breadcrumbData: [
+        {
+          name: 'label.test-suite-plural',
+          url: '/data-quality/test-suites/table-suites',
+        },
+        {
+          name: 'svc.db.schema.table',
+          url: '/table/svc.db.schema.table/profiler/data-quality',
+        },
+      ],
+    });
   });
 
   it('should fall back to name/zero when fqn, id and summary are missing', () => {
