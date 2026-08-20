@@ -102,11 +102,15 @@ jobs:
             echo "::warning::Could not fetch metadata for PR #${number}; notifying with links only."
             pr_json='{}'
           fi
+          # A newline in an author-controlled title would end the key=value
+          # record and let the rest inject further step outputs, so both fields
+          # are flattened to a single line before they are written.
+          flatten='(. // "") | gsub("[\r\n]+"; " ")'
           {
             echo "found=true"
             echo "number=$number"
-            echo "title=$(printf '%s' "$pr_json" | jq -r '.title // ""')"
-            echo "author=$(printf '%s' "$pr_json" | jq -r '.user.login // ""')"
+            echo "title=$(printf '%s' "$pr_json" | jq -r ".title | $flatten")"
+            echo "author=$(printf '%s' "$pr_json" | jq -r ".user.login | $flatten")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Resolve the owning on-duty team
