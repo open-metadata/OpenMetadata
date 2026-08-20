@@ -13,6 +13,10 @@
 import { render } from '@testing-library/react';
 import { LogoutPage } from './LogoutPage';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 const mockOnLogoutHandler = jest.fn();
 
 // Mock the useApplicationStore hook

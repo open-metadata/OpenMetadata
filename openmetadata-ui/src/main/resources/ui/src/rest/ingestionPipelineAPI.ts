@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateIngestionPipeline,
   PipelineType,
@@ -63,6 +64,10 @@ export const getIngestionPipelines = async (data: {
   serviceType?: string;
   limit?: number;
   applicationType?: PipelineType;
+  // Order by the effective display name (`displayName` falling back to `name`) — the value the
+  // Name column renders — instead of the endpoint's default `name` order.
+  sortField?: 'displayName';
+  sortOrder?: SORT_ORDER;
 }) => {
   const { arrQueryFields, serviceFilter, paging, pipelineType, ...rest } = data;
 

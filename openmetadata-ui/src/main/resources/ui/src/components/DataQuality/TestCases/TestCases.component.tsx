@@ -20,7 +20,7 @@ import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -175,14 +175,15 @@ export const TestCases = () => {
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
               <Form.Item
-                className="m-0 w-40"
+                className="m-0 w-64"
                 label={t('label.status')}
                 name="testCaseStatus">
                 <Select
                   allowClear
                   data-testid="status-select-filter"
                   getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_STATUS_OPTION}
+                  mode="multiple"
+                  options={TEST_CASE_STATUS_FILTER_OPTIONS}
                   placeholder={t('label.status')}
                 />
               </Form.Item>
