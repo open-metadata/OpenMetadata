@@ -556,6 +556,59 @@ describe('AddDataContract', () => {
       expect(mockOnSave).toHaveBeenCalled();
     });
 
+    it('should not patch entityStatus when editing without touching the status', async () => {
+      render(
+        <AddDataContract
+          contract={mockContract}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      // Change an unrelated field; mockContract is already Approved, so a
+      // spurious /entityStatus op would silently rewrite an existing status.
+      await act(async () => {
+        fireEvent.click(screen.getByText('Change'));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('save-contract-btn'));
+      });
+
+      expect((updateContract as jest.Mock).mock.calls[0][1]).toEqual(
+        expect.not.arrayContaining([
+          expect.objectContaining({ path: '/entityStatus' }),
+        ])
+      );
+    });
+
+    it('should patch entityStatus when the author changes the status', async () => {
+      render(
+        <AddDataContract
+          contract={mockContract}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('entity-status-change-btn'));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('save-contract-btn'));
+      });
+
+      expect((updateContract as jest.Mock).mock.calls[0][1]).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: '/entityStatus',
+            value: EntityStatus.InReview,
+          }),
+        ])
+      );
+    });
+
     it('should handle save errors gracefully', async () => {
       const mockError = new Error('Save failed');
       (createContract as jest.Mock).mockRejectedValue(mockError);

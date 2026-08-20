@@ -18,6 +18,7 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { DATA_CONTRACT_AUTHORING_STATUS_OPTIONS } from '../../../constants/DataContract.constants';
 import { EntityStatus } from '../../../generated/entity/data/dataContract';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
@@ -76,11 +77,12 @@ describe('ContractDetailFormTab entity status control', () => {
 
     const options = document.querySelectorAll('.ant-select-item-option');
 
-    expect(Array.from(options).map((option) => option.textContent)).toEqual([
-      'label.draft',
-      'label.in-review',
-      'label.approved',
-    ]);
+    // Compare against the authoring list itself rather than literal i18n keys,
+    // so renaming a key cannot fail this for a non-behavioural reason. Which
+    // statuses that list may contain is asserted in ContractDetailFormTab.test.tsx.
+    expect(Array.from(options).map((option) => option.textContent)).toEqual(
+      DATA_CONTRACT_AUTHORING_STATUS_OPTIONS.map(({ labelKey }) => labelKey)
+    );
   });
 
   it('should report the picked status to the parent form', async () => {
