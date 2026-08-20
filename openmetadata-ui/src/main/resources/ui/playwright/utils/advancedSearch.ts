@@ -310,16 +310,22 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
-      // Match the raw URL-encoded search term — the backend sends the search
-      // value as a plain URL parameter (no ES escaping). Using
-      // escapeESReservedCharacters first turns dashes into "\-" which
-      // encodeURIComponent then renders as "%5C-", which never matches the
-      // literal "-" in the actual aggregate URL.
-      const aggregateRes2 = page.waitForResponse(
-        (response) =>
-          response.url().includes(`/api/v1/search/aggregate`) &&
-          response.url().includes(encodeURIComponent(searchData))
-      );
+      // The app builds the aggregate value as
+      // `.*${escapeESReservedCharacters(value)}.*`, so reserved characters in
+      // the entity name — notably the dashes in `pw-table-<uuid>` — arrive as
+      // "\-" (URL-encoded "%5C-"). Matching the raw `searchData` substring (or
+      // encodeURIComponent(searchData), which leaves dashes bare) therefore
+      // never matches. Decode the `value` param and strip the ES escaping
+      // before comparing, so the predicate holds whether or not the name
+      // contains reserved characters.
+      const aggregateRes2 = page.waitForResponse((response) => {
+        if (!response.url().includes('/api/v1/search/aggregate')) {
+          return false;
+        }
+        const value = new URL(response.url()).searchParams.get('value') ?? '';
+
+        return value.replace(/\\/g, '').includes(searchData);
+      });
 
       await dropdownInput.fill(searchData);
 

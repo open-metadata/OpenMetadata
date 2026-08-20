@@ -231,20 +231,33 @@
   }
 }
 
-// Persona rule editor (io.collate PersonaAIContext): push the AND/OR conjunction
-// toggle up to the group header (as the workflow / JSONLogic builder does)
-// instead of the centered default that overlaps the condition rows. Scoped to
-// the `.persona-context-rule-builder` wrapper so other elasticsearch query
-// builders (ScopeFilter, DataContract) are unaffected.
+// Persona rule editor (io.collate PersonaAIContext): render the AND/OR
+// conjunction toggle as its own row at the top of the group (as the workflow /
+// JSONLogic builder does) instead of the centered default that overlaps the
+// condition rows. Scoped to the `.persona-context-rule-builder` wrapper so
+// other elasticsearch query builders (ScopeFilter, DataContract) are
+// unaffected.
 .persona-context-rule-builder {
   .query-builder-card.elasticsearch .query-builder-container {
     .group-or-rule-container.group-container
       > .group.group-or-rule
       > .group--header {
       order: 0;
+      // Reserve vertical space below the toggle so it never sits on top of the
+      // first condition's field label/input.
+      margin-bottom: var(--om-space-12);
 
       .group--conjunctions {
-        top: -75px;
+        // The old `top: -75px` targeted a statically-positioned box and did
+        // nothing — the toggle stayed crammed on top of the first rule where a
+        // sibling <label> (higher in the stacking order than the toggle's
+        // `tw:z-0`) intercepted clicks. Make it positioned (so `top` applies),
+        // give it its own stacking context above the rows so pointer events
+        // reach it, and lift it into the empty space at the top of the card so
+        // it no longer overlaps the first condition's field.
+        position: relative;
+        top: calc(-1 * var(--om-space-24));
+        z-index: var(--om-z-2);
       }
 
       // The persona editor renders its own "Add condition" button below.
