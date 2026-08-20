@@ -44,20 +44,19 @@ import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Regression test for GitHub Issue #28923: after a domain is HARD deleted and a new domain is
- * created with the same name (same FQN, new UUID), neither the deleted domain's assets nor its
- * activity history may reappear under the new domain.
+ * created with the same name (same FQN, new UUID), assets that belonged to the deleted domain must
+ * NOT reappear under the new domain.
  *
- * <p>Assets: the domain-assets listing filters by {@code domains.fullyQualifiedName} (see {@code
+ * <p>The domain-assets listing filters by {@code domains.fullyQualifiedName} (see {@code
  * InheritedFieldEntitySearch.forDomain}). Before the fix, the domain hard-delete search cleanup in
  * {@code SearchRepository.deleteOrUpdateChildren} matched the singular {@code domain.id} and ran
  * {@code ctx._source.remove('domain')} — but assets store the plural {@code domains} array, so the
  * stale domain entry was never stripped from their search documents and a recreated same-FQN domain
  * matched those stale docs.
  *
- * <p>Activity: the activity stream is queried by {@code aboutFqnHash} (FQN based). Before the fix,
- * nothing purged {@code activity_stream} on hard delete, so a recreated same-FQN domain inherited
- * the dead domain's events. The fix purges the entity's activity by id when the hard-delete event
- * is consumed ({@code ActivityStreamPublisher}).
+ * <p>The activity-history half of #28923 is covered deterministically by {@code
+ * ActivityStreamPublisherTest} (the activity write path is an async change-event consumer, so an
+ * end-to-end assertion here would be timing-dependent).
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -105,63 +104,6 @@ public class DomainRecreateSameNameIT {
                     domainAssetsContain(adminClient, domainV2.getId().toString(), table.getId()),
                     "Issue #28923: asset from the hard-deleted domain reappeared under the "
                         + "recreated same-named domain"));
-  }
-
-  @Test
-  void test_recreatedDomainDoesNotInheritDeletedDomainActivityFeed(TestNamespace ns)
-      throws Exception {
-    OpenMetadataClient adminClient = SdkClients.adminClient();
-    String domainName = ns.shortPrefix() + "_feed";
-
-    Domain domainV1 = createDomain(adminClient, domainName);
-    String oldDomainId = domainV1.getId().toString();
-    String entityLink = "<#E::domain::" + domainV1.getFullyQualifiedName() + ">";
-
-    Awaitility.await("original domain's creation activity is recorded")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () ->
-                assertTrue(
-                    feedContains(adminClient, entityLink, oldDomainId),
-                    "Sanity: original domain should have activity referencing its own id"));
-
-    Map<String, String> hardDelete = new HashMap<>();
-    hardDelete.put("hardDelete", "true");
-    hardDelete.put("recursive", "true");
-    adminClient.domains().delete(oldDomainId, hardDelete);
-
-    Domain domainV2 = createDomain(adminClient, domainName);
-    assertNotEquals(
-        domainV1.getId(), domainV2.getId(), "Recreated domain must be a new entity with a new id");
-
-    Awaitility.await("recreated domain must not inherit the deleted domain's activity feed")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () ->
-                assertFalse(
-                    feedContains(adminClient, entityLink, oldDomainId),
-                    "Issue #28923: activity history of the hard-deleted domain (id "
-                        + oldDomainId
-                        + ") reappeared under the recreated same-named domain"));
-  }
-
-  private boolean feedContains(OpenMetadataClient client, String entityLink, String entityId)
-      throws Exception {
-    String response =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                "/v1/activity/about",
-                null,
-                RequestOptions.builder()
-                    .queryParam("entityLink", entityLink)
-                    .queryParam("limit", "50")
-                    .queryParam("days", "30")
-                    .build());
-    return response.contains("\"id\":\"" + entityId + "\"");
   }
 
   private boolean domainAssetsContain(OpenMetadataClient client, String domainId, Object assetId)
