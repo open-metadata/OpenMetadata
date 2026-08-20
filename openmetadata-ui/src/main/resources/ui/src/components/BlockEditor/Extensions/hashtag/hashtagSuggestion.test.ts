@@ -63,7 +63,11 @@ const makeSuggestionProps = (
   editorOverrides: Partial<SuggestionProps['editor']> = {}
 ): Partial<SuggestionProps> => ({
   clientRect,
-  editor: { view: {}, isEditable: true, ...editorOverrides } as SuggestionProps['editor'],
+  editor: {
+    view: {},
+    isEditable: true,
+    ...editorOverrides,
+  } as SuggestionProps['editor'],
   items: [],
   command: jest.fn(),
   query: '',
@@ -91,7 +95,9 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
       const handler = hashtagSuggestion().render();
 
       handler.onStart(
-        makeSuggestionProps(() => new DOMRect(), { isEditable: false }) as SuggestionProps
+        makeSuggestionProps(() => new DOMRect(), {
+          isEditable: false,
+        }) as SuggestionProps
       );
 
       expect(mockTippy).not.toHaveBeenCalled();
@@ -134,7 +140,9 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
   describe('onUpdate', () => {
     it('should not call setProps when clientRect is null', () => {
       const handler = hashtagSuggestion().render();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
+      handler.onStart(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      );
 
       handler.onUpdate(makeSuggestionProps(null) as SuggestionProps);
 
@@ -143,11 +151,14 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
 
     it('should pass a getReferenceClientRect that returns DOMRect when clientRect returns null', () => {
       const handler = hashtagSuggestion().render();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
+      handler.onStart(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      );
 
       handler.onUpdate(makeSuggestionProps(() => null) as SuggestionProps);
 
-      const { getReferenceClientRect } = mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } =
+        mockTippyInstance.setProps.mock.calls[0][0];
       const result = getReferenceClientRect();
 
       expect(result).toBeInstanceOf(DOMRect);
@@ -156,11 +167,14 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
     it('should pass a getReferenceClientRect that returns the rect from a valid clientRect', () => {
       const rect = new DOMRect(5, 10, 200, 30);
       const handler = hashtagSuggestion().render();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
+      handler.onStart(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      );
 
       handler.onUpdate(makeSuggestionProps(() => rect) as SuggestionProps);
 
-      const { getReferenceClientRect } = mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } =
+        mockTippyInstance.setProps.mock.calls[0][0];
 
       expect(getReferenceClientRect()).toBe(rect);
     });
