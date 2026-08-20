@@ -473,6 +473,8 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
         } finally {
           setIsLoading(false);
         }

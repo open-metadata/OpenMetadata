@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import * as domainAPI from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
 const mockDomains: Domain[] = [
@@ -431,6 +433,30 @@ describe('DomainSelectableTree', () => {
 
     await waitFor(() => {
       expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
+    });
+  });
+
+  it('should surface a failed search instead of rejecting unhandled', async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+    });
+
+    // the loader must clear so the tree is usable again after the failure
+    await waitFor(() => {
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     });
   });
 });
