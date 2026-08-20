@@ -104,7 +104,7 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext | None:
     """
     Method to get SSL Context
     """
@@ -135,7 +135,9 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         )
         return ssl_context  # noqa: RET504
 
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
+    raise ValueError(
+        "Elasticsearch SSL certificate configuration must include a CA certificate or a client certificate"
+    )
 
 
 def _cleanup_staging_dir(staging_dir: str | None) -> None:

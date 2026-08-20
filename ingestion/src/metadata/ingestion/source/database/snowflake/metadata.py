@@ -350,9 +350,14 @@ class SnowflakeSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
+            quoted_database_name = self.engine.dialect.identifier_preparer.quote_identifier(
+                fqn.unquote_name(database_name)
+            )
             self.external_location_map = {
                 (row.database_name, row.schema_name, row.name): row.location
-                for row in conn.execute(text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)))
+                for row in conn.execute(
+                    text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=quoted_database_name))
+                )
             }
 
     def set_schema_tags_map(self, database_name: str) -> None:
@@ -1267,8 +1272,10 @@ class SnowflakeSource(
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
+            quoted_schema = self.engine.dialect.identifier_preparer.quote_identifier(fqn.unquote_name(schema_name))
             cursor = self.connection.execute(
-                text(SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name))
+                text(SNOWFLAKE_GET_STREAM.format(schema=quoted_schema)),
+                {"stream_name": table_name},
             )
             try:
                 result = cursor.fetchone()

@@ -27,6 +27,7 @@ interface MentionModule {
     item: Record<string, unknown>,
     insertItem: (item: unknown) => void
   ) => void;
+  renderItem: (item: Record<string, unknown>) => HTMLElement;
 }
 
 interface CapturedQuillProps {
@@ -110,6 +111,25 @@ describe('Test FeedEditor Component', () => {
     const editorWrapper = await findByTestId(container, 'editor-wrapper');
 
     expect(editorWrapper).toBeInTheDocument();
+  });
+
+  it('renders entity mention names and breadcrumbs as text', () => {
+    render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const payload = '<img src=x onerror="alert(1)">';
+
+    const suggestion = mentionModule().renderItem({
+      id: 'entity-id',
+      value: 'entity-fqn',
+      link: '/table/entity-fqn',
+      name: payload,
+      type: 'table',
+      breadcrumbs: [{ name: payload }],
+    });
+
+    expect(suggestion.querySelector('img')).not.toBeInTheDocument();
+    expect(suggestion).toHaveTextContent(`${payload}${payload}`);
   });
 
   it("Should call onSave method on 'Enter' keydown", async () => {

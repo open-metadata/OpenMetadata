@@ -20,9 +20,8 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/ui';
 import { Plus, Trash01, X } from '@untitledui/icons';
-import DOMPurify from 'dompurify';
-import parse from 'html-react-parser';
-import { isArray, isEmpty } from 'lodash';
+import { escapeRegExp, isArray, isEmpty } from 'lodash';
+import React from 'react';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -33,12 +32,35 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
 type DropdownItem = { key: string; label: JSX.Element };
+const renderSearchLabel = (label: string, searchKey: string) => {
+  if (!searchKey) {
+    return label;
+  }
+
+  const matches = label.matchAll(new RegExp(escapeRegExp(searchKey), 'gi'));
+  const parts: React.ReactNode[] = [];
+  let previousIndex = 0;
+
+  for (const match of matches) {
+    const matchIndex = match.index;
+    if (matchIndex > previousIndex) {
+      parts.push(label.slice(previousIndex, matchIndex));
+    }
+    parts.push(<mark key={`match-${matchIndex}`}>{match[0]}</mark>);
+    previousIndex = matchIndex + match[0].length;
+  }
+
+  if (previousIndex < label.length) {
+    parts.push(label.slice(previousIndex));
+  }
+
+  return parts;
+};
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
@@ -138,11 +160,7 @@ export const generateSearchDropdownLabel = (
           <span
             className="dropdown-option-label tw:truncate tw:block"
             title={option.label}>
-            <span>
-              {parse(
-                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
-              )}
-            </span>
+            <span>{renderSearchLabel(option.label, searchKey)}</span>
           </span>
           {option.description && (
             <span

@@ -147,6 +147,16 @@ STREAM_QUERY_MAPS = {
 }
 
 
+def _quote_identifier(identifier: str) -> str:
+    """Quote one Snowflake identifier without interpreting dots as separators."""
+    return dialect.identifier_preparer.quote_identifier(fqn.unquote_name(identifier))
+
+
+def _qualified_identifier(*identifiers: Optional[str]) -> str:  # noqa: UP045
+    """Build a safely quoted Snowflake identifier from individual name parts."""
+    return ".".join(_quote_identifier(identifier) for identifier in identifiers if identifier is not None)
+
+
 def _denormalize_quote_join(*idents):
     ip = dialect.identifier_preparer
     split_idents = reduce(
@@ -295,7 +305,7 @@ def get_table_names(self, connection, schema: str, **kw):
 
     query = queries["default"]
 
-    cursor = connection.execute(text(query.format(**parameters)))
+    cursor = connection.execute(text(query.format(**parameters)), parameters)
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -334,7 +344,7 @@ def get_view_names(self, connection, schema, **kw):
     else:
         query = queries["views"]
 
-    cursor = connection.execute(text(query.format(**parameters)))
+    cursor = connection.execute(text(query.format(**parameters)), parameters)
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
@@ -345,11 +355,9 @@ def get_stream_names(self, connection, schema, **kw):
     incremental = kw.get("incremental")
 
     queries = _get_query_map(incremental, STREAM_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
-
     query = queries["default"]
-
-    cursor = connection.execute(text(query.format(**parameters)))
+    quoted_schema = _quote_identifier(schema)
+    cursor = connection.execute(text(query.format(schema=quoted_schema)))
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[1]), deleted=None) for row in cursor]
     )
@@ -358,8 +366,8 @@ def get_stream_names(self, connection, schema, **kw):
 
 def get_stage_names(self, connection, schema, **kw):
     """Return all stage names in schema."""
-    parameters = {"schema": fqn.unquote_name(schema)}
-    cursor = connection.execute(text(SNOWFLAKE_GET_STAGES.format(**parameters)))
+    quoted_schema = _quote_identifier(schema)
+    cursor = connection.execute(text(SNOWFLAKE_GET_STAGES.format(schema=quoted_schema)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -375,8 +383,10 @@ def get_stage_names(self, connection, schema, **kw):
 
 def get_semantic_view_names(self, connection, schema, **kw):
     """Return all semantic view names in schema from INFORMATION_SCHEMA.SEMANTIC_VIEWS."""
-    parameters = {"schema": fqn.unquote_name(schema)}
-    cursor = connection.execute(text(SNOWFLAKE_GET_SEMANTIC_VIEWS.format(**parameters)))
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_SEMANTIC_VIEWS),
+        {"schema": fqn.unquote_name(schema)},
+    )
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -466,8 +476,8 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
     logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")
 
     schema = schema or self.default_schema_name
-    view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name)))
+    view_name = _qualified_identifier(schema, table_name)
+    cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL), {"view_name": view_name})
     try:
         result = cursor.fetchone()
         if result:
@@ -485,8 +495,11 @@ def get_stream_definition(  # pylint: disable=unused-argument
     Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)))
+    stream_name = _qualified_identifier(schema, stream_name)
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_STREAM_DEFINITION),
+        {"stream_name": stream_name},
+    )
     try:
         result = cursor.fetchone()
         if result:
@@ -502,9 +515,10 @@ def get_semantic_view_definition(  # pylint: disable=unused-argument
 ):
     """Gets the semantic view definition (DDL)."""
     schema = schema or self.default_schema_name
-    semantic_view_name = f'"{schema}"."{semantic_view_name}"' if schema else f'"{semantic_view_name}"'
+    semantic_view_name = _qualified_identifier(schema, semantic_view_name)
     cursor = connection.execute(
-        text(SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION.format(semantic_view_name=semantic_view_name))
+        text(SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION),
+        {"semantic_view_name": semantic_view_name},
     )
     try:
         result = cursor.fetchone()
@@ -850,8 +864,8 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name)))
+    table_name = _qualified_identifier(schema, table_name)
+    cursor = connection.execute(text(SNOWFLAKE_GET_TABLE_DDL), {"table_name": table_name})
     try:
         result = cursor.fetchone()
         if result:
