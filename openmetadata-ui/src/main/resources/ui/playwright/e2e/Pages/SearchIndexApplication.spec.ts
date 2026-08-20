@@ -120,9 +120,7 @@ const installSearchIndexApplication = async (page: Page) => {
   // installed application through its stable detail route instead.
   const appResponse = page.waitForResponse(
     (response) =>
-      response
-        .url()
-        .includes('/api/v1/apps/name/SearchIndexingApplication') &&
+      response.url().includes('/api/v1/apps/name/SearchIndexingApplication') &&
       !response.url().includes('/status') &&
       response.request().method() === 'GET'
   );
