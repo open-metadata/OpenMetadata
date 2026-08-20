@@ -21,6 +21,14 @@ jest.mock(
   })
 );
 
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
+}));
+
 describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
     render(

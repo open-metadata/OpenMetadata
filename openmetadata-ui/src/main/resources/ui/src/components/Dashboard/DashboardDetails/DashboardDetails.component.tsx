@@ -337,9 +337,7 @@ const DashboardDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={getEntityName(dashboardDetails)}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(dashboardDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

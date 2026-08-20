@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -60,6 +59,7 @@ import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -69,6 +69,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -123,6 +124,7 @@ public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String SORT_FIELD_DISPLAY_NAME = "displayName";
   static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
   static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
@@ -237,15 +239,34 @@ public class IngestionPipelineResource
   /**
    * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
    * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
+   *
+   * <p>Deriving the workflow type is part of the lookup, not a precondition of it: an application
+   * pipeline can reach here with no `appConfig` to read the type from, and that has to fall back to
+   * the generic create permission like any other unrecognized type rather than fail the request.
    */
   private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
-    String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+    MetadataOperation operation = CREATE;
     try {
-      return MetadataOperation.valueOf(
-          String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase()));
+      String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+      operation =
+          MetadataOperation.valueOf(
+              String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase(Locale.ROOT)));
     } catch (IllegalArgumentException | NullPointerException e) {
-      return CREATE;
+      LOG.debug(
+          "No specific create operation for ingestion pipeline [{}], falling back to {}",
+          ingestionPipeline.getName(),
+          CREATE);
     }
+    return operation;
+  }
+
+  // Sorting is optional and lenient: only `displayName` is supported, and any other value (or none)
+  // falls through to the default name-ordered listing rather than erroring. The repository reads
+  // the
+  // sort off the filter and swaps in the display-name keyset query, so the resource keeps a single
+  // listInternal path — auth, domain filter and cursor validation are shared, not forked.
+  private boolean isDisplayNameSort(String sortField) {
+    return SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField);
   }
 
   @GET
@@ -290,6 +311,13 @@ public class IngestionPipelineResource
           @QueryParam("pipelineType")
           String pipelineType,
       @Parameter(
+              description =
+                  "Filter Ingestion Pipelines by agent type. Expands to the set of `pipelineType` "
+                      + "values that make up the group, and is intersected with `pipelineType` when both are given.",
+              schema = @Schema(implementation = AgentType.class))
+          @QueryParam("agentType")
+          AgentType agentType,
+      @Parameter(
               description = "Filter Ingestion Pipelines by service Type",
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
@@ -325,15 +353,38 @@ public class IngestionPipelineResource
               description = "List Ingestion Pipelines by provider..",
               schema = @Schema(implementation = ProviderType.class))
           @QueryParam("provider")
-          ProviderType provider) {
+          ProviderType provider,
+      @Parameter(
+              description =
+                  "Optionally order the list by a field instead of the default `name`. Only "
+                      + "`displayName` is supported — it orders by the effective display name "
+                      + "(`displayName` falling back to `name`), the value clients render. Any other "
+                      + "value (or none) falls through to the default `name` ordering rather than "
+                      + "erroring.",
+              schema = @Schema(type = "string", allowableValues = SORT_FIELD_DISPLAY_NAME))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Direction to apply to `sortField`.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("pipelineType", pipelineType)
+            .addQueryParam(
+                "pipelineType", AgentTypeResolver.resolvePipelineTypes(agentType, pipelineType))
             .addQueryParam("serviceType", serviceType)
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
+    if (isDisplayNameSort(sortField)) {
+      filter.withSort(SORT_FIELD_DISPLAY_NAME, sortOrder);
+    }
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -1111,7 +1162,9 @@ public class IngestionPipelineResource
         Object logs = lastIngestionLogs.remove("logs");
         if (logs != null) {
           lastIngestionLogs.put(
-              TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()), logs.toString());
+              PipelineServiceClientInterface.taskKeyOf(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
         }
       } else {
         throw new PipelineServiceClientException(
@@ -1202,7 +1255,8 @@ public class IngestionPipelineResource
               Object logs = logChunk.remove("logs");
               if (logs != null) {
                 logChunk.put(
-                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                    PipelineServiceClientInterface.taskKeyOf(
+                        ingestionPipeline.getPipelineType().toString()),
                     logs.toString());
               }
             } else {
@@ -1456,7 +1510,11 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    repository.recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   private void decryptOrNullify(
