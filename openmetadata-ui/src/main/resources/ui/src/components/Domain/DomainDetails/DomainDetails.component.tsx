@@ -73,6 +73,7 @@ import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -225,18 +226,10 @@ const DomainDetails = ({
   );
   const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
-  // The landing URL has no `:tab` segment and the tree view keeps the tab in local
-  // state, so fall back to the first tab actually rendered (the persona's first tab
-  // when customized, else Documentation) -- never a fixed tab that the persona may
-  // have removed, which would leave the tab bar pointing at a non-existent pane.
-  const activeTab = useMemo(
-    () =>
-      (activeTabOverride ??
-        routeParams.tab ??
-        customizedPage?.tabs?.[0]?.id ??
-        EntityTabs.DOCUMENTATION) as EntityTabs,
-    [activeTabOverride, routeParams.tab, customizedPage?.tabs]
-  );
+  // Explicit selection (tree-view override or URL); undefined on the landing URL.
+  const selectedTab = (activeTabOverride ?? routeParams.tab) as
+    | EntityTabs
+    | undefined;
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -903,7 +896,7 @@ const DomainDetails = ({
       subDomainsCount,
       dataProductsCount,
       assetCount,
-      activeTab,
+      activeTab: selectedTab,
       onAddDataProduct,
       queryFilter,
       assetTabRef,
@@ -915,7 +908,7 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
-        activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
+        selectedTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
@@ -938,7 +931,7 @@ const DomainDetails = ({
     handleAssetClick,
     assetCount,
     dataProductsCount,
-    activeTab,
+    selectedTab,
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
@@ -947,6 +940,13 @@ const DomainDetails = ({
     fetchDomainAssets,
     handleTabChange,
   ]);
+
+  // Resolve to the first rendered tab when the selection is absent/not rendered.
+  const activeTab = getRenderedActiveTab(
+    tabs,
+    selectedTab,
+    EntityTabs.DOCUMENTATION
+  );
 
   useEffect(() => {
     fetchDomainPermission();

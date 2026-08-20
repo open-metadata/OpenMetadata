@@ -73,6 +73,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
@@ -112,7 +113,6 @@ import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { DomainTabs } from '../../Domain/DomainPage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -703,12 +703,13 @@ const DataProductsDetailsPage = ({
     outputPortsCount,
   ]);
 
-  // `/dataProduct/:fqn` carries no tab segment, so the URL alone cannot tell the widget
-  // layout which tab is on screen. Fall back to the first tab actually rendered so a
-  // persona that removes/reorders Documentation never lands on a non-existent pane.
-  const currentTab = (activeTab ??
-    tabs[0]?.key ??
-    DomainTabs.DOCUMENTATION) as EntityTabs;
+  // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
+  // URL tab is absent/not rendered so we never land on a non-existent pane.
+  const currentTab = getRenderedActiveTab(
+    tabs,
+    activeTab as EntityTabs | undefined,
+    EntityTabs.DOCUMENTATION
+  );
 
   const iconData = useMemo(() => {
     return (
