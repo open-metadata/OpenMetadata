@@ -100,6 +100,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     >
   >({});
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
+  const [hasSearchError, setHasSearchError] = useState<boolean>(false);
 
   const { activeDomain } = useDomainStore();
   const pagingRef = useRef(INITIAL_PAGING_STATE);
@@ -352,6 +353,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     async (isLoadMore = false) => {
       const setLoadingState = isLoadMore ? setIsLoadingMore : setIsLoading;
       setLoadingState(true);
+      setHasSearchError(false);
 
       if (!isLoadMore) {
         setPaging(INITIAL_PAGING_STATE);
@@ -449,6 +451,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       if (value) {
         try {
           setIsLoading(true);
+          setHasSearchError(false);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
           const filteredResults = restrictedDomains?.length
@@ -475,8 +478,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
+        } catch {
+          // Keep the failure inside the dropdown: the list renders an inline
+          // error with a retry, so the user can act on it where they are.
+          setHasSearchError(true);
+          setTreeData([]);
         } finally {
           setIsLoading(false);
         }
@@ -533,6 +539,29 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
+    } else if (hasSearchError) {
+      return (
+        <Box
+          align="center"
+          className="tw:py-6"
+          data-testid="domain-search-error"
+          direction="col"
+          gap={2}
+          justify="center">
+          <Typography className="tw:text-text-tertiary" size="text-sm">
+            {t('server.entity-fetch-error', {
+              entity: t('label.domain-plural'),
+            })}
+          </Typography>
+          <Button
+            color="link-color"
+            data-testid="retry-domain-search"
+            size="sm"
+            onClick={() => onSearch(searchTerm)}>
+            {t('label.try-again')}
+          </Button>
+        </Box>
+      );
     } else if (treeData.length === 0) {
       return (
         <Box
@@ -591,9 +620,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     }
   }, [
+    hasSearchError,
     isLoading,
     isLoadingMore,
     isSubmitLoading,
+    onSearch,
     treeData,
     value,
     onSelect,

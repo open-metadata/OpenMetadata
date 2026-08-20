@@ -436,7 +436,7 @@ describe('DomainSelectableTree', () => {
     });
   });
 
-  it('should surface a failed search instead of rejecting unhandled', async () => {
+  it('should show an inline error inside the list when a search fails', async () => {
     const error = new AxiosError('Request failed with status code 400');
     jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
 
@@ -450,13 +450,64 @@ describe('DomainSelectableTree', () => {
       target: { value: 'a||||b' },
     });
 
+    // the failure stays in the dropdown - no toast, and the loader clears
     await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
     });
 
-    // the loader must clear so the tree is usable again after the failure
+    expect(screen.getByTestId('retry-domain-search')).toBeInTheDocument();
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('should retry the search from the inline error and recover', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(new AxiosError('Request failed with status code 400'))
+      .mockResolvedValueOnce([mockDomains[0]]);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'Engineering' },
+    });
+
     await waitFor(() => {
-      expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('retry-domain-search'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
+    });
+
+    expect(domainAPI.searchDomains).toHaveBeenCalledTimes(2);
+  });
+
+  it('should clear the inline error when the search box is cleared', async () => {
+    jest
+      .spyOn(domainAPI, 'searchDomains')
+      .mockRejectedValueOnce(new AxiosError('Request failed with status code 400'));
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'a||||b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('domain-search-error')
+      ).not.toBeInTheDocument();
     });
   });
 });
