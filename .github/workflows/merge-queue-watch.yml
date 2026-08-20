@@ -119,8 +119,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          handle=$(.github/scripts/resolve-merge-queue-owner.sh)
-          echo "handle=${handle}" >> "$GITHUB_OUTPUT"
+          .github/scripts/resolve-merge-queue-owner.sh > /tmp/owner
+          {
+            echo "handle=$(sed -n 1p /tmp/owner)"
+            echo "group_id=$(sed -n 2p /tmp/owner)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Post to Slack
         if: steps.pr.outputs.found == 'true'
@@ -137,4 +140,5 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           OWNER_HANDLE: ${{ steps.owner.outputs.handle }}
+          OWNER_GROUP_ID: ${{ steps.owner.outputs.group_id }}
         run: .github/scripts/notify-merge-queue-slack.sh

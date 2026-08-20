@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           jq -r '.workflows | keys[]' .github/merge-queue-owners.json | while IFS= read -r wf; do
-            handle=$(WORKFLOW_NAME="$wf" .github/scripts/resolve-merge-queue-owner.sh 2>/dev/null)
+            handle=$(WORKFLOW_NAME="$wf" .github/scripts/resolve-merge-queue-owner.sh 2>/dev/null | sed -n 1p)
             printf '  %-22s %s\n' "$handle" "$wf"
             [ -n "$handle" ] || { echo "::error::no handle for $wf"; exit 1; }
           done
@@ -61,7 +61,7 @@ jobs:
           # A real TypeScript Type Generation run that failed in "Set up job";
           # the name mapping says ui, so this must come back as the infra team.
           handle=$(WORKFLOW_NAME="TypeScript Type Generation" RUN_ID=32044383548 \
-            .github/scripts/resolve-merge-queue-owner.sh)
+            .github/scripts/resolve-merge-queue-owner.sh | sed -n 1p)
           echo "  resolved: $handle"
           [ "$handle" = "onduty-devops" ] || { echo "::error::expected onduty-devops, got '$handle'"; exit 1; }
 
@@ -99,8 +99,9 @@ jobs:
           HEAD_BRANCH: gh-readonly-queue/main/pr-31744-${{ github.sha }}
         run: |
           set -euo pipefail
-          OWNER_HANDLE=$(WORKFLOW_NAME="TypeScript Type Generation" RUN_ID=32044383548 \
-            .github/scripts/resolve-merge-queue-owner.sh 2>/dev/null)
-          export OWNER_HANDLE
+          WORKFLOW_NAME="TypeScript Type Generation" RUN_ID=32044383548 \
+            .github/scripts/resolve-merge-queue-owner.sh 2>/dev/null > /tmp/owner
+          OWNER_HANDLE=$(sed -n 1p /tmp/owner); OWNER_GROUP_ID=$(sed -n 2p /tmp/owner)
+          export OWNER_HANDLE OWNER_GROUP_ID
           echo "  tagging: ${OWNER_HANDLE:-<none>}"
           .github/scripts/notify-merge-queue-slack.sh

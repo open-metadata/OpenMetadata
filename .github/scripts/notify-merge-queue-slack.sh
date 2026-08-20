@@ -12,7 +12,7 @@
 #
 # Required env: SLACK_BOT_USER_OAUTH_TOKEN, SLACK_CHANNEL, WORKFLOW_NAME,
 #   CONCLUSION, RUN_URL, PR_NUMBER, PR_TITLE, PR_AUTHOR, REPO_URL, HEAD_BRANCH
-# Optional env: TEXT_PREFIX, OWNER_HANDLE
+# Optional env: TEXT_PREFIX, OWNER_HANDLE, OWNER_GROUP_ID
 
 set -euo pipefail
 
@@ -40,7 +40,9 @@ fi
 # resolved to the <!subteam^ID> form Slack actually pings. Resolution needs the
 # usergroups:read scope; without it the message still goes out, unlinked.
 mention=""
-if [ -n "${OWNER_HANDLE:-}" ]; then
+if [ -n "${OWNER_HANDLE:-}" ] && [ -n "${OWNER_GROUP_ID:-}" ]; then
+  mention="<!subteam^${OWNER_GROUP_ID}|@${OWNER_HANDLE}> "
+elif [ -n "${OWNER_HANDLE:-}" ]; then
   groups=$(curl -sS -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
     https://slack.com/api/usergroups.list)
   if [ "$(printf '%s' "$groups" | jq -r '.ok')" = "true" ]; then

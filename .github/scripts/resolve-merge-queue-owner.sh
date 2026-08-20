@@ -10,8 +10,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Prints the Slack user-group handle that owns a failed merge-queue run, or
-# nothing when no owner can be determined.
+# Prints the Slack user-group handle that owns a failed merge-queue run on the
+# first line and its configured group ID, if any, on the second. Prints nothing
+# when no owner can be determined.
 #
 # Required env: WORKFLOW_NAME, REPO, GH_TOKEN
 # Optional env: RUN_ID (enables infra detection), OWNERS_FILE
@@ -68,3 +69,4 @@ if [ -z "$handle" ]; then
 fi
 
 printf '%s\n' "$handle"
+printf '%s\n' "$(jq -r --arg t "$team" '.groupIds[$t] // ""' "$OWNERS_FILE")"

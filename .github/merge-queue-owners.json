@@ -1,10 +1,16 @@
 {
-  "_comment": "Routes merge-queue failures to an on-duty Slack user group. 'workflows' maps a workflow name to a team key; 'teams' maps that key to the Slack user-group handle (without the @). A failure whose failing step matches 'infraStepPatterns' is routed to infraTeam instead, because a broken runner, image pull or cache is a platform problem regardless of which workflow surfaced it.",
+  "_comment": "Routes merge-queue failures to an on-duty Slack user group. 'workflows' maps a workflow name to a team key; 'teams' maps that key to the Slack user-group handle (without the @). A failure whose failing step matches 'infraStepPatterns' is routed to infraTeam instead, because a broken runner, image pull or cache is a platform problem regardless of which workflow surfaced it. 'groupIds' is optional: fill in a team's S-prefixed user-group ID to make the mention a real ping without granting the bot the usergroups:read scope. Left blank, the ID is looked up at runtime and the mention falls back to unlinked text if that lookup is not permitted.",
   "teams": {
     "ui": "onduty-ui",
     "integration": "onduty-integration",
     "backend": "onduty-backend",
     "devops": "onduty-devops"
+  },
+  "groupIds": {
+    "ui": "",
+    "integration": "",
+    "backend": "",
+    "devops": ""
   },
   "infraTeam": "devops",
   "workflows": {
