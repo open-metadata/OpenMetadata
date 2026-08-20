@@ -26,15 +26,24 @@ done
 
 queue_branch=$(printf '%s' "$HEAD_BRANCH" | cut -d/ -f2)
 
+# The title is author-controlled and lands inside a mrkdwn link label, where a
+# bare '>' would close the link and '<!channel>' would notify everyone. Slack's
+# escaping is &, < and > in that order; the mention this script builds itself is
+# assembled after escaping so it still renders.
+slack_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+
 # Title and author are best-effort; the message must read correctly without them.
 link_text="#${PR_NUMBER}"
 if [ -n "${PR_TITLE:-}" ]; then
-  link_text="${link_text} ${PR_TITLE}"
+  link_text="${link_text} $(slack_escape "$PR_TITLE")"
 fi
 author_suffix=""
 if [ -n "${PR_AUTHOR:-}" ]; then
-  author_suffix=" (@${PR_AUTHOR})"
+  author_suffix=" (@$(slack_escape "$PR_AUTHOR"))"
 fi
+workflow_label=$(slack_escape "$WORKFLOW_NAME")
 
 # A bare "@handle" renders as plain text and notifies nobody, so the handle is
 # resolved to the <!subteam^ID> form Slack actually pings. Resolution needs the
@@ -61,7 +70,7 @@ elif [ -n "${OWNER_HANDLE:-}" ]; then
 fi
 
 text=$(printf '%s\n%s\n%s' \
-  "${TEXT_PREFIX:-}${mention}:rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
+  "${TEXT_PREFIX:-}${mention}:rotating_light: *Merge queue ${CONCLUSION}* — ${workflow_label}" \
   "<${REPO_URL}/pull/${PR_NUMBER}|${link_text}>${author_suffix}" \
   "<${RUN_URL}|Failed run> · <${REPO_URL}/queue/${queue_branch}|Merge queue>")
 
