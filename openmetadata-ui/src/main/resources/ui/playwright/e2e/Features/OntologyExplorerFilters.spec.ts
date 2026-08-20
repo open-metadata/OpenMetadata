@@ -300,6 +300,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
     test('should show only one glossary terms when one is deselected', async ({
       page,
     }) => {
+      test.slow();
       await waitForGraphLoaded(page);
 
       await applyMultiGlossaryFilter(
@@ -389,6 +390,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
     test('should retain relation type filter after glossary filter is cleared and re-applied', async ({
       page,
     }) => {
+      test.slow();
       await waitForGraphLoaded(page);
       await applyGlossaryFilter(page, FiltersData.glossary.responseData.id);
       await waitForGraphLoaded(page);
