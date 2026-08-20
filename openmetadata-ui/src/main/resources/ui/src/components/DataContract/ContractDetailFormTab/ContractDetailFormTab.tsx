@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import {
@@ -45,13 +45,8 @@ export const ContractDetailFormTab: React.FC<{
   const [form] = Form.useForm();
   const { entityRules } = useEntityRules(EntityType.TABLE);
 
-  const entityStatusOptions = useMemo(
-    () =>
-      DATA_CONTRACT_AUTHORING_STATUS_OPTIONS.map(({ labelKey, value }) => ({
-        label: t(labelKey),
-        value,
-      })),
-    [t]
+  const entityStatusOptions = DATA_CONTRACT_AUTHORING_STATUS_OPTIONS.map(
+    ({ labelKey, value }) => ({ label: t(labelKey), value })
   );
 
   const fields: FieldProp[] = [

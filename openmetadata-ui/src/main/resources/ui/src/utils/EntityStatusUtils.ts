@@ -57,7 +57,7 @@ export const EntityStatusBadgeColor: Record<EntityStatus, BadgeColors> = {
 export const getEntityStatusBadgeColor = (
   status?: `${EntityStatus}`
 ): BadgeColors => {
-  return (status && EntityStatusBadgeColor[status]) ?? 'gray';
+  return (status ? EntityStatusBadgeColor[status] : undefined) ?? 'gray';
 };
 
 export const isDeleted = (deleted: unknown): boolean => {
