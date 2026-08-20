@@ -14,8 +14,32 @@
 import type { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { EntityStatus } from '../generated/entity/data/dataContract';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
+
+/**
+ * A new contract starts as a Draft so it goes through review instead of being
+ * published on creation. The schema documents the same default, but that default
+ * is inert (jsonschema2pojo resolves the `$ref`ed `type/status.json` default of
+ * `Unprocessed` instead), so the client has to send the status explicitly.
+ */
+export const DEFAULT_DATA_CONTRACT_STATUS = EntityStatus.Draft;
+
+/**
+ * Statuses a human can author a contract into. `Rejected` is an outcome a reviewer
+ * produces by closing the approval task, `Archived`/`Deprecated` are end-of-life
+ * states, and `Unprocessed` is an internal sentinel — none of them is a state
+ * somebody writing a contract should be able to pick.
+ */
+export const DATA_CONTRACT_AUTHORING_STATUS_OPTIONS: {
+  labelKey: string;
+  value: EntityStatus;
+}[] = [
+  { labelKey: 'label.draft', value: EntityStatus.Draft },
+  { labelKey: 'label.in-review', value: EntityStatus.InReview },
+  { labelKey: 'label.approved', value: EntityStatus.Approved },
+];
 
 export enum DataContractMode {
   YAML,

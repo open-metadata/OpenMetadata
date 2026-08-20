@@ -26,13 +26,13 @@ import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.s
 import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
+  DEFAULT_DATA_CONTRACT_STATUS,
   EDataContractTab,
 } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
-  EntityStatus,
   TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
@@ -264,7 +264,7 @@ const AddDataContract: React.FC<{
           semantics: validSemantics,
           security: validSecurity,
           termsOfUse: termsOfUseContent,
-          entityStatus: EntityStatus.Approved,
+          entityStatus: formValues.entityStatus ?? DEFAULT_DATA_CONTRACT_STATUS,
         });
       }
 

@@ -12,9 +12,13 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
+import {
+  DATA_CONTRACT_AUTHORING_STATUS_OPTIONS,
+  DEFAULT_DATA_CONTRACT_STATUS,
+} from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -40,6 +44,15 @@ export const ContractDetailFormTab: React.FC<{
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { entityRules } = useEntityRules(EntityType.TABLE);
+
+  const entityStatusOptions = useMemo(
+    () =>
+      DATA_CONTRACT_AUTHORING_STATUS_OPTIONS.map(({ labelKey, value }) => ({
+        label: t(labelKey),
+        value,
+      })),
+    [t]
+  );
 
   const fields: FieldProp[] = [
     {
@@ -78,6 +91,20 @@ export const ContractDetailFormTab: React.FC<{
       },
     },
     {
+      label: t('label.status'),
+      id: 'entityStatus',
+      name: 'entityStatus',
+      type: FieldTypes.SELECT,
+      required: false,
+      props: {
+        'data-testid': 'contract-entity-status',
+        options: entityStatusOptions,
+        placeholder: t('label.please-select-entity', {
+          entity: t('label.status'),
+        }),
+      },
+    },
+    {
       label: t('label.description'),
       id: 'description',
       name: 'description',
@@ -91,6 +118,12 @@ export const ContractDetailFormTab: React.FC<{
   ];
 
   useEffect(() => {
+    // Create mode has no initialValues, so the select would render blank and the
+    // payload would fall back silently. Seed it with the same Draft default.
+    form.setFieldsValue({
+      entityStatus: initialValues?.entityStatus ?? DEFAULT_DATA_CONTRACT_STATUS,
+    });
+
     if (initialValues) {
       form.setFieldsValue({
         name: getEntityName(initialValues),

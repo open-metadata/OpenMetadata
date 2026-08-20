@@ -12,8 +12,12 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/entity/type';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
 jest.mock('../../../utils/formUtils', () => ({
@@ -38,6 +42,10 @@ jest.mock('react-i18next', () => ({
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
         'label.next': 'Next',
+        'label.status': 'Status',
+        'label.draft': 'Draft',
+        'label.in-review': 'In Review',
+        'label.approved': 'Approved',
       };
 
       return translations[key] || key;
@@ -116,6 +124,31 @@ describe('ContractDetailFormTab', () => {
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
+    });
+
+    it('should render a status field so the author can pick the initial status', () => {
+      render(<ContractDetailFormTab {...commonProps} />);
+
+      expect(screen.getByText('Status')).toBeInTheDocument();
+    });
+
+    it('should only offer authoring statuses, never Rejected/Archived/Unprocessed', () => {
+      const generateFormFields = jest.requireMock(
+        '../../../utils/formUtils'
+      ).generateFormFields;
+
+      render(<ContractDetailFormTab {...commonProps} />);
+
+      const statusField = generateFormFields.mock.calls[0][0].find(
+        (field: FieldProp) => field.name === 'entityStatus'
+      );
+
+      expect(statusField.type).toBe(FieldTypes.SELECT);
+      expect(statusField.props.options).toEqual([
+        { label: 'Draft', value: EntityStatus.Draft },
+        { label: 'In Review', value: EntityStatus.InReview },
+        { label: 'Approved', value: EntityStatus.Approved },
+      ]);
     });
 
     it('should set form values when initial values are provided', () => {
