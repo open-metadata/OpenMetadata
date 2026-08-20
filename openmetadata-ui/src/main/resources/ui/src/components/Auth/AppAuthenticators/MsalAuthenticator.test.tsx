@@ -16,7 +16,7 @@ import {
 } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { render, screen } from '@testing-library/react';
-import { act } from 'react';
+import React, { act } from 'react';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
@@ -336,5 +336,31 @@ describe('MsalAuthenticator', () => {
     );
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
+  });
+
+  it('handleRedirect ref-guard blocks the StrictMode double effect invocation', async () => {
+    // React.StrictMode fires mount effects twice in dev, which used to
+    // send two concurrent instance.handleRedirectPromise() calls for the
+    // same OAuth redirect. Rendering inside <StrictMode> reproduces that
+    // shape without a real MSAL instance, and the ref-guard means only
+    // the first call actually hits the SDK. Regressing this brings the
+    // double /users/loggedInUser fetch back.
+    mockInstance.handleRedirectPromise.mockResolvedValueOnce({
+      account: { username: 'test@example.com' },
+    });
+
+    await act(async () => {
+      render(
+        <React.StrictMode>
+          <MsalAuthenticator
+            {...mockProps}
+            ref={(ref) => (authenticatorRef = ref)}
+          />
+        </React.StrictMode>
+      );
+    });
+
+    expect(mockInstance.handleRedirectPromise).toHaveBeenCalledTimes(1);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
   });
 });

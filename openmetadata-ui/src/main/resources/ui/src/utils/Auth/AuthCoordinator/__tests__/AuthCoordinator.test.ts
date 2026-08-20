@@ -27,6 +27,26 @@ jest.mock('../../../AuthProvider.util', () => ({
   extractDetailsFromToken: jest.fn(),
 }));
 
+// The doRefresh cross-tab paths (leader `done` payload / `failed` / lock
+// timeout → doLocalRefresh) need CrossTabLock.runExclusive to return a
+// chosen outcome per test. Rather than mocking the whole module (which
+// runs into a factory-hoist TDZ vs the module-level `new AuthCoordinator`
+// singleton at the bottom of AuthCoordinator.ts), swap the fields on the
+// coordinator's own lock instance after construction. TypeScript's
+// `private` is a type-level fence only — the runtime property is normal.
+import { LockTimeoutError } from '../CrossTabLock';
+
+const mockRunExclusive = jest.fn();
+const mockNotifyDone = jest.fn();
+const mockNotifyFailed = jest.fn();
+
+const installLockMock = (coord: AuthCoordinator) => {
+  const lock = (coord as unknown as { lock: Record<string, unknown> }).lock;
+  lock.runExclusive = mockRunExclusive;
+  lock.notifyDone = mockNotifyDone;
+  lock.notifyFailed = mockNotifyFailed;
+};
+
 const mockedGetOidcToken = getOidcToken as jest.MockedFunction<
   typeof getOidcToken
 >;
@@ -82,6 +102,16 @@ describe('AuthCoordinator', () => {
 
   beforeEach(() => {
     coordinator = new AuthCoordinator();
+    installLockMock(coordinator);
+    // Default the cross-tab lock to the leader path so existing tests that
+    // don't care about follower behavior see runExclusive run their work
+    // and hand back {role:'leader'}.
+    mockRunExclusive.mockImplementation(async (work) => ({
+      role: 'leader',
+      value: await work(),
+    }));
+    mockNotifyDone.mockClear();
+    mockNotifyFailed.mockClear();
   });
 
   afterEach(() => coordinator.dispose());
@@ -349,6 +379,139 @@ describe('AuthCoordinator', () => {
       await triggerTabFocus();
 
       expect(renewer).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // These tests drive `AuthCoordinator.doRefresh` through the cross-tab
+  // outcomes that CrossTabLock delivers. The lock itself is mocked so
+  // each test picks its own leader/follower branch — the paths the
+  // integration coverage was missing.
+  describe('cross-tab refresh outcomes', () => {
+    it('follower with a valid done payload applies it directly (no local renewer call)', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'local-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      const leaderPayload = {
+        idToken: 'leader-fresh',
+        expiresAt: Date.now() + 300_000,
+      };
+      mockRunExclusive.mockResolvedValueOnce({
+        role: 'follower',
+        message: { type: 'done', payload: leaderPayload },
+      });
+      const refreshed: unknown[] = [];
+      coordinator.on('refreshed', (p) => refreshed.push(p));
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('leader-fresh');
+      expect(renewer).not.toHaveBeenCalled();
+      expect(refreshed).toEqual([leaderPayload]);
+    });
+
+    it('follower on leader `failed` falls back to a local renewer call', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'local-recovery',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockRunExclusive.mockResolvedValueOnce({
+        role: 'follower',
+        message: { type: 'failed', reason: 'leader IdP 5xx' },
+      });
+      const refreshed: unknown[] = [];
+      const failures: unknown[] = [];
+      coordinator.on('refreshed', (p) => refreshed.push(p));
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('local-recovery');
+      expect(renewer).toHaveBeenCalledTimes(1);
+      expect(refreshed).toHaveLength(1);
+      expect(failures).toEqual([]); // Must NOT force-logout the follower.
+    });
+
+    it('LockTimeoutError falls back to a local renewer call (no refresh-failed emitted)', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'local-after-timeout',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockRunExclusive.mockRejectedValueOnce(new LockTimeoutError());
+      const failures: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('local-after-timeout');
+      expect(renewer).toHaveBeenCalledTimes(1);
+      expect(failures).toEqual([]);
+    });
+
+    it('doLocalRefresh failure emits refresh-failed and rejects', async () => {
+      const renewer = jest.fn(async () => {
+        throw new Error('IdP unreachable');
+      });
+      coordinator.registerRenewer(renewer);
+      // Force follower→failed path so doLocalRefresh runs and this
+      // renewer throws inside it.
+      mockRunExclusive.mockResolvedValueOnce({
+        role: 'follower',
+        message: { type: 'failed', reason: 'leader gave up' },
+      });
+      const failures: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+
+      await expect(coordinator.ensureFreshToken()).rejects.toThrow(
+        'IdP unreachable'
+      );
+      expect(failures).toEqual([{ reason: 'IdP unreachable' }]);
+    });
+
+    it('follower with a `done` message but missing/invalid payload falls back to local refresh', async () => {
+      // Covers the isRenewResult negative branches: the coordinator must
+      // not trust a done broadcast whose payload can't be validated.
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'local-after-invalid-payload',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockRunExclusive.mockResolvedValueOnce({
+        role: 'follower',
+        message: { type: 'done', payload: { garbage: true } },
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('local-after-invalid-payload');
+      expect(renewer).toHaveBeenCalledTimes(1);
+    });
+
+    it('leader path persists token and broadcasts done with the fresh payload', async () => {
+      const payload = {
+        expiresAt: Date.now() + 300_000,
+        idToken: 'leader-persisted',
+      };
+      coordinator.registerRenewer(async () => payload);
+      // Default beforeEach already installs the leader-path mock;
+      // just assert the side effects.
+      const { setOidcToken } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      );
+
+      await coordinator.ensureFreshToken();
+
+      // Persist must happen before the broadcast so a sibling tab can't
+      // read stale storage behind a fresh `done` (the CrossTabLock
+      // P1 fix).
+      const setOrder = (setOidcToken as jest.Mock).mock.invocationCallOrder[0];
+      const notifyOrder = mockNotifyDone.mock.invocationCallOrder[0];
+
+      expect(setOrder).toBeLessThan(notifyOrder);
+      expect(mockNotifyDone).toHaveBeenCalledWith(payload);
     });
   });
 });
