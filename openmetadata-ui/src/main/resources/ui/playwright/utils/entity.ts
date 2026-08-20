@@ -690,15 +690,10 @@ export const assignCertification = async (
   );
 
   await expect(async () => {
-    // The tag GET can finish just as an entity refresh remounts the controlled
-    // popover. In that race the shell stays visible but its certifications are
-    // reset to [], leaving no Radio.Group for the scroll helper to hover. Close
-    // and reopen to issue a fresh fetch, then retry the complete find operation.
-    if (!(await certificationCards.isVisible())) {
-      await closeCertificationPopover(page);
-      await page.getByTestId('edit-certification').click();
-      await expect(certificationCards).toBeVisible({ timeout: 5_000 });
-    }
+    // The popover shell becomes visible before its opening animation exposes
+    // the Radio.Group. Wait for that stable child instead of treating the
+    // transient hidden state as missing and toggling the popover closed again.
+    await expect(certificationCards).toBeVisible({ timeout: 5_000 });
 
     await readElementInListWithScroll(
       page,
