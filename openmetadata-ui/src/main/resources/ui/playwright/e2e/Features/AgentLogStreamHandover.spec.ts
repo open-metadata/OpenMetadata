@@ -334,6 +334,11 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
   test('Scrolling a live log pauses auto-follow and the toolbar toggle resumes it', async ({
     page,
   }) => {
+    // Every step below waits for the stream to append again, and a reconnect can
+    // take seconds on a loaded runner. The default budget is one such wait, not
+    // the four this test needs, so it timed out on retry rather than failing.
+    test.slow();
+
     await openAgentLogs(page, {
       terminal: false,
       lineCount: SCROLLABLE_LOG_LINE_COUNT,
