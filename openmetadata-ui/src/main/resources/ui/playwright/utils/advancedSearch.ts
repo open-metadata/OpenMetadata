@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { getEncodedFqn } from './entity';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -310,23 +310,15 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
-      const aggregateRes2 = page.waitForResponse((response) => {
-        if (!response.url().includes('/api/v1/search/aggregate')) return false;
-        // Use URL.searchParams to decode the value so that URL-encoded
-        // characters (e.g. %20 for spaces, %2D for dashes) compare correctly
-        // against the raw searchData string. escapeESReservedCharacters is for
-        // Elasticsearch query syntax and MUST NOT be applied to URL matching —
-        // it turns "pw.user.one-7fa5ba7d" into "pw.user.one\-7fa5ba7d" which,
-        // after encodeURIComponent, becomes "%5C-", a pattern that never
-        // appears in the actual API URL.
-        try {
-          const value = new URL(response.url()).searchParams.get('value');
-
-          return value !== null && value.toLowerCase() === searchData;
-        } catch {
-          return false;
-        }
-      });
+      const aggregateRes2 = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/v1/search/aggregate`) &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(escapeESReservedCharacters(searchData))
+            )
+      );
 
       await dropdownInput.fill(searchData);
 
