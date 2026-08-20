@@ -679,6 +679,29 @@ describe('AuthProvider visibility handler', () => {
     expect(mockRefreshToken).not.toHaveBeenCalled();
   });
 
+  it('does NOT call refreshToken for an opaque/undecodable token (jwt-decode threw)', async () => {
+    // When jwt-decode throws, extractDetailsFromToken falls through to
+    // {exp: 0, isExpired: true, timeoutExpiry: 0}. Naïvely ordering
+    // `if (isExpired)` first would fire refresh on every focus for an
+    // opaque token. The invalid-exp guard MUST come before the isExpired
+    // branch. (Greptile P1 on #31819)
+    mockGetOidcToken.mockResolvedValue('not-a-jwt');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: 0,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+    mockRefreshToken.mockClear();
+
+    await fireTabVisible();
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+  });
+
   it('does NOT call refreshToken when the token is fresh (outside the pre-expiry buffer)', async () => {
     mockGetOidcToken.mockResolvedValue('fresh-jwt');
     mockExtractDetailsFromToken.mockReturnValue({

@@ -527,6 +527,17 @@ export const AuthProvider = ({
         }
         const { exp, isExpired, timeoutExpiry } =
           extractDetailsFromToken(token);
+        // A missing / non-positive `exp` means the token is opaque, not a
+        // JWT at all, or spec-violating. extractDetailsFromToken returns
+        // `isExpired: true` for the jwt-decode-throws branch AND
+        // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
+        // neither is signal we can act on, so leave the token in place and
+        // let the next real 401 drive a refresh via the axios interceptor.
+        // MUST come before the isExpired branch — otherwise opaque tokens
+        // would fire refresh() on every tab focus.
+        if (typeof exp !== 'number' || exp <= 0) {
+          return;
+        }
         if (isExpired) {
           const newToken = await tokenService.current?.refreshToken();
           // Post-refresh reauth: if the user was bounced to signin by an
@@ -540,17 +551,9 @@ export const AuthProvider = ({
 
           return;
         }
-        // A missing / non-positive `exp` (opaque token, non-JWT, or spec-
-        // violating id_token) has no usable expiry — the previous shorthand
-        // `timeoutExpiry <= 0` treated it the same as near-expiry and fired
-        // the renewer on every focus. Leave it alone; the next real 401
-        // will drive a refresh via the axios interceptor.
-        if (typeof exp !== 'number' || exp <= 0) {
-          return;
-        }
         // Only near-expiry (within the pre-expiry buffer) should proactively
         // refresh here. `timeoutExpiry === 0` exactly captures that case
-        // once we've ruled out `!exp` above.
+        // once we've ruled out invalid exp above.
         if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
           const newToken = await tokenService.current?.refreshToken();
           if (newToken && !useApplicationStore.getState().isAuthenticated) {
