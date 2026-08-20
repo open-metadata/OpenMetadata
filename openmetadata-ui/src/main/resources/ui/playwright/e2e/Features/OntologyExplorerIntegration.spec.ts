@@ -65,8 +65,7 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     await addTermRelation(apiContext, syncTerm1, syncTerm2, 'synonym');
     await apiContext.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /1\s*Relations?/i
@@ -78,8 +77,7 @@ test.describe('Relation Sync with OntologyExplorer', () => {
     ]);
     await apiContext2.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i

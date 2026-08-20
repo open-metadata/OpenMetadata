@@ -803,6 +803,9 @@ test.describe('Glossary P3 Tests', () => {
       // Check for glossary page elements (redirect behavior)
       const glossaryHeader = page.getByTestId('entity-header-name');
       const addGlossaryButton = page.getByTestId('add-glossary');
+      const addGlossaryListButton = page
+        .getByRole('button', { name: 'Add', exact: true })
+        .first();
       const glossarySidebar = page.locator('.left-panel-card');
 
       // Any of these states is acceptable for error handling
@@ -822,6 +825,9 @@ test.describe('Glossary P3 Tests', () => {
           .isVisible({ timeout: 2000 })
           .catch(() => false)) ||
         (await addGlossaryButton
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)) ||
+        (await addGlossaryListButton
           .isVisible({ timeout: 2000 })
           .catch(() => false)) ||
         (await glossarySidebar.isVisible({ timeout: 2000 }).catch(() => false));

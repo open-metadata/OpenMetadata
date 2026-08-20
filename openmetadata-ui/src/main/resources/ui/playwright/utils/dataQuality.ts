@@ -373,9 +373,22 @@ export const fillAndSubmitBundleSuiteForm = async (
   name: string
 ) => {
   await page.getByTestId('test-suite-name').locator('input').fill(name);
-  const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/dataQuality/testSuites') &&
+      response.request().method() === 'POST'
+  );
+  const bulkResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes('/api/v1/dataQuality/testCases/logicalTestCases/bulk') &&
+      response.request().method() === 'POST'
+  );
   await page.getByTestId('submit-button').click();
-  await createResponse;
+
+  expect((await createResponse).ok()).toBeTruthy();
+  expect((await bulkResponse).ok()).toBeTruthy();
 };
 
 export const openAddToExistingBundleSuiteModal = async (page: Page) => {

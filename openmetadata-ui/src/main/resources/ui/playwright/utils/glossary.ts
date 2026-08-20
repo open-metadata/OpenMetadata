@@ -1184,9 +1184,20 @@ export const changeTermHierarchyFromModal = async (
   });
 
   if (isGlossaryTerm) {
-    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
-    await searchRes;
+    const parentInput = page.getByLabel('Select Parent');
+    const targetParent = page.getByTestId(`tag-${entityFqn}`);
+
+    // Newly-created terms reach the search index asynchronously. Repeat the
+    // real search request until the requested parent is rendered instead of
+    // assuming the first response already contains it.
+    await expect(async () => {
+      await parentInput.clear();
+      const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
+      await parentInput.fill(entityDisplayName);
+      const response = await searchRes;
+      expect(response.ok()).toBeTruthy();
+      await expect(targetParent).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
   }
 
   await page.getByTestId(`tag-${entityFqn}`).click();
