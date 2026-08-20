@@ -94,7 +94,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     index: SearchIndex | SearchIndex[],
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -108,7 +109,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // Use field-specific searchKey if provided, otherwise use the key
     const searchKeyToUse = fieldSearchKey ?? key;
 
-    let buckets = aggregations?.[key]?.buckets;
+    // Page aggregations carry only bucket keys (lowercased by the index
+    // normalizer), so fields needing original casing must fetch per-facet
+    // aggregations that include top_hits source data.
+    let buckets = sourceFields ? undefined : aggregations?.[key]?.buckets;
     if (!buckets) {
       const res = await getAggregationOptions(
         searchIndexToUse,
@@ -119,19 +123,23 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         optionPageSize,
         isNLPActive,
-        searchText
+        searchText,
+        sourceFields
       );
 
       buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
     }
 
-    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+    setOptions(
+      uniqWith(getOptionsFromAggregationBucket(buckets, sourceFields), isEqual)
+    );
   };
 
   const getInitialOptions = async (
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -143,7 +151,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      await fetchDefaultOptions(index, key, fieldSearchIndex, fieldSearchKey);
+      await fetchDefaultOptions(
+        index,
+        key,
+        fieldSearchIndex,
+        fieldSearchKey,
+        sourceFields
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -155,7 +169,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     value: string,
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
@@ -173,7 +188,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key, fieldSearchIndex, fieldSearchKey);
+        getInitialOptions(key, fieldSearchIndex, fieldSearchKey, sourceFields);
 
         return;
       }
@@ -190,11 +205,18 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         undefined,
         isNLPActive,
-        searchText
+        searchText,
+        sourceFields
       );
 
-      const buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
-      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
+      const buckets =
+        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
+      setOptions(
+        uniqWith(
+          getOptionsFromAggregationBucket(buckets, sourceFields),
+          isEqual
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -228,10 +250,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
               onFieldValueSelect({ ...field, value: updatedValues })
             }
             onGetInitialOptions={(key) =>
-              getInitialOptions(key, field.searchIndex, field.searchKey)
+              getInitialOptions(
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
             onSearch={(value, key) =>
-              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+              getFilterOptions(
+                value,
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
           />
         ) : (
@@ -256,10 +289,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
               onFieldValueSelect({ ...field, value: updatedValues });
             }}
             onGetInitialOptions={(key) =>
-              getInitialOptions(key, field.searchIndex, field.searchKey)
+              getInitialOptions(
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
             onSearch={(value, key) =>
-              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+              getFilterOptions(
+                value,
+                key,
+                field.searchIndex,
+                field.searchKey,
+                field.sourceFields
+              )
             }
           />
         );

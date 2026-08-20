@@ -966,12 +966,23 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string
+  expectedQueryFilterValue: string,
+  searchText?: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
   await page.getByTestId('drop-down-menu').waitFor();
+
+  if (searchText) {
+    const aggregateResponse = page.waitForResponse(
+      '/api/v1/search/aggregate?*'
+    );
+    await page
+      .getByRole('textbox', { name: 'Search Service Type...' })
+      .fill(searchText);
+    await aggregateResponse;
+  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -1012,6 +1023,7 @@ const testFilterWithFirstOption = async (
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
     await page.getByTestId('close-btn').click();
+    await page.getByTestId('close-btn').waitFor({ state: 'detached' });
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
@@ -1092,8 +1104,9 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'Service Type',
+    'Mysql',
     'mysql',
-    'mysql'
+    'Mysql'
   );
 
   await testFilterWithFirstOption(page, filterWrapper, 'Tag');
