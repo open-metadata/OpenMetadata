@@ -726,11 +726,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
-  @Override
-  protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
-    postDelete(entity, hardDelete, false);
-  }
-
   /**
    * Removing the DAG from the orchestrator is irreversible, so it must only happen when the entity
    * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
@@ -739,10 +734,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * the runner happened to be down. The accepted trade-off is that nothing pauses the DAG either,
    * so a soft-deleted pipeline keeps running on schedule and recording statuses until it is
    * restored or hard-deleted; pausing it would need a restore-time redeploy hook that does not
-   * exist yet. Stays in {@code postDelete} rather than moving to {@link #entitySpecificCleanup}
-   * because it is a blocking remote call that must not run inside the real transaction
-   * {@code cleanup()} opens, and because {@code forceDelete} threads
-   * {@code allowUnavailableRunner} through here and reads back the skip flag.
+   * exist yet.
+   *
+   * <p>The teardown stays here rather than moving to {@link #entitySpecificCleanup} (where the
+   * pipeline's time series went) because it is a blocking remote call that must not run inside the
+   * real transaction {@code cleanup()} opens, and because {@code forceDelete} threads
+   * {@code allowUnavailableRunner} through the overload below and reads back the skip flag.
+   */
+  @Override
+  protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    postDelete(entity, hardDelete, false);
+  }
+
+  /**
+   * Variant of {@link #postDelete(IngestionPipeline, boolean)} for {@code forceDelete}: tolerates an
+   * unreachable ingestion runner when {@code allowUnavailableRunner} is set and reports back whether
+   * the runner cleanup was skipped, so the caller can warn about the DAG left behind.
    */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
