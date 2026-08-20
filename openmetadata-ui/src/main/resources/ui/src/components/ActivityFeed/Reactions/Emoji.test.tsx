@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { User } from '../../../generated/entity/teams/user';
 import { ReactionType } from '../../../generated/type/reaction';
 import Emoji from './Emoji';
@@ -98,5 +98,31 @@ describe('Test Emoji Component', () => {
     fireEvent.click(emojiButton);
 
     expect(onReactionSelect).toHaveBeenCalledWith(mockProps.reaction, 'remove');
+  });
+
+  it('Should hide popover on mouse leave', async () => {
+    const { findByTestId, queryByTestId } = render(<Emoji {...mockProps} />);
+
+    const emojiButton = await findByTestId('emoji-button');
+    fireEvent.mouseEnter(emojiButton);
+    await findByTestId('popover-content');
+
+    fireEvent.mouseLeave(emojiButton);
+    act(() => jest.runAllTimers());
+
+    expect(queryByTestId('popover-content')).not.toBeInTheDocument();
+  });
+
+  it('Should unmount cleanly while tooltip is visible', async () => {
+    // Regression: previously, a controlled `visible` state was not cleared on
+    // unmount, causing Ant Design to call getBoundingClientRect() on a detached
+    // DOM node and crash with "Cannot read properties of null (reading 'left')".
+    const { findByTestId, unmount } = render(<Emoji {...mockProps} />);
+
+    const emojiButton = await findByTestId('emoji-button');
+    fireEvent.mouseEnter(emojiButton);
+    await findByTestId('popover-content');
+
+    expect(() => unmount()).not.toThrow();
   });
 });

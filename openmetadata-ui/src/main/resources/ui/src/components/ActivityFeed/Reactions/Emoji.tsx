@@ -41,7 +41,6 @@ const Emoji: FC<EmojiProps> = ({
   const { currentUser } = useApplicationStore();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
-  const [visible, setVisible] = useState(false);
 
   // get reaction object based on current reactionType
   const reactionObject = useMemo(
@@ -109,10 +108,8 @@ const Emoji: FC<EmojiProps> = ({
     <Popover
       content={popoverContent}
       key={reaction}
-      open={visible}
       trigger="hover"
-      zIndex={9999}
-      onOpenChange={setVisible}>
+      zIndex={9999}>
       <Button
         className={classNames(
           'ant-btn-reaction m-r-xss flex-center transparent',
@@ -124,8 +121,7 @@ const Emoji: FC<EmojiProps> = ({
         key={reaction}
         shape="round"
         size="small"
-        onClick={handleEmojiOnClick}
-        onMouseOver={() => setVisible(true)}>
+        onClick={handleEmojiOnClick}>
         {element}
         <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
