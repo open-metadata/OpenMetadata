@@ -16,6 +16,7 @@ import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -85,6 +86,7 @@ const SamlCallback = () => {
 
   return (
     <>
+      <DocumentTitle title={t('label.sign-in')} />
       <div data-testid="redirect-message">{t('message.redirect-message')}</div>
       <Loader fullScreen />
     </>

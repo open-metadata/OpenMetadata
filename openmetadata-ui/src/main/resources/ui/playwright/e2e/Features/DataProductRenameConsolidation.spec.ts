@@ -142,8 +142,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -235,8 +235,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -331,8 +331,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });
@@ -438,8 +438,8 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         },
       ],
     });

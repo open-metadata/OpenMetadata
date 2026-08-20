@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   group: ui-checkstyle-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
@@ -124,17 +124,37 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
-          cache: yarn
-          cache-dependency-path: |
-            ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
-            ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}/yarn.lock
 
       - name: Install Antlr4 CLI
         run: sudo make install_antlr_cli
 
+      # setup-node's built-in `cache: yarn` is exact-key only — a yarn.lock
+      # change leaves the cache completely cold and exposes installs to transient
+      # registry 5xx. An explicit cache with restore-keys falls back to the most
+      # recent lockfile's cache so a lockfile change only fetches the delta.
+      # RESTORE-ONLY: this workflow runs on PR refs whose exact key is never
+      # reused; saving here would duplicate ~700 MB per run and evict main-scoped
+      # caches. The main-scoped copy is saved by populate-playwright-apt-cache.yml.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY)) }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+
       - name: Install UI Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Get changed src files
         id: changed-src-files
@@ -285,7 +305,16 @@ jobs:
 
       - name: Install Core Components Yarn Packages
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
-        run: yarn install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: I18n Sync (core-components)
         id: i18n_core
