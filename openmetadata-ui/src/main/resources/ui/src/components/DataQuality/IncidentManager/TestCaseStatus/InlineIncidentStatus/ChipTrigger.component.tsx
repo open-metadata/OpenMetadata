@@ -33,10 +33,29 @@ export type ChipTriggerProps = {
   overlayOpen: boolean;
   attachPressHandler: boolean;
   /**
-   * Bound the label's width so it cannot widen the column it sits in. Opt-in per
-   * call site, because the safe cap differs by column — see CHIP_LABEL_MAX_WIDTH.
+   * Tailwind max-width utility bounding the label, e.g. `tw:max-w-44`. Omit and
+   * the chip sizes to its content, as it always has.
+   *
+   * A chip in an auto-layout table cell contributes its intrinsic width as the
+   * column's floor, so an unbounded nowrap label lets a long translation widen
+   * the column until the table outgrows its container and the trailing columns
+   * are pushed off screen (issue #30522).
+   *
+   * The bound is passed in rather than fixed here because the safe value is a
+   * property of the *column*, not of the chip. It is opt-in rather than shared
+   * for two reasons:
+   *   - the severity column needs <= 184px (measured at 1440px with the nav
+   *     expanded: 184px keeps the Assignee column on screen, 188px does not),
+   *     while the widest status pill already renders 172.7px in ru-RU — so a
+   *     shared cap would have to sit in the narrow [173, 184] band, and
+   *     Tailwind's scale offers only `max-w-44` (176px) inside it, with
+   *     `max-w-48` (192px) well outside;
+   *   - a shared 176px cap would leave status just 3.3px of headroom, so any
+   *     retranslation or typography-token change would silently truncate the
+   *     Incident Manager's primary column. Opt-in leaves status unbounded, which
+   *     no measurement can invalidate.
    */
-  truncateLabel?: boolean;
+  maxLabelWidth?: string;
   onStatusClick?: () => void;
 };
 
@@ -46,24 +65,6 @@ const CHIP_TRIGGER_BTN_CLASS =
 const CHIP_PILL_CLASS =
   'tw:inline-flex tw:items-center tw:gap-0.5 tw:whitespace-nowrap tw:rounded-full tw:border tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
 
-// A chip in an auto-layout table cell contributes its intrinsic width as the
-// column's floor, so an unbounded nowrap label lets a long translation widen the
-// column until the table outgrows its container and the trailing columns are
-// pushed off screen (issue #30522).
-//
-// 11rem is a severity-column budget, not a chip-wide one, and the two cannot be
-// reconciled — which is why this is opt-in rather than baked into the pill:
-//   - severity must stay <= ~176px or ru-RU "Критичность инцидента отсутствует"
-//     (254px unbounded) pushes the Assignee column past the viewport;
-//   - the widest *status* pill already renders 172.7px (ru-RU "Назначен
-//     исполнитель"), so a cap that is safe for status needs >= ~192px, which
-//     re-inflates the severity column by 16px and reinstates the bug.
-// Status therefore stays unbounded and can never truncate by construction.
-// All widths measured in-DOM at 12px/500 Inter across the 20 shipped locales; an
-// off-DOM probe under-reports Cyrillic by ~6px because the `unicode-range`
-// subset is not active for it.
-const CHIP_LABEL_MAX_WIDTH = 'tw:max-w-44';
-
 export const ChipTrigger = ({
   chipRef,
   dataTestId,
@@ -72,11 +73,11 @@ export const ChipTrigger = ({
   hasEditPermission,
   overlayOpen,
   attachPressHandler,
-  truncateLabel = false,
+  maxLabelWidth,
   onStatusClick = () => {},
 }: ChipTriggerProps) => {
   const ChevronIcon = overlayOpen ? ArrowUpIcon : ArrowDownIcon;
-  const pillWidthClass = truncateLabel ? CHIP_LABEL_MAX_WIDTH : 'tw:max-w-max';
+  const isBounded = Boolean(maxLabelWidth);
 
   return (
     <Button
@@ -91,7 +92,9 @@ export const ChipTrigger = ({
         ? { onPress: onStatusClick }
         : {})}>
       <span
-        className={`${CHIP_PILL_CLASS} ${pillWidthClass} tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]`}
+        className={`${CHIP_PILL_CLASS} ${
+          maxLabelWidth ?? 'tw:max-w-max'
+        } tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]`}
         data-testid={`${dataTestId}-pill`}
         style={{
           backgroundColor: palette.bg,
@@ -99,11 +102,13 @@ export const ChipTrigger = ({
           color: palette.color,
         }}>
         {/* Truncation is visual only — the full label stays in the DOM for the
-            button's accessible name, and `title` surfaces it on hover. */}
+            button's accessible name, and `title` surfaces it on hover. Both are
+            gated on the bound: an unbounded chip cannot clip, so a tooltip there
+            would only repeat text the user can already read. */}
         <span
-          className="tw:min-w-0 tw:truncate"
+          className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
           data-testid={`${dataTestId}-label`}
-          title={chipLabel}>
+          title={isBounded ? chipLabel : undefined}>
           {chipLabel}
         </span>
         {hasEditPermission && (

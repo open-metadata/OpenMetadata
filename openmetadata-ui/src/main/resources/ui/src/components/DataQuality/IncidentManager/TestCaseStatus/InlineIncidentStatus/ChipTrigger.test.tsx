@@ -22,26 +22,35 @@ jest.mock('@untitledui/icons', () => ({
 // jsdom does no layout, so the visual truncation itself is covered by
 // playwright/e2e/Features/IncidentManagerLocaleLayout.spec.ts. What is
 // verifiable here is the contract truncation depends on: the untruncated label
-// must stay in the DOM (accessible name) and be exposed on hover (issue #30522).
+// must stay in the DOM (accessible name) and be exposed on hover (issue #30522),
+// and an unbounded chip must not advertise a tooltip it cannot need.
 const LONG_LABEL = 'Критичность инцидента отсутствует';
 
-const renderChip = (chipLabel: string, hasEditPermission = true) =>
+const renderChip = ({
+  chipLabel = LONG_LABEL,
+  hasEditPermission = true,
+  maxLabelWidth,
+}: {
+  chipLabel?: string;
+  hasEditPermission?: boolean;
+  maxLabelWidth?: string;
+} = {}) =>
   render(
     <ChipTrigger
-      truncateLabel
       attachPressHandler={false}
       chipLabel={chipLabel}
       chipRef={createRef<HTMLButtonElement>()}
       dataTestId="severity-chip"
       hasEditPermission={hasEditPermission}
+      maxLabelWidth={maxLabelWidth}
       overlayOpen={false}
       palette={{ bg: '#fff', color: '#000', border: '#ccc' }}
     />
   );
 
 describe('ChipTrigger', () => {
-  it('should expose the untruncated label on hover', () => {
-    renderChip(LONG_LABEL);
+  it('should expose the untruncated label on hover when bounded', () => {
+    renderChip({ maxLabelWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
       'title',
@@ -50,18 +59,27 @@ describe('ChipTrigger', () => {
   });
 
   it('should keep the whole label in the accessible name', () => {
-    renderChip(LONG_LABEL);
+    renderChip({ maxLabelWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip')).toHaveTextContent(LONG_LABEL);
   });
 
-  it('should expose the label for a chip the user cannot edit', () => {
-    renderChip(LONG_LABEL, false);
+  it('should expose the label for a bounded chip the user cannot edit', () => {
+    renderChip({ hasEditPermission: false, maxLabelWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
       'title',
       LONG_LABEL
     );
     expect(screen.queryByTestId('icon-chevron-down')).not.toBeInTheDocument();
+  });
+
+  it('should not set a tooltip on an unbounded chip', () => {
+    renderChip();
+
+    expect(screen.getByTestId('severity-chip-label')).not.toHaveAttribute(
+      'title'
+    );
+    expect(screen.getByTestId('severity-chip')).toHaveTextContent(LONG_LABEL);
   });
 });
