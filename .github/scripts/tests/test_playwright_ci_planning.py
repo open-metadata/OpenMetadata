@@ -40,11 +40,18 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     planner = load_script("build_playwright_shards")
 
     assert planner.PROJECT_LANES["Basic"] == "chromium"
-    assert planner.lane_bounds("chromium", "full") == (5, 24)
+    assert planner.lane_bounds("chromium", "full") == (
+        5,
+        planner.COMMON_MAX_SHARDS,
+    )
 
 
-def test_full_common_shard_count_is_capped_at_24():
+def test_full_common_shard_count_is_capped_at_the_common_max():
     planner = load_script("build_playwright_shards")
+    cap = planner.COMMON_MAX_SHARDS
+    # Enough content to push the calculated shard count comfortably above
+    # the cap — the exact figure is unimportant; we just need
+    # `calculated > cap` so the min(cap, …) clamp is what returns.
     units = [
         planner.Unit(
             "chromium",
@@ -52,22 +59,21 @@ def test_full_common_shard_count_is_capped_at_24():
             str(index),
             weight_ms=1_000_000,
         )
-        for index in range(81)
+        for index in range(cap * 4)
     ]
-    units.append(
-        planner.Unit("chromium", "remainder.spec.ts", "remainder", weight_ms=363_055)
-    )
 
-    assert planner.shard_count(units, "chromium", "full") == 24
+    assert planner.shard_count(units, "chromium", "full") == cap
 
 
 def test_common_lane_carries_its_own_shard_budget():
-    # The chromium lane no longer sits a minute under TARGET_MS: the suite grew
-    # past what COMMON_MAX_SHARDS could hold at 19m, so it now runs a minute
-    # above the other lanes. Both still fit the 25m playwright timeout wrapper.
+    # Chromium's budget is a minute UNDER the other lanes' TARGET_MS, derived
+    # from the predicted→actual execution tail: actuals run up to 1.23× the
+    # prediction on noisy runs (run 32209040146), and 19 min × 1.32 is the
+    # break-even against the 25-minute playwright wrapper. See the derivation
+    # comment on COMMON_SHARD_BUDGET_MS.
     planner = load_script("build_playwright_shards")
 
-    assert planner.shard_budget_ms_for_lane("chromium") == 21 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
     assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
 
 
@@ -98,18 +104,26 @@ def test_common_assignment_stays_within_the_execution_ceiling():
     )
 
 
-def test_full_mode_chromium_converges_at_the_shard_ceiling():
-    # Regression guard for the merge-queue outage: a lane of this shape exhausted
-    # COMMON_MAX_SHARDS under the old 19m budget and aborted planning outright.
-    # The allocator must converge at or before the ceiling, and the resulting
-    # plan genuinely needs the window above 19m -- so quietly reverting the
-    # budget to 19m fails on the final assertion rather than only in CI.
+def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
+    # Regression guard for BOTH historical outages on this lane:
+    # 1. Under budget=19m × cap=24, content past ~1163 worker-minutes
+    #    exhausted the cap and aborted planning outright (the #30784
+    #    outage — its stop-gap was raising the budget to 21m).
+    # 2. Under budget=21m, packed shards ran into the 25-minute wrapper on
+    #    tail-ratio runs (run 32209040146 — SIGTERM with 162/164 passed).
+    # The durable configuration is budget=19m × cap=28: the allocator must
+    # converge within the ceiling AND genuinely need more than 24 shards —
+    # so quietly reverting COMMON_MAX_SHARDS to 24 fails here rather than
+    # only in the merge queue. The content shape mirrors reality post
+    # audit-splitting: many fine-grained units (1300 × 1 min ≈ today's
+    # ~1200 worker-minutes of chromium content), not a few near-atomic
+    # blocks whose granularity would distort LPT balance.
     planner = load_script("build_playwright_shards")
     units = [
         planner.Unit(
-            "chromium", f"heavy-{index}.spec.ts", str(index), weight_ms=13 * 60 * 1000
+            "chromium", f"fine-{index}.spec.ts", str(index), weight_ms=60_000
         )
-        for index in range(96)
+        for index in range(1300)
     ]
 
     shards = planner.assign_lane_within_budget(units, "chromium", "full")
@@ -120,7 +134,7 @@ def test_full_mode_chromium_converges_at_the_shard_ceiling():
     )
     assert len(shards) <= planner.COMMON_MAX_SHARDS
     assert heaviest_ms <= planner.COMMON_SHARD_BUDGET_MS
-    assert heaviest_ms > 19 * 60 * 1000
+    assert len(shards) > 24
 
 
 def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
@@ -132,7 +146,7 @@ def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
         for index in range(120)
     ]
 
-    with pytest.raises(SystemExit, match=r"needs more than 24 shards"):
+    with pytest.raises(SystemExit, match=r"needs more than 28 shards"):
         planner.assign_lane_within_budget(units, "chromium", "full")
 
 
@@ -992,7 +1006,7 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
     ]
 
 
-def test_common_shards_enforce_the_twenty_one_minute_budget(tmp_path):
+def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
     planner = load_script("build_playwright_shards")
     within_budget = planner.Unit(
         "chromium",
@@ -1000,7 +1014,7 @@ def test_common_shards_enforce_the_twenty_one_minute_budget(tmp_path):
         "within",
         grep_titles={("chromium", "within.spec.ts", "within")},
         test_ids={"within"},
-        weight_ms=21 * 60 * 1000,
+        weight_ms=19 * 60 * 1000,
     )
     above_budget = planner.Unit(
         "chromium",
@@ -1008,11 +1022,11 @@ def test_common_shards_enforce_the_twenty_one_minute_budget(tmp_path):
         "above",
         grep_titles={("chromium", "above.spec.ts", "above")},
         test_ids={"above"},
-        weight_ms=21 * 60 * 1000 + 1,
+        weight_ms=19 * 60 * 1000 + 1,
     )
 
     planner.write_plan(tmp_path, "chromium", 0, [within_budget])
-    with pytest.raises(SystemExit, match="above the 21-minute plan budget"):
+    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
         planner.write_plan(tmp_path, "chromium", 1, [above_budget])
 
 
@@ -1893,11 +1907,13 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
             }
         )
     )
+    # 481 > 480-s ceiling (transitional env target — see
+    # BLOCKING_TARGET_DETAILS in evaluate_playwright_performance.py).
     phase_file.write_text(
         json.dumps(
             {
                 "lane": "chromium",
-                "environmentSeconds": 301,
+                "environmentSeconds": 481,
                 "executionSeconds": 1,
             }
         )
@@ -2010,10 +2026,10 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci-postgresql:", 1
+        "  playwright-ci:", 1
     )[0]
 
     assert "searchClusterAlias: $searchClusterAlias" in fixture_builder
@@ -2028,7 +2044,7 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
 
 def test_planner_discovers_oss_only_specs():
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     planner_job = workflow.split("  plan-playwright:", 1)[1].split(
         "  restore-playwright-fixture:", 1
@@ -2149,6 +2165,75 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     )
 
 
+def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    source_path = (
+        tmp_path / selector.UI_ROOT / "src/components/OntologyExplorer/view.ts"
+    )
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text("export const view = {};\n")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "OntologyExplorer.spec.ts").write_text(
+        "test('ontology', () => undefined);\n"
+    )
+    (spec_dir / "OntologyExplorerRdf.spec.ts").write_text(
+        "test('rdf', () => undefined);\n"
+    )
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": [
+                    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+                ],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": [
+                            f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
+                        ],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text(f"{source_path.relative_to(tmp_path)}\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == [
+        {
+            "projects": ["chromium"],
+            "spec": "playwright/e2e/Features/OntologyExplorer.spec.ts",
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     "spec",
     [
@@ -2248,8 +2333,15 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():
+    # The playwright-summary job lives in the postgres PR caller (not the
+    # reusable) so branch protection can require its unprefixed check name.
+    # The paths-filter that watches render_playwright_summary.cjs still
+    # lives in the reusable's check-changes job.
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    reusable = (
+        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
     ).read_text()
     summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
     summary_job = workflow.split("  playwright-summary:", 1)[1]
@@ -2271,7 +2363,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
         "\n      - name:", 1
     )[0]
     assert len(summary_script) < 21_000
-    assert "- '.github/scripts/render_playwright_summary.cjs'" in workflow
+    assert "- '.github/scripts/render_playwright_summary.cjs'" in reusable
     assert "'${{ github.run_id }}'" not in summary_helper
     assert "process.env.GITHUB_RUN_ID" in summary_helper
     assert "zero-attempt; reason unknown" in summary_helper

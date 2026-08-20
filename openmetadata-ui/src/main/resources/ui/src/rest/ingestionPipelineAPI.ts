@@ -14,10 +14,12 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { AgentType } from '../generated/entity/services/ingestionPipelines/agentType';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -56,11 +58,16 @@ export const getIngestionPipelines = async (data: {
   serviceFilter?: string;
   paging?: Omit<Paging, 'total'>;
   pipelineType?: PipelineType[];
+  agentType?: AgentType;
   provider?: ProviderType;
   testSuite?: string;
   serviceType?: string;
   limit?: number;
   applicationType?: PipelineType;
+  // Order by the effective display name (`displayName` falling back to `name`) — the value the
+  // Name column renders — instead of the endpoint's default `name` order.
+  sortField?: 'displayName';
+  sortOrder?: SORT_ORDER;
 }) => {
   const { arrQueryFields, serviceFilter, paging, pipelineType, ...rest } = data;
 

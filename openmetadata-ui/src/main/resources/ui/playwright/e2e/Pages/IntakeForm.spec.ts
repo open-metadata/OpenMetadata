@@ -210,7 +210,16 @@ const selectExtensionReference = async ({
     .first();
 
   await expect(input).toBeVisible({ timeout: 15000 });
-  await input.focus();
+  // Use force:true to bypass Playwright's element-stability check. The
+  // reference-picker input lives inside a drawer whose body re-renders while
+  // the form settles, causing the input's bounding box to shift. A plain
+  // click() would spin until the test times out ("element is not stable");
+  // force:true skips that check while still dispatching the pointer events
+  // that activate the ComboBox popup. Do NOT use focus() here — opening the
+  // popup without pointer activation leaves the ComboBox in a state where the
+  // subsequent option.click() triggers unexpected re-renders that continuously
+  // detach the option element, causing a 3-minute hang.
+  await input.click({ force: true });
   await input.fill(query);
   await searchResponse;
 

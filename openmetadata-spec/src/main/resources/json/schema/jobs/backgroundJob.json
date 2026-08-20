@@ -12,7 +12,7 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT", "AUDIT_EXPORT"],
       "description": "Type of the job."
     },
     "methodName": {

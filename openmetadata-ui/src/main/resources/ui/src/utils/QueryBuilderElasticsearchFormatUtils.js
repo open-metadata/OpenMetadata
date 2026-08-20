@@ -1058,7 +1058,17 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
           },
         };
       } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+        // extendedConfig, as in every other branch: buildEsRule resolves the field's widget
+        // through the config it is given, and a raw one resolves none — so a fully entered
+        // condition builds no clause at all when this runs on a rule node directly.
+        return buildEsRule(
+          field,
+          value,
+          operator,
+          extendedConfig,
+          valueSrc,
+          syntax
+        );
       }
     }
 
