@@ -115,9 +115,20 @@ const installSearchIndexApplication = async (page: Page) => {
 
   await getApplications;
 
-  await expect(
-    page.getByTestId('search-indexing-application-card')
-  ).toBeVisible();
+  // Installed applications share the same pagination as the marketplace, so
+  // migration fixtures can move this card off the first page. Verify the
+  // installed application through its stable detail route instead.
+  const appResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes('/api/v1/apps/name/SearchIndexingApplication') &&
+      !response.url().includes('/status') &&
+      response.request().method() === 'GET'
+  );
+  await page.goto('/settings/apps/SearchIndexingApplication');
+  expect((await appResponse).status()).toBe(200);
+  await expect(page.getByTestId('manage-button')).toBeVisible();
 };
 
 const verifyLastExecutionStatus = async (page: Page) => {
@@ -437,10 +448,6 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     if (process.env.PLAYWRIGHT_IS_OSS) {
       await test.step('Run application and rerun with table-only config', async () => {
         test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
-
-        await page.click(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        );
 
         const previousRunStartTime = await getLatestRunStartTime(page);
         const triggerPipelineResponse = page.waitForResponse(
