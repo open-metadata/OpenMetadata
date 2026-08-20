@@ -30,10 +30,10 @@ export interface FilterResourceDescriptor {
      */
     supportedActions?: EventFilterRule[];
     /**
-     * Event types an alert on this resource can actually receive. An event type outside this
-     * list is rejected when the subscription is saved, so the alert builder must offer only
-     * these. Derived server-side from what the event emitters produce, not declared in
-     * EventSubResourceDescriptor.json.
+     * Event types an alert on this resource can actually receive, so the alert builder should
+     * offer only these. Advisory, not enforced: a subscription holding an event type outside
+     * this list still saves, it just never matches an event. Derived server-side from what the
+     * event emitters produce, not declared in EventSubResourceDescriptor.json.
      */
     supportedEventTypes?: EventType[];
     /**
