@@ -28,6 +28,7 @@ const LONG_LABEL = 'Критичность инцидента отсутству
 const renderChip = (chipLabel: string, hasEditPermission = true) =>
   render(
     <ChipTrigger
+      truncateLabel
       attachPressHandler={false}
       chipLabel={chipLabel}
       chipRef={createRef<HTMLButtonElement>()}

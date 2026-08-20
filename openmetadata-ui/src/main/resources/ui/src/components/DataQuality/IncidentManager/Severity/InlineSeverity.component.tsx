@@ -61,6 +61,7 @@ const InlineSeverity = ({
 
   const chipTrigger = (
     <ChipTrigger
+      truncateLabel
       attachPressHandler={false}
       chipLabel={label}
       chipRef={chipRef}
