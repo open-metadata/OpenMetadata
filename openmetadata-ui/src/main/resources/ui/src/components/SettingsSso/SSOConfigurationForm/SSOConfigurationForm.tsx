@@ -48,6 +48,7 @@ import {
   applySecurityConfiguration,
   getSecurityConfiguration,
   patchSecurityConfiguration,
+  revertSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
   validateSecurityConfiguration,
@@ -88,6 +89,7 @@ import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectW
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { UnsavedChangesModal } from '../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
@@ -208,6 +210,8 @@ const SSOConfigurationFormRJSF = ({
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
   const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
+  const [isReverting, setIsReverting] = useState<boolean>(false);
+  const [showRevertModal, setShowRevertModal] = useState<boolean>(false);
   const {
     isTesting: isTestingLogin,
     result: testLoginResult,
@@ -953,6 +957,22 @@ const SSOConfigurationFormRJSF = ({
     runTestLogin(built.payload);
   };
 
+  // Restore the configuration that was live before the most recent change. The
+  // admin's session survives a config change, so this stays reachable even when
+  // a just-applied provider breaks new logins.
+  const handleRevert = async () => {
+    setShowRevertModal(false);
+    setIsReverting(true);
+    try {
+      await revertSecurityConfiguration();
+      showSuccessToast(t('message.sso-config-revert-success'));
+      globalThis.location.reload();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsReverting(false);
+    }
+  };
+
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
@@ -1122,6 +1142,16 @@ const SSOConfigurationFormRJSF = ({
             onClick={handleCancelClick}>
             {t('label.cancel')}
           </Button>
+          {hasExistingConfig && (
+            <Button
+              className="revert-sso-configuration text-md"
+              data-testid="revert-sso-configuration"
+              disabled={isLoading || isReverting}
+              loading={isReverting}
+              onClick={() => setShowRevertModal(true)}>
+              {t('label.restore-previous-configuration')}
+            </Button>
+          )}
           <Button
             className="test-sso-configuration text-md"
             data-testid="test-sso-configuration"
@@ -1156,6 +1186,16 @@ const SSOConfigurationFormRJSF = ({
           open={showTestLoginModal}
           result={testLoginResult}
           onClose={() => setShowTestLoginModal(false)}
+        />
+        <ConfirmationModal
+          bodyText={t('message.sso-revert-confirmation')}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.restore')}
+          header={t('label.restore-previous-configuration')}
+          isLoading={isReverting}
+          visible={showRevertModal}
+          onCancel={() => setShowRevertModal(false)}
+          onConfirm={handleRevert}
         />
       </>
     ) : null;

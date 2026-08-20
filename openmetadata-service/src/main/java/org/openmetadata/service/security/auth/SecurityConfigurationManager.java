@@ -72,7 +72,7 @@ public class SecurityConfigurationManager {
     this.currentMcpConfig = mcpConfig;
   }
 
-  private SecurityConfiguration previousSecurityConfig;
+  @Getter private SecurityConfiguration previousSecurityConfig;
   private MCPConfiguration previousMcpConfig;
   private OpenMetadataApplication application;
   private Environment environment;
@@ -213,6 +213,10 @@ public class SecurityConfigurationManager {
             e);
       }
     }
+  }
+
+  public void clearPreviousSecurityConfig() {
+    previousSecurityConfig = null;
   }
 
   private void rollbackConfiguration() {
