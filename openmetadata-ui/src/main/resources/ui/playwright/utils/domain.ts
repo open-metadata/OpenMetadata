@@ -1393,11 +1393,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1407,11 +1409,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: subDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: subDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1506,11 +1510,13 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1671,6 +1677,20 @@ export const navigateToPortsTab = async (page: Page) => {
 
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
+
+  // Already on the ports tab: clicking the active tab is a no-op that fires no
+  // /portsView request — waiting on that response would hang until the test
+  // timeout. The selected tab exposes `aria-selected` via its `role="tab"`.
+  const isActive = await page
+    .getByRole('tab', { selected: true })
+    .getByTestId('input_output_ports')
+    .isVisible();
+
+  if (isActive) {
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
 
   const portsViewResponse = page.waitForResponse((response) =>
     response.url().includes('/portsView')
@@ -2086,11 +2106,13 @@ export const assignDomainToEntity = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
