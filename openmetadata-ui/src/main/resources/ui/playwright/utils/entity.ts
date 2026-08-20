@@ -644,12 +644,18 @@ const closeCertificationPopover = async (page: Page) => {
 
   const closeButton = page.getByTestId('close-certification');
   if (await closeButton.isVisible()) {
-    await closeButton.click();
-  } else {
+    // A successful PATCH closes this controlled popover asynchronously. The
+    // button can therefore be visible for this check and detach before
+    // Playwright finishes its actionability checks. Keep that race bounded;
+    // the hidden-state assertion below is the actual close contract.
+    await closeButton.click({ timeout: 2_000 }).catch(() => undefined);
+  }
+
+  if (await popover.isVisible()) {
     await clickOutside(page);
   }
 
-  await expect(popover).toBeHidden();
+  await expect(popover).toBeHidden({ timeout: 5_000 });
 };
 
 export const assignCertification = async (
