@@ -34,17 +34,28 @@ const VIEWPORT = { width: 1440, height: 900 };
 const INCIDENT_LIST_URL =
   '**/api/v1/dataQuality/testCases/testCaseIncidentStatus**';
 
-/** Mirrors `max-w-44` on CHIP_PILL_CLASS; +2px absorbs sub-pixel rounding. */
+/** Mirrors CHIP_LABEL_MAX_WIDTH (`max-w-44`); +2px absorbs sub-pixel rounding. */
 const CHIP_MAX_WIDTH = 178;
 
-const buildIncidentRow = (index: number, severity?: string) => {
+/**
+ * The capped pill (176px) plus the cell's own 2 x 24px padding leaves the column
+ * at 228px; 240px allows a little slack without admitting the 306px it reached
+ * while the chip was unbounded.
+ */
+const SEVERITY_COLUMN_MAX_WIDTH = 240;
+
+const buildIncidentRow = (
+  index: number,
+  statusType: string,
+  severity?: string
+) => {
   const name = `pw_locale_incident_${index}`;
 
   return {
     id: `00000000-0000-4000-8000-00000000000${index}`,
     stateId: `10000000-0000-4000-8000-00000000000${index}`,
     timestamp: Date.now() - index * 3_600_000,
-    testCaseResolutionStatusType: 'New',
+    testCaseResolutionStatusType: statusType,
     ...(severity ? { severity } : {}),
     testCaseReference: {
       id: `20000000-0000-4000-8000-00000000000${index}`,
@@ -57,25 +68,43 @@ const buildIncidentRow = (index: number, severity?: string) => {
   };
 };
 
-// Every row is unassigned and all but one carry no severity — the state the
-// issue reports, and the one that renders both placeholders at full length.
-const INCIDENT_LIST_BODY = {
+// The scenario the issue reports: freshly-raised incidents, every row unassigned
+// and all but one without a severity, so both placeholders render at full length.
+const REPORTED_INCIDENTS = {
   data: [
-    buildIncidentRow(0),
-    buildIncidentRow(1),
-    buildIncidentRow(2, 'Severity3'),
-    buildIncidentRow(3),
+    buildIncidentRow(0, 'New'),
+    buildIncidentRow(1, 'New'),
+    buildIncidentRow(2, 'New', 'Severity3'),
+    buildIncidentRow(3, 'New'),
   ],
   paging: { total: 4 },
 };
 
-type OpenIncidentManager = (locale: string) => Promise<Page>;
+// Separate fixture for the status guard so it sees every translated status label
+// rather than four copies of "New". Kept apart from REPORTED_INCIDENTS on
+// purpose: in ru-RU the "Assigned" label renders a 172.7px pill and widens the
+// Status column by ~98px, which is its own width contributor and would confound
+// the severity geometry assertions.
+const ALL_STATUS_INCIDENTS = {
+  data: [
+    buildIncidentRow(0, 'New'),
+    buildIncidentRow(1, 'Ack'),
+    buildIncidentRow(2, 'Assigned', 'Severity3'),
+    buildIncidentRow(3, 'Resolved'),
+  ],
+  paging: { total: 4 },
+};
+
+type OpenIncidentManager = (
+  locale: string,
+  incidents?: typeof REPORTED_INCIDENTS
+) => Promise<Page>;
 
 const test = base.extend<{ openIncidentManager: OpenIncidentManager }>({
   openIncidentManager: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
 
-    await use(async (locale: string) => {
+    await use(async (locale: string, incidents = REPORTED_INCIDENTS) => {
       const context = await browser.newContext({
         locale,
         storageState: 'playwright/.auth/admin.json',
@@ -91,7 +120,7 @@ const test = base.extend<{ openIncidentManager: OpenIncidentManager }>({
         route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(INCIDENT_LIST_BODY),
+          body: JSON.stringify(incidents),
         })
       );
 
@@ -113,11 +142,20 @@ const test = base.extend<{ openIncidentManager: OpenIncidentManager }>({
   },
 });
 
-/** The pill span inside the chip button — the box that carries the width. */
+/**
+ * The pill is addressed by its own testid, not by `chip > span`: react-aria's
+ * Button wraps children in an unstyled `span.transition-inherit-all`, so the
+ * positional locator resolves to that wrapper — which shrink-wraps to the same
+ * width today, and would silently keep passing if it ever gained padding.
+ */
 const getSeverityPill = (page: Page) =>
-  page.getByTestId('severity-chip').first().locator('span').first();
+  page.getByTestId('severity-chip-pill').first();
 
 test.describe('Incident Manager table in a long-string locale', () => {
+  // Scoped to the reported scenario. It is not a claim that ru-RU fits at 1440px
+  // for every dataset: an incident in the "Assigned" state adds ~98px of Status
+  // column in ru-RU and puts this edge back outside the viewport. That is a
+  // separate string, not the severity chip, and is out of scope here.
   test('keeps the Assignee column on screen when the Russian severity placeholder is rendered', async ({
     openIncidentManager,
   }) => {
@@ -151,6 +189,23 @@ test.describe('Incident Manager table in a long-string locale', () => {
     test.slow(true);
 
     const russianPage = await openIncidentManager(RU_LOCALE);
+
+    // Asserted on the <td> first, because that element exists either way: it is
+    // the column the chip was inflating, and it reads 306px unbounded.
+    const severityCell = russianPage
+      .getByTestId('test-case-incident-manager-table')
+      .locator('tbody tr')
+      .first()
+      .locator('td')
+      .filter({ has: russianPage.getByTestId('severity-chip') });
+
+    const severityCellBox = await severityCell.boundingBox();
+
+    expect(Math.round(severityCellBox?.width ?? 0)).toBeLessThanOrEqual(
+      SEVERITY_COLUMN_MAX_WIDTH
+    );
+
+    // Then on the pill itself, to pin which box is doing the bounding.
     const russianPill = getSeverityPill(russianPage);
 
     await expect(russianPill).toContainText(RU_NO_SEVERITY);
@@ -182,6 +237,10 @@ test.describe('Incident Manager table in a long-string locale', () => {
     const severityChip = page.getByTestId('severity-chip').first();
     const severityLabel = severityChip.getByTestId('severity-chip-label');
 
+    // Assert presence before measuring: `.evaluate()` on a missing locator hangs
+    // until the test timeout instead of failing on the real assertion.
+    await expect(severityLabel).toBeVisible();
+
     // The label is genuinely clipped, so the hover affordance is load-bearing.
     const labelOverflow = await severityLabel.evaluate(
       (element) => element.scrollWidth - element.clientWidth
@@ -193,5 +252,31 @@ test.describe('Incident Manager table in a long-string locale', () => {
     // Truncation is visual only — the button's accessible name still carries
     // the whole string.
     await expect(severityChip).toContainText(RU_NO_SEVERITY);
+  });
+
+  // Regression guard, not a reproduction: status chips are unbounded today, so
+  // this passes before and after the fix. It exists because the severity cap
+  // lives on a *shared* chip component, and widening it to the ~192px that
+  // status would need re-inflates the severity column by 16px and puts the
+  // Assignee column back off screen. Status must stay unbounded; ru-RU is the
+  // worst case at 172.7px ("Назначен исполнитель").
+  test('never truncates a status chip, whose labels are longest in Russian', async ({
+    openIncidentManager,
+  }) => {
+    test.slow(true);
+
+    const page = await openIncidentManager(RU_LOCALE, ALL_STATUS_INCIDENTS);
+    const statusLabels = page.locator('[data-testid$="-status-label"]');
+
+    await expect(statusLabels.first()).toBeVisible();
+    await expect(statusLabels).toHaveCount(4);
+
+    const clipped = await statusLabels.evaluateAll((elements) =>
+      elements
+        .filter((element) => element.scrollWidth > element.clientWidth)
+        .map((element) => element.textContent)
+    );
+
+    expect(clipped).toEqual([]);
   });
 });
