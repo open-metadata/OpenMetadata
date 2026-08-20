@@ -145,7 +145,7 @@ concurrency:
   # a postgres run and a mysql run for the same ref don't fight — the caller
   # workflows drive different events/schedules and share this reusable.
   group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   # Fork-vs-same-repo PR arbitration. GitHub fires BOTH pull_request and
