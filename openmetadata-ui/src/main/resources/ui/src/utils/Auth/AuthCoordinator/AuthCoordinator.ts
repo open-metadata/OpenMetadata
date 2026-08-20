@@ -154,16 +154,21 @@ export class AuthCoordinator {
         return;
       }
       const { exp, isExpired } = extractDetailsFromToken(token);
+      // A missing / non-positive `exp` means the token is opaque, not a JWT
+      // at all, or spec-violating. extractDetailsFromToken returns
+      // `isExpired: true` for the jwt-decode-throws branch AND
+      // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
+      // neither is signal we can act on. Leave the token in place; the
+      // next real 401 will drive a refresh via the axios interceptor.
+      // MUST come before the isExpired branch — otherwise opaque tokens
+      // fire ensureFreshToken() on every tab focus (Greptile P1 on the
+      // sibling hotfix PR).
+      if (typeof exp !== 'number' || exp <= 0) {
+        return;
+      }
       if (isExpired) {
         await this.ensureFreshToken();
 
-        return;
-      }
-      // A missing / non-positive `exp` (e.g. a non-JWT / opaque token, or a
-      // spec-violating id_token) has no usable expiry — don't proactively
-      // refresh on every tab focus. Leave the token in place; the next real
-      // 401 will drive a refresh via the axios interceptor.
-      if (typeof exp !== 'number' || exp <= 0) {
         return;
       }
       // Fire a proactive refresh when the remaining lifetime is inside the

@@ -329,6 +329,32 @@ describe('AuthCoordinator', () => {
       expect(renewer).toHaveBeenCalledTimes(1);
     });
 
+    it('does NOT call the renewer for an opaque / undecodable token (jwt-decode threw)', async () => {
+      // extractDetailsFromToken's catch branch returns
+      // {exp: 0, isExpired: true, timeoutExpiry: 0} when jwt-decode
+      // throws. Naïvely ordering `if (isExpired)` first would fire the
+      // renewer on every tab focus for an opaque token — the invalid-exp
+      // guard must run FIRST. (Greptile P1 flagged the same ordering
+      // on the sibling hotfix PR.)
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('not-a-jwt');
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: 0,
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+      const { axios } = createMockAxios();
+      coordinator.install(axios, () => true);
+
+      await triggerTabFocus();
+
+      expect(renewer).not.toHaveBeenCalled();
+    });
+
     it('does NOT call the renewer when the token has no exp claim', async () => {
       // A token that decodes but lacks `exp` used to slip past the near-
       // expiry check because extractDetailsFromToken returns
