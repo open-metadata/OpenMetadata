@@ -1259,6 +1259,16 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
       await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await expect
+        .poll(async () =>
+          Number(
+            await page
+              .getByTestId('assets')
+              .getByTestId('filter-count')
+              .textContent()
+          )
+        )
+        .toBeGreaterThanOrEqual(1);
 
       await expect(
         page.getByTestId(`table-data-card_${entityFqn}`)

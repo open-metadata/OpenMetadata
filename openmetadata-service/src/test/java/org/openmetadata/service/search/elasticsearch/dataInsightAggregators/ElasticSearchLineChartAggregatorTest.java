@@ -16,8 +16,10 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -34,6 +36,8 @@ class ElasticSearchLineChartAggregatorTest {
 
   private static final String SERVICE_NAME = "myservice";
   private static final String X_AXIS_FIELD = "service.name.keyword";
+  private static final String OWNER_METRIC = "withOwner";
+  private static final String DESCRIPTION_METRIC = "withDescription";
   private static final long END_TIME = 24L * 60 * 60 * 1000;
 
   private final ElasticSearchLineChartAggregator aggregator =
@@ -91,6 +95,21 @@ class ElasticSearchLineChartAggregatorTest {
     assertThrows(IllegalArgumentException.class, () -> prepare(chart));
   }
 
+  @Test
+  void groupedChartKeepsAnAggregationForEveryNamedMetric() throws Exception {
+    JsonNode aggregations =
+        OBJECT_MAPPER
+            .readTree(serializeToJson(prepare(groupedMultiMetricChart())))
+            .path("aggregations");
+
+    assertEquals(2, aggregations.size(), "Each metric needs its own group-by aggregation");
+
+    Set<String> metricNames = new HashSet<>();
+    aggregations.forEach(
+        groupBy -> groupBy.path("aggregations").fieldNames().forEachRemaining(metricNames::add));
+    assertEquals(Set.of(OWNER_METRIC, DESCRIPTION_METRIC), metricNames);
+  }
+
   private SearchRequest prepare(DataInsightCustomChart chart) {
     return aggregator.prepareSearchRequest(
         chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), true);
@@ -145,6 +164,24 @@ class ElasticSearchLineChartAggregatorTest {
             .withIncludeXAxisFiled(includeService);
     return new DataInsightCustomChart()
         .withName("total_data_assets_live")
+        .withChartDetails(lineChart);
+  }
+
+  private static DataInsightCustomChart groupedMultiMetricChart() {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withName(OWNER_METRIC)
+                        .withFormula("count(k='id.keyword',q='ownerName: *')"),
+                    new LineChartMetric()
+                        .withName(DESCRIPTION_METRIC)
+                        .withFormula("count(k='id.keyword',q='hasDescription: 1')")))
+            .withGroupBy("entityType")
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart()
+        .withName("ownership_and_description_by_entity_type_live")
         .withChartDetails(lineChart);
   }
 
