@@ -475,8 +475,11 @@ test.describe('Search Settings', () => {
         );
         await ngramPanel.click();
 
-        // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        // Always choose a value that differs from the current setting. A prior
+        // interrupted run may already have persisted 5, in which case the Save
+        // button correctly remains disabled and a hard-coded value deadlocks.
+        const changedNgramBoost = initialNgramBoost === 5 ? 6 : 5;
+        await setSliderValue(page, 'field-weight-slider', changedNgramBoost);
 
         const saveResponse = page.waitForResponse(
           (r) =>
