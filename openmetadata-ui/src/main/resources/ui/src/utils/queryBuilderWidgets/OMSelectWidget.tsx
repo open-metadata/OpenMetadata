@@ -115,11 +115,16 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           loadAsync(v);
         }}
         onOpenChange={(isOpen) => {
-          if (isOpen) {
-            if (defaultOptionsRef.current.length > 0) {
-              setItems(defaultOptionsRef.current);
-            }
-            loadAsync('');
+          if (isOpen && defaultOptionsRef.current.length > 0) {
+            // Restore cached defaults immediately so the popup is not empty
+            // while the user types. Do NOT call loadAsync('') here — doing so
+            // sets pendingResolve in the shared autocomplete closure. If the
+            // 300 ms debounce for the default fetch fires before the user's
+            // typed-search fill() completes, the default API response will
+            // steal resolve_searchData and call it with default buckets,
+            // clobbering the search result even though the search API fires
+            // and responds correctly afterward.
+            setItems(defaultOptionsRef.current);
           }
         }}
         onSelectionChange={(key) =>
