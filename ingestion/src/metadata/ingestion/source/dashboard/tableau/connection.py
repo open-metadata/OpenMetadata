@@ -94,14 +94,14 @@ def _status_of(error: BaseException) -> int | None:
 TABLEAU_ERRORS = ErrorPack(
     when(http_status(401, extract=_status_of)).diagnose(
         "Authentication failed",
-        fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
-        "secret (or the username and password) and that it has not expired, and that the Site "
-        "Name matches the site those credentials belong to.",
+        fix="Tableau rejected the credentials. Check the Personal Access Token name and secret - or the username and "
+        "password - and that they have not expired. Also check Site Name is the site those credentials belong to, "
+        "since a token is only valid on its own site.",
     ),
     when(http_status(403, extract=_status_of)).diagnose(
         "Insufficient permissions",
-        fix="The credentials are valid but not authorized for this resource (403). Grant the user "
-        "at least the Viewer site role and read access to the projects to ingest.",
+        fix="The credentials are valid, but this user is not allowed to see what ingestion asked for. Give it at least "
+        "the Viewer site role, and read access to the projects you want ingested.",
     ),
     when(http_status(404, extract=_status_of)).diagnose(
         "Resource not found",
@@ -111,24 +111,25 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
-        fix="The server's certificate could not be verified. Provide the CA certificate under SSL "
-        "Config with Verify SSL set to 'validate', or set Verify SSL to 'ignore' for a "
-        "self-signed certificate.",
+        fix="The server's certificate could not be verified from where ingestion runs. Either paste the CA certificate "
+        "under SSL Config and set Verify SSL to validate, or set Verify SSL to ignore if this Tableau uses a self- "
+        "signed certificate.",
     ),
     when(Matchers.exception(TableauWorkBookException)).diagnose(
         "No workbooks visible",
-        fix="The user is authenticated but no workbook could be read. Grant it access to at least "
-        "one project containing workbooks.",
+        fix="The user signed in, but no workbook was readable. Give it access to at least one project that contains "
+        "workbooks - otherwise there is nothing for ingestion to collect.",
     ),
     when(Matchers.exception(TableauChartsException)).diagnose(
         "No views visible",
-        fix="Workbooks are readable but their views are not. Grant the user the View permission on "
-        "the workbooks to ingest; charts are ingested from workbook views.",
+        fix="Workbooks are readable, but the views inside them are not. Give the user the View "
+        "permission on the workbooks you want ingested - charts come from workbook views, so "
+        "without it no charts will be collected.",
     ),
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
-        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration.",
+        fix="Owner details could not be read. Either give the user permission to read users on the site, or turn off "
+        "owner ingestion in the service configuration.",
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
@@ -140,8 +141,8 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauDataModelsException)).diagnose(
         "Data sources could not be read",
-        fix="The Tableau Metadata API returned no data sources for the workbook. Enable the "
-        "Metadata API on the Tableau instance.",
+        fix="The Tableau Metadata API returned no data sources. It is usually switched off by default - a Tableau "
+        "administrator has to enable it on the server.",
         doc=METADATA_API_DOC,
     ),
     when(Matchers.contains("in incorrect format")).diagnose(
