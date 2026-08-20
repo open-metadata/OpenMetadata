@@ -28,6 +28,7 @@ import PipelineActionsDropdown from './PipelineActionsDropdown';
 function PipelineActions({
   pipeline,
   ingestionPipelinePermissions,
+  isDisabled,
   triggerIngestion,
   deployIngestion,
   handleEnableDisableIngestion,
@@ -99,7 +100,7 @@ function PipelineActions({
               }>
               <Button
                 data-testid="pause-button"
-                disabled={!pipeline.deployed}
+                disabled={isDisabled || !pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
@@ -118,7 +119,7 @@ function PipelineActions({
               }>
               <Button
                 data-testid="resume-button"
-                disabled={!pipeline.deployed}
+                disabled={isDisabled || !pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
@@ -134,7 +135,7 @@ function PipelineActions({
     }
 
     return null;
-  }, [editStatusPermission, pipeline, currPauseId, pipelineId]);
+  }, [editStatusPermission, isDisabled, pipeline, currPauseId, pipelineId]);
 
   return (
     <Row
@@ -150,6 +151,7 @@ function PipelineActions({
           <Col>
             <Button
               data-testid="logs-button"
+              disabled={isDisabled}
               icon={<LogsIcon height={12} width={12} />}
               onClick={handleLogsClick}>
               {t('label.log-plural')}
@@ -164,7 +166,10 @@ function PipelineActions({
                 handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
                 ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
-                moreActionButtonProps={moreActionButtonProps}
+                moreActionButtonProps={{
+                  ...moreActionButtonProps,
+                  disabled: isDisabled || moreActionButtonProps?.disabled,
+                }}
                 serviceCategory={serviceCategory}
                 serviceName={serviceName}
                 triggerIngestion={triggerIngestion}
