@@ -88,16 +88,24 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+            echo "🔹 Running IntakeFormCustomPropertyFields on shard 2"
+
+            # IntakeFormCustomPropertyFields depends on the chromium project and
+            # is fullyParallel: false. Co-listing it with chromium under --shard
+            # collapses distribution onto shard 1/N and leaves the other shards
+            # empty, so it must run on its own matrix slot.
+            npx playwright test \
+              --project=IntakeFormCustomPropertyFields
+
           else
-            # Shards 2-7 handle chromium tests (7 shards total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            # Shards 3-8 handle chromium tests (6 shards total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
+            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/6"
             npx playwright test \
               --project=chromium \
-              --project=IntakeFormCustomPropertyFields \
-              --project=IntakeForm \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/7
+              --shard=${CHROMIUM_SHARD}/6
           fi
 
         env:
