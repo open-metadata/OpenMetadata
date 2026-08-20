@@ -22,7 +22,7 @@ permissions:
 
 concurrency: 
   group: airflow-apis-tests-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
