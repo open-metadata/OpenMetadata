@@ -461,11 +461,13 @@ export const verifyGlossaryDetails = async (
 
   await checkName(page, glossaryDetails.name);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
+  // The description renders through a lazily-imported BlockEditor whose Suspense
+  // fallback is null, so viewer-container is attached with an empty subtree until
+  // that chunk resolves. A one-shot page.textContent() read wins that race under
+  // CI load and returns ''; only a web-first assertion retries until it renders.
+  await expect(page.getByTestId('viewer-container')).toContainText(
+    glossaryDetails.description
   );
-
-  expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
   if (glossaryDetails.owners.length > 0) {
