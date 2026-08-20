@@ -1,0 +1,150 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Auto-revert failing commit on release branch
+
+on:
+  workflow_run:
+    workflows: ["Maven Collate Tests"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-revert-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  auto-revert:
+    # Fire only when the watched build failed on a push (not a PR run, not a re-run of an old build).
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check branch matches release pattern (N.N.N)
+        id: match
+        env:
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [[ "$BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "match=false" >> "$GITHUB_OUTPUT"
+            echo "Branch '$BRANCH' is not a release branch; skipping."
+          fi
+
+      - name: Checkout release branch
+        if: steps.match.outputs.match == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          persist-credentials: true
+
+      - name: Guard — tip advanced, or tip already a bot revert
+        id: guard
+        if: steps.match.outputs.match == 'true'
+        env:
+          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_SHA=$(git rev-parse HEAD)
+          if [ "$CURRENT_SHA" != "$FAILING_SHA" ]; then
+            echo "Tip advanced (current=$CURRENT_SHA, failing=$FAILING_SHA); skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          AUTHOR_EMAIL=$(git log -1 --pretty=%ae "$FAILING_SHA")
+          if [ "$AUTHOR_EMAIL" = "release-bot@open-metadata.org" ]; then
+            echo "Tip $FAILING_SHA was authored by the release bot; refusing to revert-a-revert."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Collect commit metadata
+        id: meta
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false'
+        env:
+          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          SUBJECT=$(git log -1 --pretty=%s "$FAILING_SHA")
+          AUTHOR_NAME=$(git log -1 --pretty=%an "$FAILING_SHA")
+          AUTHOR_EMAIL=$(git log -1 --pretty=%ae "$FAILING_SHA")
+          PARENT_COUNT=$(git rev-list --parents -n 1 "$FAILING_SHA" | awk '{print NF-1}')
+          {
+            echo "subject=${SUBJECT}"
+            echo "author_name=${AUTHOR_NAME}"
+            echo "author_email=${AUTHOR_EMAIL}"
+            echo "parents=${PARENT_COUNT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Revert failing commit
+        id: revert
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false'
+        env:
+          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PARENTS: ${{ steps.meta.outputs.parents }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+          git config user.email "release-bot@open-metadata.org"
+          git config user.name "OpenMetadata Release Bot"
+          MSG="Auto-revert: ${FAILING_SHA:0:12} — ${RUN_NAME} failed on ${BRANCH}
+
+          Reverted because \"${RUN_NAME}\" reported failure on ${BRANCH}.
+          Failing run: ${RUN_URL}
+          "
+          if [ "${PARENTS}" -gt 1 ]; then
+            git revert --no-edit -m 1 "$FAILING_SHA"
+          else
+            git revert --no-edit "$FAILING_SHA"
+          fi
+          # Rewrite the auto-generated revert message so it's clearly attributable.
+          git commit --amend -m "$MSG"
+          git push origin "HEAD:${BRANCH}"
+          echo "revert_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Slack — reverted
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false' && steps.revert.outcome == 'success'
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": ":rotating_light: *Auto-revert on `${{ github.event.workflow_run.head_branch }}`*\n*Reason:* `${{ github.event.workflow_run.name }}` failed — <${{ github.event.workflow_run.html_url }}|failing run>\n*Reverted commit:* `${{ github.event.workflow_run.head_sha }}` — ${{ steps.meta.outputs.subject }}\n*Original author:* ${{ steps.meta.outputs.author_name }} <${{ steps.meta.outputs.author_email }}>\n*Revert commit:* `${{ steps.revert.outputs.revert_sha }}`"
+            }
+
+      - name: Notify Slack — revert failed
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false' && steps.revert.outcome == 'failure'
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": ":x: *Auto-revert FAILED on `${{ github.event.workflow_run.head_branch }}`*\n`${{ github.event.workflow_run.name }}` failed on `${{ github.event.workflow_run.head_sha }}`, but the automatic revert did not succeed (likely a conflict or push rejection). Manual intervention required.\n*Failing run:* <${{ github.event.workflow_run.html_url }}|link>\n*Auto-revert run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
