@@ -25,6 +25,18 @@ export const SYSTEM_POLICY_NAMES = {
   taskAuthorPolicy: 'TaskAuthorPolicy',
 };
 
+/**
+ * Policy resource names, mirrored for Playwright so tests never import app code
+ * from `src/`. The backend is the source of truth (`GET /v1/policies/resources`);
+ * add members here as tests need them.
+ */
+export enum ResourceEntity {
+  ALL = 'all',
+  TABLE = 'table',
+  TEST_CASE = 'testCase',
+  TEST_SUITE = 'testSuite',
+}
+
 export const RULE_DETAILS = {
   resources: 'All',
   operations: 'All',
@@ -89,6 +101,14 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
       'Allow authenticated users to create tasks (data access requests, suggestions, etc.).',
     resources: ['task'],
     operations: ['Create'],
+    effect: 'allow',
+  },
+  {
+    name: 'DataConsumerPolicy-TaskRule',
+    description:
+      'Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.',
+    resources: ['All'],
+    operations: ['CreateTask', 'EditTask'],
     effect: 'allow',
   },
 ];

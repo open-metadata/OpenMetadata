@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -31,7 +31,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
   createColumnRowDetails,
-  createCustomPropertiesForEntity,
+  createCustomPropertiesForEntityViaApi,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
   createGlossaryTermRowDetails,
@@ -44,6 +44,7 @@ import {
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 interface GlossaryDetails {
@@ -62,6 +63,17 @@ let glossary: Glossary;
 let glossaryTerm: GlossaryTerm;
 let domain1: Domain;
 let domain2: Domain;
+
+let databaseCustomProperties: Record<string, string> = {};
+let databaseSchemaCustomProperties: Record<string, string> = {};
+let tableCustomProperties: Record<string, string> = {};
+let glossaryTermCustomProperties: Record<string, string> = {};
+
+type CustomPropertyCleanupFn = (apiContext: APIRequestContext) => Promise<void>;
+let databaseCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let databaseSchemaCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let tableCustomPropertiesCleanup: CustomPropertyCleanupFn;
+let glossaryTermCustomPropertiesCleanup: CustomPropertyCleanupFn;
 
 let glossaryDetails: GlossaryDetails;
 let databaseSchemaDetails1: ReturnType<
@@ -110,6 +122,39 @@ test.describe('Bulk Edit Entity', () => {
     await domain1.create(apiContext);
     await domain2.create(apiContext);
 
+    const [
+      databaseResult,
+      databaseSchemaResult,
+      tableResult,
+      glossaryTermResult,
+    ] = await Promise.all([
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Database
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.DatabaseSchema
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Table
+      ),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.GlossaryTerm
+      ),
+    ]);
+
+    databaseCustomProperties = databaseResult.propertyListName;
+    databaseCustomPropertiesCleanup = databaseResult.cleanup;
+    databaseSchemaCustomProperties = databaseSchemaResult.propertyListName;
+    databaseSchemaCustomPropertiesCleanup = databaseSchemaResult.cleanup;
+    tableCustomProperties = tableResult.propertyListName;
+    tableCustomPropertiesCleanup = tableResult.cleanup;
+    glossaryTermCustomProperties = glossaryTermResult.propertyListName;
+    glossaryTermCustomPropertiesCleanup = glossaryTermResult.cleanup;
+
     await afterAction();
   });
 
@@ -117,21 +162,24 @@ test.describe('Bulk Edit Entity', () => {
     await redirectToHomePage(page);
   });
 
+  test.afterAll('cleanup custom properties', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await Promise.all([
+      databaseCustomPropertiesCleanup?.(apiContext),
+      databaseSchemaCustomPropertiesCleanup?.(apiContext),
+      tableCustomPropertiesCleanup?.(apiContext),
+      glossaryTermCustomPropertiesCleanup?.(apiContext),
+    ]);
+    await afterAction();
+  });
+
   test('Database service', async ({ page }) => {
     test.slow(true);
 
     const table = new TableClass();
-    let customPropertyRecord: Record<string, string> = {};
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       const databaseDetails = {
@@ -165,9 +213,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-
-      await page.click('.rdg-cell[role="gridcell"]');
+      const databaseNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.database.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await databaseNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -180,8 +230,8 @@ test.describe('Bulk Edit Entity', () => {
           sourceUrl: undefined,
         },
         page,
-        customPropertyRecord,
-        undefined,
+        databaseCustomProperties,
+        true,
         true
       );
 
@@ -196,6 +246,7 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
 
@@ -203,15 +254,18 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.database.name}${databaseDetails.displayName}`
-      );
+      // Verify Details updated. Narrow by the entity name so the assertion
+      // resolves to the just-edited row even when the listing renders more
+      // than one row (e.g. sibling entities from earlier steps that share
+      // the parent).
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.database.name })
+      ).toHaveText(`${table.database.name}${databaseDetails.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -259,20 +313,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-
-    let customPropertyRecord: Record<string, string> = {};
-
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity Page
@@ -323,7 +367,7 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
+        databaseSchemaCustomProperties,
         undefined,
         true
       );
@@ -347,18 +391,25 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.schema.name}${databaseSchemaDetails1.displayName}`
+      await waitForSearchIndexed(
+        apiContext,
+        table.schemaResponseData.fullyQualifiedName,
+        'database_schema_search_index'
       );
+
+      // Verify Details updated. See sibling-row note in the Database step.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.schema.name })
+      ).toHaveText(`${table.schema.name}${databaseSchemaDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -411,19 +462,10 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-
-    let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
-
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.TABLES
-      );
-    });
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity page
@@ -462,8 +504,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+      const tableNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.entity.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await tableNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -475,8 +520,8 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord,
-        undefined,
+        tableCustomProperties,
+        true,
         true
       );
 
@@ -490,16 +535,25 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.entity.name}${tableDetails1.displayName}`
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table_search_index'
       );
+
+      // Verify Details updated. See sibling-row note in the Database step —
+      // the schema listing can render 15+ table rows on redirect (each with a
+      // column-name span), so this narrows to the just-edited table.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.entity.name })
+      ).toHaveText(`${table.entity.name}${tableDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -587,7 +641,13 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
-      await pressKeyXTimes(page, 2, 'ArrowRight');
+      await pressKeyXTimes(page, 3, 'ArrowRight');
+
+      const activeDescriptionCell = page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .first();
+      // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+      await activeDescriptionCell.dblclick({ force: true });
 
       await fillDescriptionDetails(page, columnDetails1.description);
 
@@ -608,10 +668,9 @@ test.describe('Bulk Edit Entity', () => {
 
       // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
       await page.click('[type="button"] >> text="Next"', { force: true });
-      const count = `${tableEntity.entityLinkColumnsName.length}`;
       await validateImportStatus(page, {
-        passed: count,
-        processed: count,
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -656,8 +715,6 @@ test.describe('Bulk Edit Entity', () => {
   test('Glossary', async ({ page }) => {
     test.slow();
 
-    let customPropertyRecord: Record<string, string> = {};
-
     const additionalGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -666,12 +723,17 @@ test.describe('Bulk Edit Entity', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
+    // Wait for the glossary term to be indexed in ES before bulk-edit reads
+    // the glossary's term list. Otherwise the bulk-edit table comes back
+    // empty, the test fills row 1 with the term's name, and the system
+    // creates a new term instead of recognizing the existing one — the
+    // subsequent status assertion gets "Entity created" instead of
+    // "Entity updated".
+    await waitForSearchIndexed(
+      apiContext,
+      glossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
 
     await test.step('Perform bulk edit action', async () => {
       await glossary.visitEntityPage(page);
@@ -703,7 +765,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        customPropertyRecord,
+        glossaryTermCustomProperties,
         true
       );
 
@@ -770,7 +832,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="custom_properties"]');
       await waitForAllLoadersToDisappear(page);
 
-      for (const propertyName of Object.values(customPropertyRecord)) {
+      for (const propertyName of Object.values(glossaryTermCustomProperties)) {
         await expect(page.getByText(propertyName)).toBeVisible();
       }
     });
@@ -781,8 +843,6 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Glossary Term (Nested)', async ({ page }) => {
     test.slow();
-
-    let customPropertyRecord: Record<string, string> = {};
 
     const additionalNestedGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
@@ -800,12 +860,13 @@ test.describe('Bulk Edit Entity', () => {
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
+    // Wait for the nested term to be indexed before the bulk-edit reads the
+    // parent's term list, so the exported grid reflects the correct child set.
+    await waitForSearchIndexed(
+      apiContext,
+      nestedGlossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
 
     await test.step('Perform bulk edit action on nested glossary term', async () => {
       // Navigate to the parent glossary term page
@@ -814,13 +875,29 @@ test.describe('Bulk Edit Entity', () => {
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');
 
-      // Click on bulk edit button for the glossary term
+      // Click on bulk edit button for the glossary term. Wait for the export
+      // scoped to THIS parent term's FQN so the grid can't be populated from a
+      // stale activeGlossary scope (which yields a wrong, larger term set and a
+      // flaky processed-row count).
+      const parentTermFqn = parentGlossaryTerm.responseData.fullyQualifiedName;
+      const bulkEditExportResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/glossaryTerms/name/') &&
+          response.url().includes(encodeURIComponent(parentTermFqn)) &&
+          response.url().includes('exportAsync')
+      );
       await page.click('[data-testid="bulk-edit-table"]');
+      await bulkEditExportResponse;
 
       await waitForAllLoadersToDisappear(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+      // The parent term has exactly one child; a larger count means the export
+      // ran against the wrong scope — fail fast here instead of a confusing
+      // processed-row mismatch later.
+      await expect(page.locator('.rdg-row')).toHaveCount(1);
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
@@ -842,7 +919,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        customPropertyRecord,
+        glossaryTermCustomProperties,
         true
       );
 
@@ -898,7 +975,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.click('[data-testid="custom_properties"]');
       await waitForAllLoadersToDisappear(page);
 
-      for (const propertyName of Object.values(customPropertyRecord)) {
+      for (const propertyName of Object.values(glossaryTermCustomProperties)) {
         await expect(page.getByText(propertyName)).toBeVisible();
       }
     });

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -15,6 +16,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.UUID;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.junit.jupiter.api.Test;
@@ -32,6 +35,8 @@ public class IndexTemplateIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String CLUSTER_ALIAS = "openmetadata";
+  private static final List<String> READ_ONLY_INDEX_TEMPLATE_FIELDS =
+      List.of("created_date", "created_date_millis", "modified_date", "modified_date_millis");
 
   @Test
   void testIndexTemplatesExist(TestNamespace ns) throws Exception {
@@ -117,10 +122,16 @@ public class IndexTemplateIT {
   @Test
   void testAutoCreatedIndexFromTemplateHasProperMappings(TestNamespace ns) throws Exception {
     Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
-    String testIndexName = CLUSTER_ALIAS + "_table_search_index_rebuild_test_template_it";
+    String testTemplateName = uniqueTestResourceName("table_mapping");
+    String testIndexName = testTemplateName + "_index";
 
     try {
       deleteIndexIfExists(searchClient, testIndexName);
+      copyTemplateForIndex(
+          searchClient,
+          "om_" + CLUSTER_ALIAS + "_table_search_index",
+          testTemplateName,
+          testIndexName);
 
       String doc =
           "{\"name\":\"test_table\",\"fullyQualifiedName\":\"db.schema.test_table\","
@@ -145,16 +156,23 @@ public class IndexTemplateIT {
 
     } finally {
       deleteIndexIfExists(searchClient, testIndexName);
+      deleteTemplateIfExists(searchClient, testTemplateName);
     }
   }
 
   @Test
   void testAutoCreatedIndexHasAnalyzers(TestNamespace ns) throws Exception {
     Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
-    String testIndexName = CLUSTER_ALIAS + "_table_search_index_rebuild_test_analyzer_it";
+    String testTemplateName = uniqueTestResourceName("table_analyzer");
+    String testIndexName = testTemplateName + "_index";
 
     try {
       deleteIndexIfExists(searchClient, testIndexName);
+      copyTemplateForIndex(
+          searchClient,
+          "om_" + CLUSTER_ALIAS + "_table_search_index",
+          testTemplateName,
+          testIndexName);
 
       String doc = "{\"name\":\"analyzer_test\",\"entityType\":\"table\",\"deleted\":false}";
       Request indexRequest = new Request("POST", "/" + testIndexName + "/_doc");
@@ -175,17 +193,24 @@ public class IndexTemplateIT {
 
     } finally {
       deleteIndexIfExists(searchClient, testIndexName);
+      deleteTemplateIfExists(searchClient, testTemplateName);
     }
   }
 
   @Test
   void testDocUpdateOnDeletedIndexUsesTemplateNotAutoInference(TestNamespace ns) throws Exception {
     Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
-    String testIndexName = CLUSTER_ALIAS + "_tag_search_index_rebuild_it_doc_update";
+    String testTemplateName = uniqueTestResourceName("tag_mapping");
+    String testIndexName = testTemplateName + "_index";
 
     deleteIndexIfExists(searchClient, testIndexName);
 
     try {
+      copyTemplateForIndex(
+          searchClient,
+          "om_" + CLUSTER_ALIAS + "_tag_search_index",
+          testTemplateName,
+          testIndexName);
       String doc =
           "{\"name\":\"test_tag\",\"fullyQualifiedName\":\"Classification.test_tag\","
               + "\"entityType\":\"tag\",\"deleted\":false,"
@@ -243,6 +268,7 @@ public class IndexTemplateIT {
           "Auto-created index should have om_analyzer from template");
     } finally {
       deleteIndexIfExists(searchClient, testIndexName);
+      deleteTemplateIfExists(searchClient, testTemplateName);
     }
   }
 
@@ -379,12 +405,58 @@ public class IndexTemplateIT {
     return indexNode.get("settings").get("index");
   }
 
+  private void copyTemplateForIndex(
+      Rest5Client client, String sourceTemplateName, String testTemplateName, String testIndexName)
+      throws Exception {
+    Request getRequest = new Request("GET", "/_index_template/" + sourceTemplateName);
+    Response getResponse = client.performRequest(getRequest);
+    assertEquals(200, getResponse.getStatusCode());
+    JsonNode response =
+        MAPPER.readTree(
+            new String(
+                getResponse.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8));
+    ObjectNode template =
+        (ObjectNode) response.path("index_templates").get(0).path("index_template").deepCopy();
+    template.remove(READ_ONLY_INDEX_TEMPLATE_FIELDS);
+    template.set("index_patterns", MAPPER.createArrayNode().add(testIndexName));
+
+    Request putRequest = new Request("PUT", "/_index_template/" + testTemplateName);
+    putRequest.setEntity(
+        new StringEntity(MAPPER.writeValueAsString(template), ContentType.APPLICATION_JSON));
+    Response putResponse = client.performRequest(putRequest);
+    int putStatus = putResponse.getStatusCode();
+    String putResponseBody =
+        putResponse.getEntity() == null
+            ? ""
+            : new String(
+                putResponse.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+    assertTrue(
+        putStatus == 200 || putStatus == 201,
+        "Test index template should be created successfully. HTTP "
+            + putStatus
+            + ": "
+            + putResponseBody);
+  }
+
+  private static String uniqueTestResourceName(String label) {
+    return "zz_indextemplate_it_" + label + "_" + UUID.randomUUID().toString().replace("-", "");
+  }
+
   private void deleteIndexIfExists(Rest5Client client, String indexName) {
     try {
       Request deleteRequest = new Request("DELETE", "/" + indexName);
       client.performRequest(deleteRequest);
     } catch (Exception ignored) {
       // Index may not exist
+    }
+  }
+
+  private void deleteTemplateIfExists(Rest5Client client, String templateName) {
+    try {
+      Request deleteRequest = new Request("DELETE", "/_index_template/" + templateName);
+      client.performRequest(deleteRequest);
+    } catch (Exception ignored) {
+      // Template may not exist
     }
   }
 }

@@ -14,12 +14,13 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { AssetReference, DataProduct } from '../../support/domain/DataProduct';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
+import { runDrawerQuickFilterMatrix } from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
   redirectToHomePage,
@@ -32,21 +33,16 @@ import {
   navigateToPortsTab,
   selectDataProduct,
   verifyPortCounts,
+  waitForPortRow,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  buildPortDrawerContext,
+  cleanupDrawerFilterAssets,
+  createAssetRef,
+  seedDrawerFilterAssets,
+} from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
-
-const createAssetRef = (
-  entity: TableClass | TopicClass | DashboardClass,
-  type: string
-): AssetReference => ({
-  id: entity.entityResponseData.id,
-  type,
-  name: entity.entityResponseData.name,
-  displayName: entity.entityResponseData.displayName,
-  fullyQualifiedName: entity.entityResponseData.fullyQualifiedName,
-  description: entity.entityResponseData.description,
-});
 
 const domain = new Domain();
 
@@ -54,9 +50,11 @@ const test = base.extend<{
   page: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
 });
 
@@ -634,50 +632,60 @@ test.describe('Input Output Ports', () => {
       });
     });
 
-    test('Port drawers show Entity Type quick filter', async ({ page }) => {
-      const dataProduct = new DataProduct([domain]);
+    test('Input port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, false);
 
-      await test.step('Create data product with assets', async () => {
-        const { apiContext } = await getApiContext(page);
-        await dataProduct.create(apiContext);
-        await dataProduct.addAssets(apiContext, [
-          createAssetRef(tables[0], 'table'),
-        ]);
-      });
-
-      await test.step('Navigate to ports tab', async () => {
-        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-        await selectDataProduct(page, dataProduct.data);
-        await navigateToPortsTab(page);
-      });
-
-      await test.step('Verify Entity Type filter in input port drawer', async () => {
-        await page.getByTestId('add-input-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'input port',
+            'add-input-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
+    });
 
-        await page.getByTestId('cancel-btn').click();
-      });
+    test('Output port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, true);
 
-      await test.step('Verify Entity Type filter in output port drawer', async () => {
-        await page.getByTestId('add-output-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
-
-        await page.getByTestId('cancel-btn').click();
-      });
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'output port',
+            'add-output-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
     });
 
     test('Output port drawer only shows data product assets', async ({
@@ -764,13 +772,31 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify input ports list', async () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
 
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
-        const table3Name = get(tables[2], 'entityResponseData.name');
+        const table1Name = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table2Name = get(
+          tables[1],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table3Name = get(
+          tables[2],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table3Name}`).first()).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table1Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table2Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table3Name}`)
+        ).toBeVisible();
       });
     });
 
@@ -801,20 +827,15 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify output ports list', async () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
 
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
-
         await expect(
-          page.locator(`text=${dashboard1Name}`).first()
+          page.getByTestId(
+            `table-data-card_${dashboards[0].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page.locator(`text=${dashboard2Name}`).first()
+          page.getByTestId(
+            `table-data-card_${dashboards[1].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       });
     });
@@ -847,6 +868,7 @@ test.describe('Input Output Ports', () => {
         const portId = tables[0].entityResponseData.id;
         await expect(page.getByTestId(`port-actions-${portId}`)).toBeVisible();
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await expect(
           page.getByRole('menuitem', { name: 'Remove' })
@@ -883,6 +905,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove first input port', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -932,6 +955,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove first output port', async () => {
         const portId = dashboards[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -974,6 +998,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Open and cancel removal dialog', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -1015,6 +1040,7 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove the only input port', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
@@ -1138,28 +1164,27 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify input port nodes are visible', async () => {
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
+        const table1Name =
+          tables[0].entityResponseData.fullyQualifiedName ?? '';
+        const table2Name =
+          tables[1].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table1Name}`)).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table2Name}`)).toBeVisible();
       });
 
       await test.step('Verify output port nodes are visible', async () => {
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
+        const dashboard1Name =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
+
+        const dashboard2Name =
+          dashboards[1].entityResponseData.fullyQualifiedName ?? '';
 
         await expect(
-          page.locator(`text=${dashboard1Name}`).first()
+          page.getByTestId(`port-node-${dashboard1Name}`)
         ).toBeVisible();
         await expect(
-          page.locator(`text=${dashboard2Name}`).first()
+          page.getByTestId(`port-node-${dashboard2Name}`)
         ).toBeVisible();
       });
     });
@@ -1189,8 +1214,8 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify only input port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const tableName = get(tables[0], 'entityResponseData.name');
-        await expect(page.locator(`text=${tableName}`).first()).toBeVisible();
+        const tableName = tables[0].entityResponseData.fullyQualifiedName ?? '';
+        await expect(page.getByTestId(`port-node-${tableName}`)).toBeVisible();
       });
     });
 
@@ -1219,12 +1244,10 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify only output port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const dashboardName = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
+        const dashboardName =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
         await expect(
-          page.locator(`text=${dashboardName}`).first()
+          page.getByTestId(`port-node-${dashboardName}`)
         ).toBeVisible();
       });
     });

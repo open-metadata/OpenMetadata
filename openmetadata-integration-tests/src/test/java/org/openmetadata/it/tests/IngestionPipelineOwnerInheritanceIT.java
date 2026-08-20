@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Instant;
 import java.util.Date;
@@ -34,7 +35,10 @@ import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipelin
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -241,4 +245,162 @@ public class IngestionPipelineOwnerInheritanceIT {
       adminClient.policies().delete(ownerPolicy.getId());
     }
   }
+
+  @Test
+  void test_ingestionPipelineDescriptorExposesTrigger() {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    ResourceDescriptorList resources =
+        adminClient
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/policies/resources", null, ResourceDescriptorList.class);
+    ResourceDescriptor descriptor =
+        resources.getData().stream()
+            .filter(rd -> "ingestionPipeline".equals(rd.getName()))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("ingestionPipeline resource descriptor not found"));
+    assertTrue(
+        descriptor.getOperations().contains(MetadataOperation.TRIGGER),
+        "ingestionPipeline descriptor must expose Trigger so it is grantable scoped to "
+            + "Ingestion Pipeline in the policy editor");
+  }
+
+  @Test
+  void test_killRequiresEditPermission(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String unique = UUID.randomUUID().toString().substring(0, 8);
+
+    Policy viewPolicy =
+        adminClient
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("ipkillViewPolicy_" + unique)
+                    .withDescription("View-only access to ingestion pipelines")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName("pipelineViewOnly")
+                                .withEffect(Rule.Effect.ALLOW)
+                                .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                                .withResources(List.of("ingestionPipeline")))));
+    Policy editPolicy =
+        adminClient
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("ipkillEditPolicy_" + unique)
+                    .withDescription("View and edit access to ingestion pipelines")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName("pipelineViewAndEdit")
+                                .withEffect(Rule.Effect.ALLOW)
+                                .withOperations(
+                                    List.of(MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_ALL))
+                                .withResources(List.of("ingestionPipeline")))));
+
+    try {
+      Role viewRole =
+          adminClient
+              .roles()
+              .create(
+                  new CreateRole()
+                      .withName("ipkillViewRole_" + unique)
+                      .withPolicies(List.of(viewPolicy.getFullyQualifiedName())));
+      Role editRole =
+          adminClient
+              .roles()
+              .create(
+                  new CreateRole()
+                      .withName("ipkillEditRole_" + unique)
+                      .withPolicies(List.of(editPolicy.getFullyQualifiedName())));
+
+      try {
+        String viewerName = "ipkillviewer_" + unique;
+        User viewer =
+            adminClient
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(viewerName)
+                        .withEmail(viewerName + "@test.openmetadata.org")
+                        .withRoles(List.of(viewRole.getId())));
+        String editorName = "ipkilleditor_" + unique;
+        User editor =
+            adminClient
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(editorName)
+                        .withEmail(editorName + "@test.openmetadata.org")
+                        .withRoles(List.of(editRole.getId())));
+
+        try {
+          DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+          try {
+            IngestionPipeline pipeline =
+                adminClient
+                    .ingestionPipelines()
+                    .create(
+                        new CreateIngestionPipeline()
+                            .withName(ns.prefix("ipkillPipeline_" + unique))
+                            .withPipelineType(PipelineType.METADATA)
+                            .withService(service.getEntityReference())
+                            .withSourceConfig(
+                                new SourceConfig()
+                                    .withConfig(new DashboardServiceMetadataPipeline()))
+                            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+
+            try {
+              OpenMetadataClient viewerClient =
+                  SdkClients.createClient(viewerName, viewerName, new String[] {});
+              OpenMetadataClient editorClient =
+                  SdkClients.createClient(editorName, editorName, new String[] {});
+
+              String killPath = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
+
+              // Kill now requires EditAll: a view-only user can read but must be forbidden.
+              viewerClient.ingestionPipelines().get(pipeline.getId().toString());
+              assertThrows(
+                  ForbiddenException.class,
+                  () ->
+                      viewerClient
+                          .getHttpClient()
+                          .execute(HttpMethod.POST, killPath, null, Void.class),
+                  "View-only user must be forbidden from killing an ingestion pipeline");
+
+              // EditAll user must pass authz; only a 403 fails the test.
+              try {
+                editorClient.getHttpClient().execute(HttpMethod.POST, killPath, null, Void.class);
+              } catch (ForbiddenException e) {
+                fail("User with EditAll must be authorized to kill an ingestion pipeline");
+              } catch (Exception ignored) {
+                // Downstream orchestrator failure, not an authz rejection.
+              }
+            } finally {
+              adminClient.ingestionPipelines().delete(pipeline.getId().toString());
+            }
+          } finally {
+            adminClient
+                .dashboardServices()
+                .delete(
+                    service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+          }
+        } finally {
+          adminClient.users().delete(viewer.getId());
+          adminClient.users().delete(editor.getId());
+        }
+      } finally {
+        adminClient.roles().delete(viewRole.getId());
+        adminClient.roles().delete(editRole.getId());
+      }
+    } finally {
+      adminClient.policies().delete(viewPolicy.getId());
+      adminClient.policies().delete(editPolicy.getId());
+    }
+  }
+
+  static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {}
 }

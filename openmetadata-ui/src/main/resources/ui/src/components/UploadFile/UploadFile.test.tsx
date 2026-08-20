@@ -107,12 +107,15 @@ describe('UploadFile Component', () => {
 
     // Mock FileReader to throw an error
     const originalFileReader = global.FileReader;
-    global.FileReader = jest.fn().mockImplementation(() => ({
-      readAsText: jest.fn(() => {
-        throw new Error('File read error');
-      }),
-      onerror: null,
-    })) as any;
+    global.FileReader = jest.fn().mockImplementation(
+      () =>
+        ({
+          readAsText: jest.fn(() => {
+            throw new Error('File read error');
+          }),
+          onerror: null,
+        } as unknown as FileReader)
+    ) as unknown as typeof FileReader;
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {
@@ -204,5 +207,23 @@ describe('UploadFile Component', () => {
     expect(
       await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
+  });
+
+  it('should render compact upload variant', async () => {
+    const { container } = render(
+      <UploadFile
+        {...defaultProps}
+        acceptedFileDescription="Accepts .csv up to 10 MB"
+        variant="compact"
+      />
+    );
+
+    expect(
+      container.querySelector('.file-dragger-wrapper-compact')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/message.drop-csv-or-browse/)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Accepts .csv up to 10 MB')).toBeInTheDocument();
   });
 });

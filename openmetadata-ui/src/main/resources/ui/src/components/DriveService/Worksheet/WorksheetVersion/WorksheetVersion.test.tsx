@@ -53,15 +53,17 @@ jest.mock('../../../../utils/EntityVersionUtils', () => ({
 jest.mock('../../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn(() => 'Column'),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn((columns) => columns),
+  getTagsWithoutTier: jest.fn((tags) => tags),
+  getTierTags: jest.fn(() => []),
 }));
 jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest.fn(() => (
     <div data-testid="custom-property-table">Custom Property Table</div>
   )),
 }));
-jest.mock('../../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../common/EntityDescription/Description', () =>
   jest.fn(() => <div data-testid="description">Description Component</div>)
 );
 jest.mock('../../../common/Loader/Loader', () =>

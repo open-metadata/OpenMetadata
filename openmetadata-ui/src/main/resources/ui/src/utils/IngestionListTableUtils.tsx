@@ -24,7 +24,8 @@ import {
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
-import { getEntityName, highlightSearchText } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import { highlightSearchText } from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringUtils';
 
@@ -80,22 +81,24 @@ const ScheduleFieldCell = ({
 
   return (
     <Row gutter={[8, 8]} wrap={false}>
-      <Col>
+      <Col flex="none">
         <TimeDateIcon className="m-t-xss" height={20} width={20} />
       </Col>
-      <Col>
+      <Col className="tw:min-w-0" flex="auto">
         <Row className="line-height-16">
           <Col span={24}>
             <Typography.Text
               className="font-medium"
-              data-testid="schedule-primary-details">
+              data-testid="schedule-primary-details"
+              ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <Typography.Text
               className="text-xs text-grey-muted"
-              data-testid="schedule-secondary-details">
+              data-testid="schedule-secondary-details"
+              ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
             </Typography.Text>
           </Col>

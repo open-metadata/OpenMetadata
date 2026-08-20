@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/system/testLoginTokenRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestLoginTokenRequest",
+  "description": "Admin-only request to validate a browser-obtained OIDC id_token against a candidate (unsaved) security configuration. Used to confirm a real login would resolve the expected identity before saving the configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.TestLoginTokenRequest",
+  "properties": {
+    "securityConfiguration": {
+      "description": "Candidate (unsaved) security configuration to test against.",
+      "$ref": "../configuration/securityConfiguration.json"
+    },
+    "idToken": {
+      "description": "OIDC id_token obtained by the admin's browser from the identity provider during the test login.",
+      "type": "string"
+    }
+  },
+  "required": ["securityConfiguration", "idToken"],
+  "additionalProperties": false
+}

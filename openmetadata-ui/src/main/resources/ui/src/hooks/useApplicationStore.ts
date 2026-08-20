@@ -13,14 +13,34 @@
 import { create } from 'zustand';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
+import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
+import { useDomainStore } from './useDomainStore';
+
+const syncDomainStoreForUser = (user?: User) => {
+  const domainStore = useDomainStore.getState();
+  const userDomains = user?.domains ?? [];
+  const isRestricted = isDomainRestrictedUser(user);
+
+  domainStore.setUserDomains(userDomains);
+  domainStore.setDomainRestriction(isRestricted);
+
+  const hasSingleDomain = isRestricted && userDomains.length === 1;
+  const isDefaultDomainActive =
+    domainStore.activeDomain === DEFAULT_DOMAIN_VALUE;
+
+  if (hasSingleDomain && isDefaultDomainActive) {
+    domainStore.updateActiveDomain(userDomains[0]);
+  }
+};
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   isApplicationLoading: false,
@@ -102,6 +122,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
       currentUser: user,
       selectedPersona: defaultPersona,
     });
+
+    syncDomainStoreForUser(user);
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
     set({ authConfig });
@@ -146,6 +168,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     }
 
     set({ currentUser: user });
+
+    syncDomainStoreForUser(user);
   },
   updateUserProfilePics: ({ id, user }: { id: string; user: User }) => {
     set({

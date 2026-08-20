@@ -12,18 +12,39 @@
  */
 
 import { isEmpty } from 'lodash';
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
-import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
-import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import SamlCallback from '../../pages/SamlCallback';
-import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
+
+const PageNotFound = withPageSuspenseFallback(
+  lazy(() => import('../../pages/PageNotFound/PageNotFound'))
+);
+
+const LogoutPage = withPageSuspenseFallback(
+  lazy(() =>
+    import('../../pages/LogoutPage/LogoutPage').then((module) => ({
+      default: module.LogoutPage,
+    }))
+  )
+);
+
+const AccessNotAllowedPage = withPageSuspenseFallback(
+  lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
+);
+
+const SignUpPage = withPageSuspenseFallback(
+  lazy(() => import('../../pages/SignUp/SignUpPage'))
+);
+
+const SamlCallback = withPageSuspenseFallback(
+  lazy(() => import('../../pages/SamlCallback'))
+);
 
 export const AuthenticatedRoutes = () => {
   const { currentUser } = useApplicationStore(

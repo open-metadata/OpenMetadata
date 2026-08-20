@@ -15,7 +15,7 @@ import { expect, test } from '@playwright/test';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
-  addRelationTypeWithCardinality,
+  addRelationTypesWithCardinality,
   addTermRelation,
   applyGlossaryFilter,
   createApiContext,
@@ -24,7 +24,6 @@ import {
   navigateToOntologyExplorer,
   readCardinalityMap,
   readGraphEdges,
-  removeRelationType,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
 
@@ -75,33 +74,47 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     await relSrc.create(apiContext);
     await relDst.create(apiContext);
 
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
-      displayName: 'PW One To One',
-      cardinality: 'ONE_TO_ONE',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.ONE_TO_MANY,
-      displayName: 'PW One To Many',
-      cardinality: 'ONE_TO_MANY',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.MANY_TO_ONE,
-      displayName: 'PW Many To One',
-      cardinality: 'MANY_TO_ONE',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.MANY_TO_MANY,
-      displayName: 'PW Many To Many',
-      cardinality: 'MANY_TO_MANY',
-    });
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_RELATION_NAMES.CUSTOM_1_M,
-      displayName: 'PW Custom 1:M',
-      cardinality: 'CUSTOM',
-      sourceMax: 1,
-      targetMax: null,
-    });
+    // Add all custom relation types in a single batch RMW to minimise the
+    // conflict window with concurrent parallel workers. Five sequential
+    // read-modify-writes previously meant five windows where a peer with a
+    // stale snapshot could silently overwrite our types; one batched write
+    // reduces that to a single window.
+    const ALL_CUSTOM_TYPES = [
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
+        displayName: 'PW One To One',
+        cardinality: 'ONE_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_MANY,
+        displayName: 'PW One To Many',
+        cardinality: 'ONE_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_ONE,
+        displayName: 'PW Many To One',
+        cardinality: 'MANY_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_MANY,
+        displayName: 'PW Many To Many',
+        cardinality: 'MANY_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.CUSTOM_1_M,
+        displayName: 'PW Custom 1:M',
+        cardinality: 'CUSTOM',
+        sourceMax: 1,
+        targetMax: null,
+      },
+    ];
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
+
+    // Guard: a concurrent worker that had a stale snapshot can overwrite our
+    // types between the add above and the term patches below. This second
+    // (idempotent) call verifies all types are still present and re-adds any
+    // that were lost. Cost when all present: one GET → early return.
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
 
     await addTermRelation(
       apiContext,
@@ -157,10 +170,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       relDst,
       glossary
     );
-
-    for (const name of Object.values(CUSTOM_RELATION_NAMES)) {
-      await removeRelationType(apiContext, name);
-    }
 
     await disposeApiContext(page, apiContext);
   });

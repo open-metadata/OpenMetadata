@@ -261,6 +261,10 @@ class SigmaSource(DashboardServiceSource):
         """
         for data_model in self.data_models or []:
             try:
+                # Skip non-visualization elements to avoid Sigma API 500 errors.
+                if not data_model.vizualizationType:
+                    continue
+
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
@@ -360,6 +364,12 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
+                # Skip non-visualization elements (text boxes, dividers,
+                # buttons, controls) to avoid Sigma API 500 errors on elements
+                # that carry no upstream lineage.
+                if not data_model.vizualizationType:
+                    continue
+
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
@@ -447,6 +457,10 @@ class SigmaSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
             for data_model in self.data_models or []:
+                # Skip non-visualization elements (text boxes, dividers, buttons, controls)
+                # to avoid creating DataModel entries for elements that have no data source.
+                if not data_model.vizualizationType:
+                    continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),

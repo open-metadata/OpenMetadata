@@ -36,7 +36,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getTimeZone: () => 'UTC',
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: (entityType: string, entityFQN: string) =>
     `<#E::${entityType}::${entityFQN}>`,
 }));

@@ -24,6 +24,8 @@ import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
 import {
   TableData,
   TestCase,
@@ -83,6 +85,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   serviceName?: string;
   dataQualityDimension?: string;
   followedBy?: string;
+  dataProductFqn?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -410,7 +413,17 @@ export const getTestSuiteByName = async (
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
-    { params }
+    {
+      // Resolve owners/experts as non-deleted (consistent with data-asset detail pages), so a
+      // soft-deleted owner is not surfaced and the owner-edit diff stays aligned with the server's
+      // NON_DELETED PATCH base - otherwise a positional patch throws "array item index out of
+      // range". See issue #30117.
+      params: {
+        ...params,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
+    }
   );
 
   return response.data;
@@ -432,6 +445,17 @@ export const getDataQualityReport = async (
     `${testSuiteUrl}/dataQualityReport`,
     { params }
   );
+
+  return response.data;
+};
+
+export const getDataQualityReportBatch = async (
+  data: DataQualityReportBatchRequest
+): Promise<DataQualityReportBatchResponse> => {
+  const response = await APIClient.post<
+    DataQualityReportBatchRequest,
+    AxiosResponse<DataQualityReportBatchResponse>
+  >(`${testSuiteUrl}/dataQualityReport/batch`, data);
 
   return response.data;
 };

@@ -46,6 +46,9 @@ public class UserIndex implements SearchIndex {
   }
 
   public static Map<String, Float> getFields() {
-    return SearchIndex.getDefaultFields();
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
+    fields.put("email", 5.0f);
+    fields.put("email.keyword", 10.0f);
+    return fields;
   }
 }

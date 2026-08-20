@@ -21,7 +21,6 @@ import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
@@ -63,15 +62,11 @@ const SuccessScreen = ({
         <div data-testid="airflow-platform-message">
           <div>
             <h6 className="text-base text-grey-body font-medium">
-              {t('message.manage-airflow-api-failed', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.manage-airflow-api-failed')}
             </h6>
 
             <p className="text-grey-body text-sm m-b-md">
-              {t('message.airflow-guide-message', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.airflow-guide-message')}
             </p>
           </div>
 
@@ -93,11 +88,7 @@ const SuccessScreen = ({
             height={100}
             width={100}
           />
-          <Typography>
-            {t('message.pipeline-scheduler-message', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
-          </Typography>
+          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
         </Space>
       ),
     [isAirflowPlatform]

@@ -4,7 +4,11 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
+import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import java.time.Duration;
+import java.util.regex.Pattern;
+import org.awaitility.Awaitility;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
@@ -26,6 +30,12 @@ public final class IncidentManagerPage extends PageObject {
   private static final String API_TASK_RESOLVE_REGEX = ".*/api/v1/tasks/.+/resolve";
   private static final String API_INCIDENT_STATUS_REGEX =
       ".*/api/v1/dataQuality/testCases/testCaseIncidentStatus.*";
+  private static final Pattern PAGE_SIZE_50_OPTION =
+      Pattern.compile("50.*page", Pattern.CASE_INSENSITIVE);
+  private static final Duration PAGE_SIZE_RETRY_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration PAGE_SIZE_RETRY_INTERVAL = Duration.ofSeconds(2);
+  private static final double PAGE_SIZE_CLICK_TIMEOUT_MS = 5_000;
+  private static final double PAGE_SIZE_RESPONSE_TIMEOUT_MS = 15_000;
 
   private IncidentManagerPage(final Page page, final UiSession session) {
     super(page, session);
@@ -114,7 +124,9 @@ public final class IncidentManagerPage extends PageObject {
     page.waitForResponse(
         r -> r.url().contains("/api/v1/search/query") && r.url().contains("index=user"),
         () -> page.locator("[data-testid='assignee-search-input'] input").fill(userDisplayName));
-    page.locator("[data-testid='" + userName.toLowerCase() + "']").click();
+    final Locator userOption = page.locator("[data-testid='" + userName.toLowerCase() + "']");
+    userOption.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    userOption.click();
     page.waitForResponse(
         r -> r.url().matches(API_INCIDENT_STATUS_REGEX) || r.url().matches(API_TASK_RESOLVE_REGEX),
         () -> byTestId("submit-assignee-popover-button").click());
@@ -203,18 +215,36 @@ public final class IncidentManagerPage extends PageObject {
 
   /** Open page size dropdown, click the {@code 50 / Page} option, await list with limit=50. */
   public IncidentManagerPage selectPageSize50() {
-    byTestId("page-size-selection-dropdown").click();
+    // The incident list refetches after a reindex; while it loads, paging.total briefly drops and
+    // the pagination bar (which owns this dropdown) unmounts, collapsing the panel between
+    // resolving
+    // the "50 / page" item and clicking it — "<html> intercepts pointer events", then the item goes
+    // not-visible. Re-open and re-click as one unit until the list actually reloads at limit=50.
+    Awaitility.await("incident list page size set to 50")
+        .atMost(PAGE_SIZE_RETRY_TIMEOUT)
+        .pollInterval(PAGE_SIZE_RETRY_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(this::openDropdownAndSelectPageSize50);
+    return this;
+  }
+
+  private void openDropdownAndSelectPageSize50() {
+    // Reset any panel a previous attempt left half-open — Ant toggles on trigger click, so opening
+    // a
+    // stuck-open menu would instead close it. Escape is a no-op when nothing is open.
+    page.keyboard().press("Escape");
+    final Locator menu = page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu");
+    openMenu(byTestId("page-size-selection-dropdown"), menu);
+    // Click the visible menuitem page-wide (getByRole excludes the hidden/closed panels Ant leaves
+    // in the DOM). Bounded click + response timeouts so a collapse fails this attempt fast and the
+    // outer retry re-opens, instead of burning the full default timeout on a detached panel.
+    final Locator option =
+        page.getByRole(AriaRole.MENUITEM, new Page.GetByRoleOptions().setName(PAGE_SIZE_50_OPTION));
     page.waitForResponse(
         r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"),
-        () ->
-            page.getByRole(
-                    com.microsoft.playwright.options.AriaRole.MENUITEM,
-                    new Page.GetByRoleOptions()
-                        .setName(
-                            java.util.regex.Pattern.compile(
-                                "50.*page", java.util.regex.Pattern.CASE_INSENSITIVE)))
-                .click());
-    return this;
+        new Page.WaitForResponseOptions().setTimeout(PAGE_SIZE_RESPONSE_TIMEOUT_MS),
+        () -> option.click(new Locator.ClickOptions().setTimeout(PAGE_SIZE_CLICK_TIMEOUT_MS)));
   }
 
   /**

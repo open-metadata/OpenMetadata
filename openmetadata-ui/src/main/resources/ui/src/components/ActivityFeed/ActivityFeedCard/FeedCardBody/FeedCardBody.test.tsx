@@ -24,11 +24,7 @@ const mockCancel = jest.fn();
 
 const mockUpdate = jest.fn();
 
-jest.mock('../../../../utils/FeedUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 1, 1970, 12:00 AM'),
-}));
-
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: jest.fn(),
   MarkdownToHTMLConverter: {
     makeHtml: jest.fn().mockReturnValue('html string'),

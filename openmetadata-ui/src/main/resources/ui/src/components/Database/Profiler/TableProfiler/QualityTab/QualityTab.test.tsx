@@ -53,7 +53,6 @@ import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
-import '../../../../../test/unit/mocks/mui.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
 
@@ -157,7 +156,11 @@ jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
 jest.mock('../../DataQualityTab/DataQualityTab', () => {
   return jest
     .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
+    .mockImplementation(({ showPagination }) => (
+      <div data-show-pagination={String(showPagination)}>
+        DataQualityTab.component
+      </div>
+    ));
 });
 
 jest.mock('../../../../../hoc/LimitWrapper', () => {
@@ -605,5 +608,43 @@ describe('QualityTab', () => {
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should forward showPagination=true from testCasePaging to DataQualityTab', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 100, after: 'after' },
+        showPagination: true,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+
+    expect(dataQualityTab).toHaveAttribute('data-show-pagination', 'true');
+  });
+
+  it('should forward showPagination=false from testCasePaging to DataQualityTab', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 5, after: null },
+        showPagination: false,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+
+    expect(dataQualityTab).toHaveAttribute('data-show-pagination', 'false');
   });
 });

@@ -18,7 +18,9 @@ export interface FormBuilderV1Props extends Omit<FormProps, 'validator'> {
   okText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  isSubmitDisabled?: boolean;
   hideCancelButton?: boolean;
+  hideFooter?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
 }

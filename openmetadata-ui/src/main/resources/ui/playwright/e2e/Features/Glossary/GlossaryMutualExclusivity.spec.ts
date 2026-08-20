@@ -79,7 +79,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Open glossary term selector
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         // Wait for dropdown to open
@@ -165,7 +165,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -274,7 +274,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -367,7 +367,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -465,7 +465,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -592,7 +592,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Open glossary selector
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -806,7 +806,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -869,7 +869,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -990,7 +990,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -1135,7 +1135,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {

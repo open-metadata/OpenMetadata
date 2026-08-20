@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
+import type { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { ReactNode } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 
@@ -41,6 +41,7 @@ export interface AdvanceSearchContext {
   config: Config;
   isUpdating: boolean;
   onReset: () => void;
+  onResetQueryFilter: () => void;
   onResetAllFilters: () => void;
   onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
   searchIndex: string | Array<string>;

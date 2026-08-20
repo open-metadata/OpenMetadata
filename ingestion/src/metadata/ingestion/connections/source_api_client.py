@@ -76,7 +76,7 @@ class TrackedREST(REST):
         Replaces IDs and UUIDs with placeholders for better aggregation.
         Example: /dashboard/123-abc -> /dashboard/{id}
         """
-        import re  # noqa: PLC0415
+        import re
 
         parts = path.split("?")[0].split("/")  # noqa: PLC0207
         cleaned_parts = []
@@ -145,11 +145,11 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PUT", path, duration_ms)
 
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """PATCH method with tracking."""
         start = perf_counter()
         try:
-            return super().patch(path, data)
+            return super().patch(path, data, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PATCH", path, duration_ms)

@@ -133,6 +133,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
@@ -439,12 +440,15 @@ public class OpenSearchIndexManager implements IndexManagementClient {
                 }
                 // Then delete any concrete index sharing the alias name, atomically, so the alias
                 // add below cannot race a separate delete and orphan the canonical name.
+                // Do NOT set must_exist: OpenSearch's _aliases parser rejects it on remove_index
+                // ("unknown field [must_exist]") and fails the whole request. It is unnecessary
+                // here anyway — resolveCanonicalRemoval only forwards indices it has already
+                // confirmed exist via indexExists().
                 for (String indexToRemove : finalIndicesToRemove) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.removeIndex(
-                              removeIndexBuilder ->
-                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
                 }
                 // Finally, add aliases to the new index
                 for (String alias : finalAliases) {
@@ -581,12 +585,16 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       }
       IndicesStats stats = entry.getValue();
       long docs = 0;
+      long indexedOps = 0;
       long sizeBytes = 0;
       int primaryShards = 0;
       int replicaShards = 0;
       if (stats.primaries() != null) {
         if (stats.primaries().docs() != null) {
           docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
         }
         if (stats.primaries().store() != null) {
           sizeBytes = stats.primaries().store().sizeInBytes();
@@ -607,7 +615,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       Set<String> aliases = getAliases(indexName);
       result.add(
           new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
     }
     return result;
   }

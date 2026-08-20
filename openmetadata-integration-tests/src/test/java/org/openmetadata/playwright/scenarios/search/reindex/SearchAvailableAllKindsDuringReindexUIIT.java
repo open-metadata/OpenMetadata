@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -68,6 +69,7 @@ import org.slf4j.LoggerFactory;
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
+@Tag("search-direct")
 class SearchAvailableAllKindsDuringReindexUIIT {
 
   private static final Logger LOG =
@@ -172,7 +174,7 @@ class SearchAvailableAllKindsDuringReindexUIIT {
   // Reindex timeout scales loosely with total entities — at scale=40 (~100k) the slow
   // single-thread config can take 30 min. Allow generous headroom; the test exits as soon
   // as the run reaches terminal so the timeout is a safety net, not a target.
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(45);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   // ES refresh interval is 1s; give a 3s grace before post-reindex assertions so we
   // don't flake on a yet-to-refresh segment.
   private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);

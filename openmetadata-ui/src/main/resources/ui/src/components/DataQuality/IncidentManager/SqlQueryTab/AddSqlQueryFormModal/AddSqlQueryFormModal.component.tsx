@@ -13,7 +13,7 @@
 
 import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { HTTP_STATUS_CODE } from '../../../../../constants/Auth.constants';
@@ -34,10 +34,14 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
-import SchemaEditor from '../../../../Database/SchemaEditor/SchemaEditor';
 import { AddSqlQueryFormModalProps } from './AddSqlQueryFormModal.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const AddSqlQueryFormModal = ({
   open,

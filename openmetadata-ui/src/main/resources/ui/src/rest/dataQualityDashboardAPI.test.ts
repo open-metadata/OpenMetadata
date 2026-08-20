@@ -20,7 +20,7 @@ import {
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildMustEsFilterForTier,
-} from '../utils/DataQuality/DataQualityUtils';
+} from '../utils/DataQuality/DataQualityPureUtils';
 import {
   fetchCountOfIncidentStatusTypeByDays,
   fetchEntityCoveredWithDQ,
@@ -31,17 +31,21 @@ import {
   fetchTestCaseSummaryByNoDimension,
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
-import { getDataQualityReport } from './testAPI';
-
+import { batchedDataQualityReport } from './dataQualityReportBatcher';
 jest.mock('./testAPI', () => ({
   getDataQualityReport: jest.fn(),
 }));
 
-jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
+jest.mock('./dataQualityReportBatcher', () => ({
+  batchedDataQualityReport: jest.fn(),
+}));
+
+jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
   buildMustEsFilterForTier: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
+  buildMustEsFilterForDataProducts: jest.fn(),
 }));
 
 describe('dataQualityDashboardAPI', () => {
@@ -62,7 +66,7 @@ describe('dataQualityDashboardAPI', () => {
         filters: { ownerFqn: 'owner1' },
         isTableApi: true,
       });
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -96,7 +100,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTotalEntityCount(filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -133,7 +137,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTotalEntityCount(filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -181,7 +185,7 @@ describe('dataQualityDashboardAPI', () => {
         filters: { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] },
         isTableApi: true,
       });
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -213,7 +217,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when no filters are provided', async () => {
       await fetchTotalEntityCount();
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -422,7 +426,7 @@ describe('dataQualityDashboardAPI', () => {
           filters,
           ...testData.params,
         });
-        expect(getDataQualityReport).toHaveBeenCalledWith({
+        expect(batchedDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test1.q,
           index: testData.index,
           aggregationQuery: testData.aggregationQuery,
@@ -441,7 +445,7 @@ describe('dataQualityDashboardAPI', () => {
           filters,
           ...testData.params,
         });
-        expect(getDataQualityReport).toHaveBeenCalledWith({
+        expect(batchedDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test2.q,
           index: testData.index,
           aggregationQuery: testData.aggregationQuery,
@@ -460,7 +464,7 @@ describe('dataQualityDashboardAPI', () => {
           filters,
           ...testData.params,
         });
-        expect(getDataQualityReport).toHaveBeenCalledWith({
+        expect(batchedDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test3.q,
           index: testData.index,
           aggregationQuery: testData.aggregationQuery,
@@ -482,7 +486,7 @@ describe('dataQualityDashboardAPI', () => {
           ...testData.params,
         });
 
-        expect(getDataQualityReport).toHaveBeenCalledWith({
+        expect(batchedDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test4.q,
           index: testData.index,
           aggregationQuery: testData.aggregationQuery,
@@ -492,7 +496,7 @@ describe('dataQualityDashboardAPI', () => {
       it('should call getDataQualityReport with correct query when no filters are provided', async () => {
         await testData.func();
 
-        expect(getDataQualityReport).toHaveBeenCalledWith({
+        expect(batchedDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test5.q,
           index: testData.index,
           aggregationQuery: testData.aggregationQuery,
@@ -509,7 +513,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with no filters', async () => {
       await fetchTestCaseSummaryByNoDimension();
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -536,7 +540,7 @@ describe('dataQualityDashboardAPI', () => {
       await fetchTestCaseSummaryByNoDimension({ ownerFqn: 'owner1' });
 
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1');
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -570,7 +574,7 @@ describe('dataQualityDashboardAPI', () => {
       await fetchTestCaseSummaryByNoDimension({ tags: ['tag1', 'tag2'] });
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1', 'tag2']);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -598,7 +602,7 @@ describe('dataQualityDashboardAPI', () => {
 
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
       expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -640,7 +644,7 @@ describe('dataQualityDashboardAPI', () => {
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1']);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -659,7 +663,7 @@ describe('dataQualityDashboardAPI', () => {
       await fetchTestCaseSummaryByNoDimension({ tags: [] });
 
       expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
-      expect(getDataQualityReport).toHaveBeenCalledWith(
+      expect(batchedDataQualityReport).toHaveBeenCalledWith(
         expect.objectContaining({
           q: JSON.stringify({
             query: {
@@ -677,7 +681,7 @@ describe('dataQualityDashboardAPI', () => {
       await fetchTestCaseSummaryByNoDimension({ tier: [] });
 
       expect(buildMustEsFilterForTier).not.toHaveBeenCalled();
-      expect(getDataQualityReport).toHaveBeenCalledWith(
+      expect(batchedDataQualityReport).toHaveBeenCalledWith(
         expect.objectContaining({
           q: JSON.stringify({
             query: {
@@ -698,7 +702,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchCountOfIncidentStatusTypeByDays(status);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -734,7 +738,7 @@ describe('dataQualityDashboardAPI', () => {
       await fetchCountOfIncidentStatusTypeByDays(status, filters);
 
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -789,7 +793,7 @@ describe('dataQualityDashboardAPI', () => {
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -848,7 +852,7 @@ describe('dataQualityDashboardAPI', () => {
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -881,7 +885,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchCountOfIncidentStatusTypeByDays(status, filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -912,7 +916,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchIncidentTimeMetrics(type);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -962,7 +966,7 @@ describe('dataQualityDashboardAPI', () => {
         testCaseData.filters.ownerFqn,
         true
       );
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1031,7 +1035,7 @@ describe('dataQualityDashboardAPI', () => {
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1102,7 +1106,7 @@ describe('dataQualityDashboardAPI', () => {
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1144,7 +1148,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchIncidentTimeMetrics(type, filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1184,7 +1188,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTestCaseStatusMetricsByDays(status);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1221,7 +1225,7 @@ describe('dataQualityDashboardAPI', () => {
         testCaseData.filters.ownerFqn,
         true
       );
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1276,7 +1280,7 @@ describe('dataQualityDashboardAPI', () => {
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1335,7 +1339,7 @@ describe('dataQualityDashboardAPI', () => {
       expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1', true);
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1'], true);
       expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['tier1'], true);
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1368,7 +1372,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTestCaseStatusMetricsByDays(status, filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1403,7 +1407,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTestCaseStatusMetricsByDays(status, filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {
@@ -1442,7 +1446,7 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTestCaseStatusMetricsByDays(status, filters);
 
-      expect(getDataQualityReport).toHaveBeenCalledWith({
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
             bool: {

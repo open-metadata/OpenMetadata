@@ -86,7 +86,11 @@ export const getTagImageSrc = (iconURL: string): string => {
 // Map of icon names to their components
 export const ICON_MAP: Record<
   string,
-  ComponentType<{ size?: number; style?: React.CSSProperties }>
+  ComponentType<{
+    size?: number;
+    className?: string;
+    style?: React.CSSProperties;
+  }>
 > = {
   Cube01: Cube01,
   Home02: Home02,
@@ -156,6 +160,7 @@ interface RenderIconOptions {
   className?: string;
   style?: React.CSSProperties;
   strokeWidth?: number;
+  alt?: string;
 }
 
 /**
@@ -168,7 +173,13 @@ export const renderIcon = (
   iconValue: string | undefined,
   options: RenderIconOptions = {}
 ) => {
-  const { size = 24, className = '', style = {}, strokeWidth = 1.5 } = options;
+  const {
+    size = 24,
+    className = '',
+    style = {},
+    strokeWidth = 1.5,
+    alt = 'icon',
+  } = options;
 
   if (!iconValue) {
     return null;
@@ -177,19 +188,24 @@ export const renderIcon = (
   // Check if it's a known icon name
   const IconComponent = ICON_MAP[iconValue];
   if (IconComponent) {
-    // Return the icon component directly without wrapper
-    return <IconComponent size={size} style={{ strokeWidth, ...style }} />;
+    return (
+      <IconComponent
+        className={className}
+        size={size}
+        style={{ strokeWidth, ...style }}
+      />
+    );
   }
 
   // Only render as image if it looks like a valid URL/path or has an image extension
-  if (!IMAGE_URL_PATTERN.test(iconValue)) {
+  if (!isImageUrl(iconValue)) {
     return null;
   }
 
   // Render as image with error handling
   return (
     <img
-      alt="icon"
+      alt={alt}
       className={className}
       src={getTagImageSrc(iconValue)}
       style={{

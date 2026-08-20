@@ -53,7 +53,7 @@ jest.mock('../../../../common/Chip/Chip.component', () => {
   return jest.fn().mockReturnValue(<p>Chip</p>);
 });
 
-jest.mock('../../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('roleName'),
 }));
 

@@ -134,7 +134,7 @@ class TestPubSubConnection:
         """Test get_connection with explicit project ID"""
         from metadata.ingestion.source.messaging.pubsub.connection import (
             PubSubClient,
-            get_connection,
+            PubSubConnection,
         )
 
         mock_connection = MagicMock()
@@ -144,7 +144,7 @@ class TestPubSubConnection:
         mock_connection.hostPort = None
         mock_connection.schemaRegistryEnabled = True
 
-        client = get_connection(mock_connection)
+        client = PubSubConnection(mock_connection)._get_client()
 
         assert isinstance(client, PubSubClient)
         assert client.project_id == "test-project"
@@ -158,7 +158,7 @@ class TestPubSubConnection:
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     def test_get_connection_without_schema_registry(self, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection with schema registry disabled"""
-        from metadata.ingestion.source.messaging.pubsub.connection import get_connection
+        from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 
         mock_connection = MagicMock()
         mock_connection.projectId = "test-project"
@@ -167,7 +167,7 @@ class TestPubSubConnection:
         mock_connection.hostPort = None
         mock_connection.schemaRegistryEnabled = False
 
-        client = get_connection(mock_connection)
+        client = PubSubConnection(mock_connection)._get_client()
 
         assert client.schema_client is None
 
@@ -179,7 +179,7 @@ class TestPubSubConnection:
         pytest.importorskip("google.cloud.pubsub_v1", reason="google-cloud-pubsub not installed")
         from metadata.ingestion.source.messaging.pubsub.connection import (
             PUBSUB_EMULATOR_HOST,
-            get_connection,
+            PubSubConnection,
         )
 
         mock_connection = MagicMock()
@@ -189,7 +189,7 @@ class TestPubSubConnection:
         mock_connection.hostPort = "localhost:8085"
         mock_connection.schemaRegistryEnabled = False
 
-        client = get_connection(mock_connection)
+        client = PubSubConnection(mock_connection)._get_client()
 
         assert client.project_id == "test-project"
         mock_publisher.assert_called_once()
@@ -202,7 +202,7 @@ class TestPubSubConnection:
     @patch("metadata.ingestion.source.messaging.pubsub.connection.pubsub_v1.SubscriberClient")
     def test_get_connection_missing_project_id_raises(self, mock_subscriber, mock_publisher, mock_set_creds):
         """Test get_connection raises ValueError when project ID is missing"""
-        from metadata.ingestion.source.messaging.pubsub.connection import get_connection
+        from metadata.ingestion.source.messaging.pubsub.connection import PubSubConnection
 
         mock_connection = MagicMock()
         mock_connection.projectId = None
@@ -213,7 +213,7 @@ class TestPubSubConnection:
         mock_connection.schemaRegistryEnabled = False
 
         with pytest.raises(ValueError, match="Project ID is required"):
-            get_connection(mock_connection)
+            PubSubConnection(mock_connection)._get_client()
 
     def test_get_project_id_from_connection(self):
         """Test _get_project_id extracts project ID from connection config"""
@@ -727,3 +727,32 @@ class TestPubSubTopicLineage:
             service_name=None,
             table_name="my_table",
         )
+
+
+OWNED_CONNECTION_CONFIG = {
+    "type": "pubsub",
+    "serviceName": "test-pubsub",
+    "serviceConnection": {"config": {"type": "PubSub", "projectId": "test-project"}},
+    "sourceConfig": {"config": {"type": "MessagingMetadata"}},
+}
+
+
+class TestMessagingOwnedConnection:
+    """MessagingServiceSource owns a single BaseConnection and reuses it for the
+    test-connection step."""
+
+    def test_owned_connection_closed_when_test_connection_fails(self):
+        from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
+
+        with patch("metadata.ingestion.source.messaging.messaging_service.create_connection") as mock_create_connection:
+            owned_connection = mock_create_connection.return_value
+            with (
+                patch(
+                    "metadata.ingestion.source.messaging.messaging_service.run_test_connection",
+                    side_effect=RuntimeError("cannot connect"),
+                ),
+                pytest.raises(RuntimeError),
+            ):
+                PubsubSource.create(OWNED_CONNECTION_CONFIG, MagicMock())
+
+            owned_connection.close.assert_called_once()

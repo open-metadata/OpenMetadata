@@ -12,17 +12,29 @@
 Custom wrapper for Lineage Request
 """
 
-from typing import Optional, Type, TypeVar  # noqa: UP035
+from typing import Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.entityLineage import LineageDetails
 
 T = TypeVar("T", bound=BaseModel)
 
 
+class OMetaFQNLineageRequest(BaseModel):
+    from_entity_fqn: str
+    from_entity_type: str
+    to_entity_fqn: str
+    to_entity_type: str
+    lineage_details: Optional[LineageDetails] = None  # noqa: UP045
+
+
+LineageRequest = Union[AddLineageRequest, OMetaFQNLineageRequest]  # noqa: UP007
+
+
 class OMetaLineageRequest(BaseModel):
     override_lineage: Optional[bool] = False  # noqa: UP045
-    lineage_request: AddLineageRequest
+    lineage_request: LineageRequest
     entity_fqn: Optional[str] = None  # noqa: UP045
     entity: Optional[Type[T]] = None  # noqa: UP006, UP045

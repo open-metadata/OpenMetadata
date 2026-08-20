@@ -17,6 +17,7 @@ import { createNewPage } from '../../../utils/common';
 import {
   captureReports,
   goToDataQualityDashboard,
+  isDashboardReportBatchResponse,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
@@ -111,23 +112,14 @@ test('Certification filter narrows both table- and testCase-index queries via th
     .fill(cert.responseData.fullyQualifiedName);
   await page.getByTestId(cert.responseData.fullyQualifiedName).click();
 
-  const certFqnEncoded = encodeURIComponent(
-    cert.responseData.fullyQualifiedName
-  );
-  const tableReload = page.waitForResponse(
-    (r) =>
-      r.url().includes('/dataQualityReport') &&
-      r.url().includes('index=table') &&
-      r.url().includes(certFqnEncoded)
-  );
-  const testCaseReload = page.waitForResponse(
-    (r) =>
-      r.url().includes('/dataQualityReport') &&
-      r.url().includes('index=testCase') &&
-      r.url().includes(certFqnEncoded)
+  const reportReload = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, cert.responseData.fullyQualifiedName)
   );
   await page.getByTestId('update-btn').click();
-  await Promise.all([tableReload, testCaseReload]);
+  await reportReload;
+  // Wait for every widget (incl. the table-index coverage widget) to finish so
+  // all batched requests are captured before asserting on them.
+  await waitForAllLoadersToDisappear(page);
 
   const reportsWithCertFilter = captured.filter((c) =>
     c.q.includes(cert.responseData.fullyQualifiedName)
@@ -185,9 +177,8 @@ test('TagPage: Certification detail page routes through certification.tagLabel.t
   const certFqn = cert.responseData.fullyQualifiedName;
   const certFqnEncoded = encodeURIComponent(certFqn);
 
-  const reloadFired = page.waitForResponse(
-    (r) =>
-      r.url().includes('/dataQualityReport') && r.url().includes(certFqnEncoded)
+  const reloadFired = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, certFqn)
   );
   await page.goto(`/tag/${certFqnEncoded}/data_observability`);
   await reloadFired;

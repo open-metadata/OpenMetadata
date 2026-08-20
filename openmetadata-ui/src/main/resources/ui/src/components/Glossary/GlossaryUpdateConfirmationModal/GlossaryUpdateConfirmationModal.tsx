@@ -26,10 +26,8 @@ import {
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Table from '../../common/Table/Table';
 import {
   GlossaryUpdateConfirmationModalProps,

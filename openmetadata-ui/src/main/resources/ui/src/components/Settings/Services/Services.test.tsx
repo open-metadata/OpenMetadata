@@ -145,25 +145,27 @@ jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => {
-  const actual = jest.requireActual('../../../utils/EntityUtils');
-
-  return {
-    ...actual,
-    getEntityName: jest.fn().mockReturnValue('Glue'),
-    highlightSearchText: jest.fn((text) => text),
-  };
-});
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityNameUtils'),
+  getEntityName: jest.fn().mockReturnValue('Glue'),
+}));
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../utils/EntitySearchUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
-  getOptionalFields: jest.fn(),
-  getSearchIndexFromService: jest.fn(),
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getResourceEntityFromServiceCategory: jest.fn(),
   getServiceTypesFromServiceCategory: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
+}));
+
+jest.mock('../../../utils/ServiceUtils', () => ({
+  getOptionalFields: jest.fn(),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {

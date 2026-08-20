@@ -10,6 +10,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
+import static org.openmetadata.service.Entity.TASK;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -17,9 +18,11 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -34,20 +38,49 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class AlertsRuleEvaluator {
+  private static final String FIELD_TEST_SUITES_AND_OWNERS =
+      Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_OWNERS;
+
+  /**
+   * Resolves the change-event entity itself even once it is soft-deleted — a delete event must still
+   * be able to match on its domains, owners and test suites — while pinning owners and domains to
+   * live targets. Widening the subject include alone must not widen which alerts fire, and
+   * {@link Include#NON_DELETED} is also the only include for which
+   * {@code EntityRepository.getOwners}/{@code getDomains} consult and populate the relationship
+   * cache, which this evaluator runs against on the change-event hot path.
+   *
+   * <p>Test suites are deliberately absent: {@code TestCaseRepository.getTestSuites} hardcodes
+   * {@link Include#ALL} and never consults {@link RelationIncludes}, so a soft-deleted test suite
+   * resolves either way and an entry here would be inert. Making that path include-aware is a
+   * separate change.
+   */
+  private static final RelationIncludes DELETED_TOLERANT_SUBJECT =
+      new RelationIncludes(
+          Include.ALL,
+          Map.of(
+              Entity.FIELD_OWNERS, Include.NON_DELETED,
+              Entity.FIELD_DOMAINS, Include.NON_DELETED));
+
   private final ChangeEvent changeEvent;
 
   public AlertsRuleEvaluator(ChangeEvent event) {
@@ -88,47 +121,46 @@ public class AlertsRuleEvaluator {
       examples = {"matchAnyOwnerName({'Owner1', 'Owner2'})"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyOwnerName(List<String> ownerNameList) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
-      return false;
+    boolean matched = false;
+    if (changeEvent != null && changeEvent.getEntity() != null) {
+      // Filter does not apply to Thread Change Events
+      matched =
+          THREAD.equals(changeEvent.getEntityType())
+              || matchesEntityOrTestSuiteOwner(getEntity(changeEvent), ownerNameList);
     }
+    return matched;
+  }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
-    }
-
-    EntityInterface entity = getEntity(changeEvent);
-    List<EntityReference> ownerReferences = entity.getOwners();
-    if (nullOrEmpty(ownerReferences)) {
-      entity =
-          Entity.getEntity(
-              changeEvent.getEntityType(), entity.getId(), "owners", Include.NON_DELETED);
-      ownerReferences = entity.getOwners();
-    }
+  private boolean matchesEntityOrTestSuiteOwner(
+      EntityInterface entity, List<String> ownerNameList) {
+    List<EntityReference> ownerReferences = resolveOwners(entity);
+    boolean matched = false;
     if (!nullOrEmpty(ownerReferences)) {
-      return matchOwners(ownerReferences, ownerNameList);
-    }
-
-    if (changeEvent.getEntityType().equals(TEST_CASE)) {
+      matched = matchOwners(ownerReferences, ownerNameList);
+    } else if (TEST_CASE.equals(changeEvent.getEntityType())) {
       // If we did not match on the owner name and are dealing with a test case,
       // check if the match happens on the test suite owner name
-      TestCase testCase =
-          Entity.getEntity(
-              changeEvent.getEntityType(),
-              entity.getId(),
-              "testSuites,owners",
-              Include.NON_DELETED);
-      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteOwnerMatcher(suites, ownerNameList)).isPresent();
+      matched =
+          testSuiteOwnerMatcher(
+              resolveTestSuites((TestCase) entity, FIELD_TEST_SUITES_AND_OWNERS), ownerNameList);
     }
-    return false;
+    return matched;
+  }
+
+  private List<EntityReference> resolveOwners(EntityInterface entity) {
+    List<EntityReference> ownerReferences = entity.getOwners();
+    if (nullOrEmpty(ownerReferences)) {
+      EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
+      ownerReferences = storedEntity == null ? ownerReferences : storedEntity.getOwners();
+    }
+    return ownerReferences;
   }
 
   @Function(
       name = "matchAnyEntityFqn",
       input = "List of comma separated fully qualified entity names",
       description =
-          "Returns true if the change event entity's fully qualified name equals any of the listed FQNs.",
+          "Returns true if the change event entity's fully qualified name equals, or is a descendant of, any of the listed FQNs.",
       examples = {
         "matchAnyEntityFqn({'service.database.schema.table1', 'service.database.schema.table2'})"
       },
@@ -144,7 +176,7 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    if (entityFqns.contains(entity.getFullyQualifiedName())) {
+    if (matchesFqnOrDescendant(entity.getFullyQualifiedName(), entityFqns)) {
       return true;
     }
 
@@ -157,6 +189,20 @@ public class AlertsRuleEvaluator {
     }
 
     return false;
+  }
+
+  // Matches the entity FQN exactly or as a descendant (segment-anchored via isParent, no regex).
+  private boolean matchesFqnOrDescendant(String entityFqn, List<String> entityFqns) {
+    boolean matched = false;
+    if (entityFqn != null) {
+      for (String listedFqn : entityFqns) {
+        if (entityFqn.equals(listedFqn) || FullyQualifiedName.isParent(entityFqn, listedFqn)) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    return matched;
   }
 
   @Function(
@@ -220,8 +266,8 @@ public class AlertsRuleEvaluator {
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)
         && !changeEvent.getEntityType().equals(TEST_SUITE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
+      // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     // we need to handle both fields updated and fields added
@@ -300,34 +346,21 @@ public class AlertsRuleEvaluator {
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean getTestCaseStatusIfInTestSuite(
       List<String> testResults, List<String> testSuiteList) {
-    if (changeEvent == null || changeEvent.getChangeDescription() == null) {
-      return false;
+    boolean matched = false;
+    // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+    if (changeEvent != null
+        && changeEvent.getChangeDescription() != null
+        && TEST_CASE.equals(changeEvent.getEntityType())) {
+      List<TestSuite> testSuites =
+          resolveTestSuites((TestCase) getEntity(changeEvent), Entity.FIELD_TEST_SUITES);
+      matched = matchesAnyTestSuiteFqn(testSuites, testSuiteList) && matchTestResult(testResults);
     }
-    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
-    }
+    return matched;
+  }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
-    }
-
-    // we need to handle both fields updated and fields added
-    EntityInterface entity = getEntity(changeEvent);
-    TestCase entityWithTestSuite =
-        Entity.getEntity(
-            changeEvent.getEntityType(), entity.getId(), "testSuites", Include.NON_DELETED);
-    boolean testSuiteFiltering =
-        listOrEmpty(entityWithTestSuite.getTestSuites()).stream()
-            .anyMatch(
-                testSuite ->
-                    testSuiteList.stream()
-                        .anyMatch(name -> testSuite.getFullyQualifiedName().equals(name)));
-    if (testSuiteFiltering) {
-      return matchTestResult(testResults);
-    }
-    return false;
+  private boolean matchesAnyTestSuiteFqn(List<TestSuite> testSuites, List<String> testSuiteFqns) {
+    return testSuites.stream()
+        .anyMatch(testSuite -> testSuiteFqns.contains(testSuite.getFullyQualifiedName()));
   }
 
   @Function(
@@ -341,12 +374,11 @@ public class AlertsRuleEvaluator {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
-    for (String name : updatedByUserList) {
-      if (name.equals(entityUpdatedBy)) {
-        return true;
-      }
-    }
-    return false;
+    Set<String> updaterNames =
+        updatedByUserList.stream()
+            .map(EntityInterfaceUtil::unquoteName)
+            .collect(Collectors.toSet());
+    return updaterNames.contains(entityUpdatedBy);
   }
 
   @Function(
@@ -382,13 +414,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(INGESTION_PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
@@ -418,13 +445,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
@@ -470,37 +492,57 @@ public class AlertsRuleEvaluator {
       examples = {"matchAnyDomain({'domain1', 'domain2'})"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyDomain(List<String> fieldChangeUpdate) {
-    if (changeEvent == null) {
-      return false;
+    boolean matched = false;
+    if (changeEvent != null) {
+      // Filter does not apply to Thread Change Events
+      matched =
+          THREAD.equals(changeEvent.getEntityType())
+              || matchesEntityOrTestSuiteDomain(getEntity(changeEvent), fieldChangeUpdate);
     }
+    return matched;
+  }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
-    }
-
-    EntityInterface entity = getEntity(changeEvent);
-    EntityInterface entityWithDomainData =
-        Entity.getEntity(
-            changeEvent.getEntityType(), entity.getId(), "domains", Include.NON_DELETED);
-    if (!nullOrEmpty(entityWithDomainData.getDomains())) {
-      for (String name : fieldChangeUpdate) {
-        for (EntityReference domain : entityWithDomainData.getDomains()) {
-          if (domain.getFullyQualifiedName().equals(name)) {
-            return true;
-          }
-        }
-      }
-    }
-
-    if (changeEvent.getEntityType().equals(TEST_CASE)) {
+  private boolean matchesEntityOrTestSuiteDomain(EntityInterface entity, List<String> domainFqns) {
+    EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
+    List<EntityReference> domains =
+        storedEntity == null ? entity.getDomains() : storedEntity.getDomains();
+    boolean matched = matchesAnyDomainFqn(domains, domainFqns);
+    if (!matched && TEST_CASE.equals(changeEvent.getEntityType())) {
       // If we did not match on the domain and are dealing with a test case,
       // check if the match happens on the test suite domain
-      TestCase testCase = ((TestCase) entity);
-      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteMatcher(suites, fieldChangeUpdate)).isPresent();
+      matched = testSuiteMatcher(listOrEmpty(((TestCase) entity).getTestSuites()), domainFqns);
     }
-    return false;
+    return matched;
+  }
+
+  private boolean matchesAnyDomainFqn(List<EntityReference> domains, List<String> domainFqns) {
+    boolean matched = false;
+    for (EntityReference domain : listOrEmpty(domains)) {
+      if (domainFqns.contains(domain.getFullyQualifiedName())) {
+        matched = true;
+        break;
+      }
+    }
+    return matched;
+  }
+
+  /**
+   * Re-reads the change-event entity from the store to pick up fields the serialized payload does
+   * not carry, yielding {@code null} once the entity has been hard-deleted. Alerts are evaluated
+   * asynchronously, so a delete event routinely reaches the evaluator after its entity is gone; the
+   * lookup must not abort the whole subscription then (issue #29674) and callers fall back to the
+   * payload instead.
+   */
+  private <T extends EntityInterface> T readStoredEntity(UUID entityId, String fields) {
+    return Entity.getEntityOrNull(
+        changeEvent.getEntityType(), entityId, fields, DELETED_TOLERANT_SUBJECT);
+  }
+
+  private List<TestSuite> resolveTestSuites(TestCase testCase, String fields) {
+    TestCase storedTestCase = readStoredEntity(testCase.getId(), fields);
+    List<TestSuite> testSuites =
+        storedTestCase == null ? testCase.getTestSuites() : storedTestCase.getTestSuites();
+    return listOrEmpty(testSuites);
   }
 
   public static EntityInterface getEntity(ChangeEvent event) {
@@ -542,8 +584,9 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (!changeEvent.getEntityType().equals(THREAD)) {
+    boolean isTask = TASK.equals(changeEvent.getEntityType());
+    // Filter applies to conversation (Thread) and incident/task (Task) change events
+    if (!THREAD.equals(changeEvent.getEntityType()) && !isTask) {
       return false;
     }
 
@@ -551,8 +594,12 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
-    Thread thread = getThread(changeEvent);
+    List<MessageParser.EntityLink> mentions =
+        isTask ? getTaskMentions(getTask(changeEvent)) : getThreadMentions(getThread(changeEvent));
+    return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
+  }
 
+  private List<MessageParser.EntityLink> getThreadMentions(Thread thread) {
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
       mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -560,16 +607,59 @@ public class AlertsRuleEvaluator {
       Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
     }
+    return mentions;
+  }
+
+  // A mention notification must fire only for the comment that triggered this event. addComment
+  // records the newly-added comment in the change delta, so we parse exactly that text — never
+  // earlier comments (which would re-notify their mentionees on every reply). Non-comment task
+  // updates (assignees/status) carry no comment delta, so nobody is newly mentioned.
+  public static List<MessageParser.EntityLink> getTaskMentions(Task task) {
+    String addedComment = addedCommentMessage(task.getChangeDescription());
+    if (addedComment != null) {
+      return MessageParser.getEntityLinks(addedComment);
+    }
+    if (task.getChangeDescription() != null) {
+      return List.of();
+    }
+    // No change delta (legacy/unknown event): fall back to the latest comment, else the
+    // description.
+    List<TaskComment> comments = task.getComments();
+    if (!nullOrEmpty(comments) && comments.get(comments.size() - 1).getMessage() != null) {
+      return MessageParser.getEntityLinks(comments.get(comments.size() - 1).getMessage());
+    }
+    return task.getDescription() == null
+        ? List.of()
+        : MessageParser.getEntityLinks(task.getDescription());
+  }
+
+  private static String addedCommentMessage(ChangeDescription change) {
+    if (change == null) {
+      return null;
+    }
+    for (FieldChange field : listOrEmpty(change.getFieldsAdded())) {
+      if (TaskRepository.FIELD_COMMENTS.equals(field.getName())
+          && !nullOrEmpty(field.getNewValue())) {
+        return field.getNewValue().toString();
+      }
+    }
+    return null;
+  }
+
+  private boolean matchesMentionedUserOrTeam(
+      List<MessageParser.EntityLink> mentions, List<String> usersOrTeamName) {
+    Set<String> names =
+        usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
       if (USER.equals(entityLink.getEntityType())) {
         User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(user.getName())) {
+        if (names.contains(user.getName())) {
           return true;
         }
       } else if (TEAM.equals(entityLink.getEntityType())) {
         Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(team.getName())) {
+        if (names.contains(team.getName())) {
           return true;
         }
       }
@@ -591,6 +681,22 @@ public class AlertsRuleEvaluator {
           String.format(
               "Change Event Data Asset is not an Thread %s",
               JsonUtils.pojoToJson(event.getEntity())));
+    }
+  }
+
+  public static Task getTask(ChangeEvent event) {
+    try {
+      Task task;
+      if (event.getEntity() instanceof String str) {
+        task = JsonUtils.readValue(str, Task.class);
+      } else {
+        task = JsonUtils.convertValue(event.getEntity(), Task.class);
+      }
+      return task;
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Change Event Data Asset is not a Task %s", JsonUtils.pojoToJson(event.getEntity())));
     }
   }
 
@@ -621,24 +727,29 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
+    Set<String> ownerNames =
+        ownerNameList.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (EntityReference owner : ownerReferences) {
-      if (USER.equals(owner.getType())) {
-        User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (user.getName().equals(name)) {
-            return true;
-          }
-        }
-      } else if (TEAM.equals(owner.getType())) {
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (team.getName().equals(name)) {
-            return true;
-          }
-        }
+      String ownerName = resolveOwnerName(owner);
+      if (ownerName != null && ownerNames.contains(ownerName)) {
+        return true;
       }
     }
     return false;
+  }
+
+  // Owner references can come from a change-event payload that outlived the owner it points at, so
+  // an unresolvable owner must simply not match (issue #29674).
+  private String resolveOwnerName(EntityReference owner) {
+    String ownerName = null;
+    if (USER.equals(owner.getType())) {
+      User user = Entity.getEntityOrNull(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+      ownerName = user == null ? null : user.getName();
+    } else if (TEAM.equals(owner.getType())) {
+      Team team = Entity.getEntityOrNull(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+      ownerName = team == null ? null : team.getName();
+    }
+    return ownerName;
   }
 
   @Function(

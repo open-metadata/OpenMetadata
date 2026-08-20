@@ -45,6 +45,19 @@ GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
 ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
+# Redshift Spectrum external tables (backed by the Glue/Hive catalog) report
+# Hive-style column types via svv_external_columns. These have no PostgreSQL
+# equivalent in ischema_names, so they resolved to UNKNOWN and broke
+# column-level test type selection (issue #29589). Map the common scalar Hive
+# types to concrete types (dataTypeDisplay still shows the raw Hive type).
+ischema_names.update(
+    {
+        "string": sqltypes.VARCHAR,
+        "char": sqltypes.CHAR,
+        "tinyint": create_sqlalchemy_type("TINYINT"),
+        "double": sqltypes.DOUBLE_PRECISION,
+    }
+)
 
 
 logger = ingestion_logger()
@@ -56,7 +69,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
+    from sqlalchemy.engine.default import DefaultDialect
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False

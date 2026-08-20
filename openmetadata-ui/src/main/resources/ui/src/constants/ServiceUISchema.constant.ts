@@ -48,8 +48,17 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  displayName: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   defaultManifest: { 'ui:widget': 'manifestJson' },
+  ...SERVICE_FILTER_PATTERN_FIELDS.reduce<Record<string, object>>(
+    (acc, field) => {
+      acc[field] = { 'ui:field': 'FilterPatternField' };
+
+      return acc;
+    },
+    {}
+  ),
   'ui:order': [
     'rootProcessingEngine',
     'name',

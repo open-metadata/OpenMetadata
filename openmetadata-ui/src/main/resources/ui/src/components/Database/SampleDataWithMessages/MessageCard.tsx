@@ -12,10 +12,14 @@
  */
 
 import { Collapse, Tag, Typography } from 'antd';
-import { ReactNode, useEffect, useState } from 'react';
+import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './message-card.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../SchemaEditor/SchemaEditor'))
+);
 
 const { Panel } = Collapse;
 
@@ -54,6 +58,7 @@ const MessageCard = ({ message }: { message: string }) => {
       <Panel data-testid="message-card" header={header} key="1">
         <SchemaEditor
           className="m-t-xs"
+          copyButtonClassName="tw:![top:-4px] tw:!right-1"
           editorClass="topic-sample-data"
           options={{
             styleActiveLine: false,

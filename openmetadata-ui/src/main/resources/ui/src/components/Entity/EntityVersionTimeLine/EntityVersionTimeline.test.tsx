@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ChangeDescription } from '../../../generated/entity/type';
-import { VersionButton } from './EntityVersionTimeLine';
+import { VersionButton } from './VersionButton';
 
 jest.mock('../../common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
@@ -52,6 +52,7 @@ describe('VersionButton', () => {
       <VersionButton
         isMajorVersion={isMajorVersion}
         selected={selected}
+        summary="Some change description"
         version={version}
         onVersionSelect={onVersionSelect}
       />
@@ -66,6 +67,7 @@ describe('VersionButton', () => {
       <VersionButton
         isMajorVersion={isMajorVersion}
         selected={selected}
+        summary="Some change description"
         version={version}
         onVersionSelect={onVersionSelect}
       />
@@ -80,6 +82,7 @@ describe('VersionButton', () => {
       <VersionButton
         isMajorVersion={isMajorVersion}
         selected={selected}
+        summary="Some change description"
         version={version}
         onVersionSelect={onVersionSelect}
       />
@@ -95,6 +98,7 @@ describe('VersionButton', () => {
       <VersionButton
         isMajorVersion={isMajorVersion}
         selected={selected}
+        summary="Some change description"
         version={version}
         onVersionSelect={onVersionSelect}
       />

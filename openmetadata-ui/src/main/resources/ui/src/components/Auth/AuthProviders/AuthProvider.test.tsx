@@ -51,6 +51,15 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../rest/userAPI', () => ({
   getLoggedInUser: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUser: jest.fn().mockImplementation(() => Promise.resolve()),
+  getUserPreferences: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ preferences: [] })),
+}));
+
+jest.mock('../../../rest/settingConfigAPI', () => ({
+  getAppConfiguration: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ defaultAppMode: null })),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({

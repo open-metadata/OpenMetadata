@@ -21,6 +21,7 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.SecurityContext;
@@ -1103,6 +1104,34 @@ public final class EntityUtil {
     }
   }
 
+  /**
+   * Restricts a Domain listing to the user's own domains and their sub-domains when the user is
+   * domain-restricted (holds {@code DomainOnlyAccessRole}). Domains are not themselves tagged with a
+   * domain, so the generic {@link #addDomainQueryParam} filter does not apply to them — this adds a
+   * self-referential filter on the Domain entity's id and fully-qualified-name hierarchy. Inert for
+   * admins, bots, and users without the role.
+   */
+  public static void applyDomainSelfRestriction(
+      SecurityContext securityContext, ListFilter filter) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      List<EntityReference> userDomains = subjectContext.getUserDomains();
+      filter.addQueryParam("restrictToDomainIds", getCommaSeparatedIdsFromRefs(userDomains));
+      filter.addQueryParam(
+          "restrictToDomainFqnHashes", getCommaSeparatedDomainFqnHashes(userDomains));
+    }
+  }
+
+  private static String getCommaSeparatedDomainFqnHashes(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .filter(fqn -> !nullOrEmpty(fqn))
+        .map(FullyQualifiedName::buildHash)
+        .collect(Collectors.joining(","));
+  }
+
   public static String encodeEntityFqn(String fqn) {
     return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
   }
@@ -1207,5 +1236,136 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
+  }
+
+  // Field names of an EntityReference stored on a custom property, per the
+  // EntityReference JSON Schema. Either ID or FQN is a valid lookup key alongside TYPE.
+  private static final String REF_FIELD_TYPE = "type";
+  private static final String REF_FIELD_ID = "id";
+  private static final String REF_FIELD_FQN = Entity.FIELD_FULLY_QUALIFIED_NAME;
+  private static final String CUSTOM_PROPERTY_ERROR_PREFIX = "Custom property '%s' %s";
+
+  /**
+   * Validate a single entity reference stored on an {@code entityReference} custom property and
+   * confirm the referenced entity exists. The value must be an object carrying {@code type} plus
+   * either {@code id} or {@code fullyQualifiedName}. Throws {@link IllegalArgumentException} with a
+   * descriptive message when the reference is malformed or its target cannot be found.
+   */
+  public static void validateCustomPropertyEntityReference(JsonNode fieldValue, String fieldName) {
+    if (fieldValue != null && !fieldValue.isNull()) {
+      if (!fieldValue.isObject()) {
+        throw new IllegalArgumentException(
+            customPropertyError(fieldName, "must be an object with " + referenceShapeHint()));
+      }
+      resolveEntityReference(fieldValue, fieldName);
+    }
+  }
+
+  /**
+   * Validate an {@code entityReferenceList} custom property: the value must be an array of entity
+   * references, each resolvable to an existing entity (see {@link
+   * #validateCustomPropertyEntityReference}).
+   */
+  public static void validateCustomPropertyEntityReferenceList(
+      JsonNode fieldValue, String fieldName) {
+    if (fieldValue != null && !fieldValue.isNull()) {
+      if (!fieldValue.isArray()) {
+        throw new IllegalArgumentException(
+            customPropertyError(fieldName, "must be an array of entity references"));
+      }
+      int index = 0;
+      for (JsonNode ref : fieldValue) {
+        validateReferenceElement(ref, fieldName, index);
+        index++;
+      }
+    }
+  }
+
+  private static void validateReferenceElement(JsonNode ref, String fieldName, int index) {
+    if (ref == null || ref.isNull()) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName, "must contain only non-null entity references at index " + index));
+    }
+    if (!ref.isObject()) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName,
+              "must contain only objects with " + referenceShapeHint() + " at index " + index));
+    }
+    resolveEntityReference(ref, fieldName);
+  }
+
+  private static void resolveEntityReference(JsonNode ref, String fieldName) {
+    String type =
+        requireText(
+            ref.get(REF_FIELD_TYPE), fieldName, "reference requires " + referenceShapeHint());
+    JsonNode idNode = ref.get(REF_FIELD_ID);
+    JsonNode fqnNode = ref.get(REF_FIELD_FQN);
+    if (hasText(idNode)) {
+      resolveReferenceById(type, idNode.asText(), fieldName);
+    } else if (hasText(fqnNode)) {
+      resolveReferenceByName(type, fqnNode.asText(), fieldName);
+    } else {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName,
+              String.format(
+                  "reference requires either '%s' or '%s'", REF_FIELD_ID, REF_FIELD_FQN)));
+    }
+  }
+
+  private static void resolveReferenceById(String type, String idText, String fieldName) {
+    UUID id = parseReferenceId(idText, fieldName);
+    try {
+      Entity.getEntityReferenceById(type, id, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException(missingReferenceError(fieldName, type, idText), e);
+    }
+  }
+
+  private static void resolveReferenceByName(String type, String fqn, String fieldName) {
+    try {
+      Entity.getEntityReferenceByName(type, fqn, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException(missingReferenceError(fieldName, type, fqn), e);
+    }
+  }
+
+  private static UUID parseReferenceId(String idText, String fieldName) {
+    UUID id;
+    try {
+      id = UUID.fromString(idText);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName, String.format("reference has an invalid '%s': %s", REF_FIELD_ID, idText)));
+    }
+    return id;
+  }
+
+  private static boolean hasText(JsonNode node) {
+    return node != null && !node.isNull() && !node.asText().isEmpty();
+  }
+
+  private static String requireText(JsonNode node, String fieldName, String requirement) {
+    if (!hasText(node)) {
+      throw new IllegalArgumentException(customPropertyError(fieldName, requirement));
+    }
+    return node.asText();
+  }
+
+  private static String referenceShapeHint() {
+    return String.format(
+        "'%s' and either '%s' or '%s'", REF_FIELD_TYPE, REF_FIELD_ID, REF_FIELD_FQN);
+  }
+
+  private static String customPropertyError(String fieldName, String detail) {
+    return String.format(CUSTOM_PROPERTY_ERROR_PREFIX, fieldName, detail);
+  }
+
+  private static String missingReferenceError(String fieldName, String type, String key) {
+    return String.format(
+        "Custom property '%s' references %s '%s' that does not exist", fieldName, type, key);
   }
 }

@@ -26,7 +26,7 @@ import {
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';

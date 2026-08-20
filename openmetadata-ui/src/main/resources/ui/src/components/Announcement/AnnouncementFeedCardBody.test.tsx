@@ -39,7 +39,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   },
 }));
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn(() => 'service.database.table'),
   getEntityType: jest.fn(() => 'table'),
 }));

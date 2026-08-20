@@ -43,7 +43,10 @@ import {
   checkExploreSearchFilter,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
-import { searchAndClickOnOption } from '../../../utils/explore';
+import {
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+} from '../../../utils/explore';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const TIER_FQN = 'Tier.Tier1';
@@ -379,8 +382,10 @@ async function checkExploreFilterWithServiceBase(
   serviceName: string
 ): Promise<void> {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId('search-dropdown-Service').click();
+  const serviceApplyRes = page.waitForResponse('/api/v1/search/query?*');
   await searchAndClickOnOption(
     page,
     {
@@ -390,16 +395,20 @@ async function checkExploreFilterWithServiceBase(
     },
     true
   );
-  await page.click('[data-testid="update-btn"]');
+  await clickUpdateButtonIfVisible(page);
+  await serviceApplyRes;
   await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  const filterApplyRes = page.waitForResponse('/api/v1/search/query?*');
   await searchAndClickOnOption(
     page,
     { label: filterLabel, key: filterKey, value: filterValue },
     true
   );
-  await page.click('[data-testid="update-btn"]');
+  await clickUpdateButtonIfVisible(page);
+  await filterApplyRes;
+  await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -408,7 +417,7 @@ async function checkExploreFilterWithServiceBase(
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
   await entity.visitEntityPage(page);
 }
 async function checkExploreFilterWithTagBase(
@@ -420,23 +429,29 @@ async function checkExploreFilterWithTagBase(
   uniqueTagFqn: string
 ): Promise<void> {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId('search-dropdown-Tag').click();
+  const tagApplyRes = page.waitForResponse('/api/v1/search/query?*');
   await searchAndClickOnOption(
     page,
     { label: 'Tag', key: 'tags.tagFQN', value: uniqueTagFqn },
     true
   );
-  await page.click('[data-testid="update-btn"]');
+  await clickUpdateButtonIfVisible(page);
+  await tagApplyRes;
   await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  const filterApplyRes = page.waitForResponse('/api/v1/search/query?*');
   await searchAndClickOnOption(
     page,
     { label: filterLabel, key: filterKey, value: filterValue },
     true
   );
-  await page.click('[data-testid="update-btn"]');
+  await clickUpdateButtonIfVisible(page);
+  await filterApplyRes;
+  await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -445,7 +460,7 @@ async function checkExploreFilterWithTagBase(
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
   await entity.visitEntityPage(page);
 }
 

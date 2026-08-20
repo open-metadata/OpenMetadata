@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -29,7 +30,7 @@ let dpAnnouncementId: string;
 
 test.describe(
   'Data Marketplace - Announcements',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities and announcements', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -102,35 +103,6 @@ test.describe(
         );
         await dpItem.scrollIntoViewIfNeeded();
         await expect(dpItem).toBeVisible();
-      });
-    });
-
-    test.skip('Clicking announcement navigates to entity page', async ({
-      page,
-    }) => {
-      test.slow();
-
-      await test.step('Navigate to marketplace', async () => {
-        await navigateToMarketplace(page);
-      });
-
-      await test.step('Click domain announcement and verify navigation', async () => {
-        const announcementItem = page.getByTestId(
-          `announcement-item-${domainAnnouncementId}`
-        );
-        await expect(announcementItem).toBeVisible();
-        await announcementItem.click();
-        await page.waitForURL('**/data-marketplace/domains/**');
-      });
-
-      await test.step('Navigate back and click data product announcement', async () => {
-        await navigateToMarketplace(page);
-        const announcementItem = page.getByTestId(
-          `announcement-item-${dpAnnouncementId}`
-        );
-        await expect(announcementItem).toBeVisible();
-        await announcementItem.click();
-        await page.waitForURL('**/data-marketplace/data-products/**');
       });
     });
   }

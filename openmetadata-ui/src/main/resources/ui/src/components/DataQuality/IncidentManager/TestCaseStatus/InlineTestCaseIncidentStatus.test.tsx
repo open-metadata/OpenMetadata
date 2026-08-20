@@ -23,10 +23,12 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
-import { transitionIncident } from '../../../../rest/incidentManagerAPI';
+import {
+  postTestCaseIncidentStatus,
+  transitionIncident,
+} from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 jest.mock('@untitledui/icons', () => ({
@@ -305,6 +307,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   transitionIncident: jest.fn().mockResolvedValue({}),
+  postTestCaseIncidentStatus: jest
+    .fn()
+    .mockResolvedValue({ stateId: 'state-id' }),
   getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({
     data: [
       {
@@ -895,16 +900,16 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         // Current status is Resolved, so submitStatusChange routes to
-        // reopenIncident which creates a new task instead of calling
-        // transitionIncident with 'resolve'.
-        expect(createTask).toHaveBeenCalledWith(
+        // reopenIncident. Resolved reopens the same incident via the reuse
+        // endpoint (postTestCaseIncidentStatus), not createTask.
+        expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
           expect.objectContaining({
-            about: getEntityFeedLink(
-              'testCase',
-              mockData.testCaseReference?.fullyQualifiedName
-            ),
+            testCaseReference: mockData.testCaseReference?.fullyQualifiedName,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
           })
         );
+        expect(createTask).not.toHaveBeenCalled();
 
         expect(mockOnSubmit).toHaveBeenCalled();
       });

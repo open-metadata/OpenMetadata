@@ -51,6 +51,7 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.service_spec.service_spec import import_source_class
 
@@ -233,7 +234,7 @@ class TestSuiteSource(Source):
             return
         # If there is no executable test suite yet for the table, we'll need to create one
         # Then, the suite won't have yet any tests
-        if not table.testSuite or table.testSuite.id.root is None:
+        if not table.testSuite or table.testSuite.id is None:
             logger.info(f"Creating new test suite for table {table.name.root} as no executable test suite exists")
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
@@ -258,14 +259,15 @@ class TestSuiteSource(Source):
         # Otherwise, we pick the tests already registered in the suite
         else:
             logger.info(f"Using existing test suite for table {table.name.root}")
+            test_suite_id = require_entity_reference_id(table.testSuite, "Test suite")
             test_suite: Optional[TestSuite] = self.metadata.get_by_id(  # noqa: UP045
-                entity=TestSuite, entity_id=table.testSuite.id.root
+                entity=TestSuite, entity_id=test_suite_id
             )
             if test_suite is None:
                 yield Either(
                     left=StackTraceError(
                         name="Test Suite not found",
-                        error=f"Test Suite with id {table.testSuite.id.root} not found",
+                        error=f"Test Suite with id {test_suite_id.root} not found",
                     )
                 )
                 return

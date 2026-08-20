@@ -26,10 +26,14 @@ jobs:
   validate-docker-compose:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      OPENMETADATA_DB_IMAGE: docker.getcollate.io/openmetadata/db:latest
+      OPENMETADATA_SERVER_IMAGE: docker.getcollate.io/openmetadata/server:latest
+      OPENMETADATA_INGESTION_IMAGE: docker.getcollate.io/openmetadata/ingestion:latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate OpenMetadata Docker Compose
         uses: ./.github/actions/validate-omd-docker-compose

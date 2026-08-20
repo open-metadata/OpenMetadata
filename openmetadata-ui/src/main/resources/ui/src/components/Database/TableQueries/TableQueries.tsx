@@ -55,7 +55,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -239,6 +239,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       tags,
       owners,
       pageNumber = INITIAL_PAGING_VALUE,
+      pageSize: selectedPageSize = pageSize,
       timeRange,
       sortField = sortQuery.field,
       sortOrder = sortQuery.order,
@@ -252,7 +253,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         query: WILD_CARD_CHAR,
         queryFilter: createQueryFilter({ tableId, tags, timeRange, owners }),
         pageNumber: pageNumber,
-        pageSize: pageSize,
+        pageSize: selectedPageSize,
         searchIndex: SearchIndex.QUERY,
         sortField,
         sortOrder,
@@ -282,6 +283,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               tableId,
               query: selectedQueryData.id,
               queryFrom: pageNumber,
+              currentPage: pageNumber,
+              pageSize: selectedPageSize,
             }),
           },
           { replace: true }
@@ -443,10 +446,11 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {
+    handlePageSizeChange(pageSize);
     fetchFilteredQueries({
       pageNumber: currentPage,
+      pageSize,
     });
-    handlePageSizeChange(pageSize);
   };
 
   const handleSortFieldChange = (value: string) => {

@@ -109,14 +109,33 @@ jest.mock('../../../rest/tasksAPI', () => ({
     Open: 'Open',
     Completed: 'Completed',
   },
+  TaskEntityType: {
+    CustomTask: 'CustomTask',
+    DataAccessRequest: 'DataAccessRequest',
+    DataQualityReview: 'DataQualityReview',
+    DescriptionUpdate: 'DescriptionUpdate',
+    DomainUpdate: 'DomainUpdate',
+    GlossaryApproval: 'GlossaryApproval',
+    IncidentResolution: 'IncidentResolution',
+    OwnershipUpdate: 'OwnershipUpdate',
+    PipelineReview: 'PipelineReview',
+    RequestApproval: 'RequestApproval',
+    Suggestion: 'Suggestion',
+    TagUpdate: 'TagUpdate',
+    TestCaseResolution: 'TestCaseResolution',
+    TierUpdate: 'TierUpdate',
+  },
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentByStateId: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn(),
 }));
 
@@ -124,7 +143,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getUpdatedThread: jest.fn().mockResolvedValue({
     id: '123',
     posts: [],

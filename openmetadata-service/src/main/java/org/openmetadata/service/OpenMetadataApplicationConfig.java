@@ -23,6 +23,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -82,6 +84,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("nlqHybridSearch")
   private JsonNode nlqHybridSearch;
+
+  @JsonProperty("llmConfiguration")
+  private LLMConfiguration llmConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
@@ -187,6 +192,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
+
+  @JsonProperty("appConfiguration")
+  @Valid
+  private AppConfiguration appConfiguration = new AppConfiguration();
 
   @JsonProperty("cache")
   private org.openmetadata.service.cache.CacheConfig cacheConfig;

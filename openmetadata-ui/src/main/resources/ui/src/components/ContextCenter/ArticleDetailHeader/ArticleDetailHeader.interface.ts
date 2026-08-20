@@ -33,7 +33,7 @@ export interface ArticleDetailHeaderProps {
   onToggleRightPanel: () => void;
   onVoteChange: (type: VotingDataProps) => Promise<void>;
   onFollowChange: () => Promise<void>;
-  onSave?: () => void;
   onSetThreadLink: (link: string) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
 }

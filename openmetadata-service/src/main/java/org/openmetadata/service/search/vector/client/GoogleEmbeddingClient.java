@@ -23,9 +23,9 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.Google;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 
 @Slf4j
 public final class GoogleEmbeddingClient extends EmbeddingClient {
@@ -40,27 +40,29 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
   private final int dimension;
   private final String endpoint;
 
-  public GoogleEmbeddingClient(ElasticSearchConfiguration config) {
+  public GoogleEmbeddingClient(LLMConfiguration config) {
     super(resolveMaxConcurrent(config));
-    NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
-    Google googleCfg = nlsCfg.getGoogle();
-    if (googleCfg == null) {
+    LLMGoogleEmbeddingConfig embeddingCfg =
+        config.getEmbeddings() != null ? config.getEmbeddings().getGoogle() : null;
+    LLMGoogleConfig googleCfg = config.getGoogle();
+    if (embeddingCfg == null || googleCfg == null) {
       throw new IllegalArgumentException("Google configuration is required");
     }
     if (googleCfg.getApiKey() == null || googleCfg.getApiKey().isBlank()) {
       throw new IllegalArgumentException("Google API key is required");
     }
-    if (googleCfg.getEmbeddingModelId() == null || googleCfg.getEmbeddingModelId().isBlank()) {
+    if (embeddingCfg.getEmbeddingModelId() == null
+        || embeddingCfg.getEmbeddingModelId().isBlank()) {
       throw new IllegalArgumentException("Google embedding model ID is required");
     }
-    if (googleCfg.getEmbeddingDimension() == null || googleCfg.getEmbeddingDimension() <= 0) {
+    if (embeddingCfg.getEmbeddingDimension() == null || embeddingCfg.getEmbeddingDimension() <= 0) {
       throw new IllegalArgumentException("Google embedding dimension must be positive");
     }
 
     this.apiKey = googleCfg.getApiKey();
-    this.modelId = googleCfg.getEmbeddingModelId();
-    this.dimension = googleCfg.getEmbeddingDimension();
-    this.endpoint = resolveEndpoint(googleCfg);
+    this.modelId = embeddingCfg.getEmbeddingModelId();
+    this.dimension = embeddingCfg.getEmbeddingDimension();
+    this.endpoint = resolveEndpoint(googleCfg.getEndpoint(), this.modelId);
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
     LOG.info(
@@ -90,8 +92,8 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
     this.endpoint = endpoint;
   }
 
-  private String resolveEndpoint(Google config) {
-    String configured = config.getEndpoint();
+  private String resolveEndpoint(String configured, String embeddingModelId) {
+    String resolved;
     if (configured != null && !configured.isBlank()) {
       String normalizedEndpoint = configured.replaceAll("/+$", "");
       if (!normalizedEndpoint.contains(":embedContent")) {
@@ -99,12 +101,14 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
             "Invalid google.endpoint configuration. Expected a full Google embedding endpoint "
                 + "URL containing ':embedContent', for example "
                 + "'https://generativelanguage.googleapis.com/v1beta/models/"
-                + config.getEmbeddingModelId()
+                + embeddingModelId
                 + ":embedContent'.");
       }
-      return normalizedEndpoint;
+      resolved = normalizedEndpoint;
+    } else {
+      resolved = DEFAULT_BASE_URL + embeddingModelId + ":embedContent";
     }
-    return DEFAULT_BASE_URL + config.getEmbeddingModelId() + ":embedContent";
+    return resolved;
   }
 
   @Override

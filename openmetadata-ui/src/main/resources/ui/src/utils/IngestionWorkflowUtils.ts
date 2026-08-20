@@ -27,6 +27,7 @@ import databaseUsagePipeline from '../jsons/ingestionSchemas/databaseServiceQuer
 import dataInsightPipeline from '../jsons/ingestionSchemas/dataInsightPipeline.json';
 import dbtPipeline from '../jsons/ingestionSchemas/dbtPipeline.json';
 import driveMetadataPipeline from '../jsons/ingestionSchemas/driveServiceMetadataPipeline.json';
+import messagingAutoClassificationPipeline from '../jsons/ingestionSchemas/messagingServiceAutoClassificationPipeline.json';
 import messagingMetadataPipeline from '../jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
 import metadataToElasticSearchPipeline from '../jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
 import mlModelMetadataPipeline from '../jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
@@ -128,10 +129,13 @@ export const getSchemaByWorkflowType = (
 
       break;
     case WorkflowType.AutoClassification:
-      schema =
-        serviceCategory === ServiceCategory.STORAGE_SERVICES
-          ? { ...storageAutoClassificationPipeline }
-          : { ...databaseAutoClassificationPipeline };
+      if (serviceCategory === ServiceCategory.STORAGE_SERVICES) {
+        schema = { ...storageAutoClassificationPipeline };
+      } else if (serviceCategory === ServiceCategory.MESSAGING_SERVICES) {
+        schema = { ...messagingAutoClassificationPipeline };
+      } else {
+        schema = { ...databaseAutoClassificationPipeline };
+      }
 
       break;
     case WorkflowType.Usage:

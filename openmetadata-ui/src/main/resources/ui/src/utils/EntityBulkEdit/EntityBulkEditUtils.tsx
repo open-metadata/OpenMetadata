@@ -26,6 +26,7 @@ import {
   exportGlossaryInCSVFormat,
   exportGlossaryTermsInCSVFormat,
 } from '../../rest/glossaryAPI';
+import { exportMetricDetailsInCSVSync } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
 import { exportTestCasesInCSV } from '../../rest/testAPI';
@@ -57,6 +58,11 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
     case EntityType.TABLE:
       return exportTableDetailsInCSV;
 
+    case EntityType.METRIC:
+      // Sync export so loading the Bulk Edit grid does not spawn a Jobs-tray
+      // export job — it's an internal data fetch, not a user-facing export.
+      return exportMetricDetailsInCSVSync;
+
     case EntityType.TEST_CASE:
       return exportTestCasesInCSV;
 
@@ -86,6 +92,10 @@ export const getBulkEntityNavigationPath = (
   fqn: string,
   sourceEntityType?: EntityType
 ): string => {
+  if (entityType === EntityType.METRIC && fqn === WILD_CARD_CHAR) {
+    return ROUTES.METRICS;
+  }
+
   if (entityType === EntityType.TEST_CASE) {
     if (fqn === WILD_CARD_CHAR) {
       return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);

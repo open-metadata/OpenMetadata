@@ -21,6 +21,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -135,6 +136,28 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_emptySeenFqns_withPopulatedScope_deletesNothing(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(new ArrayList<>()));
+
+    assertEquals(
+        0,
+        result.getNumberOfRowsProcessed().intValue(),
+        "an empty seenFqns must never mark a populated scope as fully stale");
+    for (String fqn : tableFqns) {
+      assertFalse(isDeleted(fqn), "table " + fqn + " must remain live when seenFqns is empty");
+    }
+  }
+
+  @Test
   void test_databaseScope_spansAllSchemas(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schemaA = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -192,6 +215,10 @@ public class BulkDeleteStaleIT {
     String schemaFqn = setupSchema(ns);
     createTables(ns, schemaFqn, 2);
 
+    // Ensure the DataConsumer principal exists so the JWT resolves to a real (unprivileged) user;
+    // otherwise the server rejects the token with 404 (user not found) instead of 403 (forbidden),
+    // which makes the test order-dependent in the suite and fail outright in isolation.
+    UserTestFactory.getDataConsumer(ns);
     String dataConsumerToken =
         JwtAuthProvider.tokenFor(
             "data-consumer@open-metadata.org",

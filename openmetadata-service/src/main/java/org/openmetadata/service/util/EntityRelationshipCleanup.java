@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.util.ArrayList;
@@ -31,15 +30,24 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.util.relationshipcleanup.BatchEntityExistenceResolver;
 import org.openmetadata.service.util.relationshipcleanup.DefaultRelationshipValidator;
 import org.openmetadata.service.util.relationshipcleanup.LineageRelationshipValidator;
 import org.openmetadata.service.util.relationshipcleanup.RelationshipValidator;
+import org.openmetadata.service.util.relationshipcleanup.RelationshipValidator.EntityExistenceChecker;
 
 @Slf4j
 public class EntityRelationshipCleanup {
+
+  // Only a bounded sample of orphaned relationships is retained for the summary table. On a badly
+  // broken catalog the orphan count can reach the millions; holding every one in memory is what
+  // used to OOM the DataRetention pod. Counts stay exact; only the displayed detail is capped.
+  private static final int MAX_SAMPLED_ORPHANS = 1000;
+  private static final int PROGRESS_LOG_EVERY_BATCHES = 10;
 
   private final CollectionDAO collectionDAO;
   private final Map<String, EntityRepository<?>> entityRepositories = new HashMap<>();
@@ -83,6 +91,27 @@ public class EntityRelationshipCleanup {
     private Map<String, Integer> orphansByRelationType;
   }
 
+  /**
+   * Keyset (seek) cursor over the full primary key (fromId, toId, relation, relationType). Using the
+   * complete key gives a strict total order, so no row is skipped when a batch boundary lands inside
+   * a group of rows that share (fromId, toId, relation) but differ in relationType. Keyset paging
+   * also keeps the scan cheap while orphans are deleted batch-by-batch: deletes only ever touch rows
+   * behind the cursor, and there is no growing OFFSET to scan past.
+   */
+  private record RelationshipCursor(String fromId, String toId, int relation, String relationType) {
+    private static RelationshipCursor start() {
+      return new RelationshipCursor("", "", -1, "");
+    }
+
+    private static RelationshipCursor after(EntityRelationshipObject relationship) {
+      return new RelationshipCursor(
+          relationship.getFromId(),
+          relationship.getToId(),
+          relationship.getRelation(),
+          relationship.getRelationType());
+    }
+  }
+
   private void initializeEntityRepositories() {
     for (String entityType : Entity.getEntityList()) {
       try {
@@ -109,150 +138,177 @@ public class EntityRelationshipCleanup {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
 
-    EntityCleanupResult result =
-        EntityCleanupResult.builder()
-            .orphanedRelationships(new ArrayList<>())
-            .orphansByEntityType(new HashMap<>())
-            .orphansByRelationType(new HashMap<>())
-            .build();
-
+    EntityCleanupResult result = newResult();
     try {
-      long totalRelationships = collectionDAO.relationshipDAO().getTotalRelationshipCount();
-      result.setTotalRelationshipsScanned((int) totalRelationships);
-
-      LOG.info(
-          "Found {} total relationships to scan. Processing in batches of {}",
-          totalRelationships,
-          batchSize);
-
-      long offset = 0;
-      int processedCount = 0;
-      int batchNumber = 1;
-
-      while (offset < totalRelationships) {
-        LOG.info("Processing batch {} (offset: {}, limit: {})", batchNumber, offset, batchSize);
-
-        List<CollectionDAO.EntityRelationshipObject> relationshipBatch =
-            collectionDAO.relationshipDAO().getAllRelationshipsPaginated(offset, batchSize);
-
-        if (relationshipBatch.isEmpty()) {
-          LOG.info("No more relationships to process");
-          break;
-        }
-
-        for (CollectionDAO.EntityRelationshipObject relationship : relationshipBatch) {
-          OrphanedRelationship orphan = validateRelationship(relationship);
-          if (orphan != null) {
-            result.getOrphanedRelationships().add(orphan);
-
-            result
-                .getOrphansByEntityType()
-                .merge(orphan.getFromEntity() + "->" + orphan.getToEntity(), 1, Integer::sum);
-            result.getOrphansByRelationType().merge(orphan.getRelationshipName(), 1, Integer::sum);
-          }
-          processedCount++;
-        }
-
-        offset += relationshipBatch.size();
-        batchNumber++;
-
-        if (processedCount % (batchSize * 10) == 0 || offset >= totalRelationships) {
-          LOG.info(
-              "Progress: {}/{} relationships processed, {} orphaned relationships found",
-              processedCount,
-              totalRelationships,
-              result.getOrphanedRelationships().size());
-        }
-      }
-
-      result.setOrphanedRelationshipsFound(result.getOrphanedRelationships().size());
-
-      LOG.info(
-          "Completed scanning {} relationships. Found {} orphaned relationships",
-          processedCount,
-          result.getOrphanedRelationshipsFound());
-
-      displayOrphanedRelationships(result);
-      if (!dryRun && !result.getOrphanedRelationships().isEmpty()) {
-        result.setRelationshipsDeleted(
-            deleteOrphanedRelationships(result.getOrphanedRelationships()));
-      }
-
-      LOG.info(
-          "Entity relationship cleanup completed. Scanned: {}, Found: {}, Deleted: {}",
-          processedCount,
-          result.getOrphanedRelationshipsFound(),
-          result.getRelationshipsDeleted());
-
+      scanAndClean(batchSize, result);
     } catch (Exception e) {
       LOG.error("Error during entity relationship cleanup", e);
       throw new RuntimeException("Entity relationship cleanup failed", e);
     }
 
+    displayOrphanedRelationships(result);
+    LOG.info(
+        "Entity relationship cleanup completed. Scanned: {}, Found: {}, Deleted: {}",
+        result.getTotalRelationshipsScanned(),
+        result.getOrphanedRelationshipsFound(),
+        result.getRelationshipsDeleted());
     return result;
   }
 
+  private EntityCleanupResult newResult() {
+    return EntityCleanupResult.builder()
+        .orphanedRelationships(new ArrayList<>())
+        .orphansByEntityType(new HashMap<>())
+        .orphansByRelationType(new HashMap<>())
+        .build();
+  }
+
+  private void scanAndClean(int batchSize, EntityCleanupResult result) {
+    BatchEntityExistenceResolver resolver =
+        new BatchEntityExistenceResolver(
+            entityRepositories, entityTimeSeriesRepositoy, feedRepository);
+    long totalRelationships = collectionDAO.relationshipDAO().getTotalRelationshipCount();
+    LOG.info(
+        "Found {} total relationships to scan. Processing in batches of {}",
+        totalRelationships,
+        batchSize);
+
+    RelationshipCursor cursor = RelationshipCursor.start();
+    int batchNumber = 1;
+    boolean hasMore = true;
+    while (hasMore) {
+      List<EntityRelationshipObject> batch =
+          collectionDAO
+              .relationshipDAO()
+              .getAllRelationshipsAfter(
+                  cursor.fromId(),
+                  cursor.toId(),
+                  cursor.relation(),
+                  cursor.relationType(),
+                  batchSize);
+      if (batch.isEmpty()) {
+        hasMore = false;
+      } else {
+        processBatch(batch, resolver, result);
+        cursor = RelationshipCursor.after(batch.getLast());
+        logProgress(batchNumber, totalRelationships, result);
+        batchNumber++;
+      }
+    }
+  }
+
+  private void processBatch(
+      List<EntityRelationshipObject> batch,
+      BatchEntityExistenceResolver resolver,
+      EntityCleanupResult result) {
+    resolver.prefetch(batch);
+
+    List<OrphanedRelationship> orphans = new ArrayList<>();
+    for (EntityRelationshipObject relationship : batch) {
+      OrphanedRelationship orphan = validateRelationship(relationship, resolver);
+      if (orphan != null) {
+        orphans.add(orphan);
+      }
+    }
+
+    result.setTotalRelationshipsScanned(result.getTotalRelationshipsScanned() + batch.size());
+    recordOrphans(orphans, result);
+
+    if (!dryRun && !orphans.isEmpty()) {
+      result.setRelationshipsDeleted(
+          result.getRelationshipsDeleted() + deleteOrphanedRelationships(orphans));
+    }
+  }
+
+  private void recordOrphans(List<OrphanedRelationship> orphans, EntityCleanupResult result) {
+    result.setOrphanedRelationshipsFound(result.getOrphanedRelationshipsFound() + orphans.size());
+    for (OrphanedRelationship orphan : orphans) {
+      if (result.getOrphanedRelationships().size() < MAX_SAMPLED_ORPHANS) {
+        result.getOrphanedRelationships().add(orphan);
+      }
+      result
+          .getOrphansByEntityType()
+          .merge(orphan.getFromEntity() + "->" + orphan.getToEntity(), 1, Integer::sum);
+      result.getOrphansByRelationType().merge(orphan.getRelationshipName(), 1, Integer::sum);
+    }
+  }
+
+  private void logProgress(int batchNumber, long totalRelationships, EntityCleanupResult result) {
+    if (batchNumber % PROGRESS_LOG_EVERY_BATCHES == 0) {
+      LOG.info(
+          "Progress: {}/{} relationships processed, {} orphaned relationships found",
+          result.getTotalRelationshipsScanned(),
+          totalRelationships,
+          result.getOrphanedRelationshipsFound());
+    }
+  }
+
   private OrphanedRelationship validateRelationship(
-      CollectionDAO.EntityRelationshipObject relationship) {
+      EntityRelationshipObject relationship, EntityExistenceChecker existenceChecker) {
+    OrphanedRelationship orphan;
     try {
-      String fromEntity = relationship.getFromEntity();
-      String toEntity = relationship.getToEntity();
-
-      if (!doEntityHaveAnyRepository(fromEntity)) {
-        LOG.error(
-            "No repository found for from entity type: {}, the entity will not be cleaned",
-            fromEntity);
-        return null;
-      }
-
-      if (!doEntityHaveAnyRepository(toEntity)) {
-        LOG.error(
-            "No repository found for to entity type: {}, the entity will not be cleaned", toEntity);
-        return null;
-      }
-
-      RelationshipValidator validator = getValidatorForRelationship(relationship.getRelation());
-      RelationshipValidator.ValidationResult result =
-          validator.validate(relationship, this::entityExists);
-
-      if (!result.isOrphaned()) {
-        return null;
-      }
-
-      return OrphanedRelationship.builder()
-          .fromId(relationship.getFromId())
-          .toId(relationship.getToId())
-          .fromEntity(fromEntity)
-          .toEntity(toEntity)
-          .relation(relationship.getRelation())
-          .reason(result.getReason())
-          .relationshipName(getRelationshipName(relationship.getRelation()))
-          .build();
-
+      orphan = evaluateRelationship(relationship, existenceChecker);
     } catch (Exception e) {
       LOG.debug(
           "Error validating relationship {}->{}: {}",
           relationship.getFromId(),
           relationship.getToId(),
           e.getMessage());
-
-      return OrphanedRelationship.builder()
-          .fromId(relationship.getFromId())
-          .toId(relationship.getToId())
-          .fromEntity(relationship.getFromEntity())
-          .toEntity(relationship.getToEntity())
-          .relation(relationship.getRelation())
-          .reason("Validation error: " + e.getMessage())
-          .relationshipName(getRelationshipName(relationship.getRelation()))
-          .build();
+      orphan = toOrphan(relationship, "Validation error: " + e.getMessage());
     }
+    return orphan;
+  }
+
+  private OrphanedRelationship evaluateRelationship(
+      EntityRelationshipObject relationship, EntityExistenceChecker existenceChecker) {
+    OrphanedRelationship orphan = null;
+    if (hasResolvableEndpoints(relationship)) {
+      RelationshipValidator validator = getValidatorForRelationship(relationship.getRelation());
+      RelationshipValidator.ValidationResult result =
+          validator.validate(relationship, existenceChecker);
+      if (result.isOrphaned()) {
+        orphan = toOrphan(relationship, result.getReason());
+      }
+    }
+    return orphan;
+  }
+
+  private boolean hasResolvableEndpoints(EntityRelationshipObject relationship) {
+    boolean resolvable = true;
+    if (!doEntityHaveAnyRepository(relationship.getFromEntity())) {
+      LOG.error(
+          "No repository found for from entity type: {}, the entity will not be cleaned",
+          relationship.getFromEntity());
+      resolvable = false;
+    } else if (!doEntityHaveAnyRepository(relationship.getToEntity())) {
+      LOG.error(
+          "No repository found for to entity type: {}, the entity will not be cleaned",
+          relationship.getToEntity());
+      resolvable = false;
+    }
+    return resolvable;
+  }
+
+  private OrphanedRelationship toOrphan(EntityRelationshipObject relationship, String reason) {
+    return OrphanedRelationship.builder()
+        .fromId(relationship.getFromId())
+        .toId(relationship.getToId())
+        .fromEntity(relationship.getFromEntity())
+        .toEntity(relationship.getToEntity())
+        .relation(relationship.getRelation())
+        .reason(reason)
+        .relationshipName(getRelationshipName(relationship.getRelation()))
+        .build();
   }
 
   private RelationshipValidator getValidatorForRelationship(int relation) {
+    RelationshipValidator validator;
     if (relation == Relationship.UPSTREAM.ordinal()) {
-      return new LineageRelationshipValidator();
+      validator = new LineageRelationshipValidator();
+    } else {
+      validator = new DefaultRelationshipValidator();
     }
-    return new DefaultRelationshipValidator();
+    return validator;
   }
 
   private boolean doEntityHaveAnyRepository(String entityType) {
@@ -261,63 +317,6 @@ public class EntityRelationshipCleanup {
         || entityType.equals(Entity.THREAD);
   }
 
-  private boolean entityExists(UUID entityId, String entityType) {
-    if (entityRepositories.get(entityType) != null) {
-      return checkInEntityRepository(entityId, entityType);
-    }
-
-    if (entityTimeSeriesRepositoy.get(entityType) != null) {
-      return checkInEntityTimeSeriesRepository(entityId, entityType);
-    }
-
-    if (entityType.equals(Entity.THREAD)) {
-      return checkInFeedRepository(entityId);
-    }
-
-    return true;
-  }
-
-  private boolean checkInEntityRepository(UUID entityId, String entityType) {
-    try {
-      EntityRepository<?> repository = entityRepositories.get(entityType);
-      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
-      return true;
-    } catch (EntityNotFoundException e) {
-      LOG.debug("Entity {}:{} not found in repository: {}", entityType, entityId, e.getMessage());
-      return false;
-    } catch (Exception ex) {
-      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
-      // If any other exception occurs, we assume the entity is not valid
-      return true;
-    }
-  }
-
-  private boolean checkInEntityTimeSeriesRepository(UUID entityId, String entityType) {
-    try {
-      EntityTimeSeriesRepository<?> repository = entityTimeSeriesRepositoy.get(entityType);
-      return repository.getById(entityId) != null;
-    } catch (Exception ex) {
-      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
-      return true;
-    }
-  }
-
-  private boolean checkInFeedRepository(UUID entityId) {
-    try {
-      return feedRepository.get(entityId) != null;
-    } catch (EntityNotFoundException e) {
-      LOG.debug(
-          "Entity {}:{} not found in repository: {}", Entity.THREAD, entityId, e.getMessage());
-      return false;
-    } catch (Exception ex) {
-      LOG.debug("Entity {}:{} encountered exception: {}", Entity.THREAD, entityId, ex.getMessage());
-      return true;
-    }
-  }
-
-  /**
-   * Deletes orphaned relationships from the database
-   */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());
     int deletedCount = 0;
@@ -365,14 +364,16 @@ public class EntityRelationshipCleanup {
   }
 
   private void displayOrphanedRelationships(EntityCleanupResult result) {
-    if (result.getOrphanedRelationships().isEmpty()) {
+    if (result.getOrphanedRelationshipsFound() == 0) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
     }
 
-    LOG.info("Found {} orphaned relationships", result.getOrphanedRelationshipsFound());
+    LOG.info(
+        "Found {} orphaned relationships (showing up to {})",
+        result.getOrphanedRelationshipsFound(),
+        MAX_SAMPLED_ORPHANS);
 
-    // Display detailed table of orphaned relationships
     List<String> columns =
         Arrays.asList("From Entity", "From ID", "To Entity", "To ID", "Relation", "Reason");
 
@@ -389,8 +390,6 @@ public class EntityRelationshipCleanup {
     }
 
     printToAsciiTable(columns, rows, "No orphaned relationships found");
-
-    // Display summary statistics
     displaySummaryStatistics(result);
   }
 
@@ -424,15 +423,18 @@ public class EntityRelationshipCleanup {
   }
 
   private String getRelationshipName(int relation) {
+    String name;
     try {
       Relationship[] relationships = Relationship.values();
       if (relation >= 0 && relation < relationships.length) {
-        return relationships[relation].name();
+        name = relationships[relation].name();
+      } else {
+        name = "UNKNOWN_RELATION_" + relation;
       }
-      return "UNKNOWN_RELATION_" + relation;
     } catch (Exception e) {
       LOG.debug("Error getting relationship name for ordinal {}: {}", relation, e.getMessage());
-      return "UNKNOWN_RELATION_" + relation;
+      name = "UNKNOWN_RELATION_" + relation;
     }
+    return name;
   }
 }

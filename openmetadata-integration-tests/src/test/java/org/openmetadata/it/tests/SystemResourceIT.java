@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -28,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -65,11 +68,15 @@ import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Integration tests for System Resource endpoints.
@@ -88,6 +95,26 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class SystemResourceIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  @AfterEach
+  void resetSearchSettingsAfterTest() throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(),
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private SearchSettings loadCanonicalSearchSettings() throws Exception {
+    List<String> resources =
+        EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+    String json =
+        CommonUtil.getResourceAsStream(
+            EntityRepository.class.getClassLoader(), resources.getFirst());
+    return JsonUtils.readValue(json, SearchSettings.class);
+  }
 
   @Test
   void test_getSystemVersion() throws Exception {
@@ -701,6 +728,7 @@ public class SystemResourceIT {
   @Test
   void test_getDefaultSearchSettings() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    SearchSettings canonicalSearchSettings = loadCanonicalSearchSettings();
 
     // Ensure deterministic baseline even when other tests mutate search settings.
     client
@@ -725,9 +753,15 @@ public class SystemResourceIT {
         MAPPER.convertValue(settings.getConfigValue(), SearchSettings.class);
 
     assertNotNull(searchConfig.getGlobalSettings());
-    assertEquals(10000, searchConfig.getGlobalSettings().getMaxAggregateSize());
-    assertEquals(10000, searchConfig.getGlobalSettings().getMaxResultHits());
-    assertEquals(1000, searchConfig.getGlobalSettings().getMaxAnalyzedOffset());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxAggregateSize(),
+        searchConfig.getGlobalSettings().getMaxAggregateSize());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxResultHits(),
+        searchConfig.getGlobalSettings().getMaxResultHits());
+    assertEquals(
+        canonicalSearchSettings.getGlobalSettings().getMaxAnalyzedOffset(),
+        searchConfig.getGlobalSettings().getMaxAnalyzedOffset());
 
     assertNotNull(searchConfig.getGlobalSettings().getAggregations());
     assertFalse(searchConfig.getGlobalSettings().getAggregations().isEmpty());
@@ -749,6 +783,7 @@ public class SystemResourceIT {
   @Test
   void test_defaultSearchRankingBoostConfiguration() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    SearchSettings canonicalSearchSettings = loadCanonicalSearchSettings();
 
     client
         .getHttpClient()
@@ -776,54 +811,82 @@ public class SystemResourceIT {
             .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Table configuration not found"));
+    AssetTypeConfiguration canonicalTableConfig =
+        canonicalSearchSettings.getAssetTypeConfigurations().stream()
+            .filter(conf -> "table".equalsIgnoreCase(conf.getAssetType()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Canonical table configuration not found"));
 
     assertEquals(
-        AssetTypeConfiguration.BoostMode.MULTIPLY,
+        canonicalTableConfig.getBoostMode(),
         tableConfig.getBoostMode(),
-        "Table boost mode should be multiply for tiebreaker scoring");
+        "Table boost mode should match the canonical search settings");
 
     assertNotNull(tableConfig.getFieldValueBoosts());
-    assertEquals(2, tableConfig.getFieldValueBoosts().size());
-
-    FieldValueBoost usageCountBoost =
-        tableConfig.getFieldValueBoosts().stream()
-            .filter(b -> "usageSummary.monthlyStats.count".equals(b.getField()))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Usage count field value boost not found"));
-    assertEquals(0.002, usageCountBoost.getFactor(), 1e-6);
-
-    FieldValueBoost percentileBoost =
-        tableConfig.getFieldValueBoosts().stream()
-            .filter(b -> "usageSummary.monthlyStats.percentileRank".equals(b.getField()))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Percentile rank field value boost not found"));
-    assertEquals(0.0005, percentileBoost.getFactor(), 1e-6);
+    assertNotNull(canonicalTableConfig.getFieldValueBoosts());
+    assertEquals(
+        canonicalTableConfig.getFieldValueBoosts().size(),
+        tableConfig.getFieldValueBoosts().size());
+    for (FieldValueBoost canonicalBoost : canonicalTableConfig.getFieldValueBoosts()) {
+      FieldValueBoost actualBoost =
+          tableConfig.getFieldValueBoosts().stream()
+              .filter(boost -> canonicalBoost.getField().equals(boost.getField()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "Field value boost not found: " + canonicalBoost.getField()));
+      assertEquals(canonicalBoost.getField(), actualBoost.getField());
+      assertEquals(canonicalBoost.getFactor(), actualBoost.getFactor(), 1e-12);
+      assertTrue(actualBoost.getFactor() > 0, "Field value boost factors must be positive");
+    }
 
     List<TermBoost> globalTermBoosts = searchConfig.getGlobalSettings().getTermBoosts();
+    List<TermBoost> canonicalGlobalTermBoosts =
+        canonicalSearchSettings.getGlobalSettings().getTermBoosts();
     assertNotNull(globalTermBoosts);
-    assertEquals(3, globalTermBoosts.size());
+    assertNotNull(canonicalGlobalTermBoosts);
+    assertEquals(canonicalGlobalTermBoosts.size(), globalTermBoosts.size());
+    for (TermBoost canonicalBoost : canonicalGlobalTermBoosts) {
+      TermBoost actualBoost =
+          globalTermBoosts.stream()
+              .filter(
+                  boost ->
+                      canonicalBoost.getField().equals(boost.getField())
+                          && canonicalBoost.getValue().equals(boost.getValue()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "Term boost not found: "
+                              + canonicalBoost.getField()
+                              + "="
+                              + canonicalBoost.getValue()));
+      assertEquals(canonicalBoost.getField(), actualBoost.getField());
+      assertEquals(canonicalBoost.getValue(), actualBoost.getValue());
+      assertEquals(canonicalBoost.getBoost(), actualBoost.getBoost(), 1e-12);
+    }
 
     TermBoost tier1Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier1".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier1 term boost not found"));
-    assertEquals("tier.tagFQN", tier1Boost.getField());
-    assertEquals(0.05, tier1Boost.getBoost(), 1e-6);
 
     TermBoost tier2Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier2".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier2 term boost not found"));
-    assertEquals(0.03, tier2Boost.getBoost(), 1e-6);
 
     TermBoost tier3Boost =
         globalTermBoosts.stream()
             .filter(t -> "Tier.Tier3".equals(t.getValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Tier3 term boost not found"));
-    assertEquals(0.01, tier3Boost.getBoost(), 1e-6);
+    assertTrue(tier1Boost.getBoost() > tier2Boost.getBoost());
+    assertTrue(tier2Boost.getBoost() > tier3Boost.getBoost());
+    assertTrue(tier3Boost.getBoost() > 0);
   }
 
   @Test
@@ -1641,60 +1704,182 @@ public class SystemResourceIT {
     assertFalse(retrievedEntityTypes.contains("test"));
   }
 
+  private SecurityConfiguration buildBasicSecurityConfig() {
+    return new SecurityConfiguration()
+        .withAuthenticationConfiguration(
+            new AuthenticationConfiguration()
+                .withClientType(ClientType.PUBLIC)
+                .withProvider(AuthProvider.BASIC)
+                .withResponseType(ResponseType.ID_TOKEN)
+                .withProviderName("OpenMetadata")
+                .withPublicKeyUrls(Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
+                .withAuthority("http://localhost:8585")
+                .withClientId("open-metadata")
+                .withCallbackUrl("http://localhost:8585/callback")
+                .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
+                .withJwtPrincipalClaimsMapping(new ArrayList<>())
+                .withEnableSelfSignup(true))
+        .withAuthorizerConfiguration(
+            new AuthorizerConfiguration()
+                .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
+                .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
+                .withAdminPrincipals(Set.of("admin"))
+                .withAllowedEmailRegistrationDomains(Set.of("all"))
+                .withPrincipalDomain("open-metadata.org")
+                .withAllowedDomains(new HashSet<>())
+                .withEnforcePrincipalDomain(false)
+                .withEnableSecureSocketConnection(false)
+                .withUseRolesFromProvider(false));
+  }
+
   @Test
   void test_updateSecurityConfig() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-
-    SecurityConfiguration securityConfig =
-        new SecurityConfiguration()
-            .withAuthenticationConfiguration(
-                new AuthenticationConfiguration()
-                    .withClientType(ClientType.PUBLIC)
-                    .withProvider(AuthProvider.BASIC)
-                    .withResponseType(ResponseType.ID_TOKEN)
-                    .withProviderName("OpenMetadata")
-                    .withPublicKeyUrls(
-                        Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
-                    .withTokenValidationAlgorithm(
-                        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
-                    .withAuthority("http://localhost:8585")
-                    .withClientId("open-metadata")
-                    .withCallbackUrl("http://localhost:8585/callback")
-                    .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
-                    .withJwtPrincipalClaimsMapping(new ArrayList<>())
-                    .withEnableSelfSignup(true))
-            .withAuthorizerConfiguration(
-                new AuthorizerConfiguration()
-                    .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
-                    .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
-                    .withAdminPrincipals(Set.of("admin"))
-                    .withAllowedEmailRegistrationDomains(Set.of("all"))
-                    .withPrincipalDomain("open-metadata.org")
-                    .withAllowedDomains(new HashSet<>())
-                    .withEnforcePrincipalDomain(false)
-                    .withEnableSecureSocketConnection(false)
-                    .withUseRolesFromProvider(false));
-
-    String securityConfigJson = MAPPER.writeValueAsString(securityConfig);
-    String updatedJson =
+    String originalSecurityConfigJson =
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.PUT,
+                HttpMethod.GET,
                 "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+
+    try {
+      SecurityConfiguration securityConfig = buildBasicSecurityConfig();
+      String securityConfigJson = MAPPER.writeValueAsString(securityConfig);
+      String updatedJson =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PUT,
+                  "/v1/system/security/config",
+                  securityConfigJson,
+                  RequestOptions.builder().build());
+
+      assertNotNull(updatedJson);
+      SecurityConfiguration updated = MAPPER.readValue(updatedJson, SecurityConfiguration.class);
+
+      assertNotNull(updated);
+      assertEquals(
+          securityConfig.getAuthenticationConfiguration().getProvider(),
+          updated.getAuthenticationConfiguration().getProvider());
+      assertEquals(
+          securityConfig.getAuthorizerConfiguration().getClassName(),
+          updated.getAuthorizerConfiguration().getClassName());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              originalSecurityConfigJson,
+              RequestOptions.builder().build());
+    }
+  }
+
+  @Test
+  void test_validateSecurityConfig_adminCanValidate() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    String responseJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
                 securityConfigJson,
                 RequestOptions.builder().build());
 
-    assertNotNull(updatedJson);
-    SecurityConfiguration updated = MAPPER.readValue(updatedJson, SecurityConfiguration.class);
+    assertNotNull(responseJson);
+    assertTrue(
+        MAPPER.readTree(responseJson).has("status"),
+        "Validate response should contain a status field");
+  }
 
-    assertNotNull(updated);
-    assertEquals(
-        securityConfig.getAuthenticationConfiguration().getProvider(),
-        updated.getAuthenticationConfiguration().getProvider());
-    assertEquals(
-        securityConfig.getAuthorizerConfiguration().getClassName(),
-        updated.getAuthorizerConfiguration().getClassName());
+  @Test
+  void test_validateSecurityConfig_nonAdminForbidden() throws Exception {
+    String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/validate",
+                        securityConfigJson,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to test/validate the SSO configuration");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
+  }
+
+  @Test
+  void test_testLoginValidateToken_adminGetsResultWithoutCredentials() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/test-login/validate-token",
+                MAPPER.writeValueAsString(request),
+                RequestOptions.builder().build());
+
+    assertNotNull(json);
+    JsonNode node = MAPPER.readTree(json);
+    assertTrue(node.has("status"), "Test login result should contain a status field");
+    assertFalse(node.has("accessToken"), "Test login must not return an access token");
+    assertFalse(node.has("refreshToken"), "Test login must not return a refresh token");
+    assertFalse(node.has("jwtToken"), "Test login must not return a JWT token");
+  }
+
+  @Test
+  void test_testLoginValidateToken_nonAdminForbidden() throws Exception {
+    TestLoginTokenRequest request =
+        new TestLoginTokenRequest()
+            .withSecurityConfiguration(buildBasicSecurityConfig())
+            .withIdToken("not-a-real-id-token");
+    String body = MAPPER.writeValueAsString(request);
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/system/security/test-login/validate-token",
+                        body,
+                        RequestOptions.builder().build()),
+            "Non-admin must not be able to run a test login");
+
+    String message = exception.getMessage();
+    assertTrue(
+        message != null
+            && (message.contains("admin")
+                || message.contains("Admin")
+                || message.contains("Authorization")
+                || message.contains("Forbidden")
+                || message.contains("403")),
+        "Expected an admin-only / 403 authorization error but got: " + message);
   }
 
   @Test

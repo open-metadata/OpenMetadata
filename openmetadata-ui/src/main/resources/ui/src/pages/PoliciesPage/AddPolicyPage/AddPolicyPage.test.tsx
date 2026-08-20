@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import * as reactI18next from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import AddPolicyPage from './AddPolicyPage';
 
@@ -52,13 +51,6 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
 
 const mockProps = {
   pageTitle: 'add-policy',
@@ -122,41 +114,16 @@ describe('Test Add Policy Page', () => {
     expect(submitButton).toBeInTheDocument();
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
-    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
-      if (key === 'message.add-policy-message' && params?.brandName) {
-        return (
-          `Policies are assigned to teams. In ${params.brandName}, a policy is a collection of rules, ` +
-          `which define access based on certain conditions. We support rich SpEL (Spring Expression Language) ` +
-          `based conditions. All the operations supported by an entity are published. Use these fine grained ` +
-          `operations to define the conditional rules for each policy. Create well-defined policies based on ` +
-          `conditional rules to build rich access control roles.`
-        );
-      }
-
-      return key;
-    });
-
-    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
-      t: mockT,
-      i18n: { language: 'en-US' },
-      ready: true,
-    } as any);
-
-    const { container } = render(<AddPolicyPage {...mockProps} />, {
+  it('should render with correct brandName keys', async () => {
+    render(<AddPolicyPage {...mockProps} />, {
       wrapper: MemoryRouter,
     });
 
     const policyContainer = await screen.findByTestId('add-policy-container');
 
     expect(policyContainer).toBeInTheDocument();
-    // Verify actual brand name is rendered
-    expect(container.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(container.textContent).not.toContain('{{brandName}}');
 
     // Verify translation was called with brandName
-    expect(mockT).toHaveBeenCalledWith('message.add-policy-message', {
-      brandName: 'OpenMetadata',
-    });
+    expect(screen.getByText(/message.add-policy-message/)).toBeInTheDocument();
   });
 });

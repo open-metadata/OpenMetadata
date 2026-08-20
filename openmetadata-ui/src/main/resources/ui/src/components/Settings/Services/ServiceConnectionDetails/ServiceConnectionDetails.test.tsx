@@ -28,7 +28,7 @@ import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import ServiceConnectionDetails from './ServiceConnectionDetails.component';
 
-jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
+jest.mock('../../../../utils/DatabaseServicePureUtils', () => ({
   getDatabaseConfig: jest.fn().mockResolvedValue({
     schema: MOCK_ATHENA_SERVICE,
   }),

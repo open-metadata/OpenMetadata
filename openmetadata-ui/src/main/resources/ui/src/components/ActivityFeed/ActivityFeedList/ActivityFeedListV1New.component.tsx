@@ -18,11 +18,10 @@ import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-emp
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
-
 interface ActivityFeedListV1Props {
   feedList?: Thread[];
   activityList?: ActivityEvent[];

@@ -16,7 +16,11 @@ export const Popover = (props: PopoverProps) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:max-h-64! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point) tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary tw:py-1 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+          // Outline instead of a ring (WebKit does not pixel-snap box-shadow, so rings
+          // thin/vanish in Safari when zoomed out). This ring had no `ring-inset`, so it
+          // drew outward from the border-box edge — outline-offset 0 (the default) matches
+          // that exactly. `outline-hidden` is gone: it would suppress this border.
+          'tw:max-h-64! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point) tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary tw:py-1 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
 
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',

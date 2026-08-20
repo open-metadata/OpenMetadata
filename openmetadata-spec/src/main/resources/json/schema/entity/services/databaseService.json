@@ -73,7 +73,8 @@
         "Informix",
         "Iomete",
         "QuestDB",
-        "Data360"
+        "Data360",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -252,6 +253,9 @@
         },
         {
           "name": "Data360"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -435,6 +439,9 @@
             },
             {
               "$ref": "./connections/database/data360Connection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
@@ -485,6 +492,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "version": {
       "description": "Metadata version of the entity.",

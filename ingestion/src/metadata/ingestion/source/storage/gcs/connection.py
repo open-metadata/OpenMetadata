@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.storage.gcsConnection import (
-    GcsConnection,
+    GcsConnection as GcsConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -30,6 +30,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -50,7 +51,7 @@ class GcsObjectStoreClient:
     metrics_client: MetricServiceClient
 
 
-def get_connection(connection: GcsConnection):
+def get_connection(connection: GcsConnectionConfig):
     set_google_credentials(connection.credentials)
     project_ids = None
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
@@ -79,7 +80,7 @@ class Tester:
     blobs within a bucket.
     """
 
-    def __init__(self, client: GcsObjectStoreClient, connection: GcsConnection):
+    def __init__(self, client: GcsObjectStoreClient, connection: GcsConnectionConfig):
         self.client = client
         self.connection = connection
         self.bucket_tests = []
@@ -157,31 +158,36 @@ class Tester:
             self.client.metrics_client.list_metric_descriptors(name=f"projects/{project_id}")
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: GcsObjectStoreClient,
-    service_connection: GcsConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    tester = Tester(client, service_connection)
+class GcsConnection(BaseConnection[GcsConnectionConfig, GcsObjectStoreClient]):
+    def _get_client(self) -> GcsObjectStoreClient:
+        return get_connection(self.service_connection)
 
-    test_fn = {
-        "ListBuckets": tester.list_buckets,
-        "GetBucket": tester.get_bucket,
-        "ListBlobs": tester.list_blobs,
-        "GetBlob": tester.get_blob,
-        "GetMetrics": tester.get_metrics,
-    }
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
+        tester = Tester(client, service_connection)
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "ListBuckets": tester.list_buckets,
+            "GetBucket": tester.get_bucket,
+            "ListBlobs": tester.list_blobs,
+            "GetBlob": tester.get_blob,
+            "GetMetrics": tester.get_metrics,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

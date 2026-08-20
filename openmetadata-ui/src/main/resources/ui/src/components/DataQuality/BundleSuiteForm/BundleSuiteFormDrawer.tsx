@@ -1,0 +1,308 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { HookForm } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+} from '../../../rest/ingestionPipelineAPI';
+import {
+  addTestCasesToLogicalTestSuiteBulk,
+  createTestSuites,
+} from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import {
+  BundleSuiteFormData,
+  BundleSuiteFormDrawerProps,
+} from './BundleSuiteForm.interface';
+import BundleSuiteFormBody from './BundleSuiteFormBody';
+import {
+  buildBundlePipelinePayload,
+  buildCreateTestSuite,
+} from './transformBundleSuiteFormData';
+
+const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
+  open,
+  onClose,
+  onSuccess,
+  initialValues,
+  variant = 'drawer',
+  title,
+  headerActions,
+  width = 736,
+}: BundleSuiteFormDrawerProps) => {
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+  const { isAirflowAvailable } = useAirflowStatus();
+  const { permissions } = usePermissionProvider();
+  const { ingestionPipeline } = permissions;
+
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Preselected test cases (e.g. "create bundle suite from selection") must
+  // reach the form value, not just the display list, or the selection
+  // validator rejects the submit.
+  const computeDefaultValues = useCallback((): BundleSuiteFormData => {
+    const initialTestCases = initialValues?.testCases ?? [];
+
+    return {
+      enableScheduler: false,
+      raiseOnError: true,
+      cron: DEFAULT_SCHEDULE_CRON_DAILY,
+      enableDebugLog: false,
+      name: initialValues?.name ?? '',
+      description: initialValues?.description ?? '',
+      ...(initialTestCases.length > 0
+        ? {
+            testCaseSelection: {
+              selectAll: false,
+              includeIds: initialTestCases
+                .map((tc) => tc.id ?? '')
+                .filter(Boolean),
+              excludeIds: [],
+              testCases: initialTestCases,
+            },
+          }
+        : {}),
+    } as BundleSuiteFormData;
+  }, [initialValues]);
+
+  const form = useForm<BundleSuiteFormData>({
+    mode: 'onChange',
+    defaultValues: computeDefaultValues(),
+  });
+
+  // The drawer host stays mounted between opens, so useForm's defaultValues
+  // freeze before callers (e.g. DataQualityTab bulk selection) provide
+  // initialValues. Re-seed on every open — and, for hosts that supply
+  // initialValues after opening, whenever the seed CONTENT changes. Keying on
+  // content (not object identity) keeps inline initialValues objects from
+  // wiping user edits on unrelated parent re-renders.
+  const seedSignature = useMemo(
+    () =>
+      JSON.stringify([
+        initialValues?.name ?? '',
+        initialValues?.description ?? '',
+        (initialValues?.testCases ?? []).map((tc) => tc.id),
+      ]),
+    [initialValues?.name, initialValues?.description, initialValues?.testCases]
+  );
+
+  useEffect(() => {
+    if (open) {
+      form.reset(computeDefaultValues());
+    }
+    // Re-seed only when the drawer opens or the seed CONTENT (seedSignature)
+    // changes; `form`/`computeDefaultValues` are intentionally excluded so a
+    // parent re-render does not wipe in-progress edits.
+  }, [open, seedSignature]);
+
+  const createAndDeployPipeline = useCallback(
+    async (values: BundleSuiteFormData, testSuite: TestSuite) => {
+      try {
+        const pipeline = buildBundlePipelinePayload(values, testSuite);
+        const created = await addIngestionPipeline(pipeline);
+        if (isAirflowAvailable) {
+          await deployIngestionPipelineById(created.id ?? '');
+        }
+        showSuccessToast(
+          t('message.pipeline-deployed-successfully', {
+            pipelineName: getEntityName(created),
+          })
+        );
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', { entity: t('label.pipeline') })
+        );
+      }
+    },
+    [isAirflowAvailable, t]
+  );
+
+  const handleFormSubmit = useCallback(
+    async (values: BundleSuiteFormData) => {
+      setErrorMessage('');
+
+      const payload = buildCreateTestSuite(values, currentUser?.id);
+      const testSuite = await createTestSuites(payload);
+
+      await addTestCasesToLogicalTestSuiteBulk(testSuite.id ?? '', {
+        selectAll: values.testCaseSelection?.selectAll,
+        includeIds: values.testCaseSelection?.includeIds,
+        excludeIds: values.testCaseSelection?.excludeIds,
+      });
+
+      if (values.enableScheduler && ingestionPipeline.Create) {
+        await createAndDeployPipeline(values, testSuite);
+      }
+
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.test-suite') })
+      );
+
+      onSuccess?.(testSuite);
+    },
+    [
+      currentUser?.id,
+      ingestionPipeline.Create,
+      createAndDeployPipeline,
+      onSuccess,
+      t,
+    ]
+  );
+
+  const handleFormSubmitWithErrorCapture = useCallback(
+    async (values: BundleSuiteFormData) => {
+      try {
+        await handleFormSubmit(values);
+      } catch (error) {
+        const errorMsg =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+          t('server.create-entity-error', { entity: t('label.test-suite') });
+        setErrorMessage(errorMsg);
+
+        throw error;
+      }
+    },
+    [handleFormSubmit, t]
+  );
+
+  const isModalVariant = variant === 'modal';
+
+  const bundleSuiteFormBody = (
+    <BundleSuiteFormBody
+      errorMessage={errorMessage}
+      form={form}
+      initialValues={initialValues}
+      onErrorDismiss={() => setErrorMessage('')}
+    />
+  );
+
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
+      }),
+    []
+  );
+
+  const closeDrawerRef = useRef<() => void>(() => undefined);
+
+  // Same dismissal funnel as the test case drawer: single parent notify on
+  // cancel/X/Escape/programmatic close, inert backdrop, form reset.
+  const handleDrawerDismiss = useCallback(() => {
+    form.reset();
+    onClose();
+  }, [form, onClose]);
+
+  const { formDrawer, openDrawer, closeDrawer, isOpen } =
+    useFormDrawerWithHook<BundleSuiteFormData>({
+      className: 'bundle-suite-form-drawer',
+      title:
+        title ?? t('label.add-entity', { entity: t('label.bundle-suite') }),
+      hookForm: form,
+      submitLabel: t('label.create'),
+      headerActions,
+      width,
+      closeOnBackdrop: false,
+      submitTestId: 'submit-button',
+      cancelTestId: 'cancel-button',
+      onClose: handleDrawerDismiss,
+      form: (
+        <HookForm
+          form={form}
+          onSubmit={form.handleSubmit(
+            (data) =>
+              submitAndClose(data, handleFormSubmitWithErrorCapture, () =>
+                closeDrawerRef.current()
+              ),
+            () => scrollToError()
+          )}>
+          {bundleSuiteFormBody}
+        </HookForm>
+      ),
+      onSubmit: (data) =>
+        submitAndClose(data, handleFormSubmitWithErrorCapture, () =>
+          closeDrawerRef.current()
+        ),
+    });
+
+  closeDrawerRef.current = closeDrawer;
+
+  useEffect(() => {
+    if (isModalVariant) {
+      return;
+    }
+    if (open) {
+      openDrawer();
+    } else if (isOpen) {
+      closeDrawer();
+    }
+  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
+
+  if (isModalVariant) {
+    return (
+      <AiFormModal
+        cancelTestId="cancel-button"
+        headerActions={headerActions}
+        open={open}
+        submitTestId="submit-button"
+        subtitle={t('message.page-sub-header-for-data-quality')}
+        title={
+          title ?? t('label.add-entity', { entity: t('label.bundle-suite') })
+        }
+        onClose={handleDrawerDismiss}
+        onSubmit={form.handleSubmit(
+          (data) =>
+            submitAndClose(
+              data,
+              handleFormSubmitWithErrorCapture,
+              handleDrawerDismiss
+            ),
+          () => scrollToError()
+        )}>
+        <HookForm
+          form={form}
+          onSubmit={form.handleSubmit(
+            (data) =>
+              submitAndClose(
+                data,
+                handleFormSubmitWithErrorCapture,
+                handleDrawerDismiss
+              ),
+            () => scrollToError()
+          )}>
+          {bundleSuiteFormBody}
+        </HookForm>
+      </AiFormModal>
+    );
+  }
+
+  return formDrawer;
+};
+
+export default BundleSuiteFormDrawer;

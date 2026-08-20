@@ -52,6 +52,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -496,7 +497,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static boolean isCircuitBreakerFailure(Throwable t) {
-    return isConnectError(t) || isTimeoutError(t);
+    return isConnectError(t) || isTimeoutError(t) || isServerError(t);
+  }
+
+  // Only gateway/availability 5xx (502/503/504) indicate Fuseki itself is
+  // unhealthy and should count toward the shared breaker. A bare 500 is often a
+  // per-request failure (e.g. an expensive SPARQL SELECT that exceeds a server
+  // limit) — tripping the breaker on those would let one heavy graph query
+  // short-circuit ALL RDF traffic. Client errors (4xx) are the caller's fault
+  // and must never trip it either.
+  private static boolean isServerError(Throwable t) {
+    Throwable cause = t;
+    boolean result = false;
+    while (cause != null && !result) {
+      if (cause instanceof org.apache.jena.atlas.web.HttpException httpException) {
+        int code = httpException.getStatusCode();
+        result = code == 502 || code == 503 || code == 504;
+      }
+      Throwable next = cause.getCause();
+      cause = (next == cause) ? null : next;
+    }
+    return result;
   }
 
   private static boolean isConnectError(Throwable t) {
@@ -743,9 +764,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
+    return buildEntityUpsertUpdate(entityUri, entityModel, RdfWriteMode.RECONCILE);
+  }
+
+  static String buildEntityUpsertUpdate(
+      String entityUri, Model entityModel, RdfWriteMode writeMode) {
+    String triples = serializeModel(entityModel);
+    if (writeMode == RdfWriteMode.INSERT_ONLY) {
+      return triples.isBlank() ? "" : buildInsertData(triples);
+    }
     Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
     String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-    String triples = serializeModel(entityModel);
     if (triples.isBlank()) {
       return deleteQuery;
     }
@@ -779,6 +808,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    */
   @Override
   public void bulkStoreEntities(List<EntityWriteRequest> requests) {
+    bulkStoreEntities(requests, RdfWriteMode.RECONCILE);
+  }
+
+  @Override
+  public void bulkStoreEntities(List<EntityWriteRequest> requests, RdfWriteMode writeMode) {
     if (requests == null || requests.isEmpty()) {
       return;
     }
@@ -788,14 +822,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     Model combinedModel = ModelFactory.createDefaultModel();
     boolean first = true;
     for (EntityWriteRequest req : requests) {
-      String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
-      Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
-      String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-      if (!first) {
-        combinedDelete.append(";\n");
+      if (writeMode != RdfWriteMode.INSERT_ONLY) {
+        String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
+        Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
+        String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
+        if (!first) {
+          combinedDelete.append(";\n");
+        }
+        first = false;
+        combinedDelete.append(deleteQuery);
       }
-      first = false;
-      combinedDelete.append(deleteQuery);
       combinedModel.add(req.model());
     }
 
@@ -806,6 +842,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         combined.append(";\n");
       }
       combined.append(buildInsertData(triples));
+    }
+
+    if (combined.isEmpty()) {
+      return;
     }
 
     try {

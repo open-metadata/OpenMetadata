@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/hydrateLineageRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HydrateLineageRequest",
+  "description": "Batch-hydrate a set of lineage nodes into full entity objects. Replaces N per-node entity GETs with one round-trip. Response groups hydrated entities by entityType. Each EntityReference in `entities` only requires `type` and `id`; other reference fields are ignored.",
+  "javaType": "org.openmetadata.schema.api.lineage.HydrateLineageRequest",
+  "type": "object",
+  "properties": {
+    "entities": {
+      "description": "Lineage nodes to hydrate. Each item identifies a single entity by (type, id).",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "minItems": 1,
+      "maxItems": 200
+    },
+    "fields": {
+      "description": "Comma-separated list of relationship fields to include on every returned entity (e.g. 'tags,owners,domains'). Applied uniformly across all entity types — fields not applicable to a given type are silently skipped by that type's repository.",
+      "type": "string"
+    },
+    "include": {
+      "description": "Whether to include deleted entities. Defaults to non-deleted.",
+      "$ref": "../../type/include.json",
+      "default": "non-deleted"
+    }
+  },
+  "required": ["entities"],
+  "additionalProperties": false
+}

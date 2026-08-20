@@ -23,6 +23,7 @@
     "applyRecognizerFeedbackTask",
     "rejectRecognizerFeedbackTask",
     "checkChangeDescriptionTask",
-    "policyAgentTask"
+    "policyAgentTask",
+    "createAndRunAIAutomationTask"
   ]
 }

@@ -106,13 +106,14 @@ class ActivityStreamPublisherTest {
   }
 
   @Test
-  void sendMessageCreatesActivityEvents() throws EventPublisherException {
+  void sendMessageBuildsAndPersistsActivityEventsInOneBatch() throws EventPublisherException {
+    List<ActivityEvent> built = List.of(new ActivityEvent().withId(UUID.randomUUID()));
     try (MockedConstruction<ActivityStreamRepository> repositoryConstruction =
         mockConstruction(
             ActivityStreamRepository.class,
             (repository, context) ->
                 when(repository.createFieldEventsFromChangeEvent(any(), any()))
-                    .thenReturn(List.of(new ActivityEvent().withId(UUID.randomUUID()))))) {
+                    .thenReturn(built))) {
       ActivityStreamPublisher publisher =
           new ActivityStreamPublisher(eventSubscription, subscriptionDestination);
 
@@ -122,6 +123,7 @@ class ActivityStreamPublisherTest {
 
       ActivityStreamRepository repository = repositoryConstruction.constructed().getFirst();
       verify(repository).createFieldEventsFromChangeEvent(any(), any());
+      verify(repository).insertBatch(built);
     }
   }
 

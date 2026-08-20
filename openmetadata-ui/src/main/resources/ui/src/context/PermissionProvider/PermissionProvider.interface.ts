@@ -95,6 +95,7 @@ export enum ResourceEntity {
   TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
   TASK = 'task',
+  CONTEXT_MEMORY = 'contextMemory',
 }
 
 export interface PermissionContextType {

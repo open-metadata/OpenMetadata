@@ -48,7 +48,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -83,6 +85,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.TableRepository.ColumnTagFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
@@ -192,6 +195,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter tables by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter tables by database fully qualified name",
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
           @QueryParam("database")
@@ -261,6 +269,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("include")
           RegexMode regexMode) {
     ListFilter filter = new ListFilter(include);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     if (databaseParam != null) {
       filter.addQueryParam("database", databaseParam);
     }
@@ -2060,7 +2071,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           @DefaultValue("asc")
-          String sortOrder) {
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Filter by classification tags at column level (comma-separated tag FQNs)",
+              example = "PII.Sensitive,PersonalData.Email")
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description =
+                  "Filter by glossary terms at column level (comma-separated glossary term FQNs)",
+              example = "Business.CustomerData,Business.Revenue")
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -2074,6 +2097,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            parseColumnTagFilters(tags, glossaryTerms),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -2149,7 +2173,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           @DefaultValue("asc")
-          String sortOrder) {
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Filter by classification tags at column level (comma-separated tag FQNs)",
+              example = "PII.Sensitive,PersonalData.Email")
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description =
+                  "Filter by glossary terms at column level (comma-separated glossary term FQNs)",
+              example = "Business.CustomerData,Business.Revenue")
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
@@ -2163,11 +2199,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            parseColumnTagFilters(tags, glossaryTerms),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
     return tableColumnList;
+  }
+
+  private ColumnTagFilter parseColumnTagFilters(String tags, String glossaryTerms) {
+    return new ColumnTagFilter(parseFqnCsv(tags), parseFqnCsv(glossaryTerms));
+  }
+
+  private Set<String> parseFqnCsv(String csv) {
+    if (csv == null || csv.isBlank()) {
+      return Set.of();
+    }
+    Set<String> fqns = new HashSet<>();
+    for (String fqn : csv.split(",")) {
+      String trimmed = fqn.trim();
+      if (!trimmed.isEmpty()) {
+        fqns.add(trimmed);
+      }
+    }
+    return fqns;
   }
 }

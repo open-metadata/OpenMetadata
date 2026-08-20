@@ -111,7 +111,6 @@ const LeftSidebar = () => {
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
-            alt="OpenMetadata Logo"
             className="vertical-middle h-full"
             dataTestId="image"
             height={40}
