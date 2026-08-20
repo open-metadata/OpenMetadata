@@ -157,7 +157,12 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table.
     """
-    cursor = connection.execute(text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)))
+    qualified_table_name = ".".join(
+        self.identifier_preparer.quote_identifier(identifier)
+        for identifier in (schema_name, table_name)
+        if identifier is not None
+    )
+    cursor = connection.execute(text(HIVE_GET_COMMENTS.format(table_name=qualified_table_name)))
     try:
         for result in list(cursor):
             data = tuple(result)
@@ -174,7 +179,11 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     """
     Gets the view definition
     """
-    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
+    full_view_name = ".".join(
+        self.identifier_preparer.quote_identifier(identifier)
+        for identifier in (schema, view_name)
+        if identifier is not None
+    )
     res = connection.execute(text(f"SHOW CREATE TABLE {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)

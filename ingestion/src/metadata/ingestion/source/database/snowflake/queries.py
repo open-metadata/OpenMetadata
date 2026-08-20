@@ -25,7 +25,7 @@ SNOWFLAKE_GET_TABLE_NAMES = """
             ELSE TABLE_TYPE
         END as TABLE_TYPE
     from information_schema.tables
-    where TABLE_SCHEMA = '{schema}'
+    where TABLE_SCHEMA = :schema
     AND {include_transient_tables}
     AND {include_views}
 """
@@ -46,10 +46,10 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and {include_transient_tables}
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
     and {include_views}
 )
 where ROW_NUMBER = 1
@@ -178,7 +178,7 @@ where ROW_NUMBER = 1
 
 SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
-where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'VIEW'
+where TABLE_SCHEMA = :schema and TABLE_TYPE = 'VIEW'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES = """
@@ -191,17 +191,17 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where  TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where  TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
 )
 where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_MVIEW_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
-where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+where TABLE_SCHEMA = :schema and TABLE_TYPE = 'MATERIALIZED VIEW'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES = """
@@ -214,28 +214,28 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where  TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where  TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'MATERIALIZED VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
 )
 where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_STREAM_NAMES = """
-SHOW STREAMS IN SCHEMA "{schema}"
+SHOW STREAMS IN SCHEMA {schema}
 """
 
 SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
-SHOW STREAMS IN SCHEMA "{schema}"
+SHOW STREAMS IN SCHEMA {schema}
 """
 
 SNOWFLAKE_GET_STREAM = """
-SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+SHOW STREAMS LIKE :stream_name IN SCHEMA {schema}
 """
 
 SNOWFLAKE_GET_STAGES = """
-SHOW STAGES IN SCHEMA "{schema}"
+SHOW STAGES IN SCHEMA {schema}
 """
 
 # NOTE: the column names differ (intentionally) between the semantic catalog
@@ -245,7 +245,7 @@ SHOW STAGES IN SCHEMA "{schema}"
 # SEMANTIC_VIEW_NAME. So `WHERE SCHEMA` here vs `WHERE SEMANTIC_VIEW_SCHEMA`
 # below is correct, not a mismatch.
 SNOWFLAKE_GET_SEMANTIC_VIEWS = """
-SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = '{schema}'
+SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = :schema
 """
 
 # Semantic view objects (dimensions/facts/metrics), read from the matching
@@ -372,7 +372,7 @@ select DATABASE_NAME,COMMENT from information_schema.databases
 """
 
 SNOWFLAKE_GET_EXTERNAL_LOCATIONS = """
-SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
+SHOW EXTERNAL TABLES IN DATABASE {database_name}
 """
 
 SNOWFLAKE_TEST_FETCH_TAG = """
@@ -540,7 +540,7 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 SNOWFLAKE_GET_TABLE_DDL = """
-SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+SELECT GET_DDL('TABLE', :table_name) AS \"text\"
 """
 
 SNOWFLAKE_GET_VIEW_DEFINITION = """
@@ -552,15 +552,15 @@ WHERE view_definition is not null
 """
 
 SNOWFLAKE_GET_VIEW_DDL = """
-SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+SELECT GET_DDL('VIEW', :view_name) AS \"text\"
 """
 
 SNOWFLAKE_GET_STREAM_DEFINITION = """
-SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+SELECT GET_DDL('STREAM', :stream_name) AS \"text\"
 """
 
 SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION = """
-SELECT GET_DDL('SEMANTIC_VIEW','{semantic_view_name}') AS \"text\"
+SELECT GET_DDL('SEMANTIC_VIEW', :semantic_view_name) AS \"text\"
 """
 
 SNOWFLAKE_QUERY_LOG_QUERY = """
