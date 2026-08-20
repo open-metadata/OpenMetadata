@@ -51,7 +51,9 @@ const mockedGetOidcToken = getOidcToken as jest.MockedFunction<
   typeof getOidcToken
 >;
 const mockedExtractDetailsFromToken =
-  extractDetailsFromToken as jest.MockedFunction<typeof extractDetailsFromToken>;
+  extractDetailsFromToken as jest.MockedFunction<
+    typeof extractDetailsFromToken
+  >;
 
 // Fires a visibilitychange event with document.visibilityState = 'visible'.
 // AuthCoordinator's VisibilityWatcher listens for this to gate refresh on
@@ -498,9 +500,7 @@ describe('AuthCoordinator', () => {
       coordinator.registerRenewer(async () => payload);
       // Default beforeEach already installs the leader-path mock;
       // just assert the side effects.
-      const { setOidcToken } = jest.requireMock(
-        '../../../SwTokenStorageUtils'
-      );
+      const { setOidcToken } = jest.requireMock('../../../SwTokenStorageUtils');
 
       await coordinator.ensureFreshToken();
 
