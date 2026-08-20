@@ -321,7 +321,11 @@ export const setUserDefaultPersona = async (
     page.locator('[data-testid="default-persona-select-list"]')
   ).toBeVisible();
 
-  const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
+  const setDefaultPersona = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/') &&
+      response.request().method() === 'PATCH'
+  );
 
   // Click on the persona option by text within the dropdown
   await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
@@ -330,7 +334,8 @@ export const setUserDefaultPersona = async (
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
     .click();
 
-  await setDefaultPersona;
+  const setDefaultPersonaResponse = await setDefaultPersona;
+  expect(setDefaultPersonaResponse.ok()).toBeTruthy();
 
   await expect(
     page.locator('[data-testid="persona-details-card"]')

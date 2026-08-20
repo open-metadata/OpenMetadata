@@ -655,17 +655,36 @@ export const assignCertification = async (
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  const certificationRadio = page.getByTestId(
+    `radio-btn-${certification.responseData.fullyQualifiedName}`
+  );
+  const certificationCards = page.locator(
+    '[data-testid="certification-cards"] .ant-radio-group'
   );
 
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  await expect(async () => {
+    // The tag GET can finish just as an entity refresh remounts the controlled
+    // popover. In that race the shell stays visible but its certifications are
+    // reset to [], leaving no Radio.Group for the scroll helper to hover. Close
+    // and reopen to issue a fresh fetch, then retry the complete find operation.
+    if (!(await certificationCards.isVisible())) {
+      const closeButton = page.getByTestId('close-certification');
+      if (await closeButton.isVisible()) {
+        await closeButton.click();
+      }
+      await page.getByTestId('edit-certification').click();
+      await expect(certificationCards).toBeVisible({ timeout: 5_000 });
+    }
+
+    await readElementInListWithScroll(
+      page,
+      certificationRadio,
+      certificationCards
+    );
+    await expect(certificationRadio).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 25_000, intervals: [250, 500, 1000] });
+
+  await certificationRadio.click();
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
