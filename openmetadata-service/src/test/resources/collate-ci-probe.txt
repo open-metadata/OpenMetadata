@@ -1,0 +1,3 @@
+Throwaway file to satisfy the maven-build-collate.yml pull_request_target path
+filter (openmetadata-service/**) so the Collate dispatch step runs.
+Delete with the branch.
