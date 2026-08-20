@@ -383,7 +383,7 @@ export const fillAndSubmitBundleSuiteForm = async (
       response
         .url()
         .includes('/api/v1/dataQuality/testCases/logicalTestCases/bulk') &&
-      response.request().method() === 'POST'
+      response.request().method() === 'PUT'
   );
   await page.getByTestId('submit-button').click();
 

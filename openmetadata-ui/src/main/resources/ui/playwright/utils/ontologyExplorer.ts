@@ -28,16 +28,7 @@ export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
-  const termsResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200,
-      { timeout: 30000 }
-    )
-    .catch(() => null);
   await page.getByTestId('update-btn').click();
-  await termsResponse;
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
