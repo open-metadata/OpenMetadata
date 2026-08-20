@@ -443,7 +443,6 @@ function WorksheetDetails({
           />
         </Col>
         <GenericProvider<Worksheet>
-          activeTab={activeTab}
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
           data={worksheetDetails}

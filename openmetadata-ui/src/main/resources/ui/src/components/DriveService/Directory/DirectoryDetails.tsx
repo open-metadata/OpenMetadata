@@ -464,7 +464,6 @@ function DirectoryDetails({
           />
         </Col>
         <GenericProvider<Directory>
-          activeTab={activeTab}
           customizedPage={customizedPage}
           data={directoryDetails}
           isTabExpanded={isTabExpanded}

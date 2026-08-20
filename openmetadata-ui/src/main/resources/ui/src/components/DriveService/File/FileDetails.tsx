@@ -433,7 +433,6 @@ function FileDetails({
           />
         </Col>
         <GenericProvider<File>
-          activeTab={activeTab}
           customizedPage={customizedPage}
           data={fileDetails}
           isTabExpanded={isTabExpanded}

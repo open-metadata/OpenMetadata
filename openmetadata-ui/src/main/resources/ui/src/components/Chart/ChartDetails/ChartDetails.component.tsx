@@ -329,7 +329,6 @@ const ChartDetails = ({
           />
         </Col>
         <GenericProvider<Chart>
-          activeTab={activeTab}
           customizedPage={customizedPage}
           data={chartDetails}
           isTabExpanded={isTabExpanded}

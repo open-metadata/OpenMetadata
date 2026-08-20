@@ -674,7 +674,6 @@ const StoredProcedurePage = () => {
         </Col>
 
         <GenericProvider<StoredProcedure>
-          activeTab={activeTab}
           customizedPage={customizedPage}
           data={storedProcedure}
           isTabExpanded={isTabExpanded}
