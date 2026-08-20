@@ -1029,7 +1029,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Create Roles
       for (let i = 1; i <= 20; i++) {
         const role = new RolesClass();
-        await role.create(apiContext, [policy.responseData.id!]);
+        await role.create(apiContext, [policy.responseData.name]);
       }
 
       await afterAction();
