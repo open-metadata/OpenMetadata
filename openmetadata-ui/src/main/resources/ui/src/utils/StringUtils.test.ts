@@ -469,9 +469,7 @@ describe('StringUtils', () => {
 
     it('should escape a single pipe so consecutive pipes cannot form an OR operator', () => {
       expect(escapeESReservedCharacters('a|b')).toBe(String.raw`a\|b`);
-      expect(escapeESReservedCharacters('a||||b')).toBe(
-        String.raw`a\|\|\|\|b`
-      );
+      expect(escapeESReservedCharacters('a||||b')).toBe(String.raw`a\|\|\|\|b`);
     });
 
     it('should leave a plain term untouched', () => {
