@@ -731,12 +731,33 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     postDelete(entity, hardDelete, false);
   }
 
+  /**
+   * Removing the DAG from the orchestrator is irreversible, so it must only happen when the entity
+   * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
+   * to redeploy, so tearing the runner down there left a restored pipeline with no backing DAG —
+   * and, with {@code allowUnavailableRunner=false}, failed the whole soft delete outright whenever
+   * the runner happened to be down. Stays in {@code postDelete} rather than moving to
+   * {@link #entitySpecificCleanup} because it is a remote call that must not run inside the
+   * {@code cleanup()} transaction, and because {@code forceDelete} threads
+   * {@code allowUnavailableRunner} through here and reads back the skip flag.
+   */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
-    deletePipelineStatuses(entity);
+    boolean wasRunnerCleanupSkipped = false;
+    if (hardDelete) {
+      wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Pipeline run history is destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
+  @Override
+  protected void entitySpecificCleanup(IngestionPipeline entity) {
+    deletePipelineStatuses(entity);
   }
 
   protected boolean deleteDeployedPipeline(
