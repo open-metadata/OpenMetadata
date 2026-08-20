@@ -75,8 +75,8 @@ import {
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
-import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import { test } from '../fixtures/pages';
+import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import {
   runAdvancedBlocksTest,
   runContentPersistenceTest,
@@ -400,7 +400,6 @@ test.describe('Context Center Articles', () => {
     page,
     browser,
   }) => {
-
     const { apiContext: setupContext, afterAction: setupAfterAction } =
       await createNewPage(browser);
     const article = await createArticleViaApi(setupContext, {
@@ -419,25 +418,26 @@ test.describe('Context Center Articles', () => {
 
     await test.step('Wait for search index to reflect the update', async () => {
       const { apiContext, afterAction } = await getApiContext(page);
-      await waitForSearchIndexed(apiContext, article.fullyQualifiedName, 'page');
+      await waitForSearchIndexed(
+        apiContext,
+        article.fullyQualifiedName,
+        'page'
+      );
       await afterAction();
     });
 
-    await test.step(
-      'Verify tag is visible in Explore right-panel summary',
-      async () => {
-        await navigateToKCEntity(page, article.displayName);
+    await test.step('Verify tag is visible in Explore right-panel summary', async () => {
+      await navigateToKCEntity(page, article.displayName);
 
-        const summaryPanel = page.locator(
-          '[data-testid="entity-summary-panel-container"]'
-        );
-        await expect(
-          summaryPanel
-            .locator('.tags-section, [class*="tags"]')
-            .getByText(tagDisplayName)
-        ).toBeVisible();
-      }
-    );
+      const summaryPanel = page.locator(
+        '[data-testid="entity-summary-panel-container"]'
+      );
+      await expect(
+        summaryPanel
+          .locator('.tags-section, [class*="tags"]')
+          .getByText(tagDisplayName)
+      ).toBeVisible();
+    });
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
       await createNewPage(browser);
