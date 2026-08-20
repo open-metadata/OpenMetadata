@@ -106,6 +106,76 @@ public class DomainRecreateSameNameIT {
                         + "recreated same-named domain"));
   }
 
+  @Test
+  void test_recreatedSubdomainDoesNotInheritDeletedSubdomainAssets(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String parentName = ns.shortPrefix() + "_parent";
+    String childName = "child";
+
+    DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+
+    Domain parentV1 = createDomain(adminClient, parentName);
+    Domain childV1 = createSubdomain(adminClient, childName, parentV1.getFullyQualifiedName());
+
+    Table table =
+        createTableInDomain(
+            adminClient,
+            ns.shortPrefix() + "_asset",
+            schema.getFullyQualifiedName(),
+            childV1.getFullyQualifiedName());
+
+    Awaitility.await("asset indexed under original subdomain")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    domainAssetsContain(adminClient, childV1.getId().toString(), table.getId()),
+                    "Sanity: asset should be listed under the original subdomain before deletion"));
+
+    Map<String, String> hardDelete = new HashMap<>();
+    hardDelete.put("hardDelete", "true");
+    hardDelete.put("recursive", "true");
+    adminClient.domains().delete(parentV1.getId().toString(), hardDelete);
+
+    // The subdomain strip is an async update-by-query; wait until it settles before recreating so
+    // the assertion is deterministic rather than racing the in-flight reindex.
+    Awaitility.await("deleted subdomain stripped from asset search doc")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> !assetSearchDocReferencesDomain(adminClient, table.getId(), childV1.getId()));
+
+    Domain parentV2 = createDomain(adminClient, parentName);
+    Domain childV2 = createSubdomain(adminClient, childName, parentV2.getFullyQualifiedName());
+    assertNotEquals(
+        childV1.getId(), childV2.getId(), "Recreated subdomain must be a new entity with a new id");
+
+    Awaitility.await("recreated subdomain must not inherit the deleted subdomain's assets")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    domainAssetsContain(adminClient, childV2.getId().toString(), table.getId()),
+                    "Issue #28923: asset from the hard-deleted subdomain reappeared under the "
+                        + "recreated same-named subdomain (parent recursive hard delete)"));
+  }
+
+  private boolean assetSearchDocReferencesDomain(
+      OpenMetadataClient client, Object assetId, Object domainId) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/search/query?q=id:" + assetId + "&index=table_search_index&from=0&size=1",
+                null,
+                RequestOptions.builder().build());
+    return response.contains("\"" + domainId + "\"");
+  }
+
   private boolean domainAssetsContain(OpenMetadataClient client, String domainId, Object assetId)
       throws Exception {
     String response =
@@ -125,6 +195,16 @@ public class DomainRecreateSameNameIT {
             .withName(name)
             .withDomainType(CreateDomain.DomainType.AGGREGATE)
             .withDescription("Domain for issue #28923 recreate-same-name regression test");
+    return client.domains().create(createDomain);
+  }
+
+  private Domain createSubdomain(OpenMetadataClient client, String name, String parentFqn) {
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(name)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withParent(parentFqn)
+            .withDescription("Subdomain for issue #28923 recreate-same-name regression test");
     return client.domains().create(createDomain);
   }
 
