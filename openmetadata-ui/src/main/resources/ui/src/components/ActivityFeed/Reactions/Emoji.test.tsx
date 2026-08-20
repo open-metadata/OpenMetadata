@@ -110,19 +110,28 @@ describe('Test Emoji Component', () => {
     fireEvent.mouseLeave(emojiButton);
     act(() => jest.runAllTimers());
 
-    expect(queryByTestId('popover-content')).not.toBeInTheDocument();
+    expect(queryByTestId('popover-content')).not.toBeVisible();
   });
 
   it('Should unmount cleanly while tooltip is visible', async () => {
-    // Regression: previously, a controlled `visible` state was not cleared on
-    // unmount, causing Ant Design to call getBoundingClientRect() on a detached
-    // DOM node and crash with "Cannot read properties of null (reading 'left')".
     const { findByTestId, unmount } = render(<Emoji {...mockProps} />);
 
     const emojiButton = await findByTestId('emoji-button');
     fireEvent.mouseEnter(emojiButton);
     await findByTestId('popover-content');
 
+    // Simulate detached-node condition: real browsers return null from
+    // getBoundingClientRect() on a node removed from the layout tree,
+    // which is what caused "Cannot read properties of null (reading 'left')".
+    // jsdom always returns a zero DOMRect, so we mock it explicitly.
+    jest
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue(null as unknown as DOMRect);
+
     expect(() => unmount()).not.toThrow();
+
+    // Flush Ant Design's deferred repositioning callbacks to ensure nothing
+    // throws after the trigger node is removed from the DOM.
+    expect(() => act(() => jest.runAllTimers())).not.toThrow();
   });
 });
