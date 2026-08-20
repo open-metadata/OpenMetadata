@@ -97,7 +97,9 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     }
     OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
     if (rbacQueryBuilder == null) {
-      return query;
+      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
+      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
+      return Query.of(qb -> qb.matchNone(m -> m));
     }
     Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
     if (query == null) {
@@ -379,27 +381,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      // Apply RBAC conditions
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-          if (parsedQuery != null) {
-            final Query existingQuery = parsedQuery;
-            parsedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-          } else {
-            parsedQuery = rbacQuery;
-          }
-        }
-      }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
       searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
