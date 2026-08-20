@@ -194,11 +194,20 @@ export default defineConfig({
     // main chromium project) has a beforeEach that deletes ALL intake forms, so the
     // two specs interfere when run in parallel. Running this file after chromium
     // completes eliminates the race entirely.
+    //
+    // On CI, this project runs on its own matrix shard with an isolated docker
+    // environment — IntakeForm.spec.ts never touches the same database — so the
+    // chromium dependency is unnecessary and would force the entire chromium
+    // suite to run serially first, blowing past the job timeout. Set
+    // PW_INTAKE_FORM_SOLO=true on that shard to opt out of the chromium dep.
     {
       name: 'IntakeFormCustomPropertyFields',
       testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'chromium'],
+      dependencies:
+        process.env.PW_INTAKE_FORM_SOLO === 'true'
+          ? ['setup']
+          : ['setup', 'chromium'],
       fullyParallel: false,
     },
     // IntakeForm.spec.ts has a per-test beforeEach that deletes ALL intake forms.
@@ -206,11 +215,19 @@ export default defineConfig({
     // domains or data products (400 errors). Running after IntakeFormCustomPropertyFields
     // ensures both isolation from those parallel tests and no deletion-race with
     // IntakeFormCustomPropertyFields's beforeAll-created form.
+    //
+    // Same PW_INTAKE_FORM_SOLO opt-out as IntakeFormCustomPropertyFields: on CI's
+    // isolated matrix shard, no parallel chromium tests exist to fail with 400,
+    // so the chromium dep is unnecessary. The IntakeFormCustomPropertyFields dep
+    // is kept — the two specs must still serialize with each other.
     {
       name: 'IntakeForm',
       testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'chromium', 'IntakeFormCustomPropertyFields'],
+      dependencies:
+        process.env.PW_INTAKE_FORM_SOLO === 'true'
+          ? ['setup', 'IntakeFormCustomPropertyFields']
+          : ['setup', 'chromium', 'IntakeFormCustomPropertyFields'],
       fullyParallel: false,
     },
   ],
