@@ -13,7 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import { createOrFetch, okJson } from '../../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -59,14 +63,16 @@ export class StorageServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/services/storageServices/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/services/storageServices/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     const service = await okJson(serviceResponse, 'StorageServiceClass.patch');

@@ -12,7 +12,11 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -63,14 +67,13 @@ export class PolicyClass {
   }
 
   async patch(apiContext: APIRequestContext, patchData: Operation[]) {
-    const response = await apiContext.patch(
-      `/api/v1/policies/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/policies/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
     const data = await okJson(response, 'PoliciesClass.patch');
     this.responseData = data;

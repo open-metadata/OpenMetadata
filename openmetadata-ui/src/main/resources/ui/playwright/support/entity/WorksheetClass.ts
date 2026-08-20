@@ -19,7 +19,7 @@ import {
 } from '../../../src/generated/entity/data/worksheet';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -186,14 +186,16 @@ export class WorksheetClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     this.entityResponseData = await okJson(response, 'WorksheetClass.patch');

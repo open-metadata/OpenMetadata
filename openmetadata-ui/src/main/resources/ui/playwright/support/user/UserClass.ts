@@ -17,7 +17,7 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { okJson } from '../../utils/apiResponse';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -137,14 +137,13 @@ export class UserClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/users/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/users/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     this.responseData = await okJson(response, 'UserClass.patch');

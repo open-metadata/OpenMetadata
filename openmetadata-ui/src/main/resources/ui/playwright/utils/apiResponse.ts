@@ -88,13 +88,40 @@ export const buildFqn = (...segments: string[]): string =>
  * lagged. Retry briefly instead of losing the try; a reference that is genuinely
  * wrong still fails, just ~1.8s later.
  */
-const CREATE_RETRY_ATTEMPTS = 3;
-const CREATE_RETRY_BASE_DELAY_MS = 300;
+const NOT_FOUND_RETRY_ATTEMPTS = 3;
+const NOT_FOUND_RETRY_BASE_DELAY_MS = 300;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+
+/**
+ * Re-send a request while the server answers 404.
+ *
+ * A 404 means the request was rejected outright, so nothing was partially
+ * applied and re-sending is safe. This covers the mirror image of the 409 race:
+ * a nightly shard recorded `ApiServiceClass.patch failed (404): apiService
+ * instance ... not found` against the very id its own create had just returned.
+ * Callers keep their own {@link okJson} handling — this only decides whether the
+ * request is worth sending again.
+ */
+export const withNotFoundRetry = async (
+  send: () => Promise<APIResponse>
+): Promise<APIResponse> => {
+  let response = await send();
+
+  for (
+    let attempt = 1;
+    attempt <= NOT_FOUND_RETRY_ATTEMPTS && response.status() === 404;
+    attempt++
+  ) {
+    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
+    response = await send();
+  }
+
+  return response;
+};
 
 /**
  * POST that treats "already exists" as success.
@@ -134,10 +161,10 @@ export const createOrFetch = async <T = ResponseBody>(
 
   for (
     let attempt = 1;
-    attempt <= CREATE_RETRY_ATTEMPTS && createResponse.status() === 404;
+    attempt <= NOT_FOUND_RETRY_ATTEMPTS && createResponse.status() === 404;
     attempt++
   ) {
-    await sleep(CREATE_RETRY_BASE_DELAY_MS * attempt);
+    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
     createResponse = await apiContext.post(createPath, { data });
   }
 

@@ -14,7 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -228,14 +232,16 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const apiCollectionResponse = await apiContext.patch(
-      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const apiCollectionResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     const apiCollection = await okJson(

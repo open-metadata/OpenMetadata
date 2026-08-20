@@ -26,7 +26,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -120,14 +124,16 @@ export class SpreadsheetClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.Spreadsheet}/name/${this.entityResponseData.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.Spreadsheet}/name/${this.entityResponseData.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     this.entityResponseData = await okJson(response, 'SpreadsheetClass.patch');

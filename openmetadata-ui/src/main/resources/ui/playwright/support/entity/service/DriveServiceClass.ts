@@ -13,7 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import { createOrFetch, okJson } from '../../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -70,14 +74,16 @@ export class DriveServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
-      {
-        data: payload,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/${EntityTypeEndpoint.DriveService}/${this.entityResponseData?.['id']}`,
+        {
+          data: payload,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     const service = await okJson(serviceResponse, 'DriveServiceClass.patch');

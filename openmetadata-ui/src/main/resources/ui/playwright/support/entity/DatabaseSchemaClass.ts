@@ -14,7 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -105,14 +109,16 @@ export class DatabaseSchemaClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
     const entity = await okJson(serviceResponse, 'DatabaseSchemaClass.patch');

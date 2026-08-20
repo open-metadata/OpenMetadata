@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import {
   getRandomFirstName,
   uuid,
@@ -73,14 +77,13 @@ export class Glossary extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/glossaries/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaries/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     this.responseData = await okJson(response, 'Glossary.patch');
