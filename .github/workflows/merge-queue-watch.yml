@@ -34,6 +34,7 @@ on:
       - completed
 
 permissions:
+  actions: read
   contents: read
   pull-requests: read
 
@@ -53,7 +54,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            .github/merge-queue-owners.json
+          sparse-checkout-cone-mode: false
           persist-credentials: false
 
       - name: Resolve queued pull request
@@ -105,6 +109,19 @@ jobs:
             echo "author=$(printf '%s' "$pr_json" | jq -r '.user.login // ""')"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Resolve the owning on-duty team
+        id: owner
+        if: steps.pr.outputs.found == 'true'
+        env:
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          handle=$(.github/scripts/resolve-merge-queue-owner.sh)
+          echo "handle=${handle}" >> "$GITHUB_OUTPUT"
+
       - name: Post to Slack
         if: steps.pr.outputs.found == 'true'
         env:
@@ -119,4 +136,5 @@ jobs:
           PR_AUTHOR: ${{ steps.pr.outputs.author }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          OWNER_HANDLE: ${{ steps.owner.outputs.handle }}
         run: .github/scripts/notify-merge-queue-slack.sh

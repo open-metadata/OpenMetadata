@@ -1,0 +1,42 @@
+{
+  "_comment": "Routes merge-queue failures to an on-duty Slack user group. 'workflows' maps a workflow name to a team key; 'teams' maps that key to the Slack user-group handle (without the @). A failure whose failing step matches 'infraStepPatterns' is routed to infraTeam instead, because a broken runner, image pull or cache is a platform problem regardless of which workflow surfaced it.",
+  "teams": {
+    "ui": "onduty-ui",
+    "integration": "onduty-integration",
+    "backend": "onduty-backend",
+    "devops": "onduty-devops"
+  },
+  "infraTeam": "devops",
+  "workflows": {
+    "UI Checkstyle": "ui",
+    "Postgresql PR Playwright E2E Tests": "ui",
+    "PostgreSQL PR RDF E2E Tests": "ui",
+    "SonarCloud + Jest Coverage": "ui",
+    "TypeScript Type Generation": "ui",
+    "Python Checkstyle": "integration",
+    "py-tests": "integration",
+    "py-tests-postgres": "integration",
+    "Java Checkstyle": "backend",
+    "OpenMetadata Service Unit Tests": "backend",
+    "Integration Tests - MySQL + Elasticsearch": "backend",
+    "Integration Tests - PostgreSQL + Elasticsearch + Redis": "backend",
+    "Integration Tests - PostgreSQL + OpenSearch": "backend",
+    "Validate JSON/YAML": "devops"
+  },
+  "infraStepPatterns": [
+    "set up job",
+    "checkout",
+    "setup java",
+    "setup node",
+    "setup python",
+    "setup-",
+    "cache",
+    "docker",
+    "free disk",
+    "disk space",
+    "configure docker storage",
+    "login to",
+    "pull image",
+    "runner"
+  ]
+}

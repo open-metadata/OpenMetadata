@@ -12,7 +12,7 @@
 #
 # Required env: SLACK_BOT_USER_OAUTH_TOKEN, SLACK_CHANNEL, WORKFLOW_NAME,
 #   CONCLUSION, RUN_URL, PR_NUMBER, PR_TITLE, PR_AUTHOR, REPO_URL, HEAD_BRANCH
-# Optional env: TEXT_PREFIX
+# Optional env: TEXT_PREFIX, OWNER_HANDLE
 
 set -euo pipefail
 
@@ -36,8 +36,30 @@ if [ -n "${PR_AUTHOR:-}" ]; then
   author_suffix=" (@${PR_AUTHOR})"
 fi
 
+# A bare "@handle" renders as plain text and notifies nobody, so the handle is
+# resolved to the <!subteam^ID> form Slack actually pings. Resolution needs the
+# usergroups:read scope; without it the message still goes out, unlinked.
+mention=""
+if [ -n "${OWNER_HANDLE:-}" ]; then
+  groups=$(curl -sS -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
+    https://slack.com/api/usergroups.list)
+  if [ "$(printf '%s' "$groups" | jq -r '.ok')" = "true" ]; then
+    group_id=$(printf '%s' "$groups" \
+      | jq -r --arg h "$OWNER_HANDLE" '.usergroups[]? | select(.handle == $h) | .id' | head -1)
+    if [ -n "$group_id" ]; then
+      mention="<!subteam^${group_id}|@${OWNER_HANDLE}> "
+    else
+      echo "::warning::No Slack user group with handle '${OWNER_HANDLE}'; sending an unlinked mention."
+      mention="@${OWNER_HANDLE} "
+    fi
+  else
+    echo "::warning::Could not list Slack user groups ($(printf '%s' "$groups" | jq -r '.error // "unknown"')); sending an unlinked mention."
+    mention="@${OWNER_HANDLE} "
+  fi
+fi
+
 text=$(printf '%s\n%s\n%s' \
-  "${TEXT_PREFIX:-}:rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
+  "${TEXT_PREFIX:-}${mention}:rotating_light: *Merge queue ${CONCLUSION}* — ${WORKFLOW_NAME}" \
   "<${REPO_URL}/pull/${PR_NUMBER}|${link_text}>${author_suffix}" \
   "<${RUN_URL}|Failed run> · <${REPO_URL}/queue/${queue_branch}|Merge queue>")
 
