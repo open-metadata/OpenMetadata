@@ -33,8 +33,15 @@ export type ChipTriggerProps = {
   overlayOpen: boolean;
   attachPressHandler: boolean;
   /**
-   * Tailwind max-width utility bounding the label, e.g. `tw:max-w-44`. Omit and
-   * the chip sizes to its content, as it always has.
+   * Tailwind max-width utility bounding **the whole pill**, e.g. `tw:max-w-44`.
+   * Omit and the chip sizes to its content, as it always has.
+   *
+   * This is not the label's budget. The class lands on the pill, which also
+   * carries 16px of horizontal padding, 2px of border, a 2px gap and a 16px
+   * chevron — 36px of chrome when the user may edit, 20px when they may not. So
+   * `tw:max-w-44` (176px) leaves the label 140px, and the button that wraps the
+   * pill measures 180px. Size this from a measured *text* width only after
+   * adding that chrome back, or the chip will clip ~36px sooner than intended.
    *
    * A chip in an auto-layout table cell contributes its intrinsic width as the
    * column's floor, so an unbounded nowrap label lets a long translation widen
@@ -55,7 +62,7 @@ export type ChipTriggerProps = {
    *     Incident Manager's primary column. Opt-in leaves status unbounded, which
    *     no measurement can invalidate.
    */
-  maxLabelWidth?: string;
+  maxChipWidth?: string;
   onStatusClick?: () => void;
 };
 
@@ -73,11 +80,11 @@ export const ChipTrigger = ({
   hasEditPermission,
   overlayOpen,
   attachPressHandler,
-  maxLabelWidth,
+  maxChipWidth,
   onStatusClick = () => {},
 }: ChipTriggerProps) => {
   const ChevronIcon = overlayOpen ? ArrowUpIcon : ArrowDownIcon;
-  const isBounded = Boolean(maxLabelWidth);
+  const isBounded = Boolean(maxChipWidth);
 
   return (
     <Button
@@ -93,9 +100,8 @@ export const ChipTrigger = ({
         : {})}>
       <span
         className={`${CHIP_PILL_CLASS} ${
-          maxLabelWidth ?? 'tw:max-w-max'
+          maxChipWidth ?? 'tw:max-w-max'
         } tw:bg-[var(--chip-bg)] tw:text-[var(--chip-color)] tw:border-[var(--chip-border)]`}
-        data-testid={`${dataTestId}-pill`}
         style={{
           backgroundColor: palette.bg,
           borderColor: palette.border,

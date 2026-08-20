@@ -29,11 +29,11 @@ const LONG_LABEL = 'Критичность инцидента отсутству
 const renderChip = ({
   chipLabel = LONG_LABEL,
   hasEditPermission = true,
-  maxLabelWidth,
+  maxChipWidth,
 }: {
   chipLabel?: string;
   hasEditPermission?: boolean;
-  maxLabelWidth?: string;
+  maxChipWidth?: string;
 } = {}) =>
   render(
     <ChipTrigger
@@ -42,7 +42,7 @@ const renderChip = ({
       chipRef={createRef<HTMLButtonElement>()}
       dataTestId="severity-chip"
       hasEditPermission={hasEditPermission}
-      maxLabelWidth={maxLabelWidth}
+      maxChipWidth={maxChipWidth}
       overlayOpen={false}
       palette={{ bg: '#fff', color: '#000', border: '#ccc' }}
     />
@@ -50,7 +50,7 @@ const renderChip = ({
 
 describe('ChipTrigger', () => {
   it('should expose the untruncated label on hover when bounded', () => {
-    renderChip({ maxLabelWidth: 'tw:max-w-44' });
+    renderChip({ maxChipWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
       'title',
@@ -59,13 +59,13 @@ describe('ChipTrigger', () => {
   });
 
   it('should keep the whole label in the accessible name', () => {
-    renderChip({ maxLabelWidth: 'tw:max-w-44' });
+    renderChip({ maxChipWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip')).toHaveTextContent(LONG_LABEL);
   });
 
   it('should expose the label for a bounded chip the user cannot edit', () => {
-    renderChip({ hasEditPermission: false, maxLabelWidth: 'tw:max-w-44' });
+    renderChip({ hasEditPermission: false, maxChipWidth: 'tw:max-w-44' });
 
     expect(screen.getByTestId('severity-chip-label')).toHaveAttribute(
       'title',

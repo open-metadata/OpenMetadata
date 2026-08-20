@@ -87,7 +87,7 @@ const InlineSeverity = ({
       chipRef={chipRef}
       dataTestId="severity-chip"
       hasEditPermission={hasEditPermission && !isLoading}
-      maxLabelWidth={SEVERITY_CHIP_MAX_WIDTH}
+      maxChipWidth={SEVERITY_CHIP_MAX_WIDTH}
       overlayOpen={showMenu}
       palette={palette}
     />
