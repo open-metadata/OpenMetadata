@@ -427,21 +427,18 @@ test.describe('Context Center Articles', () => {
         await afterAction();
       });
 
-      await test.step(
-        'Verify tag is visible in Explore right-panel summary',
-        async () => {
-          await navigateToKCEntity(page, article.displayName);
+      await test.step('Verify tag is visible in Explore right-panel summary', async () => {
+        await navigateToKCEntity(page, article.displayName);
 
-          const summaryPanel = page.locator(
-            '[data-testid="entity-summary-panel-container"]'
-          );
-          await expect(
-            summaryPanel
-              .locator('.tags-section, [class*="tags"]')
-              .getByText(tagDisplayName)
-          ).toBeVisible();
-        }
-      );
+        const summaryPanel = page.locator(
+          '[data-testid="entity-summary-panel-container"]'
+        );
+        await expect(
+          summaryPanel
+            .locator('.tags-section, [class*="tags"]')
+            .getByText(tagDisplayName)
+        ).toBeVisible();
+      });
     } finally {
       const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
         await createNewPage(browser);
