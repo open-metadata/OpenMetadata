@@ -123,6 +123,13 @@ export const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
     value,
   }));
 
+// Same shape as getSelectOptionsFromEnum, for values a resource declares at runtime
+export const getSelectOptionsFromValues = (values: string[]) =>
+  values.map((value) => ({
+    label: startCase(value),
+    value,
+  }));
+
 // Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
 // Since there is no provision for webhook subscription for users
 export const getSubscriptionTypeOptions = (destinationType: string) => {
