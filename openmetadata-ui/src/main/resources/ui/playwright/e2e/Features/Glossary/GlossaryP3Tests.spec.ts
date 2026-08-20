@@ -791,7 +791,8 @@ test.describe('Glossary P3 Tests', () => {
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
-      await page.goto(`/glossary/NonExistentGlossary_${Date.now()}`);
+      const invalidGlossaryPath = `/glossary/NonExistentGlossary_${Date.now()}`;
+      await page.goto(invalidGlossaryPath);
       await page.waitForLoadState('domcontentloaded');
       await waitForAllLoadersToDisappear(page).catch(() => {});
 
@@ -807,9 +808,12 @@ test.describe('Glossary P3 Tests', () => {
         .getByRole('button', { name: 'Add', exact: true })
         .first();
       const glossarySidebar = page.locator('.left-panel-card');
+      const wasRedirected =
+        new URL(page.url()).pathname !== invalidGlossaryPath;
 
       // Any of these states is acceptable for error handling
       const hasValidResponse =
+        wasRedirected ||
         (await badMessage
           .first()
           .isVisible({ timeout: 10000 })

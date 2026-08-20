@@ -12,14 +12,12 @@
  */
 import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
 import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -283,19 +281,13 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           },
         });
       }
-
-      await settingClick(page, GlobalSettingOptions.APPLICATIONS);
     });
 
     await test.step('Verify last execution run', async () => {
       const statusAPI = page.waitForResponse(
         '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
       );
-      await page
-        .locator(
-          '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-        )
-        .click();
+      await page.goto('/settings/apps/SearchIndexingApplication');
       const statusResponse = await statusAPI;
 
       expect(statusResponse.status()).toBe(200);
