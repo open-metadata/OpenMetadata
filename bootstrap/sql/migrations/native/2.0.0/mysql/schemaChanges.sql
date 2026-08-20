@@ -574,3 +574,16 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     updatedAt BIGINT UNSIGNED NOT NULL,
     PRIMARY KEY (userId)
 );
+
+-- The Postgres counterpart of this version adds idx_profiler_data_time_series_fqnhash_pattern, a
+-- text_pattern_ops index that lets the table hard-delete profiler purge (issue #27041) serve
+--   entityFQNHash LIKE '<table hash>.%'
+-- from an index instead of a sequential scan.
+--
+-- MySQL needs no equivalent. profiler_data_time_series.entityFQNHash is declared
+--   VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+-- since 1.1.5 — a binary collation — so InnoDB can already answer a LIKE prefix predicate with a
+-- range scan on the leading column of the existing unique index
+-- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation,
+-- timestamp). Adding a second index on the same leading column would be write overhead with no
+-- read benefit.
