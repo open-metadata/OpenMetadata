@@ -14,34 +14,39 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from './entity';
 
 /**
- * Polls the search API until the given entity appears in Elasticsearch.
+ * Polls the search API until the exact entity appears in Elasticsearch.
  * Use after creating/updating entities to wait for async ES indexing.
+ *
+ * `entityIdentity` is matched exactly against the hit id, name, or FQN. Pass
+ * `options.query` when the most selective search query differs from that exact
+ * identity (for example, a short unique token used to find a UUID-backed hit).
  */
 export const waitForSearchIndexed = async (
   apiContext: APIRequestContext,
-  entityFqn: string | undefined,
+  entityIdentity: string | undefined,
   index: string,
-  options?: { timeout?: number; intervals?: number[] }
+  options?: { timeout?: number; intervals?: number[]; query?: string }
 ) => {
   // An empty q= becomes a match-all query in the search API: hits.total>0
   // would resolve on the first poll against any non-empty index, silently
   // bypassing the very race this helper exists to close. Fail fast with a
-  // clear message so a missing FQN is debuggable at the source.
-  if (!entityFqn) {
+  // clear message so a missing identity is debuggable at the source.
+  if (!entityIdentity) {
     throw new Error(
-      `waitForSearchIndexed called with empty FQN for index "${index}"`
+      `waitForSearchIndexed called with empty identity for index "${index}"`
     );
   }
 
   const timeout = options?.timeout ?? 30_000;
   const intervals = options?.intervals ?? [500, 1_000, 2_000, 5_000];
+  const query = options?.query ?? entityIdentity;
   const start = Date.now();
   let intervalIdx = 0;
 
   while (Date.now() - start < timeout) {
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
-        entityFqn
+        query
       )}&index=${index}&from=0&size=25`
     );
 
@@ -62,10 +67,10 @@ export const waitForSearchIndexed = async (
       if (
         hits.some(
           (hit) =>
-            hit._id === entityFqn ||
-            hit._source?.id === entityFqn ||
-            hit._source?.name === entityFqn ||
-            hit._source?.fullyQualifiedName === entityFqn
+            hit._id === entityIdentity ||
+            hit._source?.id === entityIdentity ||
+            hit._source?.name === entityIdentity ||
+            hit._source?.fullyQualifiedName === entityIdentity
         )
       ) {
         return;
@@ -78,7 +83,7 @@ export const waitForSearchIndexed = async (
   }
 
   throw new Error(
-    `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
+    `Entity "${entityIdentity}" not found in index "${index}" after ${timeout}ms`
   );
 };
 
