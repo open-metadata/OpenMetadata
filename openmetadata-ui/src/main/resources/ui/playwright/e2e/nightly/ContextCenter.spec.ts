@@ -21,7 +21,6 @@ import {
   expectBulkIdsRequest,
   expectCapturedDownload,
   expectSelectedCount,
-  getDocumentRowByName,
   insertAudioViaUpload,
   insertFileViaUpload,
   insertFileWithUrl,
@@ -33,8 +32,9 @@ import {
   navigateToArticles,
   navigateToDocuments,
   responseMatchesRequestPath,
+  searchAndGetDocumentRow,
   selectDocumentByName,
-  uploadDocument,
+  uploadDocument
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getEditor, waitForAutoSave } from '../../utils/KnowledgeCenter';
@@ -94,7 +94,7 @@ test.describe('Context Center - Download', () => {
 
     await navigateToDocuments(page);
 
-    const targetRow = getDocumentRowByName(page, fileName);
+    const targetRow = await searchAndGetDocumentRow(page, fileName);
     await expect(targetRow).toBeVisible();
 
     const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
