@@ -34,6 +34,8 @@ from metadata.generated.schema.entity.services.connections.testConnectionDefinit
     TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    SkipReason,
+    Status,
     StatusType,
     TestConnectionResult,
     TestConnectionStepResult,
@@ -75,9 +77,14 @@ class TestConnectionStep(BaseModel):
     ```
 
     so that we can execute `step_1.function()`
+
+    `function` is optional: the server-side test connection definition can name
+    steps this connector has no implementation for (e.g. a server newer than the
+    installed ingestion package). Those steps are reported as skipped instead of
+    breaking the whole test connection.
     """
 
-    function: Callable
+    function: Optional[Callable] = None  # noqa: UP045
     name: str
     error_message: Optional[str]  # noqa: UP045
     description: Optional[str]  # noqa: UP045
@@ -89,6 +96,63 @@ class TestConnectionIngestionResult(BaseModel):
     failed: List[str] = []  # noqa: UP006
     success: List[str] = []  # noqa: UP006
     warning: List[str] = []  # noqa: UP006
+
+
+def _skipped_step_result(step: TestConnectionStep) -> TestConnectionStepResult:
+    """Result of a definition step this connector has no implementation for."""
+    return TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
+        name=step.name,
+        mandatory=step.mandatory,
+        passed=False,
+        status=Status.Skipped,
+        skipReason=SkipReason.NotImplemented,
+    )
+
+
+def _is_blocking(step_result: TestConnectionStepResult) -> bool:
+    """Does this step result fail the whole test connection?
+
+    A step that did not run (skipped) tells us nothing about the source, so it only
+    blocks when the definition marks it mandatory. Any other non-passing step keeps
+    the legacy behavior of failing the test.
+    """
+    if step_result.passed:
+        return False
+    if step_result.skipReason is not None:
+        return step_result.mandatory
+    return True
+
+
+def _execute_step(step: TestConnectionStep) -> tuple[TestConnectionStepResult, bool]:
+    """Run a single step, returning its result and whether the run must stop here."""
+    if step.function is None:
+        logger.warning(f"No implementation for the test connection step {step.name}. Skipping it")
+        return _skipped_step_result(step), False
+
+    try:
+        logger.info(f"Running {step.name}...")
+        step.function()
+        return (
+            TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
+                name=step.name,
+                mandatory=step.mandatory,
+                passed=True,
+            ),
+            False,
+        )
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(f"{step.name}-{err}")
+        return (
+            TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
+                name=step.name,
+                mandatory=step.mandatory,
+                passed=False,
+                message=step.error_message,
+                errorLog=str(err),
+            ),
+            step.short_circuit,
+        )
 
 
 def _test_connection_steps(
@@ -124,42 +188,23 @@ def _test_connection_steps_automation_workflow(
     )
     try:
         for step in steps:
-            try:
-                logger.info(f"Running {step.name}...")
-                step.function()
-                test_connection_result.steps.append(
-                    TestConnectionStepResult(
-                        name=step.name,
-                        mandatory=step.mandatory,
-                        passed=True,
-                    )
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(f"{step.name}-{err}")
-                test_connection_result.steps.append(
-                    TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
-                        name=step.name,
-                        mandatory=step.mandatory,
-                        passed=False,
-                        message=step.error_message,
-                        errorLog=str(err),
-                    )
-                )
-                if step.short_circuit:
-                    # break the workflow if the step is a short circuit step
-                    break
+            step_result, stop = _execute_step(step)
+            test_connection_result.steps.append(step_result)
 
             test_connection_result.lastUpdatedAt = Timestamp(int(datetime.now().timestamp() * 1000))
             metadata.patch_automation_workflow_response(
                 automation_workflow, test_connection_result, WorkflowStatus.Running
             )
 
+            if stop:
+                # break the workflow if the step is a short circuit step
+                break
+
         test_connection_result.lastUpdatedAt = Timestamp(int(datetime.now().timestamp() * 1000))
 
         test_connection_result.status = (
             StatusType.Failed
-            if any(step for step in test_connection_result.steps if not step.passed)
+            if any(_is_blocking(step) for step in test_connection_result.steps)
             else StatusType.Successful
         )
 
@@ -195,31 +240,11 @@ def _test_connection_steps_during_ingestion(
         steps=[],
     )
     for step in steps:
-        try:
-            logger.info(f"Running {step.name}...")
-            step.function()
-            test_connection_result.steps.append(
-                TestConnectionStepResult(
-                    name=step.name,
-                    mandatory=step.mandatory,
-                    passed=True,
-                )
-            )
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(f"{step.name}-{err}")
-            test_connection_result.steps.append(
-                TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
-                    name=step.name,
-                    mandatory=step.mandatory,
-                    passed=False,
-                    message=step.error_message,
-                    errorLog=str(err),
-                )
-            )
-            if step.short_circuit:
-                # break the workflow if the step is a short circuit step
-                break
+        step_result, stop = _execute_step(step)
+        test_connection_result.steps.append(step_result)
+        if stop:
+            # break the workflow if the step is a short circuit step
+            break
 
     logger.info("Test connection results:")
     logger.info(test_connection_result)
@@ -230,10 +255,18 @@ def _test_connection_steps_during_ingestion(
 def raise_test_connection_exception(result: TestConnectionResult) -> None:
     """Raise if needed an exception for the test connection"""
     for step in result.steps:
-        if not step.passed and step.mandatory:
-            raise SourceConnectionException(f"Failed to run the test connection step: {step.name}")
-        if not step.passed:
-            logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")
+        if step.passed:
+            continue
+        if step.skipReason == SkipReason.NotImplemented:
+            reason = (
+                f"The test connection step {step.name} has no implementation in this ingestion"
+                " version. Upgrade the ingestion package to match the OpenMetadata server version."
+            )
+        else:
+            reason = f"Failed to run the test connection step: {step.name}"
+        if step.mandatory:
+            raise SourceConnectionException(reason)
+        logger.warning(f"You might be missing metadata in: {step.name} due to {step.message or reason}")
 
 
 def test_connection_steps(
@@ -265,12 +298,15 @@ def test_connection_steps(
             " If this error persists, recreate the JWT token and redeploy the Workflow."
         )
 
+    # A step the connector does not implement is carried with function=None so it
+    # is reported as skipped: the definition comes from the server, which can name
+    # steps the installed ingestion package knows nothing about.
     steps = [
         TestConnectionStep(
             name=step.name,
             description=step.description,
             mandatory=step.mandatory,
-            function=test_fn[step.name],
+            function=test_fn.get(step.name),
             error_message=step.errorMessage,
             short_circuit=step.shortCircuit,
         )
