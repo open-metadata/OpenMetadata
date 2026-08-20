@@ -2678,6 +2678,12 @@ public class SearchRepository {
                 assetRef.getType(),
                 assetRef.getFullyQualifiedName(),
                 e);
+            SearchIndexRetryQueue.enqueue(
+                entityId,
+                assetRef.getFullyQualifiedName(),
+                assetRef.getType(),
+                SearchIndexRetryQueue.failureReason(
+                    "propagateTagRemovalToChildren", e));
           }
         },
         "propagateTagRemovalToChildren",
@@ -2723,26 +2729,40 @@ public class SearchRepository {
     String parentField = entityType + ".id";
     List<String> parentIds =
         assetRefs.stream().map(ref -> ref.getId().toString()).toList();
-    deferIfFlushScopeActive(
-        () -> {
-          try {
-            searchClient.updateChildren(
-                childAliases,
-                parentField,
-                parentIds,
-                new ImmutablePair<>(script, params));
-          } catch (Exception e) {
-            LOG.error(
-                "Failed to propagate tag removal [{}] from {} to children",
-                tagFQN,
-                entityType,
-                e);
-          }
-        },
-        "propagateTagRemovalToChildren",
-        null,
-        null,
-        entityType);
+    // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count
+    for (int start = 0; start < parentIds.size(); start += MAX_PARENT_IDS_PER_TERMS_QUERY) {
+      List<String> chunk =
+          List.copyOf(
+              parentIds.subList(
+                  start,
+                  Math.min(start + MAX_PARENT_IDS_PER_TERMS_QUERY, parentIds.size())));
+      deferIfFlushScopeActive(
+          () -> {
+            try {
+              searchClient.updateChildren(
+                  childAliases,
+                  parentField,
+                  chunk,
+                  new ImmutablePair<>(script, params));
+            } catch (Exception e) {
+              LOG.error(
+                  "Failed to propagate tag removal [{}] from {} to children",
+                  tagFQN,
+                  entityType,
+                  e);
+              SearchIndexRetryQueue.enqueue(
+                  null,
+                  null,
+                  entityType,
+                  SearchIndexRetryQueue.failureReason(
+                      "propagateTagRemovalToChildren", e));
+            }
+          },
+          "propagateTagRemovalToChildren",
+          null,
+          null,
+          entityType);
+    }
   }
 
   private void propagateToDomainChildren(
@@ -3351,7 +3371,7 @@ public class SearchRepository {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
               if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)
-                  && ctx._source.tags[i].labelType == 'DERIVED') {
+                  && ctx._source.tags[i].labelType == 'Derived') {
                 ctx._source.tags.remove(i);
                 break;
               }

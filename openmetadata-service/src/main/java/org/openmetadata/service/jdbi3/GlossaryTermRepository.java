@@ -1483,9 +1483,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
-      // Propagate tag removal to child entities (columns, test suites, test cases)
+      // Propagate tag removal to child entities using the parent table reference
+      // (columnRef has no childAliases, so propagation must use the table reference)
       searchRepository.propagateTagRemovalToChildren(
-          columnRef, term.getFullyQualifiedName());
+          table.getEntityReference(), term.getFullyQualifiedName());
     }
   }
 
