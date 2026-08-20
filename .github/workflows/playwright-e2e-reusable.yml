@@ -600,8 +600,17 @@ jobs:
       # planning for the whole queue entry). An explicit cache with
       # restore-keys falls back to the most recent lockfile's cache, so a
       # lockfile change only fetches the delta.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -901,7 +910,7 @@ jobs:
       # plan-playwright job's yarn cache step.
       - name: Restore yarn package cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -923,9 +932,12 @@ jobs:
             sleep $((attempt * 15))
           done
 
+      # Restore-only — same churn rationale as the yarn cache above. The
+      # main-scoped copy is saved by populate-playwright-apt-cache.yml; the
+      # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1005,12 +1017,28 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
+            # `timeout` only signals the direct child (npx/node) — the
+            # underlying apt-get survives the SIGTERM and keeps holding
+            # /var/lib/apt/lists/lock, so a retry without reaping dies
+            # instantly on "Could not get lock ... held by process N"
+            # (run 32233411840). The same stale lock can be left behind by
+            # a timed-out cache-apt-pkgs action earlier in this job, so
+            # reap BEFORE the first attempt too.
+            reap_apt() {
+              sudo killall -9 apt apt-get dpkg 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock \
+                /var/cache/apt/archives/lock \
+                /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend
+              sudo dpkg --configure -a 2>/dev/null || true
+            }
             install_deps() {
               timeout --signal=TERM --kill-after=30s 8m \
                 npx playwright install-deps chromium
             }
+            reap_apt
             if ! install_deps; then
-              echo "::warning::install-deps chromium failed on first attempt; sleeping 15s and retrying once before failing the workflow" >&2
+              echo "::warning::install-deps chromium failed on first attempt; reaping orphaned apt processes and retrying once before failing the workflow" >&2
+              reap_apt
               sleep 15
               install_deps
             fi
@@ -1260,8 +1288,17 @@ jobs:
 
       # restore-keys fallback + retry — see the rationale on the
       # plan-playwright job's yarn cache step.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1283,9 +1320,10 @@ jobs:
             sleep $((attempt * 15))
           done
 
+      # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -1348,8 +1386,27 @@ jobs:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
         run: |
           if [[ "$APT_DEPS_CACHE_HIT" != "true" ]]; then
-            timeout --signal=TERM --kill-after=30s 8m \
-              npx playwright install-deps chromium
+            # See the reap_apt rationale on the fixture-builder install step:
+            # `timeout` orphans the underlying apt-get, whose stale lock
+            # otherwise kills any retry (run 32233411840).
+            reap_apt() {
+              sudo killall -9 apt apt-get dpkg 2>/dev/null || true
+              sudo rm -f /var/lib/apt/lists/lock \
+                /var/cache/apt/archives/lock \
+                /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend
+              sudo dpkg --configure -a 2>/dev/null || true
+            }
+            install_deps() {
+              timeout --signal=TERM --kill-after=30s 8m \
+                npx playwright install-deps chromium
+            }
+            reap_apt
+            if ! install_deps; then
+              echo "::warning::install-deps chromium failed on first attempt; reaping orphaned apt processes and retrying once before failing the shard" >&2
+              reap_apt
+              sleep 15
+              install_deps
+            fi
           else
             echo "apt deps cache hit — skipping install-deps (files already restored; apt would re-download from the mirror)"
           fi
@@ -1705,8 +1762,17 @@ jobs:
 
       # restore-keys fallback + retry — see the rationale on the
       # plan-playwright job's yarn cache step.
+      # RESTORE-ONLY on purpose: this workflow runs on ephemeral refs
+      # (merge-queue branches, PR merge refs) whose exact cache key can
+      # never be re-used by another run — saving here produced a ~700 MB
+      # duplicate per job, blew straight through the repo's 10 GB cache
+      # budget (17.5 GB observed, 49/50 caches on ephemeral refs), and
+      # LRU-evicted every main-scoped cache within ~30 minutes. That
+      # eviction is what kept turning cache "hits" into cold registry
+      # fetches. The main-scoped copy is saved exclusively by
+      # populate-playwright-apt-cache.yml on main.
       - name: Restore yarn package cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}

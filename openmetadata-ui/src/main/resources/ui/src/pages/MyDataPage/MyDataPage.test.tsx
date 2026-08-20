@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageType } from '../../generated/system/ui/page';
@@ -213,8 +214,20 @@ jest.mock(
   })
 );
 
+let queryClient: QueryClient;
+
+const renderMyDataPage = () =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <MyDataPage />
+    </QueryClientProvider>
+  );
+
 describe('MyDataPage component', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     localStorage.setItem('loggedInUsers', mockUserData.name);
     mockSelectedPersona = {
       fullyQualifiedName: mockPersonaName,
@@ -227,7 +240,7 @@ describe('MyDataPage component', () => {
     // Simulate no user is logged in condition
     localStorage.clear();
 
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(await screen.findByText('WelcomeScreen')).toBeInTheDocument();
   });
@@ -236,7 +249,7 @@ describe('MyDataPage component', () => {
     // Simulate no user is logged in condition
     localStorage.clear();
 
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     const welcomeScreen = await screen.findByText('WelcomeScreen');
 
@@ -249,7 +262,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should display skeleton while resolving the landing page layout', async () => {
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('react-grid-layout')).not.toBeInTheDocument();
@@ -260,7 +273,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should render CustomiseLandingPageHeader component', async () => {
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(
       screen.getByTestId('customise-landing-page-header')
@@ -269,7 +282,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(
       await screen.findByText('KnowledgePanel.ActivityFeed')
@@ -295,7 +308,7 @@ describe('MyDataPage component', () => {
         data: [],
       })
     );
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(
       await screen.findByText('KnowledgePanel.ActivityFeed')
@@ -318,7 +331,7 @@ describe('MyDataPage component', () => {
     (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.reject(new Error('API failure'))
     );
-    render(<MyDataPage />);
+    renderMyDataPage();
 
     expect(
       await screen.findByText('KnowledgePanel.ActivityFeed')
@@ -344,7 +357,7 @@ describe('MyDataPage component', () => {
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
     mockSelectedPersona = null;
     await act(async () => {
-      render(<MyDataPage />);
+      renderMyDataPage();
     });
 
     await screen.findByTestId('page-layout-v1');
@@ -367,7 +380,7 @@ describe('MyDataPage component', () => {
   describe('Component Structure', () => {
     it('should render the correct page structure with grid wrapper', async () => {
       await act(async () => {
-        render(<MyDataPage />);
+        renderMyDataPage();
       });
 
       expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
@@ -380,7 +393,7 @@ describe('MyDataPage component', () => {
 
     it('should render CustomiseLandingPageHeader before the grid layout', async () => {
       await act(async () => {
-        render(<MyDataPage />);
+        renderMyDataPage();
       });
 
       const pageLayout = screen.getByTestId('page-layout-v1');
@@ -396,7 +409,7 @@ describe('MyDataPage component', () => {
       // Simulate no user is logged in condition
       localStorage.clear();
       await act(async () => {
-        render(<MyDataPage />);
+        renderMyDataPage();
       });
 
       expect(screen.getByText('WelcomeScreen')).toBeInTheDocument();
@@ -407,7 +420,7 @@ describe('MyDataPage component', () => {
 
     it('should render the main content structure when not loading or showing welcome screen', async () => {
       await act(async () => {
-        render(<MyDataPage />);
+        renderMyDataPage();
       });
 
       // Verify main content elements are present
