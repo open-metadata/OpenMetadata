@@ -107,5 +107,5 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 
-In the case of Glue, we won't have a Database as such instead we use the <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns" target="_blank">Glue Catalog ID</a> as the database name. If you'd like to see your data in a database named something other than Catalog ID, you can specify the name in this field.
+In the case of Glue, the OpenMetadata Database maps to an AWS Glue Data Catalog. Enter the <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns" target="_blank">Glue Catalog ID</a>—not the name of a Glue database—in this field. For the default catalog, the Catalog ID is usually the AWS account ID. Leave this field blank to discover the available Glue Catalog IDs. Glue database names appear as schemas in OpenMetadata.
 $$
