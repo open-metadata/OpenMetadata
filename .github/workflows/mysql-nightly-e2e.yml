@@ -89,14 +89,15 @@ jobs:
               --project=DataAssetRulesDisabled
 
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
-            echo "🔹 Running IntakeFormCustomPropertyFields on shard 2"
+            echo "🔹 Running IntakeForm + IntakeFormCustomPropertyFields on shard 2"
 
-            # IntakeFormCustomPropertyFields depends on the chromium project and
-            # is fullyParallel: false. Co-listing it with chromium under --shard
-            # collapses distribution onto shard 1/N and leaves the other shards
-            # empty, so it must run on its own matrix slot.
+            # --project=IntakeForm pulls IntakeFormCustomPropertyFields in as its
+            # dep, so a single invocation runs both specs on this isolated shard.
+            # Neither project declares a chromium dep (see playwright.config.ts) —
+            # they must not run concurrently with the chromium project, but on a
+            # dedicated matrix shard there is nothing else running.
             npx playwright test \
-              --project=IntakeFormCustomPropertyFields
+              --project=IntakeForm
 
           else
             # Shards 3-8 handle chromium tests (6 shards total)
