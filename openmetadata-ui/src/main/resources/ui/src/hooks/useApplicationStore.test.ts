@@ -177,4 +177,43 @@ describe('useApplicationStore.initializeAuthState (Bug 1 — cold-load refresh)'
     expect(useApplicationStore.getState().isAuthenticated).toBe(false);
     expect(useApplicationStore.getState().isAuthenticating).toBe(false);
   });
+
+  // Sign-in "blink" fix: on OAuth callback routes, the authenticator's own
+  // redirect handler (OIDC <Callback>, MSAL handleRedirectPromise, SAML
+  // callback) hasn't stored the token yet when AppRoot's mount effect fires
+  // initializeAuthState. Flipping isAuthenticating=false in that window
+  // reveals /signin for a frame before handleSuccessfulLogin flips
+  // isAuthenticated. Bail early on callback routes and let the authenticator
+  // drive the state.
+  describe('OAuth-callback race (sign-in blink)', () => {
+    const setPath = (path: string) => {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...window.location, pathname: path },
+      });
+    };
+
+    it.each([['/callback'], ['/auth/callback'], ['/silent-callback']])(
+      'keeps isAuthenticating true and touches nothing on %s',
+      async (path) => {
+        setPath(path);
+        (getOidcToken as jest.Mock).mockResolvedValue('');
+        const ensureFreshToken = jest.spyOn(
+          authCoordinator,
+          'ensureFreshToken'
+        );
+
+        await act(async () => {
+          await useApplicationStore.getState().initializeAuthState();
+        });
+
+        expect(getOidcToken).not.toHaveBeenCalled();
+        expect(ensureFreshToken).not.toHaveBeenCalled();
+        // Initial store state must be preserved so the Loader keeps
+        // covering /signin until the authenticator resolves the callback.
+        expect(useApplicationStore.getState().isAuthenticating).toBe(true);
+        expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+      }
+    );
+  });
 });

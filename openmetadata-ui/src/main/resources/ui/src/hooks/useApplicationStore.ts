@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import { APP_ROUTER_ROUTES } from '../constants/router.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -75,6 +76,23 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
   initializeAuthState: async () => {
     try {
+      // OAuth-callback races: on a fresh redirect back into the app the
+      // authenticator's own handler (OidcAuthenticator's <Callback>,
+      // MsalAuthenticator's handleRedirectPromise, GenericAuthenticator's
+      // SAML callback) hasn't stored the token yet when AppRoot fires
+      // initializeAuthState. Flipping isAuthenticating=false here would
+      // reveal /signin for a frame until handleSuccessfulLogin flips
+      // isAuthenticated back true — the "sign-in blink". Bail early on
+      // callback routes and let the authenticator drive the state.
+      const path = window.location.pathname;
+      if (
+        path === APP_ROUTER_ROUTES.CALLBACK ||
+        path === APP_ROUTER_ROUTES.AUTH_CALLBACK ||
+        path === APP_ROUTER_ROUTES.SILENT_CALLBACK
+      ) {
+        return;
+      }
+
       let token = '';
 
       if ('serviceWorker' in navigator && 'indexedDB' in window) {
