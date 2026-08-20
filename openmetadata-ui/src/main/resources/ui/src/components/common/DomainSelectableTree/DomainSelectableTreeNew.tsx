@@ -476,9 +476,14 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
-        } catch {
+        } catch (error) {
           // Keep the failure inside the dropdown: the list renders an inline
-          // error with a retry, so the user can act on it where they are.
+          // error with a retry, so the user can act on it where they are. Still
+          // log it - the inline state is deliberately identical for a malformed
+          // query and a 5xx, so this is the only trace a real backend failure
+          // leaves for the console and any error reporter's breadcrumbs.
+          // eslint-disable-next-line no-console
+          console.error('Error occurred while searching domains:', error);
           setHasSearchError(true);
           setTreeData([]);
         } finally {
