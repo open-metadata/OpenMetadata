@@ -81,7 +81,7 @@ export const getOperationPermissions = (
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
-        [curr.operation as Operation]: curr.access === Access.Allow,
+        [curr.operation as Operation]: curr.access === Access.Allow || curr.access === Access.ConditionalAllow,
       };
     },
     {} as OperationPermission
