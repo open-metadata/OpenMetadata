@@ -17,9 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -68,6 +70,7 @@ import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -75,6 +78,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Regression tests for issue #27040 — a <b>soft</b> delete of an IngestionPipeline, DataContract or
@@ -94,11 +99,39 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @ExtendWith(TestNamespaceExtension.class)
 public class SoftDeleteRetentionIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SoftDeleteRetentionIT.class);
+
   private static final String ENTITY_EXTENSION_TIME_SERIES = "entity_extension_time_series";
   private static final String APPS_EXTENSION_TIME_SERIES = "apps_extension_time_series";
   private static final String TEST_APP_CLASS = "org.openmetadata.service.resources.apps.TestApp";
   private static final String INGESTION_PIPELINES_PATH = "/v1/services/ingestionPipelines/";
   private static final String APPS_PATH = "/v1/apps/";
+  private static final String MARKETPLACE_PATH = "/v1/apps/marketplace";
+  private static final String HARD_DELETE_PARAM = "hardDelete";
+  private static final Map<String, String> HARD_DELETE = Map.of(HARD_DELETE_PARAM, "true");
+  private static final Map<String, String> RECURSIVE_HARD_DELETE =
+      Map.of(HARD_DELETE_PARAM, "true", "recursive", "true");
+  private static final int NOT_FOUND = 404;
+
+  /**
+   * Teardown for everything a test created, newest first. Registered at creation time rather than
+   * run at the end of each test so that an assertion failing mid-test still cleans up: these suites
+   * share one cluster and {@code NamespaceCleanup} has no mapping for ingestionPipeline, database or
+   * application, so a leaked fixture would sit there for every later test to trip over.
+   */
+  private final List<Runnable> fixtureCleanups = new ArrayList<>();
+
+  @AfterEach
+  void removeFixtures() {
+    for (Runnable cleanup : fixtureCleanups.reversed()) {
+      try {
+        cleanup.run();
+      } catch (OpenMetadataException alreadyGone) {
+        LOG.debug("Fixture already removed by the test itself: {}", alreadyGone.getMessage());
+      }
+    }
+    fixtureCleanups.clear();
+  }
 
   // ===================================================================
   // IngestionPipeline — entity_extension_time_series / pipelineStatus
@@ -122,7 +155,6 @@ public class SoftDeleteRetentionIT {
 
     PipelineStatus restored = getPipelineStatus(pipeline, runId);
     assertEquals(runId, restored.getRunId(), "restored pipeline must still expose its run history");
-    hardDeletePipeline(pipeline);
   }
 
   @Test
@@ -163,7 +195,6 @@ public class SoftDeleteRetentionIT {
     DataContractResult latest =
         SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
     assertNotNull(latest, "restored contract must still expose its validation history");
-    hardDeleteContract(contract);
   }
 
   @Test
@@ -207,7 +238,6 @@ public class SoftDeleteRetentionIT {
         testSuiteId,
         restored.getTestSuite().getId(),
         "restored contract must reference the very same test suite");
-    hardDeleteContract(contract);
   }
 
   @Test
@@ -217,10 +247,15 @@ public class SoftDeleteRetentionIT {
 
     hardDeleteContract(contract);
 
-    assertThrows(
-        OpenMetadataException.class,
-        () -> getTestSuiteIncludeDeleted(testSuiteId),
-        "hard delete must still take the contract's logical test suite with it");
+    ApiException notFound =
+        assertThrows(
+            ApiException.class,
+            () -> getTestSuiteIncludeDeleted(testSuiteId),
+            "hard delete must still take the contract's logical test suite with it");
+    assertEquals(
+        NOT_FOUND,
+        notFound.getStatusCode(),
+        "the suite must be gone, not merely unreadable — got: " + notFound.getMessage());
   }
 
   // ===================================================================
@@ -241,7 +276,6 @@ public class SoftDeleteRetentionIT {
 
     AppRunRecord latest = getLatestAppRun(app);
     assertNotNull(latest, "restored app must still expose its run history");
-    deleteApp(app, true);
   }
 
   @Test
@@ -304,7 +338,9 @@ public class SoftDeleteRetentionIT {
                 new SourceConfig()
                     .withConfig(new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
             .withAirflowConfig(new AirflowConfig());
-    return SdkClients.adminClient().ingestionPipelines().create(request);
+    IngestionPipeline pipeline = SdkClients.adminClient().ingestionPipelines().create(request);
+    fixtureCleanups.add(() -> hardDeletePipeline(pipeline));
+    return pipeline;
   }
 
   private String addPipelineStatus(IngestionPipeline pipeline) {
@@ -338,9 +374,7 @@ public class SoftDeleteRetentionIT {
   }
 
   private void hardDeletePipeline(IngestionPipeline pipeline) {
-    HashMap<String, String> params = new HashMap<>();
-    params.put("hardDelete", "true");
-    SdkClients.adminClient().ingestionPipelines().delete(pipeline.getId().toString(), params);
+    SdkClients.adminClient().ingestionPipelines().delete(pipeline.getId().toString(), HARD_DELETE);
   }
 
   // ===================================================================
@@ -402,9 +436,7 @@ public class SoftDeleteRetentionIT {
   }
 
   private void hardDeleteContract(DataContract contract) {
-    HashMap<String, String> params = new HashMap<>();
-    params.put("hardDelete", "true");
-    SdkClients.adminClient().dataContracts().delete(contract.getId().toString(), params);
+    SdkClients.adminClient().dataContracts().delete(contract.getId().toString(), HARD_DELETE);
   }
 
   private TestSuite getTestSuiteIncludeDeleted(UUID testSuiteId) {
@@ -427,6 +459,9 @@ public class SoftDeleteRetentionIT {
                 new CreateDatabase()
                     .withName(prefix + "Db_" + shortId)
                     .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    // The database cascade takes the schema, the table and the table's data contract with it.
+    fixtureCleanups.add(
+        () -> client.databases().delete(database.getId().toString(), RECURSIVE_HARD_DELETE));
     DatabaseSchema schema =
         client
             .databaseSchemas()
@@ -464,7 +499,7 @@ public class SoftDeleteRetentionIT {
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.Scheduled)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-            .withAppConfiguration(new HashMap<>())
+            .withAppConfiguration(Map.of())
             .withPermission(NativeAppPermission.All);
 
     AppMarketPlaceDefinition definition =
@@ -472,18 +507,22 @@ public class SoftDeleteRetentionIT {
             .getHttpClient()
             .execute(
                 HttpMethod.POST,
-                "/v1/apps/marketplace",
+                MARKETPLACE_PATH,
                 definitionRequest,
                 AppMarketPlaceDefinition.class);
+    fixtureCleanups.add(() -> hardDelete(MARKETPLACE_PATH + "/" + definition.getId()));
 
     CreateApp createApp =
         new CreateApp()
             .withName(definition.getName())
             .withAppConfiguration(definition.getAppConfiguration())
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
-    return SdkClients.adminClient()
-        .getHttpClient()
-        .execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+    App app =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+    fixtureCleanups.add(() -> deleteApp(app, true));
+    return app;
   }
 
   private void addAppRunRecord(App app) {
@@ -505,7 +544,17 @@ public class SoftDeleteRetentionIT {
         .getHttpClient()
         .executeForString(
             HttpMethod.DELETE,
-            APPS_PATH + app.getId() + "?hardDelete=" + hardDelete,
+            APPS_PATH + app.getId() + "?" + HARD_DELETE_PARAM + "=" + hardDelete,
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private void hardDelete(String path) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            path + "?" + HARD_DELETE_PARAM + "=true",
             null,
             RequestOptions.builder().build());
   }

@@ -736,9 +736,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
    * to redeploy, so tearing the runner down there left a restored pipeline with no backing DAG —
    * and, with {@code allowUnavailableRunner=false}, failed the whole soft delete outright whenever
-   * the runner happened to be down. Stays in {@code postDelete} rather than moving to
-   * {@link #entitySpecificCleanup} because it is a remote call that must not run inside the
-   * {@code cleanup()} transaction, and because {@code forceDelete} threads
+   * the runner happened to be down. The accepted trade-off is that nothing pauses the DAG either,
+   * so a soft-deleted pipeline keeps running on schedule and recording statuses until it is
+   * restored or hard-deleted; pausing it would need a restore-time redeploy hook that does not
+   * exist yet. Stays in {@code postDelete} rather than moving to {@link #entitySpecificCleanup}
+   * because it is a blocking remote call that must not run inside the real transaction
+   * {@code cleanup()} opens, and because {@code forceDelete} threads
    * {@code allowUnavailableRunner} through here and reads back the skip flag.
    */
   private boolean postDelete(

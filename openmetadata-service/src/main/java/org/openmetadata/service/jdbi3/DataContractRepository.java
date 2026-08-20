@@ -258,7 +258,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    */
   @Override
   protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
-    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)));
+    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)), updatedBy);
   }
 
   private TestSuite findContractTestSuite(DataContract dataContract) {
@@ -266,12 +266,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
   }
 
-  /** No-op when the contract never owned a suite — it must never be created on a delete path. */
-  private void deleteContractTestSuite(TestSuite testSuite) {
+  /**
+   * No-op when the contract never owned a suite — it must never be created on a delete path.
+   * {@code deletedBy} is the operator the delete came in as, so the suite's audit trail credits
+   * them rather than a hard-coded system user.
+   */
+  private void deleteContractTestSuite(TestSuite testSuite, String deletedBy) {
     if (testSuite != null) {
       TestSuiteRepository testSuiteRepository =
           (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
+      testSuiteRepository.deleteLogicalTestSuite(deletedBy, testSuite, true);
       testSuiteRepository.deleteFromSearch(testSuite, true);
     }
   }
@@ -898,7 +902,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
-        deleteContractTestSuite(findContractTestSuite(dataContract));
+        deleteContractTestSuite(findContractTestSuite(dataContract), dataContract.getUpdatedBy());
         dataContract.setTestSuite(null);
         return null;
       }
