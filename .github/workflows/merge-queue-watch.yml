@@ -130,7 +130,7 @@ jobs:
         env:
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
           # ID rather than #name so a channel rename cannot break this.
-          SLACK_CHANNEL: ${{ vars.MERGE_QUEUE_SLACK_CHANNEL || 'C0B6Q6KDMJN' }}
+          SLACK_CHANNEL: ${{ vars.MERGE_QUEUE_SLACK_CHANNEL || 'C0AC5T013V1' }}
           WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
