@@ -14,6 +14,7 @@
 import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   redirectToExplorePage,
@@ -32,19 +33,16 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const domainA = new Domain();
 const domainB = new Domain();
 const persona = new PersonaClass();
+const personaUser = new UserClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
 
   await domainA.create(apiContext);
   await domainB.create(apiContext);
-
-  const adminResponse = await apiContext.get(
-    '/api/v1/users/name/admin?fields=id'
-  );
-  const adminData = await adminResponse.json();
-
-  await persona.create(apiContext, [adminData.id]);
+  await personaUser.create(apiContext);
+  await personaUser.setAdminRole(apiContext);
+  await persona.create(apiContext, [personaUser.responseData.id]);
   await afterAction();
 });
 
@@ -53,10 +51,17 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await domainA.delete(apiContext);
   await domainB.delete(apiContext);
   await persona.delete(apiContext);
+  await personaUser.delete(apiContext);
   await afterAction();
 });
 
 test.describe.serial('Domain Widget Filter', () => {
+  test.beforeEach(async ({ page }) => {
+    // The shared admin's default persona is mutated by several parallel widget
+    // specs. A dedicated admin user keeps this serial pair on its own layout.
+    await personaUser.login(page);
+  });
+
   test('Setup Domains widget on landing page', async ({ page }) => {
     test.slow();
     await redirectToHomePage(page);

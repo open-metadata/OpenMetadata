@@ -478,8 +478,14 @@ test.describe('Search Settings', () => {
         // Always choose a value that differs from the current setting. A prior
         // interrupted run may already have persisted 5, in which case the Save
         // button correctly remains disabled and a hard-coded value deadlocks.
-        const changedNgramBoost = initialNgramBoost === 5 ? 6 : 5;
+        // A one-point delta can map to the same physical slider pixel and leave
+        // Save disabled. Move by a material amount while staying in range.
+        const changedNgramBoost =
+          initialNgramBoost <= 50
+            ? Math.min(100, initialNgramBoost + 25)
+            : Math.max(0, initialNgramBoost - 25);
         await setSliderValue(page, 'field-weight-slider', changedNgramBoost);
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>

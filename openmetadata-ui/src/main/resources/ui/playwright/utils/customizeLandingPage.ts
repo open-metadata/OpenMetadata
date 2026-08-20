@@ -272,9 +272,11 @@ export const waitForLandingPageWidget = async (
 
   await revealLandingPageWidget(page, widgetKey);
 
-  await expect(widget).toBeVisible();
+  await expect(widget).toBeVisible({ timeout: 60_000 });
 
-  await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
+  await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden({
+    timeout: 60_000,
+  });
 
   return widget;
 };

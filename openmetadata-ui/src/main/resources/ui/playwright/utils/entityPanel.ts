@@ -95,10 +95,23 @@ export const openEntitySummaryPanel = async ({
   dataAssetTypeLeftPanelTestId?: string;
 }) => {
   const runSearch = async () => {
+    const entryControl =
+      endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]
+        ? page.getByTestId('global-search-selector')
+        : page.getByTestId('searchBox');
+    const exploreIsReady = await entryControl
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    // A slow route transition can leave the Explore shell unmounted. Return a
+    // retryable result instead of spending the page's full 60-second action
+    // timeout on a control that does not exist yet.
+    if (!exploreIsReady) {
+      return false;
+    }
+
     if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
-      await page.getByTestId('global-search-selector').waitFor({
-        state: 'visible',
-      });
       await page.getByTestId('global-search-selector').click();
       await page.getByTestId('global-search-select-dropdown').waitFor({
         state: 'visible',
@@ -106,6 +119,14 @@ export const openEntitySummaryPanel = async ({
       if (!(await findOptionByScrolling(page, endpoint))) {
         return false;
       }
+    }
+    const searchBoxReady = await page
+      .getByTestId('searchBox')
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!searchBoxReady) {
+      return false;
     }
     const searchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/search/query')
@@ -158,8 +179,15 @@ export const openEntitySummaryPanel = async ({
       .poll(
         async () => {
           if (hasSearched) {
-            await page.reload();
-            await waitForAllLoadersToDisappear(page);
+            // Re-enter the canonical route on every attempt. A plain reload
+            // preserves an intermediate/failed route and can never restore the
+            // Explore controls that this helper needs.
+            const navigated = await redirectToExplorePage(page)
+              .then(() => true)
+              .catch(() => false);
+            if (!navigated) {
+              return false;
+            }
           }
           hasSearched = true;
 

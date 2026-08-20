@@ -1005,6 +1005,9 @@ test.describe('Input Output Ports', () => {
     });
 
     test('Remove last port shows empty state', async ({ page }) => {
+      // waitForPortRow has its own 60-second eventual-consistency budget; keep
+      // the enclosing test alive long enough for that contract plus removal.
+      test.slow();
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with single input port via API', async () => {
