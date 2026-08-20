@@ -270,9 +270,24 @@ export const waitForLandingPageWidget = async (
 ): Promise<Locator> => {
   const widget = page.getByTestId(widgetKey);
 
-  await revealLandingPageWidget(page, widgetKey);
+  // The persona layout can finish loading immediately after the first slot lookup. If the
+  // widget is below the fold, a one-shot lookup misses that newly attached slot and the
+  // DeferredWidget never intersects the viewport, so waiting on the child alone deadlocks.
+  // Re-run the reveal step until the slot can be scrolled and its child mounts.
+  await expect
+    .poll(
+      async () => {
+        await revealLandingPageWidget(page, widgetKey);
 
-  await expect(widget).toBeVisible({ timeout: 60_000 });
+        return widget.isVisible().catch(() => false);
+      },
+      {
+        intervals: [250, 500, 1_000],
+        message: `Landing page widget ${widgetKey} did not mount`,
+        timeout: 60_000,
+      }
+    )
+    .toBe(true);
 
   await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden({
     timeout: 60_000,
