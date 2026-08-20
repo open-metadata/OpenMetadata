@@ -14,6 +14,7 @@
 package org.openmetadata.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -69,6 +71,29 @@ class EntityPropagatedTagsTest {
   void emptyAndNullParentTagsProjectNothing() {
     assertTrue(Entity.propagatedParentTags(null).isEmpty());
     assertTrue(Entity.propagatedParentTags(List.of()).isEmpty());
+  }
+
+  /**
+   * A projected label must never reach {@code tag_usage}. A client that GETs a table (columns now
+   * carrying PROPAGATED labels) and PUTs it back would otherwise pin the label in place, so it would
+   * survive the parent's term being removed — the phantom tag this change set exists to remove.
+   */
+  @Test
+  void projectedAndRecomputedLabelsAreNotPersistable() {
+    assertTrue(
+        TagLabelUtil.isSystemGenerated(tag("g.term", TagSource.GLOSSARY, LabelType.PROPAGATED)));
+    assertTrue(
+        TagLabelUtil.isSystemGenerated(tag("g.term", TagSource.GLOSSARY, LabelType.DERIVED)));
+  }
+
+  @Test
+  void userAppliedLabelsRemainPersistable() {
+    assertFalse(
+        TagLabelUtil.isSystemGenerated(tag("g.term", TagSource.GLOSSARY, LabelType.MANUAL)));
+    assertFalse(
+        TagLabelUtil.isSystemGenerated(
+            tag("PII.Sensitive", TagSource.CLASSIFICATION, LabelType.AUTOMATED)));
+    assertFalse(TagLabelUtil.isSystemGenerated(null));
   }
 
   @Test
