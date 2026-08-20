@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { SuggestionProps } from '@tiptap/suggestion';
-import tippy from 'tippy.js';
+import tippy, { Instance, Props } from 'tippy.js';
 import renderItems from './renderItems';
 
 const mockSetProps = jest.fn();
-const mockTippyInstance = {
+const mockTippyInstance: Partial<Instance<Props>> = {
   destroy: jest.fn(),
   hide: jest.fn(),
   setProps: mockSetProps,
-  state: { isDestroyed: false },
+  state: { isDestroyed: false } as Instance<Props>['state'],
 };
 
 jest.mock('tippy.js', () => ({
@@ -54,44 +54,45 @@ const mockTippy = tippy as jest.MockedFunction<typeof tippy>;
 
 const makeSuggestionProps = (
   clientRect: SuggestionProps['clientRect'],
-  overrides: Partial<SuggestionProps> = {}
-): SuggestionProps =>
-  ({
-    clientRect,
-    editor: {
-      view: {},
-      isActive: jest.fn().mockReturnValue(false),
-    },
-    items: [],
-    command: jest.fn(),
-    query: '',
-    text: '',
-    range: {},
-    decorationNode: null,
-    ...overrides,
-  } as unknown as SuggestionProps);
+  editorOverrides: Partial<SuggestionProps['editor']> = {}
+): Partial<SuggestionProps> => ({
+  clientRect,
+  editor: {
+    view: {},
+    isActive: jest.fn().mockReturnValue(false),
+    ...editorOverrides,
+  } as SuggestionProps['editor'],
+  items: [],
+  command: jest.fn(),
+  query: '',
+  text: '',
+  range: {} as SuggestionProps['range'],
+  decorationNode: null,
+});
 
 describe('renderItems getReferenceClientRect null safety', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockTippy.mockReturnValue([mockTippyInstance as never]);
+    mockTippy.mockReturnValue([mockTippyInstance as Instance<Props>]);
   });
 
   describe('onStart', () => {
     it('should not call tippy when clientRect is null', () => {
       const handler = renderItems();
 
-      handler.onStart(makeSuggestionProps(null));
+      handler.onStart(makeSuggestionProps(null) as SuggestionProps);
 
       expect(mockTippy).not.toHaveBeenCalled();
     });
 
     it('should not call tippy when editor is in a table', () => {
       const handler = renderItems();
-      const editor = { view: {}, isActive: jest.fn().mockReturnValue(true) };
-      const props = makeSuggestionProps(() => new DOMRect(), { editor } as never);
 
-      handler.onStart(props);
+      handler.onStart(
+        makeSuggestionProps(() => new DOMRect(), {
+          isActive: jest.fn().mockReturnValue(true),
+        }) as SuggestionProps
+      );
 
       expect(mockTippy).not.toHaveBeenCalled();
     });
@@ -99,7 +100,7 @@ describe('renderItems getReferenceClientRect null safety', () => {
     it('should pass a getReferenceClientRect that returns DOMRect when clientRect returns null', () => {
       const handler = renderItems();
 
-      handler.onStart(makeSuggestionProps(() => null));
+      handler.onStart(makeSuggestionProps(() => null) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
       const result = options.getReferenceClientRect!();
@@ -111,7 +112,7 @@ describe('renderItems getReferenceClientRect null safety', () => {
       const rect = new DOMRect(10, 20, 100, 40);
       const handler = renderItems();
 
-      handler.onStart(makeSuggestionProps(() => rect));
+      handler.onStart(makeSuggestionProps(() => rect) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
       const result = options.getReferenceClientRect!();
@@ -122,7 +123,7 @@ describe('renderItems getReferenceClientRect null safety', () => {
     it('getReferenceClientRect should never throw even when clientRect returns null', () => {
       const handler = renderItems();
 
-      handler.onStart(makeSuggestionProps(() => null));
+      handler.onStart(makeSuggestionProps(() => null) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
 
@@ -133,18 +134,18 @@ describe('renderItems getReferenceClientRect null safety', () => {
   describe('onUpdate', () => {
     it('should not call setProps when clientRect is null', () => {
       const handler = renderItems();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()));
+      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
 
-      handler.onUpdate(makeSuggestionProps(null));
+      handler.onUpdate(makeSuggestionProps(null) as SuggestionProps);
 
       expect(mockTippyInstance.setProps).not.toHaveBeenCalled();
     });
 
     it('should pass a getReferenceClientRect that returns DOMRect when clientRect returns null', () => {
       const handler = renderItems();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()));
+      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
 
-      handler.onUpdate(makeSuggestionProps(() => null));
+      handler.onUpdate(makeSuggestionProps(() => null) as SuggestionProps);
 
       const { getReferenceClientRect } = mockTippyInstance.setProps.mock.calls[0][0];
       const result = getReferenceClientRect();
@@ -155,9 +156,9 @@ describe('renderItems getReferenceClientRect null safety', () => {
     it('should pass a getReferenceClientRect that returns the rect from a valid clientRect', () => {
       const rect = new DOMRect(5, 10, 200, 30);
       const handler = renderItems();
-      handler.onStart(makeSuggestionProps(() => new DOMRect()));
+      handler.onStart(makeSuggestionProps(() => new DOMRect()) as SuggestionProps);
 
-      handler.onUpdate(makeSuggestionProps(() => rect));
+      handler.onUpdate(makeSuggestionProps(() => rect) as SuggestionProps);
 
       const { getReferenceClientRect } = mockTippyInstance.setProps.mock.calls[0][0];
 
