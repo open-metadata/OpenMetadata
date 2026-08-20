@@ -14,9 +14,10 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import {
   getRandomFirstName,
+  redirectToHomePage,
   uuid,
-  visitGlossaryPage,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   EntityReference,
   EntityTypeEndpoint,
@@ -52,7 +53,12 @@ export class Glossary extends EntityClass {
   }
 
   async visitPage(page: Page) {
-    await visitGlossaryPage(page, this.responseData.displayName);
+    await redirectToHomePage(page);
+    await page.goto(
+      `/glossary/${encodeURIComponent(this.responseData.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+    await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
       this.responseData.displayName

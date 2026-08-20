@@ -21,6 +21,7 @@ import {
 import { startCase } from 'lodash';
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
+  closeFirstPopupAlert,
   descriptionBox,
   executeWithRetry,
   getApiContext,
@@ -197,6 +198,18 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
+    const clickWizardButton = async (testId: string) => {
+      await expect(async () => {
+        // Async job notifications are broadcast to every admin socket. During
+        // the full AUT lane several can stack over the wizard controls, so
+        // dismiss one per retry before attempting the click.
+        await closeFirstPopupAlert(page);
+        const button = page.getByTestId(testId);
+        await expect(button).toBeEnabled({ timeout: 2_000 });
+        await button.click({ timeout: 2_000 });
+      }).toPass({ timeout: 30_000, intervals: [250, 500, 1_000] });
+    };
+
     await page.click('[role="tab"] [data-testid="agents"]');
 
     const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
@@ -218,15 +231,15 @@ class ServiceBaseClass {
     await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
 
-    await page.click('[data-testid="next-button"]');
+    await clickWizardButton('next-button');
 
     // Go back and data should persist
-    await page.click('[data-testid="previous-button"]');
+    await clickWizardButton('previous-button');
     await waitForIngestionWorkflowForm(page);
     await this.validateIngestionDetails(page);
 
     // Go Next
-    await page.click('[data-testid="next-button"]');
+    await clickWizardButton('next-button');
     await this.scheduleIngestion(page);
 
     await page.click('[data-testid="view-service-button"]');

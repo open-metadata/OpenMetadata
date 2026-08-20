@@ -474,18 +474,10 @@ test.describe('Task Navigation - URL Validation', () => {
     await page.goto('/table/TASK-00001');
     await waitForPageLoaded(page);
 
-    // Should show 404 or "No data available"
-    const noData = page.getByText('No data available');
-    const notFound = page.getByText('404');
-    const pageNotFound = page.getByText('Page not found', { exact: false });
-
-    const isError =
-      (await noData.isVisible()) ||
-      (await notFound.isVisible()) ||
-      (await pageNotFound.isVisible());
-
-    // This URL pattern should result in an error/404
-    expect(isError).toBe(true);
+    // PageNotFound has a stable root test id. Text matching was case-sensitive
+    // (the product renders "Page Not Found") and falsely rejected the correct
+    // 404 page.
+    await expect(page.getByTestId('no-page-found')).toBeVisible();
   });
 
   test('task detail page with valid task ID should work', async ({

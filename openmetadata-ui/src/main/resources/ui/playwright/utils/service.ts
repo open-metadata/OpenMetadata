@@ -37,12 +37,12 @@ export const visitServiceDetailsPage = async (
   verifyHeader = false,
   visitChildrenTab = true
 ) => {
-  const serviceResponse = page.waitForResponse(
-    '/api/v1/services/*?fields=owners*'
-  );
   await settingClick(page, service.type as SettingOptionsType);
-  await serviceResponse;
   await waitForAllLoadersToDisappear(page);
+  // The service list may be satisfied from the query cache, in which case no
+  // owners request is emitted. Gate on the rendered search control instead of
+  // an optional network round-trip.
+  await expect(page.getByTestId('searchbar')).toBeVisible({ timeout: 60_000 });
 
   await searchServiceFromSettingPage(page, service.name);
 

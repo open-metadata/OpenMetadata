@@ -88,6 +88,7 @@ import {
 const RELATED_QUICK_LINK_URL = 'https://docs.open-metadata.org';
 const UPDATED_QUICK_LINK_URL = 'https://docs.open-metadata.org/quick-link';
 const MIN_CARDS = 10;
+const ARTICLE_LIST_PAGE_SIZE = 25;
 
 let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
 let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
@@ -661,18 +662,30 @@ test.describe('Context Center Articles', () => {
     const cards = listing.locator('[data-testid^="knowledge-card-"]');
     const initialCardCount = await cards.count();
 
-    const observerElement = page.getByTestId('observer-element');
-    const paginationResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contextCenter/pages') &&
-        response.url().includes('offset=')
-    );
+    if (initialCardCount > ARTICLE_LIST_PAGE_SIZE) {
+      // Returning from the recently-viewed article can preserve the list's
+      // scroll position. In that case the observer has already fetched one or
+      // more additional pages, which itself proves pagination occurred.
+      expect(initialCardCount).toBeGreaterThan(ARTICLE_LIST_PAGE_SIZE);
+    } else {
+      const observerElement = page.getByTestId('observer-element');
+      const paginationResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
 
-    await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/contextCenter/pages' &&
+          url.searchParams.get('sortBy') === 'updatedAt' &&
+          Number(url.searchParams.get('offset')) > 0
+        );
+      });
 
-    expect(await cards.count()).toBeGreaterThan(initialCardCount);
+      await observerElement.scrollIntoViewIfNeeded();
+      const response = await paginationResponse;
+      expect(response.status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+      expect(await cards.count()).toBeGreaterThan(initialCardCount);
+    }
   });
 
   test('Left hierarchy pagination and expand collapse actions work', async ({
