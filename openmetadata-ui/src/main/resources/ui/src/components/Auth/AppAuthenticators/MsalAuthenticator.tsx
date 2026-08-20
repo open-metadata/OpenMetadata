@@ -23,6 +23,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
 } from 'react';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import {
@@ -167,8 +168,18 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     }, [getRenewer]);
 
     // Need to capture redirect and parse ID token
-    // Call login success callback
+    // Call login success callback.
+    // `handledRedirectRef` gates against React StrictMode's dev-only double
+    // effect invocation: without it, `instance.handleRedirectPromise()` is
+    // called twice in flight for the same redirect, and both resolutions
+    // race into `handleSuccessfulLogin(user)` — which surfaces as a double
+    // `/users/loggedInUser` fetch (and a briefly-inconsistent app state).
+    const handledRedirectRef = useRef(false);
     const handleRedirect = async () => {
+      if (handledRedirectRef.current) {
+        return;
+      }
+      handledRedirectRef.current = true;
       try {
         const response = await instance.handleRedirectPromise();
 
