@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
 import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { render } from '@testing-library/react';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
