@@ -525,9 +525,8 @@ export const AuthProvider = ({
         if (!token) {
           return;
         }
-        const { exp, isExpired, timeoutExpiry } = extractDetailsFromToken(
-          token
-        );
+        const { exp, isExpired, timeoutExpiry } =
+          extractDetailsFromToken(token);
         if (isExpired) {
           const newToken = await tokenService.current?.refreshToken();
           // Post-refresh reauth: if the user was bounced to signin by an
