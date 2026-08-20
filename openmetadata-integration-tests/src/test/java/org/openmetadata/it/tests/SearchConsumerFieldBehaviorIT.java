@@ -313,11 +313,18 @@ class SearchConsumerFieldBehaviorIT {
                 == 1);
   }
 
+  /**
+   * A type probe, not a product feature: nothing in the product filters on the failure reason today
+   * (the UI reads it from {@code _source}). It proves the mapping's declared {@code keyword} type is
+   * actually in effect — under dynamic mapping the field becomes analyzed {@code text} and an exact
+   * term can never match, which is the state this index was in.
+   */
   @Test
-  void incidentFailureReasonFilterReturnsIncidentInAllLanguages() throws Exception {
+  void failureReasonSupportsExactMatchTermInAllLanguages() throws Exception {
     assertFeatureWorksInAllLanguages(
-        "Incident Manager failure-reason exact match "
-            + "(testCaseResolutionStatusDetails.testCaseFailureReason as a keyword)",
+        "Exact-match term support on testCaseResolutionStatusDetails.testCaseFailureReason "
+            + "(the mapping must declare it as a keyword; left to dynamic mapping it becomes "
+            + "analyzed text and no term ever matches)",
         language ->
             hits(
                     resolutionIndex(language),
