@@ -106,6 +106,7 @@ const Emoji: FC<EmojiProps> = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={popoverContent}
       key={reaction}
       trigger="hover"

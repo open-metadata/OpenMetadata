@@ -110,7 +110,7 @@ describe('Test Emoji Component', () => {
     fireEvent.mouseLeave(emojiButton);
     act(() => jest.runAllTimers());
 
-    expect(queryByTestId('popover-content')).not.toBeVisible();
+    expect(queryByTestId('popover-content')).not.toBeInTheDocument();
   });
 
   it('Should unmount cleanly while tooltip is visible', async () => {
