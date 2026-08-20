@@ -42,14 +42,32 @@ export const waitForSearchIndexed = async (
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=1`
+      )}&index=${index}&from=0&size=25`
     );
 
     if (response.ok()) {
       const data = await response.json();
-      const totalHits = data?.hits?.total?.value ?? data?.hits?.total ?? 0;
+      const hits = (data?.hits?.hits ?? []) as Array<{
+        _id?: string;
+        _source?: {
+          fullyQualifiedName?: string;
+          id?: string;
+          name?: string;
+        };
+      }>;
 
-      if (totalHits > 0) {
+      // Search is analyzed/fuzzy, so totalHits > 0 only proves that something
+      // matched the query. Under a populated AUT index that can be an older,
+      // similarly named entity while the new entity is still unindexed.
+      if (
+        hits.some(
+          (hit) =>
+            hit._id === entityFqn ||
+            hit._source?.id === entityFqn ||
+            hit._source?.name === entityFqn ||
+            hit._source?.fullyQualifiedName === entityFqn
+        )
+      ) {
         return;
       }
     }
