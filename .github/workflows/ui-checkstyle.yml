@@ -139,7 +139,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY), format('{0}/yarn.lock', env.CORE_COMPONENTS_WORKING_DIRECTORY)) }}
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY)) }}
           restore-keys: |
             yarn-pkg-cache-${{ runner.os }}-
 
