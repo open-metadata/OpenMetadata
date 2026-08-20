@@ -103,11 +103,19 @@ def classify_targets(
 # specific shard(s) that exceeded the threshold (per the phase artifacts) so
 # the merge-queue error and the PR summary are useful without the raw log.
 BLOCKING_TARGET_DETAILS: dict[str, dict[str, Any]] = {
+    # TRANSITIONAL: threshold widened from 300 → 480 s while the
+    # `playwright-chromium-deps-v2` apt cache is still populating across
+    # branches (a cache miss triggers a real apt install that can take
+    # 6-7 min on a slow Azure mirror; a cache hit is <5 s). The keeps
+    # step-level `timeout` wrappers on `install-deps` in the workflow are
+    # bumped in lock-step to 8 min. Tighten back to 300 s once every
+    # merge_group is a cache hit — see the shard-side comment in
+    # playwright-e2e-reusable.yml.
     "environmentAtMostFiveMinutes": {
         "label": "Environment setup",
         "phase_field": "environmentSeconds",
         "unit": "s",
-        "threshold": 300,
+        "threshold": 480,
     },
     "executionAtMostTwentyFiveMinutes": {
         "label": "Maximum shard execution",
@@ -306,7 +314,8 @@ def main() -> None:
         ),
     }
     targets = {
-        "environmentAtMostFiveMinutes": metrics["maxEnvironmentSeconds"] <= 300,
+        # Transitional 480 s ceiling — see BLOCKING_TARGET_DETAILS comment above.
+        "environmentAtMostFiveMinutes": metrics["maxEnvironmentSeconds"] <= 480,
         # Aligned with the 25-minute wrapper on the shard step (`timeout … 25m`
         # in playwright-postgresql-e2e.yml, PR #30689). The previous 21-minute
         # ceiling was left over from before that wrapper bump and marked

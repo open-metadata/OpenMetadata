@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RefObject } from 'react';
 import { StreamHealth } from '../../../utils/SseStreamUtils';
 
 export type LogViewerStatusTone = 'success' | 'error' | 'warning' | 'muted';
@@ -59,3 +60,43 @@ export interface LogViewerModalBaseProps {
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps;
+
+/** The geometry the log viewer reports on every scroll. */
+export interface LogViewerScrollValues {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/** What a single scroll report says, before any decision is taken on it. */
+export interface ScrollFacts {
+  isBottom: boolean;
+  fillsViewport: boolean;
+  userMovedTheView: boolean;
+  movedAwayFromTail: boolean;
+  movedTowardsTail: boolean;
+}
+
+export interface UseLogAutoFollowParams {
+  /** The modal's own open state: a closed viewer follows nothing. */
+  open: boolean;
+  isLive: boolean;
+  /** The caller's static preference, used to seed and re-seed the live state. */
+  follow: boolean;
+  /** Watched to know when the library may have restored its own scroll offset. */
+  logs: string;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  /** Accessible name given to the scrolling element once it is found. */
+  scrollerLabel: string;
+  scrollToEnd: () => void;
+}
+
+export interface UseLogAutoFollowResult {
+  followTail: boolean;
+  /** Feed every scroll report through this; returns what the report said. */
+  trackScroll: (values: LogViewerScrollValues) => ScrollFacts;
+  resumeFollowingTail: () => void;
+  toggleFollow: () => void;
+  /** Call before a relayout (wrap, full screen) so it is not read as intent. */
+  markViewerScroll: () => void;
+}

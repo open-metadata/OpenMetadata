@@ -20,8 +20,15 @@ import {
   assertLogViewerShowsLogs,
   buildLogStreamFrames,
   buildMarkerLogText,
+  dragLogViewerUpWithoutGesture,
+  focusLogViewerScroller,
+  getLogViewerLineCount,
+  getLogViewerScrollState,
   LogStreamFrame,
   LOG_STREAM_RESPONSE_HEADERS,
+  LOG_VIEWER_MARKER,
+  scrollLogViewerAwayFromTail,
+  scrollLogViewerToTail,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
@@ -50,6 +57,32 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const RUN_ID = randomUUID();
 const STREAM_CURSOR = '20';
 
+/**
+ * Enough lines to overflow the log body at any viewport the suite runs at, so
+ * the scroll-driven follow behaviour has something to scroll. Kept well below
+ * the virtualiser's overscan (100 rows each side of the viewport): past that,
+ * a wrap toggle re-measures enough mounted rows in one go that the resulting
+ * burst of offset corrections can itself look like a manual scrollbar drag —
+ * the very thing `dragLogViewerUpWithoutGesture` deliberately provokes later
+ * in this test.
+ */
+const SCROLLABLE_LOG_LINE_COUNT = 60;
+
+/**
+ * Wide enough that every line still wraps to more than one visual row in the
+ * viewer — which is what makes the wrap toggle re-measure rows and move the
+ * scroll position — without making each row's height correction so large that
+ * settling the relayout takes an unrealistic number of frames.
+ */
+const WRAPPABLE_LOG_LINE_LENGTH = 120;
+
+/**
+ * What each reconnect appends after the first. Small on purpose: a run that adds
+ * hundreds of lines every couple of seconds moves the tail further per push than a
+ * user can travel, so returning to it by hand would be impossible to test.
+ */
+const TRICKLE_LOG_LINE_COUNT = 3;
+
 const pipelineName = `pw-log-handover-${uuid()}`;
 let pipelineFqn = '';
 let pipelineId = '';
@@ -70,7 +103,22 @@ interface StreamMocks {
  */
 const mockLogEndpoints = async (
   page: Page,
-  { terminal }: { terminal: boolean }
+  {
+    terminal,
+    lineCount,
+    lineLength,
+    followUpLineCount,
+  }: {
+    terminal: boolean;
+    lineCount?: number;
+    lineLength?: number;
+    /**
+     * Lines served on every connection after the first. Defaults to `lineCount`;
+     * a small value models a real run — a history to read, then a trickle — and
+     * keeps the tail reachable by hand.
+     */
+    followUpLineCount?: number;
+  }
 ): Promise<StreamMocks> => {
   const streamRequests: string[] = [];
   let paginatedLogCalls = 0;
@@ -102,13 +150,18 @@ const mockLogEndpoints = async (
   await page.route(
     '**/api/v1/services/ingestionPipelines/logs/*/stream/*',
     (route) => {
+      const isFirstConnection = streamRequests.length === 0;
       streamRequests.push(route.request().url());
 
       const frames: LogStreamFrame[] = [
         {
           eventType: 'logs',
           runId: RUN_ID,
-          logs: `${buildMarkerLogText()}\n`,
+          logs: `${buildMarkerLogText(
+            LOG_VIEWER_MARKER,
+            isFirstConnection ? lineCount : followUpLineCount ?? lineCount,
+            lineLength
+          )}\n`,
           after: STREAM_CURSOR,
         },
       ];
@@ -202,7 +255,12 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
 
   const openAgentLogs = async (
     page: Page,
-    options: { terminal: boolean }
+    options: {
+      terminal: boolean;
+      lineCount?: number;
+      lineLength?: number;
+      followUpLineCount?: number;
+    }
   ): Promise<StreamMocks> => {
     const mocks = await mockLogEndpoints(page, options);
 
@@ -270,6 +328,158 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         mocks.paginatedLogCalls(),
         'reconnecting is not a reason to fall back to polling'
       ).toBe(0);
+    });
+  });
+
+  test('Scrolling a live log pauses auto-follow and the toolbar toggle resumes it', async ({
+    page,
+  }) => {
+    // Every step below waits for the stream to append again, and a reconnect can
+    // take seconds on a loaded runner. The default budget is one such wait, not
+    // the four this test needs, so it timed out on retry rather than failing.
+    test.slow();
+
+    await openAgentLogs(page, {
+      terminal: false,
+      lineCount: SCROLLABLE_LOG_LINE_COUNT,
+      lineLength: WRAPPABLE_LOG_LINE_LENGTH,
+      followUpLineCount: TRICKLE_LOG_LINE_COUNT,
+    });
+
+    const followToggle = page.getByTestId('log-viewer-follow');
+
+    await test.step('A live run opens pinned to the tail', async () => {
+      await assertLogViewerShowsLogs(page);
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    await test.step('Toggling wrap does not pause a followed log', async () => {
+      // Re-wrapping re-measures every row and parks the virtualised list at the
+      // top; the viewer must treat that as its own relayout, not as the user
+      // taking over. Waiting for the next append is what proves it still follows.
+      const beforeWrap = await getLogViewerScrollState(page);
+
+      await page.getByTestId('log-viewer-wrap').click();
+
+      await expect
+        .poll(
+          async () => (await getLogViewerScrollState(page))?.scrollHeight ?? 0,
+          { timeout: 60_000 }
+        )
+        .toBeGreaterThan(beforeWrap?.scrollHeight ?? 0);
+
+      // Following survived the relayout: the toggle still says so, and the line
+      // count above proves lines kept arriving while it did. Not asserted through
+      // scroll geometry — wrapping keeps the virtualised height estimate moving,
+      // so "is it at the tail" is not a dependable ruler here.
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+
+      await page.getByTestId('log-viewer-wrap').click();
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    await test.step('A drag with no pointer event still takes the log back', async () => {
+      // Stands in for a native scrollbar drag in a browser that does not dispatch
+      // pointerdown for its scrollbar: no wheel, no key, no pointer — only the
+      // scroll offsets pulling away from the tail, which the catch-up never does.
+      await page.getByTestId('log-viewer-wrap').click();
+
+      // Two steps at a time until control changes hands. A fixed number of steps
+      // is not enough on a slow machine: consecutive scroll writes coalesce into
+      // one report when frames are long, and it is the sequence that counts.
+      await expect
+        .poll(
+          async () => {
+            await dragLogViewerUpWithoutGesture(page, 2);
+
+            return followToggle.getAttribute('aria-pressed');
+          },
+          {
+            message: 'a drag with no pointer event must take the log back',
+            timeout: 30_000,
+          }
+        )
+        .toBe('false');
+
+      await followToggle.click();
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+
+      // Leave wrapping off for the steps that follow: wrapped 400-character lines
+      // make the content several times taller, so travelling back to the tail by
+      // wheel stops being a realistic distance.
+      await page.getByTestId('log-viewer-wrap').click();
+      await expect(page.getByTestId('log-viewer-wrap')).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
+    });
+
+    await test.step('Scrolling up hands control back to the user', async () => {
+      // Deliberately immediately after the wrap toggle above: a scroll performed
+      // while the relayout is still settling is still the user's, and must not be
+      // reversed on the grounds that a layout change just happened.
+      await scrollLogViewerAwayFromTail(page);
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    await test.step('Frames that keep arriving no longer yank the view to the tail', async () => {
+      // The mock closes every connection, so the client reconnects and appends
+      // more lines. Waiting for the content to actually grow is what makes this
+      // a real assertion — a paused viewer must sit still through it.
+      const pausedAtLines = await getLogViewerLineCount(page);
+
+      await expect
+        .poll(() => getLogViewerLineCount(page), {
+          message: 'the stream should append more lines after a reconnect',
+          timeout: 60_000,
+        })
+        .toBeGreaterThan(pausedAtLines);
+
+      // Still the user's log: newly streamed lines must not take it back.
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    await test.step('Scrolling back down to the tail resumes following on its own', async () => {
+      // The toolbar toggle is not the only way back: reaching the tail by hand is
+      // what a terminal does, and it has to work while the log keeps growing.
+      await scrollLogViewerToTail(page);
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+
+      // And it stays followed as more lines arrive, rather than resuming for a
+      // moment and dropping out again. Line count rather than scroll height: the
+      // virtualised list re-estimates its height as rows are measured, so at a few
+      // lines per push the height is not monotonic.
+      const resumedAtLines = await getLogViewerLineCount(page);
+
+      await expect
+        .poll(() => getLogViewerLineCount(page), { timeout: 60_000 })
+        .toBeGreaterThan(resumedAtLines);
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    await test.step('The keyboard can pause a followed log too', async () => {
+      // The step above left the log following again, by hand — no need to resume.
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
+
+      // Real focus and a real key press, not a synthetic event: the scrolling
+      // element has to carry a tab stop for the keyboard to reach the log at all.
+      expect(
+        await focusLogViewerScroller(page),
+        'the scrolling element must be focusable for the keyboard to reach it'
+      ).toBe(true);
+
+      await page.keyboard.press('PageUp');
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    await test.step('The toggle resumes following and jumps back to the tail', async () => {
+      await followToggle.click();
+
+      await expect(followToggle).toHaveAttribute('aria-pressed', 'true');
     });
   });
 

@@ -4,14 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -775,9 +775,7 @@ class OpenSearchIndexManagerTest {
   }
 
   @Test
-  void testGetAllIndexStats_AggregatesVisibleIndicesOnly() throws IOException {
-    OpenSearchIndexManager spyManager =
-        spy(new OpenSearchIndexManager(openSearchClient, CLUSTER_ALIAS));
+  void testGetAllIndexStats_AggregatesVisibleIndicesWithOneAliasRequest() throws IOException {
     IndicesStats visibleStats = mock(IndicesStats.class);
     IndexStats primaryStats = mock(IndexStats.class);
     DocStats docStats = mock(DocStats.class);
@@ -789,8 +787,15 @@ class OpenSearchIndexManagerTest {
 
     when(indicesClient.stats(any(java.util.function.Function.class)))
         .thenReturn(indicesStatsResponse);
+    when(indicesClient.getAlias(any(java.util.function.Function.class)))
+        .thenReturn(getAliasResponse);
     when(indicesStatsResponse.indices())
         .thenReturn(Map.of(".kibana", mock(IndicesStats.class), TEST_INDEX, visibleStats));
+    IndexAliases aliasMetadata = mock(IndexAliases.class);
+    when(getAliasResponse.result()).thenReturn(Map.of(TEST_INDEX, aliasMetadata));
+    when(aliasMetadata.aliases())
+        .thenReturn(
+            Map.of("table", mock(AliasDefinition.class), "entity", mock(AliasDefinition.class)));
     when(visibleStats.primaries()).thenReturn(primaryStats);
     when(primaryStats.docs()).thenReturn(docStats);
     when(docStats.count()).thenReturn(42L);
@@ -801,9 +806,7 @@ class OpenSearchIndexManagerTest {
     when(primaryRouting.primary()).thenReturn(true);
     when(replicaShard.routing()).thenReturn(replicaRouting);
     when(replicaRouting.primary()).thenReturn(false);
-    doReturn(Set.of("table", "entity")).when(spyManager).getAliases(TEST_INDEX);
-
-    var result = spyManager.getAllIndexStats();
+    var result = indexManager.getAllIndexStats();
 
     assertEquals(1, result.size());
     assertEquals(TEST_INDEX, result.get(0).name());
@@ -813,8 +816,17 @@ class OpenSearchIndexManagerTest {
     assertEquals(128L, result.get(0).sizeInBytes());
     assertEquals("GREEN", result.get(0).health());
     assertEquals(Set.of("table", "entity"), result.get(0).aliases());
-    verify(spyManager).getAliases(TEST_INDEX);
-    verify(spyManager, never()).getAliases(".kibana");
+    verify(indicesClient, times(1)).getAlias(any(java.util.function.Function.class));
+  }
+
+  @Test
+  void testGetAllIndexStats_PropagatesBulkAliasFailure() throws IOException {
+    when(indicesClient.stats(any(java.util.function.Function.class)))
+        .thenReturn(indicesStatsResponse);
+    when(indicesClient.getAlias(any(java.util.function.Function.class)))
+        .thenThrow(new IOException("alias inventory failed"));
+
+    assertThrows(IOException.class, indexManager::getAllIndexStats);
   }
 
   private os.org.opensearch.client.opensearch._types.ErrorResponse buildErrorResponse(
