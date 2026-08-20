@@ -1,0 +1,127 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Gate for auto-revert-release.yml. When a cherry-pick lands on a release
+# branch (N.N.N), this runs the three checkstyles inline. Any failure here
+# is what triggers the auto-revert of the tip commit.
+#
+# Phase 1: hygiene only (spotless / ruff / eslint + prettier). We will
+# broaden this to actual tests/build in a later pass without touching
+# auto-revert-release.yml — swap the jobs below or replace this workflow.
+
+name: Release Branch Validate
+
+on:
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-branch-validate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  java-checkstyle:
+    name: Java Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run spotless
+        run: mvn -B spotless:apply
+
+      - name: Fail if spotless would have rewritten files
+        run: git diff --exit-code
+
+  python-checkstyle:
+    name: Python Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Ruff
+        run: |
+          uv venv env --python 3.10
+          uv pip install --python env/bin/python "ruff~=0.15.12"
+
+      - name: Code style check
+        run: |
+          source env/bin/activate
+          make py_format_check
+
+  ui-checkstyle:
+    name: UI Checkstyle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
+          cache: yarn
+          cache-dependency-path: |
+            ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
+
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+
+      - name: Install UI yarn packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install --frozen-lockfile
+
+      - name: ESLint
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn lint
+
+      - name: Prettier check
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn pretty:base --check './src/**/*.{js,jsx,ts,tsx,json}'

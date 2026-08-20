@@ -13,7 +13,7 @@ name: Auto-revert failing commit on release branch
 
 on:
   workflow_run:
-    workflows: ["Maven Collate Tests"]
+    workflows: ["Release Branch Validate"]
     types: [completed]
   # Manual shim so the revert logic can be exercised on a throwaway release
   # branch (e.g. 9.9.9) before the workflow_run trigger goes live on main.
@@ -28,7 +28,7 @@ on:
       workflow_name:
         description: "Name of the workflow to attribute the failure to"
         required: false
-        default: "Maven Collate Tests (simulated)"
+        default: "Release Branch Validate (simulated)"
       run_url:
         description: "URL to attribute the failure to (defaults to this run)"
         required: false
@@ -74,7 +74,7 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             BRANCH="$IN_BRANCH"
             SHA="$IN_SHA"
-            NAME="${IN_NAME:-Maven Collate Tests (simulated)}"
+            NAME="${IN_NAME:-Release Branch Validate (simulated)}"
             URL="${IN_URL:-${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}}"
             DRY="${IN_DRY:-true}"
           else
