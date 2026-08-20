@@ -2278,14 +2278,13 @@ description:
       expect(created.ok()).toBe(true);
       expect((await created.json()).entityStatus).toBe('Draft');
 
-      // `contract-status-label` is also used by the owners label, so pin the
-      // status one by its own text before walking up to the row holding its badge.
-      await expect(
-        page
-          .getByTestId('contract-status-label')
-          .filter({ hasText: 'Status' })
-          .locator('xpath=../..')
-      ).toContainText('Draft');
+      const statusCard = page.getByTestId('contract-status-card');
+      const statusBadge = statusCard.getByText('Draft', { exact: true });
+
+      await expect(statusBadge).toBeVisible();
+      // A Draft must not be painted with the green success palette.
+      await expect(statusBadge).toHaveClass(/utility-warning/);
+      await expect(statusBadge).not.toHaveClass(/utility-success/);
     } finally {
       await table.delete(apiContext);
     }
@@ -2323,12 +2322,11 @@ description:
       expect(created.ok()).toBe(true);
       expect((await created.json()).entityStatus).toBe('Approved');
 
-      await expect(
-        page
-          .getByTestId('contract-status-label')
-          .filter({ hasText: 'Status' })
-          .locator('xpath=../..')
-      ).toContainText('Approved');
+      const statusCard = page.getByTestId('contract-status-card');
+      const statusBadge = statusCard.getByText('Approved', { exact: true });
+
+      await expect(statusBadge).toBeVisible();
+      await expect(statusBadge).toHaveClass(/utility-success/);
     } finally {
       await table.delete(apiContext);
     }

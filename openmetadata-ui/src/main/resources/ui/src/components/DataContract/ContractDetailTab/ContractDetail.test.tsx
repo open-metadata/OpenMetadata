@@ -25,6 +25,7 @@ import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
   ContractExecutionStatus,
   DataContract,
+  EntityStatus,
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
@@ -46,9 +47,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  BadgeWithIcon: jest.fn(({ children }: { children?: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
+  BadgeWithIcon: jest.fn(
+    ({ children, color }: { children?: React.ReactNode; color?: string }) => (
+      <span data-color={color}>{children}</span>
+    )
+  ),
   Box: jest.fn(
     ({
       children,
@@ -612,6 +615,45 @@ describe('ContractDetail', () => {
       expect(queryByTestId('contract-created-at-label')).toBeInTheDocument();
 
       expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+  });
+
+  describe('Entity Status Badge', () => {
+    const renderWithStatus = (entityStatus?: EntityStatus) => {
+      render(
+        <ContractDetail
+          contract={{ ...mockContract, entityStatus }}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      return screen
+        .getByTestId('contract-status-card')
+        .querySelector('[data-color]');
+    };
+
+    it.each([
+      [EntityStatus.Draft, 'warning'],
+      [EntityStatus.InReview, 'purple'],
+      [EntityStatus.Approved, 'success'],
+      [EntityStatus.Rejected, 'error'],
+      [EntityStatus.Deprecated, 'gray'],
+      [EntityStatus.Archived, 'gray'],
+    ])('should render %s with the %s colour', (entityStatus, expectedColor) => {
+      const badge = renderWithStatus(entityStatus);
+
+      expect(badge).toHaveTextContent(entityStatus);
+      expect(badge).toHaveAttribute('data-color', expectedColor);
+    });
+
+    it('should not paint a success colour when the status is missing', () => {
+      const badge = renderWithStatus(undefined);
+
+      expect(badge).toHaveAttribute('data-color', 'gray');
     });
   });
 
