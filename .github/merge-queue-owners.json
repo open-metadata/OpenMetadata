@@ -7,10 +7,10 @@
     "devops": "onduty-devops"
   },
   "groupIds": {
-    "ui": "",
-    "integration": "",
-    "backend": "",
-    "devops": ""
+    "ui": "S0BEYE2V2LQ",
+    "integration": "S0AH093PEQL",
+    "backend": "S094MB1TNH5",
+    "devops": "S093NSU0HKL"
   },
   "infraTeam": "devops",
   "workflows": {
