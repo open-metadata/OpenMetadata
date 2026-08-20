@@ -74,6 +74,7 @@ export interface ScrollFacts {
   fillsViewport: boolean;
   userMovedTheView: boolean;
   movedAwayFromTail: boolean;
+  movedTowardsTail: boolean;
 }
 
 export interface UseLogAutoFollowParams {
