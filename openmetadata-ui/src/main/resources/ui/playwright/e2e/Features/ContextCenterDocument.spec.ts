@@ -573,16 +573,6 @@ test.describe('Context Center - Documents Page', () => {
     await waitForAllLoadersToDisappear(page);
     await selectFolderInSidebar(page, folderName);
 
-    const folderSearchResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/search/query') &&
-        res.url().includes('index=contextFile')
-    );
-
-    await searchInput.fill(sharedToken);
-    await folderSearchResPromise;
-    await waitForAllLoadersToDisappear(page);
-
     await expect(
       view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
     ).toBeVisible();

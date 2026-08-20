@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
@@ -142,6 +144,124 @@ class TaskWorkflowLifecycleResolverTest {
     assertEquals("startProgress", transition.getId());
     assertEquals("inProgress", transition.getTargetStageId());
     assertEquals(TaskEntityStatus.InProgress, transition.getTargetTaskStatus());
+  }
+
+  @Test
+  void resolveTransitionsForStageFallsBackToDefaultsWhenTransitionMetadataEmpty() {
+    WorkflowDefinition workflowDefinition =
+        userApprovalTaskWorkflow(UUID.randomUUID(), "review", List.of());
+
+    List<TaskAvailableTransition> transitions =
+        TaskWorkflowLifecycleResolver.resolveTransitionsForStage(workflowDefinition, "review");
+
+    assertEquals(2, transitions.size());
+    assertEquals("approve", transitions.get(0).getId());
+    assertEquals(TaskEntityStatus.Approved, transitions.get(0).getTargetTaskStatus());
+    assertEquals(TaskResolutionType.Approved, transitions.get(0).getResolutionType());
+    assertEquals("reject", transitions.get(1).getId());
+    assertEquals(TaskEntityStatus.Rejected, transitions.get(1).getTargetTaskStatus());
+    assertEquals(TaskResolutionType.Rejected, transitions.get(1).getResolutionType());
+  }
+
+  @Test
+  void findTransitionFallsBackToDefaultsWhenTaskHasEmptyAvailableTransitions() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    WorkflowDefinition workflowDefinition =
+        userApprovalTaskWorkflow(workflowDefinitionId, "review", List.of());
+    Task task =
+        new Task()
+            .withType(TaskEntityType.RequestApproval)
+            .withStatus(TaskEntityStatus.Open)
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withAvailableTransitions(List.of());
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Mockito.eq(Entity.WORKFLOW_DEFINITION),
+                      Mockito.eq(workflowDefinitionId),
+                      Mockito.eq("nodes"),
+                      Mockito.any()))
+          .thenReturn(workflowDefinition);
+
+      TaskAvailableTransition approve =
+          TaskWorkflowLifecycleResolver.findTransition(task, "approve");
+      TaskAvailableTransition reject = TaskWorkflowLifecycleResolver.findTransition(task, "reject");
+      TaskAvailableTransition unknown =
+          TaskWorkflowLifecycleResolver.findTransition(task, "revoke");
+
+      assertNotNull(approve);
+      assertEquals("approve", approve.getId());
+      assertEquals("approved", approve.getTargetStageId());
+      assertEquals(TaskResolutionType.Approved, approve.getResolutionType());
+      assertNotNull(reject);
+      assertEquals("reject", reject.getId());
+      assertEquals("rejected", reject.getTargetStageId());
+      assertEquals(TaskResolutionType.Rejected, reject.getResolutionType());
+      assertEquals(null, unknown);
+    }
+  }
+
+  @Test
+  void findTransitionReturnsNullWhenWorkflowHasNoUserApprovalTaskNode() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    WorkflowDefinition workflowDefinition =
+        new WorkflowDefinition().withId(workflowDefinitionId).withNodes(List.of());
+    Task task =
+        new Task()
+            .withType(TaskEntityType.RequestApproval)
+            .withStatus(TaskEntityStatus.Open)
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withAvailableTransitions(List.of());
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Mockito.eq(Entity.WORKFLOW_DEFINITION),
+                      Mockito.eq(workflowDefinitionId),
+                      Mockito.eq("nodes"),
+                      Mockito.any()))
+          .thenReturn(workflowDefinition);
+
+      assertEquals(null, TaskWorkflowLifecycleResolver.findTransition(task, "approve"));
+    }
+  }
+
+  @Test
+  void findTransitionReturnsNullForNonWorkflowManagedTasks() {
+    Task task =
+        new Task()
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withStatus(TaskEntityStatus.Open)
+            .withWorkflowDefinitionId(null)
+            .withAvailableTransitions(List.of());
+
+    assertEquals(null, TaskWorkflowLifecycleResolver.findTransition(task, "approve"));
+  }
+
+  /**
+   * Build a userApprovalTask WorkflowDefinition without leaning on the jsonschema2pojo-generated
+   * numbered config class name — that generated symbol can rename on any future userApprovalTask
+   * schema edit. Uses a plain map that Jackson deserializes into the generated config.
+   */
+  private static WorkflowDefinition userApprovalTaskWorkflow(
+      UUID workflowDefinitionId, String stageId, List<Map<String, Object>> transitionMetadata) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("stageId", stageId);
+    config.put("transitionMetadata", transitionMetadata);
+    UserApprovalTaskDefinition node =
+        JsonUtils.convertValue(
+            Map.of(
+                "type", "userTask",
+                "subType", "userApprovalTask",
+                "name", "TaskReview",
+                "config", config),
+            UserApprovalTaskDefinition.class);
+    return new WorkflowDefinition().withId(workflowDefinitionId).withNodes(List.of(node));
   }
 
   @Test

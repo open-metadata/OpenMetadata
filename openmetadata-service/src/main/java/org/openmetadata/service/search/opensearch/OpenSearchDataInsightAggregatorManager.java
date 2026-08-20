@@ -197,7 +197,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     return processor.process(dataInsightChartType);
   }
 
-  private void getFieldNames(
+  static void getFieldNames(
       Map<String, Property> properties,
       String parent,
       List<Map<String, String>> fields,
@@ -240,11 +240,12 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
         }
       }
 
-      // Recurse into nested/object fields
+      // Recurse into object fields only. A `nested` mapping stores its children as separate hidden
+      // Lucene documents, so neither a terms aggregation nor the root-level query_string a chart
+      // formula's q= compiles to can reach them: every descendant of a nested field is unusable in
+      // a custom chart and must not be advertised.
       if (property.isObject() && property.object().properties() != null) {
         getFieldNames(property.object().properties(), baseFieldName, fields, entityType);
-      } else if (property.isNested() && property.nested().properties() != null) {
-        getFieldNames(property.nested().properties(), baseFieldName, fields, entityType);
       }
     }
   }
