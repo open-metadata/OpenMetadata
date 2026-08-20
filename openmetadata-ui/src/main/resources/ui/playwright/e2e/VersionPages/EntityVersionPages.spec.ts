@@ -152,7 +152,9 @@ test.describe('Entity Version pages', () => {
 
   entityClasses.forEach((EntityClass) => {
     test(`${new EntityClass().getType()}`, async ({ page }) => {
-      test.slow();
+      // Async deletion alone is allowed up to five minutes. Keep the enclosing
+      // test alive long enough for setup, version checks, and that full poll.
+      test.setTimeout(BIG_ENTITY_DELETE_TIMEOUT + 180_000);
 
       const entity = entities.find(
         (e) => e instanceof EntityClass

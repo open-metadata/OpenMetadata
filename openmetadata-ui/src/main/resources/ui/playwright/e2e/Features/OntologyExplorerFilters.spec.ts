@@ -14,6 +14,7 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { closeFirstPopupAlert } from '../../utils/common';
 import {
   addTermRelation,
   applyGlossaryFilter,
@@ -266,6 +267,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Data' }).click();
       await waitForGraphLoaded(page);
+      await closeFirstPopupAlert(page);
       await page.getByRole('tab', { name: 'Model' }).click();
       await expect(page.getByRole('tab', { name: 'Model' })).toHaveAttribute(
         'aria-selected',
@@ -300,6 +302,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-clear-all-btn')).toBeVisible();
 
+      await closeFirstPopupAlert(page);
       await page.getByRole('tab', { name: 'Model' }).click();
       await waitForGraphLoaded(page);
       await expect(stats).toContainText('2 Terms');
@@ -400,6 +403,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Data' }).click();
       await waitForGraphLoaded(page);
+      await closeFirstPopupAlert(page);
       await page.getByRole('tab', { name: 'Model' }).click();
 
       await expect(page.getByTestId('view-mode-select')).not.toHaveAttribute(

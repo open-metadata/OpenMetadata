@@ -635,11 +635,32 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
+const closeCertificationPopover = async (page: Page) => {
+  const popover = page.locator('.certification-card-popover');
+
+  if (!(await popover.isVisible())) {
+    return;
+  }
+
+  const closeButton = page.getByTestId('close-certification');
+  if (await closeButton.isVisible()) {
+    await closeButton.click();
+  } else {
+    await clickOutside(page);
+  }
+
+  await expect(popover).toBeHidden();
+};
+
 export const assignCertification = async (
   page: Page,
   certification: TagClass,
   endpoint: string
 ) => {
+  // A previous entity update can leave the controlled popover mounted over the
+  // next entity's edit button. Normalize that state before opening it again.
+  await closeCertificationPopover(page);
+
   const certificationResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/tags') &&
@@ -668,10 +689,7 @@ export const assignCertification = async (
     // reset to [], leaving no Radio.Group for the scroll helper to hover. Close
     // and reopen to issue a fresh fetch, then retry the complete find operation.
     if (!(await certificationCards.isVisible())) {
-      const closeButton = page.getByTestId('close-certification');
-      if (await closeButton.isVisible()) {
-        await closeButton.click();
-      }
+      await closeCertificationPopover(page);
       await page.getByTestId('edit-certification').click();
       await expect(certificationCards).toBeVisible({ timeout: 5_000 });
     }
@@ -696,7 +714,7 @@ export const assignCertification = async (
   expect(patchResponse.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await closeCertificationPopover(page);
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -704,6 +722,7 @@ export const assignCertification = async (
 };
 
 export const removeCertification = async (page: Page, endpoint: string) => {
+  await closeCertificationPopover(page);
   await page.getByTestId('edit-certification').click();
   await page
     .locator('.certification-card-popover')
@@ -720,7 +739,7 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await closeCertificationPopover(page);
 
   await expect(page.getByTestId('certification-label')).toContainText('--');
 };
