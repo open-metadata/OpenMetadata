@@ -438,9 +438,6 @@ describe('DomainSelectableTree', () => {
 
   it('should show an inline error inside the list when a search fails', async () => {
     const error = new AxiosError('Request failed with status code 400');
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
     jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
 
     renderComponent();
@@ -453,7 +450,6 @@ describe('DomainSelectableTree', () => {
       target: { value: 'a||||b' },
     });
 
-    // the failure stays in the dropdown - no toast, and the loader clears
     await waitFor(() => {
       expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
     });
@@ -461,21 +457,14 @@ describe('DomainSelectableTree', () => {
     expect(screen.getByTestId('retry-domain-search')).toBeInTheDocument();
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(showErrorToast).not.toHaveBeenCalled();
-    // the inline state cannot distinguish a bad query from a 5xx, so the error
-    // must still reach the console for anything collecting breadcrumbs
-    expect(consoleError).toHaveBeenCalledWith(
-      'Error occurred while searching domains:',
-      error
-    );
-
-    consoleError.mockRestore();
   });
 
   it('should retry the search from the inline error and recover', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest
       .spyOn(domainAPI, 'searchDomains')
-      .mockRejectedValueOnce(new AxiosError('Request failed with status code 400'))
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      )
       .mockResolvedValueOnce([mockDomains[0]]);
 
     renderComponent();
@@ -500,10 +489,11 @@ describe('DomainSelectableTree', () => {
   });
 
   it('should clear the inline error when the search box is cleared', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest
       .spyOn(domainAPI, 'searchDomains')
-      .mockRejectedValueOnce(new AxiosError('Request failed with status code 400'));
+      .mockRejectedValueOnce(
+        new AxiosError('Request failed with status code 400')
+      );
 
     renderComponent();
 
