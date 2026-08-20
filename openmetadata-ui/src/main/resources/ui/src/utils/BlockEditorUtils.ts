@@ -36,7 +36,6 @@ export const getSelectedText = (state: EditorState) => {
   return text;
 };
 
-
 // Unique marker prefix used to temporarily replace entity links during HTML serialization
 // This avoids HTML encoding of < and > characters in entity links
 const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
