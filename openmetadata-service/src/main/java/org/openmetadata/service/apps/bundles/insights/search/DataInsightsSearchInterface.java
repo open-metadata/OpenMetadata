@@ -2,7 +2,9 @@ package org.openmetadata.service.apps.bundles.insights.search;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -71,11 +73,13 @@ public interface DataInsightsSearchInterface {
 
   default List<String> getEntityAttributeFields(
       DataInsightsSearchConfiguration dataInsightsSearchConfiguration, String entityType) {
-    List<String> entityAttributeFields =
-        dataInsightsSearchConfiguration.getMappingFields().get("common");
+    DataInsightsSearchConfiguration.MappingFields mappingFields =
+        dataInsightsSearchConfiguration.getMappingFields();
+    // Copy: the common list is shared across every call, so appending to it in place would leak one
+    // entity type's attributes into the next.
+    List<String> entityAttributeFields = new ArrayList<>(mappingFields.getCommon());
     entityAttributeFields.addAll(
-        dataInsightsSearchConfiguration.getMappingFields().get(entityType));
-
+        mappingFields.getByType().getOrDefault(DataAssetType.fromValue(entityType), List.of()));
     return entityAttributeFields;
   }
 

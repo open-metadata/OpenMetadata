@@ -229,8 +229,15 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
       final String finalFieldName = adjustedFieldName;
 
       if (!"object".equals(type) && !"nested".equals(type)) {
-        // Deduplicate
-        if (fields.stream().noneMatch(f -> f.get("name").equals(finalFieldName))) {
+        // Deduplicate per entity type, not globally. A global dedup credits a shared field name
+        // to whichever type is iterated first, and the iteration source is a Set.of whose order is
+        // salted per JVM start: a type whose every field name was already claimed contributes
+        // nothing, and which types those are changes on restart.
+        if (fields.stream()
+            .noneMatch(
+                f ->
+                    f.get("name").equals(finalFieldName)
+                        && f.get("entityType").equals(entityType))) {
           Map<String, String> fieldMap = new HashMap<>();
           fieldMap.put("name", finalFieldName);
           fieldMap.put("displayName", displayName);
