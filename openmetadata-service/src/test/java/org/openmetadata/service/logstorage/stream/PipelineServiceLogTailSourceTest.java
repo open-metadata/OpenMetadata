@@ -13,13 +13,16 @@
 package org.openmetadata.service.logstorage.stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.logstorage.stream.LogTailSource.LogChunk;
 
 /**
@@ -33,7 +36,7 @@ class PipelineServiceLogTailSourceTest {
   private static final String TASK_ID = "ingestion_task";
 
   @Test
-  void deliversOnlyTheGrowthOfAChunkBetweenPolls() {
+  void deliversOnlyTheGrowthOfAChunkBetweenPolls() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend();
     backend.append("line one\n");
     PipelineServiceLogTailSource source = new PipelineServiceLogTailSource(backend, null);
@@ -45,7 +48,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void repeatedPollsOfAnUnchangedChunkDeliverNothing() {
+  void repeatedPollsOfAnUnchangedChunkDeliverNothing() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend();
     backend.append("only line\n");
     PipelineServiceLogTailSource source = new PipelineServiceLogTailSource(backend, null);
@@ -57,7 +60,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void walksForwardThroughChunksTheBackendOffers() {
+  void walksForwardThroughChunksTheBackendOffers() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend(4);
     backend.append("aaaabbbbcc");
     PipelineServiceLogTailSource source = new PipelineServiceLogTailSource(backend, null);
@@ -72,7 +75,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void neverAsksForAChunkTheBackendDidNotOffer() {
+  void neverAsksForAChunkTheBackendDidNotOffer() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend(4);
     backend.append("aaaabb");
     PipelineServiceLogTailSource source = new PipelineServiceLogTailSource(backend, null);
@@ -88,7 +91,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void resumesFromACursorWithoutRedeliveringEarlierContent() {
+  void resumesFromACursorWithoutRedeliveringEarlierContent() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend();
     backend.append("already seen\n");
     PipelineServiceLogTailSource first = new PipelineServiceLogTailSource(backend, null);
@@ -102,7 +105,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void aShrinkingChunkIsReAnchoredInsteadOfRedelivered() {
+  void aShrinkingChunkIsReAnchoredInsteadOfRedelivered() throws IOException {
     FakeChunkedBackend backend = new FakeChunkedBackend();
     backend.append("run one output\n");
     PipelineServiceLogTailSource source = new PipelineServiceLogTailSource(backend, null);
@@ -116,7 +119,7 @@ class PipelineServiceLogTailSourceTest {
   }
 
   @Test
-  void followsTheSameTaskWhenTheBackendReportsSeveral() {
+  void followsTheSameTaskWhenTheBackendReportsSeveral() throws IOException {
     Map<String, String> firstPage = new HashMap<>();
     firstPage.put("zzz_last_task", "output of the last task\n");
     firstPage.put("aaa_first_task", "output of the first task\n");
@@ -131,6 +134,19 @@ class PipelineServiceLogTailSourceTest {
         "and more of it\n",
         source.readNext().content(),
         "a page with several tasks must resolve to the same task on every read");
+  }
+
+  @Test
+  void doesNotRenderBackendErrorsAsLogContent() throws IOException {
+    PipelineServiceLogTailSource source =
+        new PipelineServiceLogTailSource(
+            after ->
+                Map.of(
+                    PipelineServiceClientInterface.LOGS_ERROR_KEY,
+                    "Kubernetes pod status could not be parsed"),
+            null);
+
+    assertThrows(LogSourceUnavailableException.class, source::readNext);
   }
 
   /**
