@@ -1193,10 +1193,9 @@ test.describe('Glossary tests', () => {
         EntityTypeEndpoint.Table
       );
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      // AssetsTabs can mount and fetch as soon as the active term changes,
-      // before the user clicks the Assets tab. Arm the response waiter first
-      // so we observe both eager and click-triggered fetches.
+      // Selecting a glossary with one term auto-selects that term. AssetsTabs
+      // can therefore mount and fetch during selectActiveGlossary, before an
+      // explicit term or tab click. Arm the exact waiter before that action.
       const assetsSearchResponse = page.waitForResponse((response) => {
         const url = new URL(response.url());
         const pageSize = Number(url.searchParams.get('size'));
@@ -1210,6 +1209,7 @@ test.describe('Glossary tests', () => {
             ?.includes(glossaryTerm1.responseData.fullyQualifiedName) === true
         );
       });
+      await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
       await assetsSearchResponse;
