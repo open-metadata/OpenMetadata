@@ -38,8 +38,16 @@ export type ChipTriggerProps = {
 const CHIP_TRIGGER_BTN_CLASS =
   'tw:inline-flex tw:h-auto tw:min-h-0 tw:p-0 tw:shadow-none tw:after:outline-0 tw:bg-transparent hover:tw:bg-transparent tw:outline-none';
 
+// The chip sits in an auto-layout table cell, so its intrinsic width is the
+// column's floor: a `max-w-max` nowrap label lets any long translation widen the
+// column until the table outgrows its container and the trailing columns are
+// pushed off screen (issue #30522 — ru-RU renders "No Severity" as
+// "Критичность инцидента отсутствует", 208px of text against 67px in English).
+// 11rem leaves 140px of text room, which clears the longest translated *status*
+// label in any shipped locale (131px, ru-RU "Назначен исполнитель"), so only a
+// genuinely oversized label truncates.
 const CHIP_PILL_CLASS =
-  'tw:inline-flex tw:max-w-max tw:items-center tw:gap-0.5 tw:whitespace-nowrap tw:rounded-full tw:border tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
+  'tw:inline-flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:whitespace-nowrap tw:rounded-full tw:border tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:leading-none';
 
 export const ChipTrigger = ({
   chipRef,
@@ -72,7 +80,14 @@ export const ChipTrigger = ({
           borderColor: palette.border,
           color: palette.color,
         }}>
-        {chipLabel}
+        {/* Truncation is visual only — the full label stays in the DOM for the
+            button's accessible name, and `title` surfaces it on hover. */}
+        <span
+          className="tw:min-w-0 tw:truncate"
+          data-testid={`${dataTestId}-label`}
+          title={chipLabel}>
+          {chipLabel}
+        </span>
         {hasEditPermission && (
           <ChevronIcon
             aria-hidden
