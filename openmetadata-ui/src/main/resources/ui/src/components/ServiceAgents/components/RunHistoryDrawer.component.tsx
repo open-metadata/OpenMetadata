@@ -31,6 +31,7 @@ import {
   AgentRun,
   RunStatus,
 } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import {
   AGENT_TYPE_ICON,
@@ -175,6 +176,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onRun,
 }) => {
   const { t } = useTranslation();
+  const { isPending, isUnavailable } = useAgentActionAvailability();
   const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
@@ -229,11 +231,14 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               {t('label.run-history-and-details')}
             </div>
           </div>
+          {/* Raw logs and Run now both go through the pipeline service; the run history below
+              does not, so the drawer stays useful when those two are closed down. */}
           <Button
             className="tw:font-semibold tw:after:outline-secondary"
             color="secondary"
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
+            isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}
@@ -244,6 +249,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="secondary"
               data-testid="drawer-run-now-button"
               iconLeading={<PlayIcon height={14} width={14} />}
+              isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>
               {t('label.run-now')}
