@@ -239,9 +239,46 @@ USER openmetadata
 # build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
 # 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
 # what keeps scanners reporting CVE-2026-59890.
-# Keep this the LAST pip layer -- a later layer that compiles a package needing
-# pkg_resources would fail here, and the error would not look like a setuptools problem.
+# Keep this the LAST pip layer that can compile anything -- a later layer that builds a
+# package needing pkg_resources would fail here, and the error would not look like a
+# setuptools problem. The sqlparse override below is a pure-Python wheel, so it is exempt.
 RUN pip install --upgrade "setuptools>=83"
+
+# Force sqlparse past two declared ceilings to clear CVE-2026-54284, CVE-2026-59893,
+# CVE-2026-71491 (parser CPU-exhaustion DoS) and CVE-2026-59894 (SQL string breakout in
+# the python/php output formats). All four are fixed only in 0.6.0 -- OSV reports no
+# patched 0.5.x -- so no in-range version is clean and the resolver cannot help us:
+#     collate-sqllineage 2.1.4                     sqlparse==0.5.4
+#     dbt-core (transitive via collate-data-diff)  sqlparse<0.6.0
+# Both ceilings are stale rather than substantive. collate-sqllineage 2.1.5 shipped with
+# sqlparse==0.6.0 and 2.1.6 reverted only the pin to stay co-installable with dbt-core --
+# the two releases are byte-identical apart from the version string, so 0.6.0 is a version
+# upstream already released against. dbt-core's ceiling predates 0.6.0 by nine months and
+# is tracked at https://github.com/dbt-labs/dbt-core/issues/15988. Once that lands, delete
+# this layer and raise the floors in ingestion/setup.py instead.
+#
+# --no-deps because pip would otherwise backtrack on the declared conflict. `pip install`
+# exits 0 while printing the resolver-conflict ERROR, and `pip check` will report the two
+# unsatisfied pins for the life of the image, so the import gate is what actually keeps
+# this honest. It asserts the two things that would otherwise fail silently: that we really
+# got 0.6.x, and that collate-sqllineage's monkeypatch of sqlparse internals still bites.
+# That patch raises MAX_GROUPING_DEPTH/MAX_GROUPING_TOKENS 100x and retypes STRING as a
+# builtin; if a future sqlparse renames either, the patch degrades to a no-op and lineage
+# comes back quietly truncated with nothing failing.
+RUN pip install --no-deps "sqlparse==0.6.0" \
+ && python -W ignore -c "\
+import sqlparse; \
+from sqlparse.engine import grouping; \
+from sqlparse.keywords import KEYWORDS; \
+import collate_sqllineage.core.parser.sqlparse; \
+from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer; \
+from collate_sqllineage.runner import LineageRunner; \
+assert sqlparse.__version__.startswith('0.6.'), sqlparse.__version__; \
+assert (grouping.MAX_GROUPING_DEPTH, grouping.MAX_GROUPING_TOKENS) == (10000, 1000000), 'sqllineage grouping patch is a no-op'; \
+assert str(KEYWORDS['STRING']) == 'Token.Name.Builtin', 'sqllineage keyword patch is a no-op'; \
+r = LineageRunner('INSERT INTO db.sch.tgt SELECT c FROM db.sch.src', analyzer=SqlParseLineageAnalyzer); \
+assert [str(t) for t in r.source_tables] == ['db.sch.src'], r.source_tables; \
+assert [str(t) for t in r.target_tables] == ['db.sch.tgt'], r.target_tables"
 
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
