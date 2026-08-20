@@ -1192,29 +1192,73 @@ test.describe('Glossary tests', () => {
         'Add',
         EntityTypeEndpoint.Table
       );
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      // Selecting a glossary with one term auto-selects that term. AssetsTabs
-      // can therefore mount and fetch during selectActiveGlossary, before an
-      // explicit term or tab click. Arm the exact waiter before that action.
-      const assetsSearchResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-        const pageSize = Number(url.searchParams.get('size'));
+      const entityFqn = get(
+        table,
+        'entityResponseData.fullyQualifiedName'
+      ) as string;
+      const queryFilter = {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'tags.tagFQN': glossaryTerm1.responseData.fullyQualifiedName,
+                },
+              },
+            ],
+          },
+        },
+      };
 
-        return (
-          url.pathname.endsWith('/api/v1/search/query') &&
-          url.searchParams.get('index') === 'all' &&
-          pageSize > 0 &&
-          url.searchParams
-            .get('query_filter')
-            ?.includes(glossaryTerm1.responseData.fullyQualifiedName) === true
-        );
-      });
+      // The glossary Assets tab reads from the search index, which is updated
+      // asynchronously after the entity PATCH. Wait for the exact entity to be
+      // searchable before mounting the tab; waiting for a browser response is
+      // racy because a one-term glossary can fetch before the explicit click.
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get('/api/v1/search/query', {
+              params: {
+                q: '*',
+                index: 'all',
+                from: 0,
+                size: 10,
+                deleted: false,
+                query_filter: JSON.stringify(queryFilter),
+              },
+            });
+
+            if (!response.ok()) {
+              return false;
+            }
+
+            const result = (await response.json()) as {
+              hits?: {
+                hits?: Array<{
+                  _source?: { fullyQualifiedName?: string };
+                }>;
+              };
+            };
+
+            return (
+              result.hits?.hits?.some(
+                (hit) => hit._source?.fullyQualifiedName === entityFqn
+              ) ?? false
+            );
+          },
+          {
+            message: `Wait for ${entityFqn} to be indexed with glossary term`,
+            timeout: 60_000,
+            intervals: [1_000, 2_000, 5_000],
+          }
+        )
+        .toBe(true);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
       await page.getByTestId('assets').click();
-      await assetsSearchResponse;
       await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
-      const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
         page.getByTestId(`table-data-card_${entityFqn}`)
