@@ -80,6 +80,23 @@ export const buildFqn = (...segments: string[]): string =>
   segments.map(quoteFqnSegment).join('.');
 
 /**
+ * A dependency committed moments earlier can still be invisible to the create
+ * that references it. A nightly AUT run recorded `POST /policies` answering 201,
+ * `POST /roles` referencing that exact id answering 404 `policy instance ... not
+ * found` 15ms later, and a `DELETE` of the same id answering 200 a further 58ms
+ * on — so the row was committed the whole time and only the reference lookup
+ * lagged. Retry briefly instead of losing the try; a reference that is genuinely
+ * wrong still fails, just ~1.8s later.
+ */
+const CREATE_RETRY_ATTEMPTS = 3;
+const CREATE_RETRY_BASE_DELAY_MS = 300;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/**
  * POST that treats "already exists" as success.
  *
  * The nightly topology runs many Playwright processes against a single server,
@@ -113,7 +130,16 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 ): Promise<T> => {
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
-  const createResponse = await apiContext.post(createPath, { data });
+  let createResponse = await apiContext.post(createPath, { data });
+
+  for (
+    let attempt = 1;
+    attempt <= CREATE_RETRY_ATTEMPTS && createResponse.status() === 404;
+    attempt++
+  ) {
+    await sleep(CREATE_RETRY_BASE_DELAY_MS * attempt);
+    createResponse = await apiContext.post(createPath, { data });
+  }
 
   if (createResponse.status() === 409) {
     const entityFqn = buildFqn(...fqnSegments);

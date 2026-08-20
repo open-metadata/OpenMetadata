@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 type ClassificationData = {
@@ -54,11 +54,12 @@ export class ClassificationClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/classifications', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'ClassificationClass.create',
+      createPath: '/api/v1/classifications',
+      fqnSegments: [this.data.name],
       data: this.data,
     });
-
-    this.responseData = await okJson(response, 'ClassificationClass.create');
 
     return this.responseData;
   }

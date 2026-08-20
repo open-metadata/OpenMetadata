@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -43,10 +43,12 @@ export class PersonaClass {
   }
 
   async create(apiContext: APIRequestContext, users?: string[]) {
-    const response = await apiContext.post('/api/v1/personas', {
+    const data = await createOrFetch(apiContext, {
+      label: 'PersonaClass.create',
+      createPath: '/api/v1/personas',
+      fqnSegments: [this.data.name],
       data: { ...this.data, users },
     });
-    const data = await okJson(response, 'PersonaClass.create');
     this.responseData = data;
 
     return data;
