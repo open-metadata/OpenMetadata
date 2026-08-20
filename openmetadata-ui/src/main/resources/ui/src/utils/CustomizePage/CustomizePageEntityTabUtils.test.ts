@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getRenderedActiveTab } from './CustomizePageEntityTabUtils';
 
 // Reproduces the persona from issue #29940 that reorders Documentation off the first
 // position (and can drop it entirely), so the resolved tab must come from the rendered
 // list and never a hardcoded default that is not on screen.
-const renderedTabs: TabsProps['items'] = [
+const renderedTabs = [
   { key: EntityTabs.SUBDOMAINS, label: 'Sub Domains' },
   { key: EntityTabs.DATA_PRODUCTS, label: 'Data Products' },
   { key: EntityTabs.DOCUMENTATION, label: 'Documentation' },
@@ -44,7 +43,7 @@ describe('getRenderedActiveTab', () => {
   it('should fall back to the first rendered tab when the selection is not rendered', () => {
     // e.g. the tree view seeds a hardcoded Documentation, or a URL deep-links a tab the
     // persona removed -- neither is on screen, so the first rendered tab wins.
-    const withoutDocumentation = renderedTabs?.filter(
+    const withoutDocumentation = renderedTabs.filter(
       (tab) => tab.key !== EntityTabs.DOCUMENTATION
     );
 
@@ -58,7 +57,7 @@ describe('getRenderedActiveTab', () => {
   });
 
   it('should honour the persona order for the first tab when no tab is selected', () => {
-    const reordered: TabsProps['items'] = [
+    const reordered = [
       { key: EntityTabs.CUSTOM_PROPERTIES, label: 'Custom Properties' },
       { key: EntityTabs.DOCUMENTATION, label: 'Documentation' },
     ];
