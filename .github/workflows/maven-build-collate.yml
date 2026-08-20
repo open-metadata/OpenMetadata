@@ -82,7 +82,11 @@ jobs:
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         with:
           workflow: OpenMetadata Collate Test
-          ref: main
+          # Collate tracks each OpenMetadata release line on an identically
+          # named branch, so build the Collate branch matching the PR base.
+          # Dispatching main for a 1.13 PR builds main-only Collate code
+          # against a 1.13 checkout.
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.ref || github.ref_name }}
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
