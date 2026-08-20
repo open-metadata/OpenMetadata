@@ -771,6 +771,40 @@ class RESTTest(TestCase):
         field_names = {field.name.root for field in result.schemaFields}
         assert field_names == {"id", "username"}
 
+    def test_get_request_schema_swagger_2_array_body(self):
+        self.rest_source.json_response = {
+            "definitions": {
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "username": {"type": "string"},
+                    },
+                }
+            }
+        }
+        info = {
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "users",
+                    "schema": {
+                        "type": "array",
+                        "items": {"$ref": "#/definitions/User"},
+                    },
+                }
+            ]
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "username",
+        }
+
     def test_get_request_schema_query_parameters(self):
         """Test extracting request schema from query and path parameters"""
         result = self.rest_source._get_request_schema(MOCK_QUERY_PARAMETERS)
@@ -838,6 +872,31 @@ class RESTTest(TestCase):
         assert result.schemaFields is not None
         assert len(result.schemaFields) == 3
 
+    def test_get_request_schema_array_root(self):
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
+        info = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/User"},
+                        }
+                    }
+                }
+            }
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "name",
+            "email",
+        }
+
     def test_get_response_schema_direct_ref(self):
         """Test extracting response schema with direct $ref"""
         self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
@@ -879,6 +938,34 @@ class RESTTest(TestCase):
         assert len(result.schemaFields) == 3
         field_names = {field.name.root for field in result.schemaFields}
         assert field_names == {"id", "name", "email"}
+
+    def test_get_response_schema_referenced_array_root(self):
+        self.rest_source.json_response = deepcopy(MOCK_SCHEMA_RESPONSE_SIMPLE)
+        self.rest_source.json_response["components"]["schemas"]["Users"] = {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/User"},
+        }
+        info = {
+            "responses": {
+                "200": {
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/Users"}
+                        }
+                    }
+                }
+            }
+        }
+
+        result = self.rest_source._get_response_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "name",
+            "email",
+        }
 
     def test_get_response_schema_nested_data_ref(self):
         """Test extracting response schema from nested properties.data structure"""
@@ -926,6 +1013,51 @@ class RESTTest(TestCase):
         """Test _parse_openapi_type is case insensitive"""
         result = self.rest_source._parse_openapi_type("BOOLEAN")
         assert result == DataTypeTopic.BOOLEAN
+
+    def test_process_schema_fields_with_nullable_type(self):
+        self.rest_source.json_response = {
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": ["string", "null"]},
+                        },
+                    }
+                }
+            }
+        }
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 1
+        assert result[0].dataType == DataTypeTopic.STRING
+        assert self.rest_source.status.warnings == []
+
+    def test_process_schema_fields_reports_single_parsing_warning(self):
+        info = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": ["invalid"]},
+                    }
+                }
+            }
+        }
+
+        self.rest_source._activate_handler()
+        try:
+            result = self.rest_source._get_request_schema(info)
+        finally:
+            self.rest_source._deactivate_handler()
+
+        assert result is not None
+        assert result.schemaFields is None
+        assert len(self.rest_source.status.warnings) == 1
+        assert "Error while processing schema fields" in next(
+            iter(self.rest_source.status.warnings[0].values())
+        )
 
     def test_extract_schema_from_response_openapi3(self):
         """Test _extract_schema_from_response extracts OpenAPI 3.0 schema"""
