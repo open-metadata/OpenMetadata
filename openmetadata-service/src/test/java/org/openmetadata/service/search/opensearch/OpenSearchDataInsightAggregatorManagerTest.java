@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
 
@@ -29,6 +31,50 @@ class OpenSearchDataInsightAggregatorManagerTest {
     assertTrue(names.contains("ownerName"), "Flat ownerName twin must survive: " + names);
     assertTrue(names.contains("service.name.keyword"), "object children must survive: " + names);
     assertEquals(2, names.size(), names.toString());
+  }
+
+  @Test
+  void aSharedFieldNameIsReportedForEveryTypeThatHasIt() {
+    List<Map<String, String>> fields = new ArrayList<>();
+    OpenSearchDataInsightAggregatorManager.getFieldNames(dataAssetMapping(), "", fields, "table");
+    OpenSearchDataInsightAggregatorManager.getFieldNames(dataAssetMapping(), "", fields, "topic");
+
+    // Deduplicating on the field name alone let the first type claim every shared name, so a type
+    // whose fields were all already claimed advertised nothing at all.
+    assertEquals(
+        Set.of("table", "topic"),
+        fields.stream().map(field -> field.get("entityType")).collect(Collectors.toSet()));
+    assertEquals(
+        2,
+        fields.stream().filter(field -> "ownerName".equals(field.get("name"))).count(),
+        "a name shared by two types must be reported once for each of them");
+  }
+
+  @Test
+  void aFieldIsStillReportedOnlyOncePerType() {
+    List<Map<String, String>> fields = new ArrayList<>();
+    OpenSearchDataInsightAggregatorManager.getFieldNames(dataAssetMapping(), "", fields, "table");
+    OpenSearchDataInsightAggregatorManager.getFieldNames(dataAssetMapping(), "", fields, "table");
+
+    assertEquals(2, fields.size(), "dedup within a single type must still hold: " + fields);
+  }
+
+  @Test
+  void theCatalogDoesNotDependOnTheOrderTypesAreVisited() {
+    // The production loop iterates a Set.of, whose order is salted per JVM start, so an
+    // order-sensitive catalog reports a different set of entity types on every restart.
+    assertEquals(catalogKeys(List.of("table", "topic")), catalogKeys(List.of("topic", "table")));
+  }
+
+  private static Set<String> catalogKeys(List<String> entityTypes) {
+    List<Map<String, String>> fields = new ArrayList<>();
+    entityTypes.forEach(
+        entityType ->
+            OpenSearchDataInsightAggregatorManager.getFieldNames(
+                dataAssetMapping(), "", fields, entityType));
+    return fields.stream()
+        .map(field -> field.get("entityType") + ":" + field.get("name"))
+        .collect(Collectors.toSet());
   }
 
   private static List<String> catalogFieldNames() {

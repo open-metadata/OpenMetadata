@@ -1,0 +1,93 @@
+package org.openmetadata.service.apps.bundles.insights;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
+import org.openmetadata.schema.utils.JsonUtils;
+
+/**
+ * Data Insights covers an entity type in exactly one of two ways: the app ingests it into a
+ * datastream of its own, in which case {@code dataInsights/config.json} carries its attribute list,
+ * or a live index is aliased into the {@code di-data-assets-*} wildcard by a {@code
+ * dataInsightAliases} entry in indexMapping.json.
+ *
+ * <p>The invariant spans three files because the contract does. Nothing else in the codebase notices
+ * when a type is declared but nothing populates it, which is how {@code metric} spent five months
+ * ingested but absent from the chart field catalog.
+ */
+class DataAssetTypeCoverageTest {
+
+  private static final String CONFIG_PATH = "/dataInsights/config.json";
+  private static final String INDEX_MAPPING_PATH = "/elasticsearch/indexMapping.json";
+  private static final String COMMON_KEY = "common";
+
+  @Test
+  void everyDataAssetTypeIsEitherIngestedOrAliasedIn() {
+    Set<String> ingested = ingestedTypes();
+    Set<String> aliased = aliasedTypes();
+
+    for (DataAssetType type : DataAssetType.values()) {
+      assertTrue(
+          ingested.contains(type.value()) || aliased.contains(type.value()),
+          type.value()
+              + " is a Data Insights asset type but is neither given an attribute list in "
+              + CONFIG_PATH
+              + " nor aliased in via dataInsightAliases, so nothing would ever populate it");
+    }
+  }
+
+  @Test
+  void theTwoCoverageMechanismsDoNotOverlap() {
+    Set<String> overlap = new HashSet<>(ingestedTypes());
+    overlap.retainAll(aliasedTypes());
+
+    // An aliased type points at a live index. Ingesting it as well would have the app create and
+    // delete a datastream whose name that alias already occupies, i.e. aimed at live data.
+    assertTrue(overlap.isEmpty(), "types both ingested and aliased in: " + overlap);
+  }
+
+  /** The types the app ingests: the keys of config.json's mappingFields other than common. */
+  private static Set<String> ingestedTypes() {
+    JsonNode mappingFields = JsonUtils.readTree(readResource(CONFIG_PATH)).get("mappingFields");
+    Set<String> types = new HashSet<>();
+    Iterator<String> keys = mappingFields.fieldNames();
+    while (keys.hasNext()) {
+      String key = keys.next();
+      if (!COMMON_KEY.equals(key)) {
+        types.add(key);
+      }
+    }
+    return types;
+  }
+
+  /** The types reaching Data Insights through an alias onto their live entity index. */
+  private static Set<String> aliasedTypes() {
+    JsonNode indexMapping = JsonUtils.readTree(readResource(INDEX_MAPPING_PATH));
+    Set<String> types = new HashSet<>();
+    Iterator<Map.Entry<String, JsonNode>> entries = indexMapping.fields();
+    while (entries.hasNext()) {
+      Map.Entry<String, JsonNode> entry = entries.next();
+      JsonNode aliases = entry.getValue().get("dataInsightAliases");
+      if (aliases != null && !aliases.isEmpty()) {
+        types.add(entry.getKey());
+      }
+    }
+    return types;
+  }
+
+  private static String readResource(String path) {
+    try (InputStream in = DataAssetTypeCoverageTest.class.getResourceAsStream(path)) {
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      throw new IllegalStateException("could not read " + path, e);
+    }
+  }
+}
