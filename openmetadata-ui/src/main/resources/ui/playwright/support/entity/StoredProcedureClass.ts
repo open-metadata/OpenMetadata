@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -132,10 +133,16 @@ export class StoredProcedureClass extends EntityClass {
       data: this.entity,
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
-    const entity = await entityResponse.json();
+    const service = await okJson(
+      serviceResponse,
+      'StoredProcedureClass.create'
+    );
+    const database = await okJson(
+      databaseResponse,
+      'StoredProcedureClass.create'
+    );
+    const schema = await okJson(schemaResponse, 'StoredProcedureClass.create');
+    const entity = await okJson(entityResponse, 'StoredProcedureClass.create');
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -157,17 +164,22 @@ export class StoredProcedureClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/storedProcedures/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/storedProcedures/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(
+      response,
+      'StoredProcedureClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
