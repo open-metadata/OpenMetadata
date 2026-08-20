@@ -39,17 +39,49 @@ jest.mock('../../../components/common/WidgetCard/WidgetCard', () => ({
 }));
 
 describe('TableAliases', () => {
-  it('renders each alias', () => {
+  it('renders only the alias name, not the fully qualified name', () => {
     mockUseGenericContext.mockReturnValue({
-      data: { aliases: ['svc.analytics_core.dbo.orders'] },
+      data: {
+        aliases: [
+          'svc.analytics_core.dbo.mayur',
+          'svc.analytics_core.dbo.apple',
+        ],
+      },
       filterWidgets: jest.fn(),
     });
 
     render(<TableAliases />);
 
+    expect(screen.getByText('mayur')).toBeInTheDocument();
+    expect(screen.getByText('apple')).toBeInTheDocument();
     expect(
-      screen.getByText('svc.analytics_core.dbo.orders')
-    ).toBeInTheDocument();
+      screen.queryByText('svc.analytics_core.dbo.mayur')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the full fully qualified name available on hover', () => {
+    mockUseGenericContext.mockReturnValue({
+      data: { aliases: ['svc.analytics_core.dbo.mayur'] },
+      filterWidgets: jest.fn(),
+    });
+
+    render(<TableAliases />);
+
+    expect(screen.getByText('mayur')).toHaveAttribute(
+      'title',
+      'svc.analytics_core.dbo.mayur'
+    );
+  });
+
+  it('does not split a quoted name part that contains a dot', () => {
+    mockUseGenericContext.mockReturnValue({
+      data: { aliases: ['svc.analytics_core.dbo."order.items"'] },
+      filterWidgets: jest.fn(),
+    });
+
+    render(<TableAliases />);
+
+    expect(screen.getByText('order.items')).toBeInTheDocument();
   });
 
   it('renders nothing when there are no aliases', () => {
@@ -65,7 +97,7 @@ describe('TableAliases', () => {
 
   it('offers no edit control, because aliases are source-managed', () => {
     mockUseGenericContext.mockReturnValue({
-      data: { aliases: ['svc.analytics_core.dbo.orders'] },
+      data: { aliases: ['svc.analytics_core.dbo.mayur'] },
       filterWidgets: jest.fn(),
     });
 

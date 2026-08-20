@@ -22,10 +22,11 @@ import { test } from '../fixtures/pages';
 // Shaped like the FQNs the MSSQL synonym sweep writes to Table.aliases, so the
 // assertion mirrors what the connector actually produces rather than an
 // arbitrary label.
-const ALIASES = [
-  `mssql_synonym_svc.dbo.legacy_customers_${uuid()}`,
-  `mssql_synonym_svc.dbo.legacy_orders_${uuid()}`,
+const ALIAS_NAMES = [
+  `legacy_customers_${uuid()}`,
+  `legacy_orders_${uuid()}`,
 ];
+const ALIASES = ALIAS_NAMES.map((name) => `mssql_synonym_svc.dbo.${name}`);
 
 test.describe('Table Aliases widget', { tag: [DOMAIN_TAGS.DISCOVERY] }, () => {
   const tableWithAliases = new TableClass();
@@ -65,9 +66,17 @@ test.describe('Table Aliases widget', { tag: [DOMAIN_TAGS.DISCOVERY] }, () => {
 
     await expect(aliasesWidget).toBeVisible();
 
-    for (const alias of ALIASES) {
-      await expect(aliasesWidget.getByText(alias)).toBeVisible();
+    // The widget shows only the trailing alias name; the service, database and
+    // schema are already implied by the page, and the full FQN stays available
+    // as the cell's title attribute.
+    for (const [index, name] of ALIAS_NAMES.entries()) {
+      const cell = aliasesWidget.getByText(name, { exact: true });
+
+      await expect(cell).toBeVisible();
+      await expect(cell).toHaveAttribute('title', ALIASES[index]);
     }
+
+    await expect(aliasesWidget.getByText(ALIASES[0])).toHaveCount(0);
 
     // Deliberately no edit affordance: the MSSQL connector overwrites
     // aliases on every ingestion run, so an editable control would silently

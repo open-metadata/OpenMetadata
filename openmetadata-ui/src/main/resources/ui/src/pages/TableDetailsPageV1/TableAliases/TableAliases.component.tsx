@@ -10,20 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../../components/common/Table/Table';
+import { TableComponentProps } from '../../../components/common/Table/Table.interface';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Table as TableType } from '../../../generated/entity/data/table';
+import Fqn from '../../../utils/Fqn';
 
 interface AliasRow {
   key: string;
-  alias: string;
+  name: string;
+  fqn: string;
 }
+
+// Derived from the shared Table wrapper's own props rather than importing
+// antd directly, which tw-guard rejects for new files.
+type AliasColumns = NonNullable<TableComponentProps<AliasRow>['columns']>;
+
+// Aliases are stored as fully qualified names, but the service, database and
+// schema are already established by the page the widget sits on, so only the
+// trailing name carries new information. Fqn.split is quote-aware: a name part
+// may legitimately contain a dot, which a plain split would tear in half.
+// Fqn.split retains quoting on each part and Fqn.unquoteName throws on a
+// malformed name, so fall back to the raw value rather than letting one odd
+// alias take down the whole table page.
+const getAliasName = (fqn: string): string => {
+  try {
+    const parts = Fqn.split(fqn);
+
+    return parts.length > 0 ? Fqn.unquoteName(parts[parts.length - 1]) : fqn;
+  } catch {
+    return fqn;
+  }
+};
 
 export const TableAliases = ({
   renderAsExpandableCard = true,
@@ -34,17 +57,25 @@ export const TableAliases = ({
   const { t } = useTranslation();
 
   const aliasRows = useMemo<AliasRow[]>(
-    () => (data?.aliases ?? []).map((alias) => ({ key: alias, alias })),
+    () =>
+      (data?.aliases ?? []).map((alias) => ({
+        key: alias,
+        name: getAliasName(alias),
+        fqn: alias,
+      })),
     [data?.aliases]
   );
 
-  const columns = useMemo<ColumnsType<AliasRow>>(
+  const columns = useMemo<AliasColumns>(
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'alias',
-        key: 'alias',
+        dataIndex: 'name',
+        key: 'name',
         ellipsis: true,
+        render: (name: string, record: AliasRow) => (
+          <span title={record.fqn}>{name}</span>
+        ),
       },
     ],
     [t]
