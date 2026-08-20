@@ -189,45 +189,42 @@ export default defineConfig({
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
     },
-    // IntakeFormCustomPropertyFields creates a domain intake form in beforeAll and
-    // relies on it persisting across two serial tests. IntakeForm.spec.ts (in the
-    // main chromium project) has a beforeEach that deletes ALL intake forms, so the
-    // two specs interfere when run in parallel. Running this file after chromium
-    // completes eliminates the race entirely.
+    // IntakeFormCustomPropertyFields creates a domain intake form in beforeAll
+    // and relies on it persisting across its serial tests. IntakeForm.spec.ts
+    // has a per-test beforeEach that deletes ALL intake forms, so the two specs
+    // race if they run concurrently.
     //
-    // On CI, this project runs on its own matrix shard with an isolated docker
-    // environment — IntakeForm.spec.ts never touches the same database — so the
-    // chromium dependency is unnecessary and would force the entire chromium
-    // suite to run serially first, blowing past the job timeout. Set
-    // PW_INTAKE_FORM_SOLO=true on that shard to opt out of the chromium dep.
+    // We deliberately do NOT declare the chromium project as a dependency here:
+    // forcing the entire chromium suite to run before this single file is huge
+    // wasted work (blows the CI job timeout, and no one wants to wait 40+ min
+    // locally either). Instead, run this project by itself with
+    // `--project=IntakeFormCustomPropertyFields` — or with `--project=IntakeForm`,
+    // which pulls this in as its dep.
+    //
+    // DO NOT run `--project=chromium --project=IntakeFormCustomPropertyFields`
+    // (or the full suite with no filter) concurrently — it will race with
+    // chromium tests that create domains/data-products and fail with 400s.
     {
       name: 'IntakeFormCustomPropertyFields',
       testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies:
-        process.env.PW_INTAKE_FORM_SOLO === 'true'
-          ? ['setup']
-          : ['setup', 'chromium'],
+      dependencies: ['setup'],
       fullyParallel: false,
     },
     // IntakeForm.spec.ts has a per-test beforeEach that deletes ALL intake forms.
-    // While active, its required fields break parallel chromium tests that create
-    // domains or data products (400 errors). Running after IntakeFormCustomPropertyFields
-    // ensures both isolation from those parallel tests and no deletion-race with
-    // IntakeFormCustomPropertyFields's beforeAll-created form.
+    // While active, its required fields also break parallel chromium tests that
+    // create domains or data products (400 errors).
     //
-    // Same PW_INTAKE_FORM_SOLO opt-out as IntakeFormCustomPropertyFields: on CI's
-    // isolated matrix shard, no parallel chromium tests exist to fail with 400,
-    // so the chromium dep is unnecessary. The IntakeFormCustomPropertyFields dep
-    // is kept — the two specs must still serialize with each other.
+    // Same rule as IntakeFormCustomPropertyFields above — the chromium project
+    // is NOT declared as a dep. Run only `--project=IntakeForm` (which chains
+    // IntakeFormCustomPropertyFields via its dep) on a dedicated shard.
+    //
+    // DO NOT run this project concurrently with the chromium project.
     {
       name: 'IntakeForm',
       testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies:
-        process.env.PW_INTAKE_FORM_SOLO === 'true'
-          ? ['setup', 'IntakeFormCustomPropertyFields']
-          : ['setup', 'chromium', 'IntakeFormCustomPropertyFields'],
+      dependencies: ['setup', 'IntakeFormCustomPropertyFields'],
       fullyParallel: false,
     },
   ],
