@@ -575,6 +575,15 @@ test('Following Assets Widget', async ({ page, persona, testUser }) => {
     await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
   }
 
+  // Persist the widget before any navigation assertions. A fallback layout can
+  // render Following before the persona's docStore layout exists, then lose it
+  // when a later home navigation reads the authoritative saved layout.
+  await test.step('Test widget customization', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
     await verifyWidgetHeaderNavigation(
@@ -614,13 +623,6 @@ test('Following Assets Widget', async ({ page, persona, testUser }) => {
     });
 
     await redirectToHomePage(page);
-  });
-
-  await test.step('Test widget customization', async () => {
-    await waitForAllLoadersToDisappear(page);
-    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
   });
 });
 
