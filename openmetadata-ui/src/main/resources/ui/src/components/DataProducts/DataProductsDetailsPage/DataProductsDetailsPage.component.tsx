@@ -613,8 +613,13 @@ const DataProductsDetailsPage = ({
       style,
     };
 
-    await onUpdate(updatedDetails);
-    setIsStyleEditing(false);
+    try {
+      await onUpdate(updatedDetails);
+    } catch {
+      // Error is already handled by the parent component
+    } finally {
+      setIsStyleEditing(false);
+    }
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -819,7 +824,7 @@ const DataProductsDetailsPage = ({
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
-            <div className="tw:max-w-full tw:lg:max-w-[60%]">
+            <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 breadcrumb={[]}
                 entityData={{ ...dataProduct, displayName, name }}
@@ -1039,13 +1044,18 @@ const DataProductsDetailsPage = ({
         open={isMetadataEditing}
         onCancel={() => setIsMetadataEditing(false)}
         onSubmit={async (values) => {
-          await onUpdate({
-            ...dataProduct,
-            dataProductType: values.dataProductType,
-            visibility: values.visibility,
-            portfolioPriority: values.portfolioPriority,
-          });
-          setIsMetadataEditing(false);
+          try {
+            await onUpdate({
+              ...dataProduct,
+              dataProductType: values.dataProductType,
+              visibility: values.visibility,
+              portfolioPriority: values.portfolioPriority,
+            });
+          } catch {
+            // Error is already handled by the parent component
+          } finally {
+            setIsMetadataEditing(false);
+          }
         }}
       />
     </>

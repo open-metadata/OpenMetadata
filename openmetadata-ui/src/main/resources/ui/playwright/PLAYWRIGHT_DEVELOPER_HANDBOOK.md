@@ -374,6 +374,42 @@ await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
 
 **Why**: Stored `:visible` locators become stale when re-queried. Always chain them inline!
 
+### ⚠️ CRITICAL: Clicking an Ant Design Dropdown Menu Item
+
+**A click on the item you located can select the item above it.**
+
+Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)` around
+`transform-origin: 0 0`, and rc-motion applies the start class one frame before the `-active`
+class that begins the transition. Playwright's actionability check ("bounding box unchanged
+across two consecutive animation frames") can be satisfied on those pre-transition frames, so
+the click point is computed against the 0.8-scaled menu. Once the menu finishes growing, that
+point has slid onto the previous item. Under CI worker contention this happens often.
+
+```typescript
+// ❌ WRONG - clicks while the menu is still scaling open
+await trigger.click();
+const response = page.waitForResponse("/api/v1/activity/following");
+await page.getByRole("menuitem", { name: "Following" }).click();
+await response; // may hang forever - "My Data" was selected and my-feed was fetched
+
+// ✅ CORRECT - wait for the popup to settle, then assert the selection took
+await trigger.click();
+const menuItem = page.getByRole("menuitem", { name: "Following" });
+await expect(menuItem).toBeVisible();
+await waitForAntdPopupToSettle(page); // from playwright/utils/common.ts
+const response = page.waitForResponse("/api/v1/activity/following");
+await menuItem.click();
+await expect(trigger).toContainText("Following"); // fails fast if the click drifted
+await response;
+```
+
+**Always assert the post-click state** (trigger label, `ant-*-item-selected`, rendered content)
+before awaiting a response. A `waitForResponse` whose predicate can never match does not fail —
+it hangs until the test timeout and then reports `Target page, context or browser has been
+closed`, which points nowhere near the real cause.
+
+`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
+
 ### Modal and Scrollable Container Patterns
 
 ```typescript

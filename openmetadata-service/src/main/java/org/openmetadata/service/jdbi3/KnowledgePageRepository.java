@@ -63,6 +63,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -229,8 +230,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();
@@ -394,7 +402,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<EntityReference> filtered = filterOutDomainsAndDataProducts(relatedEntities);
       knowledgePage.withRelatedEntities(filtered);
     }
-    EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities());
+    // Capture the return so unresolvable refs (e.g. search-index-only pseudo-types such as
+    // tableColumn) are dropped before they are stored — otherwise they persist as HAS rows and
+    // fail every later read that resolves them via getEntityRepository.
+    knowledgePage.withRelatedEntities(
+        EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities()));
 
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
@@ -407,19 +419,19 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
-      String parent, PageType pageType, int offset, int limit) {
+      String parent, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchy(parent, pageTypeValue, offset, limit);
+        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit);
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
-      String activeFqn, PageType pageType, int offset, int limit) {
+      String activeFqn, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, offset, limit);
+        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, sortFilter, offset, limit);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {

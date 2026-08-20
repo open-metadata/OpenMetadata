@@ -1706,6 +1706,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    SemanticView = "SemanticView",
     Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",
