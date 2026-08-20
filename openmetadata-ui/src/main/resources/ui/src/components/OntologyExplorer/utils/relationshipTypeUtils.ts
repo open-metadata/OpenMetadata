@@ -50,6 +50,19 @@ const PALETTE_COLOR_TOKENS: Record<PaletteKey, string> = {
   [PaletteKey.Violet]: 'var(--color-utility-purple-600)',
 };
 
+const PALETTE_HEX_COLORS: Record<PaletteKey, string> = {
+  [PaletteKey.Amber]: '#f79009',
+  [PaletteKey.Blue]: '#2e90fa',
+  [PaletteKey.Gray]: '#717680',
+  [PaletteKey.Green]: '#17b26a',
+  [PaletteKey.Indigo]: '#6172f3',
+  [PaletteKey.Pink]: '#ee46bc',
+  [PaletteKey.Purple]: '#7a5af8',
+  [PaletteKey.Rose]: '#f04438',
+  [PaletteKey.Teal]: '#079455',
+  [PaletteKey.Violet]: '#6938ef',
+};
+
 export const getInverseRelationshipName = (
   relationshipType: RelationshipType
 ): string | undefined => relationshipType.inverse?.name;
@@ -68,6 +81,10 @@ export const isHierarchicalRelationship = (
 export const getRelationshipColor = (
   relationshipType: RelationshipType
 ): string => PALETTE_COLOR_TOKENS[relationshipType.paletteKey];
+
+export const getRelationshipHexColor = (
+  relationshipType: RelationshipType
+): string => PALETTE_HEX_COLORS[relationshipType.paletteKey];
 
 export const getRelationshipCardinalityLabels = (
   relationshipType: RelationshipType

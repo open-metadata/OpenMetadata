@@ -245,41 +245,34 @@ describe('OntologyExplorer Studio data controls', () => {
   });
 
   it('resolves palette tokens before painting custom SVG relationships', () => {
-    const colorToken = '--color-utility-purple-500';
-    document.documentElement.style.setProperty(colorToken, '#7a5af8');
-
-    try {
-      const state = createExplorerState({
-        explorationMode: 'data',
-        graphDataToShow: {
-          edges: [
-            {
-              from: termNode.id,
-              label: 'informed by',
-              relationType: 'informedBy',
-              to: secondaryTermNode.id,
-            },
-          ],
-          nodes: [termNode, secondaryTermNode],
-        },
-        relationTypes: [
-          createRelationshipTypeMock({
-            name: 'informedBy',
-            paletteKey: PaletteKey.Purple,
-          }),
+    const state = createExplorerState({
+      explorationMode: 'data',
+      graphDataToShow: {
+        edges: [
+          {
+            from: termNode.id,
+            label: 'informed by',
+            relationType: 'informedBy',
+            to: secondaryTermNode.id,
+          },
         ],
-      });
-      mockUseOntologyExplorer.mockReturnValue(state);
+        nodes: [termNode, secondaryTermNode],
+      },
+      relationTypes: [
+        createRelationshipTypeMock({
+          name: 'informedBy',
+          paletteKey: PaletteKey.Purple,
+        }),
+      ],
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
 
-      render(<OntologyExplorer scope="global" />);
+    render(<OntologyExplorer scope="global" />);
 
-      expect(screen.getByTestId('ontology-data-semantic-edge')).toHaveAttribute(
-        'stroke',
-        '#7a5af8'
-      );
-    } finally {
-      document.documentElement.style.removeProperty(colorToken);
-    }
+    expect(screen.getByTestId('ontology-data-semantic-edge')).toHaveAttribute(
+      'stroke',
+      '#7a5af8'
+    );
   });
 
   it('expands the semantic edge layer when a term card is moved', () => {

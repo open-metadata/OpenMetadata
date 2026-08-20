@@ -44,9 +44,9 @@ import {
 } from './utils/graphBuilders';
 import {
   formatRelationLabel,
-  getCanvasColor,
   getEffectiveRelationColor,
 } from './utils/graphStyles';
+import { getRelationshipHexColor } from './utils/relationshipTypeUtils';
 
 interface OntologyDataGraphProps {
   data: OntologyGraphData;
@@ -310,15 +310,21 @@ const OntologyDataGraph = ({
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
-        const rawColor =
+        const effectiveColor =
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
           ) ?? 'var(--color-border-brand)';
+        let color = EDGE_STROKE_COLOR;
+        if (!effectiveColor.startsWith('var(')) {
+          color = effectiveColor;
+        } else if (relationshipType) {
+          color = getRelationshipHexColor(relationshipType);
+        }
 
         return {
           ...layout,
-          color: getCanvasColor(rawColor, EDGE_STROKE_COLOR),
+          color,
         };
       }),
     [relationshipTypeByName, semanticEdges]
