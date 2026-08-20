@@ -14,13 +14,6 @@ ENV MAVEN_HOME=/opt/maven
 ENV NODE_HOME=/opt/node
 ENV PATH=/opt/maven/bin:/opt/node/bin:$PATH
 
-# Two groups, one layer. The first is what the downloads below use; the second is the system libraries
-# this repo's Python connectors compile against, copied from `.devcontainer/dev/Dockerfile` (which in
-# turn mirrors `.github/actions/prepare-for-docker-build/action.yml` — keep the three in step).
-#
-# No `git`, deliberately: olivaw injects it at launch beside the harness and the agent CLI, so this
-# image describes only what BUILDING this repo needs. `ca-certificates` stays — it is the trust store
-# the injected git's HTTPS fetch and push need, and it is not part of that injection.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
