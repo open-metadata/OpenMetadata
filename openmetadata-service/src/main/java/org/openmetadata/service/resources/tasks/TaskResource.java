@@ -444,6 +444,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by assignee user/team id (single UUID).")
           @QueryParam("assigneeId")
           UUID assigneeId,
+      @Parameter(
+              description =
+                  "Filter to tasks assigned to the authenticated user or any of their teams. "
+                      + "When true, this takes precedence over assignee and assigneeId.")
+          @QueryParam("assignedToMe")
+          @DefaultValue("false")
+          boolean assignedToMe,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(
               description =
@@ -507,12 +514,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       validateCsvAgainstAccessType(accessType);
       filter.addQueryParam("accessType", accessType);
     }
-    if (!nullOrEmpty(assignee)) {
-      filter.addQueryParam("assignee", assignee);
-    }
-    if (assigneeId != null) {
-      filter.addQueryParam("assigneeId", assigneeId.toString());
-    }
+    addDataAccessRequestAssigneeFilter(filter, securityContext, assignee, assigneeId, assignedToMe);
     if (!nullOrEmpty(q)) {
       filter.addQueryParam("darSearch", q);
     }
@@ -1373,6 +1375,25 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       ListFilter filter, UriInfo uriInfo, SecurityContext securityContext) {
     filter.addQueryParam("visibleAssigneeIds", getCurrentUserAssigneeIds(securityContext));
     filter.addQueryParam("visibleOwnedByIds", getCurrentUserOwnedIds(uriInfo, securityContext));
+  }
+
+  private void addDataAccessRequestAssigneeFilter(
+      ListFilter filter,
+      SecurityContext securityContext,
+      String assignee,
+      UUID assigneeId,
+      boolean assignedToMe) {
+    if (assignedToMe) {
+      // Resolve memberships to immutable IDs so clients cannot omit teams or misquote FQNs.
+      filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
+    } else {
+      if (!nullOrEmpty(assignee)) {
+        filter.addQueryParam("assignee", assignee);
+      }
+      if (assigneeId != null) {
+        filter.addQueryParam("assigneeId", assigneeId.toString());
+      }
+    }
   }
 
   private String getCurrentUserAssigneeIds(SecurityContext securityContext) {

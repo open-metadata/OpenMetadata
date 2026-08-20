@@ -118,6 +118,7 @@ export interface ListDataAccessRequestsParams {
   approver?: string;
   approverId?: string;
   assignee?: string;
+  assignedToMe?: boolean;
   accessType?: DataAccessType | DataAccessType[];
   domain?: string;
   q?: string;
