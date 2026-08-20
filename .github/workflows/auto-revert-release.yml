@@ -112,7 +112,7 @@ jobs:
         with:
           ref: ${{ steps.ev.outputs.branch }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
       - name: Guard — tip advanced, or tip already a bot revert
