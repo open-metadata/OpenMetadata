@@ -80,4 +80,140 @@ describe('getOptionsFromAggregationBucket', () => {
 
     expect(option.count).toBe(0);
   });
+
+  describe('sourceFields - top_hits label extraction', () => {
+    it('reads label from flat _source field when sourceFields is set', () => {
+      const bucket = {
+        key: 'john doe',
+        doc_count: 3,
+        'top_hits#top': {
+          hits: { hits: [{ _source: { ownerDisplayName: 'John Doe' } }] },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('john doe');
+      expect(option.label).toBe('John Doe');
+    });
+
+    it('reads label from nested single-object _source path', () => {
+      const bucket = {
+        key: 'tier.tier1',
+        doc_count: 2,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { tier: { tagFQN: 'Tier.Tier1' } } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'tier.tagFQN'
+      );
+
+      expect(option.key).toBe('tier.tier1');
+      expect(option.label).toBe('Tier.Tier1');
+    });
+
+    it('matches the correct array element by bucket key (not always [0])', () => {
+      const bucket = {
+        key: 'my domain',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  domains: [
+                    { displayName: 'Other Domain' },
+                    { displayName: 'My Domain' },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'domains.displayName'
+      );
+
+      expect(option.key).toBe('my domain');
+      expect(option.label).toBe('My Domain');
+    });
+
+    it('falls back to bucket key when no top_hits data is present', () => {
+      const bucket = {
+        key: 'my domain',
+        doc_count: 1,
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'domains.displayName'
+      );
+
+      expect(option.key).toBe('my domain');
+      expect(option.label).toBe('my domain');
+    });
+
+    it('reads label from string-array _source field (ownerDisplayName pattern)', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { ownerDisplayName: ['Aaron Johnson'] } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
+
+    it('picks the matching entry from a multi-value string-array by bucket key', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  ownerDisplayName: ['Bob Smith', 'Aaron Johnson'],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
+  });
 });
