@@ -172,6 +172,29 @@ class GlueUnitTest(TestCase):
         )
         self.assertEqual(list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME])
 
+    @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
+    def test_database_schema_names_with_custom_db_name(self, test_connection):
+        test_connection.return_value = False
+        glue_source_new = GlueSource.create(
+            mock_glue_config_db_test["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        glue_source_new.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        glue_source_new.context.get().__dict__["database"] = MOCK_CUSTOM_DB_NAME
+        glue_source_new._get_glue_database_and_schemas = lambda: [
+            DatabasePage(
+                DatabaseList=[
+                    GlueSchema(
+                        CatalogId=MOCK_DATABASE.name.root,
+                        Name="default",
+                        Description="current catalog schema",
+                    )
+                ]
+            )
+        ]
+
+        self.assertEqual(["default"], list(glue_source_new.get_database_schema_names()))
+
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.glue_source.get_database_schema_names())  # noqa: SIM300
 

@@ -188,7 +188,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page.DatabaseList:
                 try:
-                    if schema.CatalogId != database_name:
+                    # A configured databaseName is an OpenMetadata display name, not a CatalogId.
+                    if not self.service_connection.databaseName and schema.CatalogId != database_name:
                         continue
                     schema_fqn = fqn.build(
                         self.metadata,
