@@ -150,9 +150,6 @@ const DataProductsDetailsPage = ({
     tab: string;
     version: string;
   }>();
-  // `/dataProduct/:fqn` carries no tab segment, so the URL alone cannot tell the widget
-  // layout which tab is on screen.
-  const currentTab = (activeTab ?? DomainTabs.DOCUMENTATION) as EntityTabs;
   const { fqn: dataProductFqn } = useFqn();
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -700,6 +697,13 @@ const DataProductsDetailsPage = ({
     inputPortsCount,
     outputPortsCount,
   ]);
+
+  // `/dataProduct/:fqn` carries no tab segment, so the URL alone cannot tell the widget
+  // layout which tab is on screen. Fall back to the first tab actually rendered so a
+  // persona that removes/reorders Documentation never lands on a non-existent pane.
+  const currentTab = (activeTab ??
+    tabs[0]?.key ??
+    DomainTabs.DOCUMENTATION) as EntityTabs;
 
   const iconData = useMemo(() => {
     return (

@@ -183,10 +183,6 @@ const DomainDetails = ({
       (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
     [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
   );
-  const activeTab = useMemo(
-    () => activeTabOverride ?? routeParams.tab ?? EntityTabs.DOCUMENTATION,
-    [activeTabOverride, routeParams.tab]
-  ) as EntityTabs;
   const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
@@ -229,6 +225,18 @@ const DomainDetails = ({
   );
   const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
+  // The landing URL has no `:tab` segment and the tree view keeps the tab in local
+  // state, so fall back to the first tab actually rendered (the persona's first tab
+  // when customized, else Documentation) -- never a fixed tab that the persona may
+  // have removed, which would leave the tab bar pointing at a non-existent pane.
+  const activeTab = useMemo(
+    () =>
+      (activeTabOverride ??
+        routeParams.tab ??
+        customizedPage?.tabs?.[0]?.id ??
+        EntityTabs.DOCUMENTATION) as EntityTabs,
+    [activeTabOverride, routeParams.tab, customizedPage?.tabs]
+  );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
