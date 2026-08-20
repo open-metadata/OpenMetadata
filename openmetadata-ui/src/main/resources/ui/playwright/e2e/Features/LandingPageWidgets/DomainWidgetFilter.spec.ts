@@ -28,8 +28,6 @@ import {
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 const domainA = new Domain();
 const domainB = new Domain();
 const persona = new PersonaClass();
@@ -59,6 +57,8 @@ test.describe.serial('Domain Widget Filter', () => {
   test.beforeEach(async ({ page }) => {
     // The shared admin's default persona is mutated by several parallel widget
     // specs. A dedicated admin user keeps this serial pair on its own layout.
+    // Keep the default context unauthenticated so login does not inherit the
+    // shared admin storage state and immediately redirect away from /signin.
     await personaUser.login(page);
   });
 

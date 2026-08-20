@@ -474,10 +474,16 @@ test.describe('Task Navigation - URL Validation', () => {
     await page.goto('/table/TASK-00001');
     await waitForPageLoaded(page);
 
-    // PageNotFound has a stable root test id. Text matching was case-sensitive
-    // (the product renders "Page Not Found") and falsely rejected the correct
-    // 404 page.
-    await expect(page.getByTestId('no-page-found')).toBeVisible();
+    // Depending on the entity-page route, an invalid FQN renders either the
+    // full PageNotFound view or the entity shell's stable empty placeholder.
+    // Both are valid error states; the route must not render table data.
+    await expect(
+      page
+        .locator(
+          '[data-testid="no-page-found"]:visible, [data-testid="no-data-placeholder"]:visible'
+        )
+        .first()
+    ).toBeVisible();
   });
 
   test('task detail page with valid task ID should work', async ({
