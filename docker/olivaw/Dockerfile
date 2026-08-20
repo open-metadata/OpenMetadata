@@ -1,54 +1,3 @@
-# The olivaw C3 *runner* image for this repository.
-#
-# A runner image is what PRODUCES build outputs, not what ships them. Every other Dockerfile in this
-# repo is a runtime image assembled *from* a completed build — `docker/development/Dockerfile` COPYs
-# `openmetadata-dist/target/*.tar.gz` and ships a JRE — and none of them can serve this role: olivaw's
-# build context is a clean checkout of the mirror at a pinned commit, so `target/` does not exist there
-# (it is gitignored), and a `-jre` image has no `mvn`, no `javac` and no `git`.
-#
-# It exists because this repo is polyglot — Java/Maven **and** Python **and** TypeScript/Yarn in one
-# tree — and olivaw's alternative (`build_profile.admin_overrides`) is a single base image plus an apt
-# list, which cannot describe that. §12.1 detection cannot either: it resolves what it finds to ONE
-# base, and it inspects `package.json` before `pom.xml`, so this repo's root `package.json` (twenty
-# lines, pinning `quicktype`) would select a Node base with no JDK at all.
-#
-# Point a workspace at it with `build_image: true` + `dockerfile_path: docker/olivaw/Dockerfile`. Both
-# fields are create-only.
-#
-# WHAT OLIVAW EXPECTS OF THIS IMAGE, and why each line below is here:
-#
-#   - `git` — the harness clones the read-only mirror mounted at /mirror into /work and, in `github`
-#     mode, fetches and pushes over HTTPS. A run without it fails before any tier.
-#   - `ca-certificates` — that HTTPS fetch/push needs a trust store.
-#   - `bash` — the agent's Bash tool spawns `bash` specifically, not `sh`. Ubuntu ships it, so there is
-#     no line for it below; olivaw fails the run up front when it is missing
-#     (`internal/agent.RequireShell`) because the failure is otherwise silent and expensive: the agent
-#     edits files, cannot run the `git commit` that makes them pushable, and the run reports a POSITIVE
-#     `changes_ready` for a change that no longer exists.
-#   - a toolchain for the verify tiers — `run_config.build_cmd` / `test_cmd` run through `sh -c` with
-#     cwd `/work`. An uninstalled command exits 127, which olivaw records as an OBSERVED tier failure,
-#     indistinguishable from the tests genuinely failing.
-#
-# The coding agent is deliberately NOT here. olivaw injects the pinned CLI at launch from its own image
-# into a shared volume, so this image needs no Node on olivaw's account and no particular libc for the
-# agent's sake. It describes only this repo.
-#
-# No ENTRYPOINT, CMD or USER, all three on purpose:
-#   - the launcher gives the runner container an explicit command (the injected harness), so an
-#     ENTRYPOINT here would be dead weight;
-#   - the harness clones into `/work` at the filesystem root, which a non-root user could not create.
-#     The pod's fsGroup covers the volumes it mounts, not the container's own writable layer.
-#
-# Two idioms that work in a local `docker build` will FAIL the in-cluster kaniko build, which runs with
-# a narrowed capability set and no_new_privs: `RUN setcap …` (needs SETFCAP) and `USER x` + `RUN sudo …`.
-# Nothing below uses either. If a future edit fails with "Operation not permitted", that is why.
-
-# Ubuntu 22.04, for three reasons that are all load-bearing:
-#   - Java 21, which is what this repo builds with;
-#   - jammy's system Python is 3.10, matching `.python-version` (3.10.18) and the version CI runs.
-#     Noble (24.04) would give 3.12, which no CI job exercises;
-#   - glibc rather than musl. Every Python connector wheel expects it, and olivaw selects its injected
-#     agent CLI variant by the runner's libc — one of the three vendors it supports is glibc-only.
 FROM eclipse-temurin:21-jdk-jammy
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -65,15 +14,17 @@ ENV MAVEN_HOME=/opt/maven
 ENV NODE_HOME=/opt/node
 ENV PATH=/opt/maven/bin:/opt/node/bin:$PATH
 
-# Two groups, one layer. The first is what olivaw needs to run an attempt at all plus what the
-# downloads below use; the second is the system libraries this repo's Python connectors compile
-# against, copied from `.devcontainer/dev/Dockerfile` (which in turn mirrors
-# `.github/actions/prepare-for-docker-build/action.yml` — keep the three in step).
+# Two groups, one layer. The first is what the downloads below use; the second is the system libraries
+# this repo's Python connectors compile against, copied from `.devcontainer/dev/Dockerfile` (which in
+# turn mirrors `.github/actions/prepare-for-docker-build/action.yml` — keep the three in step).
+#
+# No `git`, deliberately: olivaw injects it at launch beside the harness and the agent CLI, so this
+# image describes only what BUILDING this repo needs. `ca-certificates` stays — it is the trust store
+# the injected git's HTTPS fetch and push need, and it is not part of that injection.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        git \
         gnupg \
         unzip \
         xz-utils \
@@ -154,8 +105,12 @@ RUN make -C /tmp/antlr install_antlr_cli \
 # Fail the BUILD rather than the run if anything olivaw depends on is missing. A missing tool otherwise
 # surfaces as an exit-127 tier failure inside an attempt, which reads exactly like a genuine test
 # failure and costs a cluster autopsy to tell apart.
+#
+# `git` is NOT in this list and must not be added: it arrives at launch, so it is absent at build time
+# by design and asserting it here would fail every build. `bash` is, because the agent's Bash tool
+# spawns it specifically and olivaw cannot supply it.
 RUN set -eu; \
-    for tool in git bash sh mvn java node yarn npm python3 antlr4; do \
+    for tool in bash sh mvn java node yarn npm python3 antlr4; do \
         command -v "$tool" >/dev/null || { echo "MISSING: $tool" >&2; exit 1; }; \
     done; \
     echo "olivaw runner image OK: $(java -version 2>&1 | head -1)"
