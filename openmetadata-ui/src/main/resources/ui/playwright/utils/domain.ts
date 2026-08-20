@@ -63,28 +63,24 @@ const waitForSearchDebounce = async (page: Page) => {
   }
 };
 
-const clickAvailableWidgetAction = async (
-  addBtn: Locator,
-  editBtn: Locator
-) => {
-  if (await addBtn.isVisible()) {
-    await addBtn.click();
-
-    return;
-  }
-
-  await editBtn.waitFor({ state: 'visible' });
-  await editBtn.click();
-};
+// A widget shows the add button when the value is unset and the edit button
+// once it is assigned. The caller knows which state the entity is in, so it
+// passes `isUpdate` and we open the exact button — click() auto-waits for it,
+// so there is no need to probe which of the two is currently rendered.
+const openWidgetEditor = (
+  page: Page,
+  addTestId: string,
+  editTestId: string,
+  isUpdate: boolean
+) => page.getByTestId(isUpdate ? editTestId : addTestId).click();
 
 export const addTierWidget = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-tier');
-  const editBtn = page.getByTestId('edit-tier');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(page, 'add-tier', 'edit-tier', isUpdate);
 
   await waitForAllLoadersToDisappear(page);
 
@@ -115,11 +111,15 @@ export const addTierWidget = async (
 export const addCertificationWidget = async (
   page: Page,
   certification: TagClass,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-certification');
-  const editBtn = page.getByTestId('edit-certification');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(
+    page,
+    'add-certification',
+    'edit-certification',
+    isUpdate
+  );
 
   await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
@@ -247,11 +247,10 @@ export const removeCertificationFromWidget = async (
 export const assignDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false
+  multiSelect = false,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -294,9 +293,8 @@ export const removeDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  // Removing implies a domain is already assigned, so the widget shows edit.
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
   await page
