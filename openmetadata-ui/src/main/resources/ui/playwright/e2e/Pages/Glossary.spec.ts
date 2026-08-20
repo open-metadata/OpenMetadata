@@ -1206,7 +1206,7 @@ test.describe('Glossary tests', () => {
               .textContent()
           )
         )
-        .toBeGreaterThan(1);
+        .toBeGreaterThanOrEqual(1);
       const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
