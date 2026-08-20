@@ -31,6 +31,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ServiceInsightsTabProps } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -639,6 +640,11 @@ jest.mock('../../hooks/useTableFilters', () => ({
 describe('ServiceDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    }));
   });
 
   const renderComponent = async (props = {}) => {
@@ -689,6 +695,20 @@ describe('ServiceDetailsPage', () => {
       // search nor fall back to the unfiltered list.
       expect(searchQuery).toHaveBeenCalledTimes(1);
       expect(getIngestionPipelines).not.toHaveBeenCalled();
+    });
+
+    it('should fetch the metadata list even when the pipeline service is unreachable', async () => {
+      (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+        isAirflowAvailable: false,
+        isFetchingStatus: false,
+        platform: 'airflow',
+      }));
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await renderComponent();
+
+      // Pipelines are OpenMetadata entities; only the actions on them need that service.
+      expect(getIngestionPipelines).toHaveBeenCalled();
     });
   });
 

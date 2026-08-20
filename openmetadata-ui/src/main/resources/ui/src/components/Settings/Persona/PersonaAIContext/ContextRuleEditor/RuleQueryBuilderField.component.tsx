@@ -116,18 +116,20 @@ export const RuleQueryBuilderField = ({
 
   return (
     <DrawerPopupContainerProvider>
-      <QueryBuilderWidgetV1
-        entityType={entityType as EntityType}
-        fields={enrichedFields}
-        getQueryActions={setQueryActions}
-        outputType={SearchOutputType.ElasticSearch}
-        readonly={readonly}
-        showCountPreview={false}
-        tree={tree}
-        value={queryFilter ?? ''}
-        onChange={handleChange}
-        onValidityChange={onValidityChange}
-      />
+      <div className="persona-context-rule-builder">
+        <QueryBuilderWidgetV1
+          entityType={entityType as EntityType}
+          fields={enrichedFields}
+          getQueryActions={setQueryActions}
+          outputType={SearchOutputType.ElasticSearch}
+          readonly={readonly}
+          showCountPreview={false}
+          tree={tree}
+          value={queryFilter ?? ''}
+          onChange={handleChange}
+          onValidityChange={onValidityChange}
+        />
+      </div>
       {!readonly && (
         <Button
           className="m-t-sm tw:self-start"
