@@ -24,6 +24,7 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { ROUTES } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -45,7 +46,7 @@ import {
   parseSearchParams,
 } from '../../utils/ExplorePureUtils';
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
-import { getExplorePath } from '../../utils/RouterUtils';
+import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
@@ -111,6 +112,13 @@ const ExplorePageV1: FC<unknown> = () => {
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     setPreference({ globalPageSize: size ?? globalPageSize });
     navigate({
+      // When tab is present, build the pathname from the route param rather
+      // than the router's current location: a search-only navigate is *relative*
+      // and can resolve against a stale route-match context if another component
+      // fired a pushState moments earlier.  When tab is absent (bare /explore
+      // route) fall back to the static ROUTES.EXPLORE constant so the pathname
+      // is never derived from any router state.
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         page,
@@ -121,6 +129,7 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortValueChange = (page: number, sortVal: string) => {
     navigate({
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         page,
@@ -132,6 +141,7 @@ const ExplorePageV1: FC<unknown> = () => {
 
   const handleSortOrderChange = (page: number, sortOrderVal: string) => {
     navigate({
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify({
         ...parsedSearch,
         page,
@@ -205,6 +215,7 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleQuickFilterChange = useCallback(
     (quickFilter?: QueryFilterInterface) => {
       navigate({
+        pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
@@ -212,7 +223,7 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
-    [history, parsedSearch]
+    [parsedSearch, tab]
   );
 
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
@@ -233,6 +244,7 @@ const ExplorePageV1: FC<unknown> = () => {
       : defaultSearchObject;
 
     navigate({
+      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
       search: Qs.stringify(searchObject),
     });
   };
@@ -370,13 +382,15 @@ const ExplorePageV1: FC<unknown> = () => {
     }
   }, [isTourOpen, fetchDependencies]);
 
+  // handleQuickFilterChange already resets page to 1 in the same navigate —
+  // a separate handlePageChange(1) call here would push a second history
+  // entry against the same memoized parsedSearch and clobber the first.
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
-      handlePageChange(1);
       setAdvancedSearchQuickFilters(filter);
       handleQuickFilterChange(filter);
     },
-    [setAdvancedSearchQuickFilters, history, parsedSearch]
+    [setAdvancedSearchQuickFilters, handleQuickFilterChange]
   );
 
   return (
