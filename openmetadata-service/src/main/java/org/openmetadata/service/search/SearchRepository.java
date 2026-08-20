@@ -2686,6 +2686,65 @@ public class SearchRepository {
         assetRef.getType());
   }
 
+  /**
+   * Batch-propagate tag removal to children of multiple assets. Groups assets by entity type
+   * and issues a single update-by-query per type, drastically reducing the number of ES calls
+   * compared to calling the single-asset overload in a loop.
+   *
+   * @param assetRefs the assets whose tag was removed
+   * @param tagFQN the FQN of the tag being removed
+   */
+  public void propagateTagRemovalToChildren(List<EntityReference> assetRefs, String tagFQN) {
+    if (nullOrEmpty(assetRefs)) {
+      return;
+    }
+    Map<String, List<EntityReference>> refsByType =
+        assetRefs.stream().collect(Collectors.groupingBy(EntityReference::getType));
+    refsByType.forEach(
+        (type, refs) -> propagateTagRemovalToChildrenForType(type, refs, tagFQN));
+  }
+
+  private void propagateTagRemovalToChildrenForType(
+      String entityType, List<EntityReference> assetRefs, String tagFQN) {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases =
+        filterChildAliasesByCapability(
+            indexMapping, capability -> capability == null || !capability.isTimeSeries());
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+    TagLabel removedTag =
+        new TagLabel().withTagFQN(tagFQN).withLabelType(TagLabel.LabelType.DERIVED);
+    String script = generateDeleteTagLabelListScript();
+    Map<String, Object> params = Map.of("tagDeleted", List.of(removedTag));
+    String parentField = entityType + ".id";
+    List<String> parentIds =
+        assetRefs.stream().map(ref -> ref.getId().toString()).toList();
+    deferIfFlushScopeActive(
+        () -> {
+          try {
+            searchClient.updateChildren(
+                childAliases,
+                parentField,
+                parentIds,
+                new ImmutablePair<>(script, params));
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to propagate tag removal [{}] from {} to children",
+                tagFQN,
+                entityType,
+                e);
+          }
+        },
+        "propagateTagRemovalToChildren",
+        null,
+        null,
+        entityType);
+  }
+
   private void propagateToDomainChildren(
       String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
       throws IOException {
@@ -3291,7 +3350,8 @@ public class SearchRepository {
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)
+                  && ctx._source.tags[i].labelType == 'DERIVED') {
                 ctx._source.tags.remove(i);
                 break;
               }

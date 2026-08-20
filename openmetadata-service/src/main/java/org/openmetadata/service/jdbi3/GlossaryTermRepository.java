@@ -1392,6 +1392,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+    List<EntityReference> nonColumnAssets = new ArrayList<>();
 
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
@@ -1435,9 +1436,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
-        // Propagate tag removal to child entities (columns, test suites, test cases)
-        searchRepository.propagateTagRemovalToChildren(ref, term.getFullyQualifiedName());
+        // Collect for batch propagation to child entities
+        nonColumnAssets.add(ref);
       }
+    }
+
+    // Batch propagate tag removal to child entities (columns, test suites, test cases)
+    if (!dryRun && !nullOrEmpty(nonColumnAssets)) {
+      searchRepository.propagateTagRemovalToChildren(
+          nonColumnAssets, term.getFullyQualifiedName());
     }
 
     return result.withSuccessRequest(success);
@@ -1478,7 +1485,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       searchRepository.updateEntity(table.getEntityReference());
       // Propagate tag removal to child entities (columns, test suites, test cases)
       searchRepository.propagateTagRemovalToChildren(
-          table.getEntityReference(), term.getFullyQualifiedName());
+          columnRef, term.getFullyQualifiedName());
     }
   }
 
