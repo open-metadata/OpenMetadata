@@ -34,7 +34,7 @@ import {
   responseMatchesRequestPath,
   searchAndGetDocumentRow,
   selectDocumentByName,
-  uploadDocument
+  uploadDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getEditor, waitForAutoSave } from '../../utils/KnowledgeCenter';

@@ -16,7 +16,7 @@ import {
   createNewPage,
   getDefaultAdminAPIContext,
   redirectToHomePage,
-  uuid
+  uuid,
 } from '../../utils/common';
 import {
   ContextCenterFolder,
@@ -33,7 +33,7 @@ import {
   uploadFileViaModal,
   waitForDocumentAbsentFromSearch,
   waitForDocumentInArchive,
-  waitForDocumentPermanentlyDeleted
+  waitForDocumentPermanentlyDeleted,
 } from '../../utils/ContextCenterUtil';
 import { test } from '../fixtures/pages';
 

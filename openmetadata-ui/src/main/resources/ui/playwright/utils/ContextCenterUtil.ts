@@ -543,7 +543,7 @@ export async function waitForDocumentAbsentFromSearch(
       params: {
         q: documentName,
         index: 'contextFile',
-        deleted: false
+        deleted: false,
       },
     });
 
