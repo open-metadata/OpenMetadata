@@ -22,6 +22,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   getCombinedQueryFilterObject,
@@ -34,7 +35,6 @@ import {
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
-import { EntityIconSize } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -73,11 +73,9 @@ const addEntityTypeIcons = (
   return opts.map((opt) => ({
     ...opt,
     icon:
-      searchClassBase.getEntityIcon(
+      searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(opt.key),
-        '',
-        {},
-        EntityIconSize.Size16
+        EntityIconSize.Size14
       ) ?? undefined,
   }));
 };

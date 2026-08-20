@@ -60,14 +60,9 @@ jest.mock('../../../../../utils/IngestionUtils', () => ({
     )),
 }));
 
-jest.mock(
-  '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolderIngestion</div>)
-);
-
 jest.mock('./PipelineActions/PipelineActions', () =>
-  jest.fn().mockImplementation(({ handleDeleteSelection }) => (
-    <div>
+  jest.fn().mockImplementation(({ handleDeleteSelection, isDisabled }) => (
+    <div data-disabled={isDisabled}>
       PipelineActions
       <button
         onClick={handleDeleteSelection({
@@ -192,7 +187,7 @@ describe('Ingestion', () => {
     expect(lastCall?.[4]).toBe('tw:relative tw:py-8');
   });
 
-  it('should explain the unreachable pipeline service instead of claiming there are no pipelines', async () => {
+  it('should use the ordinary empty state when the pipeline service is unreachable', async () => {
     (getErrorPlaceHolder as jest.Mock).mockClear();
 
     await act(async () => {
@@ -215,11 +210,37 @@ describe('Ingestion', () => {
       );
     });
 
-    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
-    expect(getErrorPlaceHolder).not.toHaveBeenCalled();
+    // The list no longer waits on that status, so an empty table really is empty.
+    expect(getErrorPlaceHolder).toHaveBeenCalled();
   });
 
-  it('should not claim the pipeline service is unreachable while its status is still being fetched', async () => {
+  it('should disable the row actions when the pipeline service is unreachable', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          airflowInformation={
+            {
+              isAirflowAvailable: false,
+              isFetchingStatus: false,
+              platform: 'Airflow',
+            } as AirflowStatusContextType
+          }
+          extraTableProps={{ scroll: undefined }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActions')).toHaveAttribute(
+      'data-disabled',
+      'true'
+    );
+  });
+
+  it('should use the ordinary empty state while the status call is still in flight', async () => {
     await act(async () => {
       render(
         <IngestionListTable
@@ -240,7 +261,6 @@ describe('Ingestion', () => {
       );
     });
 
-    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
     expect(screen.getByText('ErrorPlaceholder')).toBeInTheDocument();
   });
 
