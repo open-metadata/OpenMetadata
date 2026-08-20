@@ -20,11 +20,15 @@ import {
   navigateToDataQualityTestCases,
   openAddToExistingBundleSuiteModal,
   openCreateNewBundleSuiteForm,
+  ownedTestCase,
+  OwnedTestCase,
+  searchAndSelectTestCase,
   selectExistingBundleSuite,
   selectTestCasesByCheckbox,
   submitAddToExistingBundleSuite,
   verifyBundleSuitePageLoaded,
   verifyTestCaseSelectionCount,
+  waitForTestCasesToBeIndexed,
 } from '../../../utils/dataQuality';
 import { test } from '../../fixtures/pages';
 
@@ -35,6 +39,11 @@ let table2: TableClass;
 const bundleTestSuite = new BundleTestSuiteClass();
 let bundleSuiteName: string;
 let existingBundleSuiteName: string;
+// Test cases this spec owns. Every test acts on one of these by name rather
+// than on whatever happens to be at the top of the shared, globally sorted
+// Test Cases list -- see `searchAndSelectTestCase`.
+let notNullTestCase: OwnedTestCase;
+let uniqueTestCase: OwnedTestCase;
 
 test.beforeAll(async ({ browser }) => {
   table1 = new TableClass();
@@ -44,15 +53,18 @@ test.beforeAll(async ({ browser }) => {
   await table1.create(apiContext);
   await table2.create(apiContext);
 
+  notNullTestCase = ownedTestCase('test_column_values_not_null');
+  uniqueTestCase = ownedTestCase('test_column_values_unique');
+
   await table1.createTestCase(apiContext, {
-    name: `test_column_values_not_null_${uuid()}`,
+    name: notNullTestCase.name,
     entityLink: `<#E::table::${table1.entityResponseData?.['fullyQualifiedName']}::columns::${table1.entity?.columns[0].name}>`,
     parameterValues: [],
     testDefinition: 'columnValuesToBeNotNull',
   });
 
   await table1.createTestCase(apiContext, {
-    name: `test_column_values_unique_${uuid()}`,
+    name: uniqueTestCase.name,
     entityLink: `<#E::table::${table1.entityResponseData?.['fullyQualifiedName']}::columns::${table1.entity?.columns[0].name}>`,
     parameterValues: [],
     testDefinition: 'columnValuesToBeUnique',
@@ -66,6 +78,13 @@ test.beforeAll(async ({ browser }) => {
   });
 
   await bundleTestSuite.createBundleTestSuite(apiContext);
+
+  // The list page reads from Elasticsearch, so the tests cannot search for
+  // these until they are indexed.
+  await waitForTestCasesToBeIndexed(apiContext, [
+    notNullTestCase,
+    uniqueTestCase,
+  ]);
 
   bundleSuiteName = `bundle_suite_${uuid()}`;
   existingBundleSuiteName =
@@ -83,7 +102,7 @@ test('Create new Bundle Suite with bulk selected test cases', async ({
 }) => {
   await test.step('Navigate and select test case', async () => {
     await navigateToDataQualityTestCases(page);
-    await selectTestCasesByCheckbox(page, 1);
+    await searchAndSelectTestCase(page, notNullTestCase);
     await verifyTestCaseSelectionCount(page, 1);
   });
 
@@ -103,7 +122,7 @@ test('Create new Bundle Suite with bulk selected test cases', async ({
 test('Add test case to existing Bundle Suite', async ({ page }) => {
   await test.step('Navigate and select test case', async () => {
     await navigateToDataQualityTestCases(page);
-    await selectTestCasesByCheckbox(page, 1);
+    await searchAndSelectTestCase(page, uniqueTestCase);
     await verifyTestCaseSelectionCount(page, 1);
   });
 
