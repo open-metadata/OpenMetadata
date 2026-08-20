@@ -69,6 +69,11 @@ jobs:
           IN_NAME: ${{ github.event.inputs.workflow_name }}
           IN_URL: ${{ github.event.inputs.run_url }}
           IN_DRY: ${{ github.event.inputs.dry_run }}
+          # Safety net for the workflow_run path: unless the repo variable
+          # AUTO_REVERT_DRY_RUN is explicitly set to "false", real failures
+          # only produce a dry-run plan (no push, no Slack). Delete the
+          # variable or set it to "false" to arm real reverts.
+          VAR_DRY: ${{ vars.AUTO_REVERT_DRY_RUN }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
@@ -82,7 +87,7 @@ jobs:
             SHA="$WR_SHA"
             NAME="$WR_NAME"
             URL="$WR_URL"
-            DRY="false"
+            DRY="${VAR_DRY:-true}"
           fi
           echo "Event: $EVENT_NAME | branch=$BRANCH sha=$SHA dry_run=$DRY"
           {
