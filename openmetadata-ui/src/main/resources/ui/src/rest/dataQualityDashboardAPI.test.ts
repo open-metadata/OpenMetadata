@@ -538,6 +538,42 @@ describe('dataQualityDashboardAPI', () => {
     });
   });
 
+  describe('fetchTestCaseSummary status filtering', () => {
+    it('should send a terms query to the batch report for multiple statuses', async () => {
+      const statuses = [TestCaseStatus.Success, TestCaseStatus.Queued];
+      const { buildDataQualityDashboardFilters: actualBuildFilters } =
+        jest.requireActual(
+          '../utils/DataQuality/DataQualityPureUtils'
+        ) as typeof import('../utils/DataQuality/DataQualityPureUtils');
+      (buildDataQualityDashboardFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchTestCaseSummary({ testCaseStatus: statuses });
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  terms: {
+                    'testCaseResult.testCaseStatus': statuses,
+                  },
+                },
+                { term: { deleted: false } },
+              ],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery:
+          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+        domain: undefined,
+      });
+    });
+  });
+
   testCases.map((testData) => {
     describe(`${testData.functionName}`, () => {
       it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {

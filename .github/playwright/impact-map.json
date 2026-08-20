@@ -185,6 +185,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
