@@ -62,6 +62,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
   default: ({
     options,
     searchKey,
+    isSuggestionsLoading,
     onChange,
     onSearch,
     onGetInitialOptions,
@@ -97,6 +98,9 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
       </span>
       <span data-testid={`selected-count-${searchKey}`}>
         {selectedKeys?.length ?? 0}
+      </span>
+      <span data-testid={`suggestions-loading-${searchKey}`}>
+        {isSuggestionsLoading ? 'true' : 'false'}
       </span>
       {options.map((option, index) => (
         <div data-testid={`option-${searchKey}-${index}`} key={option.key}>
@@ -1053,6 +1057,102 @@ describe('ExploreQuickFilters component', () => {
       );
 
       expect(screen.getByTestId('extra-action')).toBeInTheDocument();
+    });
+  });
+
+  describe('Stale responses', () => {
+    const aggregationResponse = (key: string, bucketKey: string) => ({
+      data: {
+        aggregations: {
+          [`sterms#${key}`]: {
+            buckets: [{ key: bucketKey, doc_count: 1 }],
+          },
+        },
+      },
+    });
+
+    it('should ignore a response that resolves after another dropdown searched', async () => {
+      let resolveStale = (_value: unknown): void => undefined;
+      mockGetAggregationOptions
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveStale = resolve;
+            })
+        )
+        .mockResolvedValueOnce(
+          aggregationResponse('service.name', 'fresh-option')
+        );
+
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-service.name'));
+      });
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+
+      await act(async () => {
+        resolveStale(aggregationResponse('columns.name', 'stale-option'));
+      });
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+
+      expect(
+        screen.queryByTestId('option-service.name-1')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not strand the loader when a static field supersedes a pending fetch', async () => {
+      let resolveStale = (_value: unknown): void => undefined;
+      mockGetAggregationOptions.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStale = resolve;
+          })
+      );
+
+      const staticField: ExploreQuickFilterField = {
+        label: 'Tier',
+        key: 'tier.tagFQN',
+        value: undefined,
+        options: [{ key: 'Tier.Tier1', label: 'Tier1' }],
+      };
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          fields={[...mockFields, staticField]}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      expect(
+        screen.getByTestId('suggestions-loading-tier.tagFQN')
+      ).toHaveTextContent('true');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      await act(async () => {
+        resolveStale(aggregationResponse('columns.name', 'stale-option'));
+      });
+
+      expect(
+        screen.getByTestId('suggestions-loading-tier.tagFQN')
+      ).toHaveTextContent('false');
+
+      expect(screen.getByTestId('option-tier.tagFQN-0')).toHaveTextContent(
+        'Tier1'
+      );
     });
   });
 });
