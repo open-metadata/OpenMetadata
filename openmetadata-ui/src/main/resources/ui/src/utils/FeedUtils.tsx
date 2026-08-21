@@ -44,6 +44,16 @@ export async function suggestions(
   searchTerm: string,
   mentionChar: string
 ): Promise<MentionSuggestionsItem[]> {
+  // Keep the initial picker deterministic, but let OpenSearch rank a typed query by relevance.
+  // Alphabetical sorting discards _score and can push the exact match outside the five visible
+  // suggestions when fuzzy matching admits several candidates.
+  const sortOptions = searchTerm?.trim()
+    ? {}
+    : {
+        sortField: 'displayName.keyword' as const,
+        sortOrder: 'asc' as const,
+      };
+
   if (mentionChar === '@') {
     let atValues = [];
 
@@ -52,8 +62,7 @@ export async function suggestions(
       pageNumber: 1,
       pageSize: 5,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      ...sortOptions,
       searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
     });
     const hits = data.hits.hits;
@@ -88,8 +97,7 @@ export async function suggestions(
       query: searchTerm ?? '',
       pageNumber: 1,
       pageSize: 5,
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      ...sortOptions,
       searchIndex: SearchIndex.DATA_ASSET,
     });
     const hits = data.hits.hits;
