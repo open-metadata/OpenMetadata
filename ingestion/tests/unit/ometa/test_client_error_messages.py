@@ -243,7 +243,7 @@ class TestGetServerVersionErrors:
         assert "text/yaml" in message
 
     def test_retry_budget_exhausted(self):
-        """`_request` answers None once the 503/504/429 retries run out."""
+        """`_request` answers None once the 503/504 retries run out."""
         client = MagicMock()
         client.get_raw.return_value = None
 
