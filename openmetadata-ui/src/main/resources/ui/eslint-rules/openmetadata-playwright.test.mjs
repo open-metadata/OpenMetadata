@@ -101,6 +101,33 @@ ruleTester.run(
         errors: [{ messageId: 'rawAggregationWait' }],
         filename: 'playwright/utils/explore.ts',
       },
+      {
+        // Declared at module scope, used inside a test callback.
+        code: `
+          const aggregateUrl = '/api/v1/search/aggregate?*';
+          test('example', async ({ page }) => {
+            const res = page.waitForResponse(aggregateUrl);
+          });
+        `,
+        errors: [{ messageId: 'rawAggregationWait' }],
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // Assigned after declaration, so the variable has no initialiser.
+        code: `
+          let aggregateUrl;
+          aggregateUrl = '/api/v1/search/aggregate?*';
+          const res = page.waitForResponse(aggregateUrl);
+        `,
+        errors: [{ messageId: 'rawAggregationWait' }],
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // Path split across concatenated literals.
+        code: "const res = page.waitForResponse('/api/v1/search/' + 'aggregate?*');",
+        errors: [{ messageId: 'rawAggregationWait' }],
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
     ],
   }
 );

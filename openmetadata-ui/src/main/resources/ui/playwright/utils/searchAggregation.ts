@@ -30,9 +30,10 @@ export type AggregationWait = {
 const WRAPPED_SEARCH_TEXT = /^\.\*(.*)\.\*$/;
 
 // The API escapes ES reserved characters, so `service-name` arrives as
-// `service\-name`; dropping the backslashes keeps those values comparable.
-const normalize = (text: string): string =>
-  text.toLowerCase().replace(/\\/g, '');
+// `service\-name`. Unescaping (rather than stripping backslashes from both
+// sides) keeps `foo\bar` distinguishable from `foobar`.
+const unescapeReserved = (text: string): string =>
+  text.replace(/\\(.)/g, '$1').toLowerCase();
 
 const matches = (response: Response, wait: AggregationWait): boolean => {
   const url = new URL(response.url());
@@ -66,11 +67,11 @@ const matches = (response: Response, wait: AggregationWait): boolean => {
   // Exact, not substring: a wait for `service` must not resolve on an in-flight
   // response for `service-name`.
   if (searchText !== undefined) {
-    return normalize(searchText) === normalize(wait.value);
+    return unescapeReserved(searchText) === wait.value.toLowerCase();
   }
 
   // Unwrapped value: outside the documented shape, so stay permissive.
-  return normalize(value ?? '').includes(normalize(wait.value));
+  return unescapeReserved(value ?? '').includes(wait.value.toLowerCase());
 };
 
 /** Arm before the action that triggers the request, as with `waitForResponse`. */

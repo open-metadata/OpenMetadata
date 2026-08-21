@@ -14,35 +14,50 @@
 const AGGREGATE_ENDPOINT = 'search/aggregate';
 const HELPER_MODULE = 'searchAggregation';
 
+/** Mirrors the resolver in openmetadata-performance.mjs. */
+const findVariable = (sourceCode, identifier) => {
+  let scope = sourceCode.getScope(identifier);
+
+  while (scope) {
+    const variable = scope.set.get(identifier.name);
+
+    if (variable) {
+      return variable;
+    }
+
+    scope = scope.upper;
+  }
+
+  return null;
+};
+
 /**
- * A wait naming only the endpoint or the field matches both aggregations a
- * dropdown fires — the one on open and the typed search — so it can resolve on
- * the wrong one (#31859). `waitForAggregation` requires the value that tells
- * them apart.
- */
-/**
- * Source text of the matcher, following an identifier to its declaration in this
- * file. A matcher built in another module is out of reach — ESLint sees one file
- * at a time — so this narrows the gap rather than closing it.
+ * Source text of the matcher, following an identifier to every value assigned to
+ * it in this file — declaration or later assignment, at any scope. A matcher
+ * built in another module is out of reach, since ESLint sees one file at a time.
  */
 const resolveMatcherText = (argument, sourceCode) => {
   if (argument.type !== 'Identifier') {
     return sourceCode.getText(argument);
   }
 
-  const variable = sourceCode
-    .getScope(argument)
-    .references.find(
-      (reference) => reference.identifier === argument
-    )?.resolved;
+  const variable = findVariable(sourceCode, argument);
+  const assigned = [
+    ...(variable?.defs ?? []).map((def) => def.node?.init),
+    ...(variable?.references ?? [])
+      .filter((reference) => reference.writeExpr)
+      .map((reference) => reference.writeExpr),
+  ].filter(Boolean);
 
-  const initialisers = (variable?.defs ?? [])
-    .map((def) => def.node?.init)
-    .filter(Boolean);
-
-  return initialisers.map((init) => sourceCode.getText(init)).join('\n');
+  return assigned.map((node) => sourceCode.getText(node)).join('\n');
 };
 
+/**
+ * A wait naming only the endpoint or the field matches both aggregations a
+ * dropdown fires — the one on open and the typed search — so it can resolve on
+ * the wrong one (#31859). `waitForAggregation` requires the value that tells
+ * them apart.
+ */
 const requireAggregationWaitHelper = {
   meta: {
     messages: {
@@ -72,8 +87,13 @@ const requireAggregationWaitHelper = {
         }
 
         // The matcher may be a string, template literal or URL predicate, so
-        // match on source text rather than evaluating each form.
-        const matcherText = resolveMatcherText(node.arguments[0], sourceCode);
+        // match on source text rather than evaluating each form. Quotes and
+        // concatenation come out first so a path split across literals still
+        // reads as one string.
+        const matcherText = resolveMatcherText(
+          node.arguments[0],
+          sourceCode
+        ).replace(/['"`+\s]/g, '');
 
         if (matcherText.includes(AGGREGATE_ENDPOINT)) {
           context.report({ node, messageId: 'rawAggregationWait' });
