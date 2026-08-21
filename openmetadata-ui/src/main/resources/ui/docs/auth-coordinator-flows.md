@@ -101,6 +101,29 @@ These properties hold for every provider — regressing any is a P1:
 Each renewer's happy path + failure path is covered per provider in
 `<Provider>Authenticator.test.tsx › getRenewer`.
 
+## Test coverage (Playwright)
+
+`playwright/e2e/Auth/SsoScenarios.spec.ts` runs the 9 SSO flow cases across
+every provider fixture in the matrix — Basic, LDAP, Keycloak (SAML +
+confidential OIDC + public OIDC), Okta, MSAL (SDK-mocked), Auth0
+(SDK-mocked). Fixtures are gated by `isAvailable()`; when secrets or docker
+services are absent the whole provider row skips with the reason surfaced
+in the report.
+
+| # | Case | Playwright coverage |
+|---|---|---|
+| 1 | Fresh login | `SsoScenarios.spec.ts › login` × every fixture |
+| 2 | Explicit logout | `SsoScenarios.spec.ts › logout` × every fixture (asserts oidcIdToken cleared) |
+| 3 | Silent refresh on expiry | `SsoScenarios.spec.ts › silent refresh recovers an expired token` |
+| 4 | Multi-tab handling | `SsoScenarios.spec.ts › multi-tab shares auth state after refresh in one tab` (fixture opts in via supportsCrossTab) |
+| 5 | Cross-tab coalescing | `SsoScenarios.spec.ts › cross-tab refresh coalesces to a single /auth/refresh call` |
+| 6 | Cold-load expired timing | `SsoScenarios.spec.ts › cold-load with an expired stored token renders authenticated within budget` |
+| 7 | Lightweight silent-callback | `SsoScenarios.spec.ts › silent-callback iframe does not load the full app` |
+| 8 | Config validation early | `SsoScenarios.spec.ts › broken config renders ConfigErrorPage before IdP redirect` |
+| 9 | Config logging | `SsoScenarios.spec.ts › broken config surfaces the specific field in a console.warn` |
+
+**Manual-only (not in CI):** Google — see `playwright/e2e/Auth/manual/Google.md`.
+
 ## Manual smoke checklist (per provider)
 
 Run through this list for each provider before signing off:
