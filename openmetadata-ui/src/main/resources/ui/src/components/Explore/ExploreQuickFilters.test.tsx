@@ -643,6 +643,45 @@ describe('ExploreQuickFilters component', () => {
   });
 
   describe('Error handling', () => {
+    it('should not report an error for a request that was superseded', async () => {
+      const { showErrorToast } = require('../../utils/ToastUtils');
+      let rejectStale = (_reason?: unknown): void => undefined;
+      mockGetAggregationOptions
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectStale = reject;
+            })
+        )
+        .mockResolvedValueOnce({
+          data: {
+            aggregations: {
+              'sterms#service.name': {
+                buckets: [{ key: 'fresh-option', doc_count: 1 }],
+              },
+            },
+          },
+        });
+
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-service.name'));
+      });
+
+      await act(async () => {
+        rejectStale(new Error('Stale Error'));
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+    });
+
     it('should handle API errors gracefully when fetching initial options', async () => {
       const { showErrorToast } = require('../../utils/ToastUtils');
       mockGetAggregationOptions.mockRejectedValue(new Error('API Error'));

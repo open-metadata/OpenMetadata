@@ -269,7 +269,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         sourceFields
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
       if (isLatestOptionsRequest(requestId)) {
         setIsOptionsLoading(false);
@@ -345,7 +347,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         )
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
       if (isLatestOptionsRequest(requestId)) {
         setIsOptionsLoading(false);
