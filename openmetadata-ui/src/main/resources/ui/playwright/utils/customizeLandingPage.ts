@@ -13,7 +13,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import {
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   visitOwnProfilePage,
 } from './common';
@@ -287,7 +286,6 @@ export const toNameableEntity = (
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -417,7 +415,6 @@ export const addAndVerifyWidget = async (
   await redirectToHomePage(page, false);
 
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
-  await removeLandingBanner(page);
 
   // The save response is awaited and its toast asserted above, and `redirectToHomePage`
   // disables ETag conditional reads, so the first read-back is authoritative — the widget
@@ -737,7 +734,6 @@ export const verifyWidgetHeaderNavigation = async (
   // Home keeps background requests alive on some persona routes; use the lighter
   // redirect path and wait on rendered state instead of networkidle.
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
     () => undefined
@@ -755,7 +751,6 @@ export const verifyDomainCountInDomainWidget = async (
   ].join(', ');
 
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
 
   await expect
     .poll(
@@ -795,7 +790,6 @@ export const verifyDataProductCountInDataProductWidget = async (
   const widgetCardSelector = `[data-testid="data-product-card-${dataProductId}"] [data-testid="data-product-asset-count"]`;
 
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
 
   await expect
     .poll(

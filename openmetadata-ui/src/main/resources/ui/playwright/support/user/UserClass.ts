@@ -21,6 +21,7 @@ import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
+  suppressWelcomeScreen,
   uuid,
 } from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
@@ -259,6 +260,12 @@ export class UserClass {
     userName = this.data.email,
     password = this.data.password
   ) {
+    // Seed `loggedInUsers` before the first navigation so the landing-page
+    // welcome banner never renders for this session. Prefer the authoritative
+    // entity name from create(); fall back to the login email's local-part
+    // (the server-assigned username) for a pure login such as admin.
+    await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
+
     await page.goto('/signin');
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });
