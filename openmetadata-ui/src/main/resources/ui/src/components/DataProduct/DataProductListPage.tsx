@@ -23,7 +23,14 @@ import {
 import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  FC,
+  MouseEvent,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -168,12 +175,18 @@ const DataProductListPage = ({
             entity.name &&
             entity.displayName !== entity.name;
 
+          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+            event.stopPropagation();
+            dataProductListing.actionHandlers.onEntityClick?.(entity);
+          };
+
           return (
             <Box
               align="center"
               className={NAME_CELL_CLIP_CLASS}
               direction="row"
-              gap={3}>
+              gap={3}
+              onClick={handleNameClick}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
               <Box className="tw:min-w-0" direction="col">
                 <Typography
@@ -250,7 +263,7 @@ const DataProductListPage = ({
           return null;
       }
     },
-    []
+    [dataProductListing.actionHandlers.onEntityClick]
   );
 
   const selectedDataProductEntities = useMemo(
