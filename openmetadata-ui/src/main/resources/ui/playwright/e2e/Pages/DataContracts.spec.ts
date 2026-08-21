@@ -2249,6 +2249,88 @@ description:
       });
     }
   });
+
+  test('Contract created from the form defaults to Draft', async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await navigateToContractTab(page);
+      await clickAddContractButton(page);
+
+      await expect(page.getByTestId('contract-entity-status')).toContainText(
+        'Draft'
+      );
+
+      await page.getByTestId('contract-name').fill('draft_default_contract');
+
+      const createResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/dataContracts') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      const created = await createResponse;
+
+      expect(created.ok()).toBe(true);
+      expect((await created.json()).entityStatus).toBe('Draft');
+
+      const statusCard = page.getByTestId('contract-status-card');
+      const statusBadge = statusCard.getByText('Draft', { exact: true });
+
+      await expect(statusBadge).toBeVisible();
+      // A Draft must not be painted with the green success palette.
+      await expect(statusBadge).toHaveClass(/utility-warning/);
+      await expect(statusBadge).not.toHaveClass(/utility-success/);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Contract is created with the status picked in the form', async ({
+    page,
+  }) => {
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await navigateToContractTab(page);
+      await clickAddContractButton(page);
+
+      await page.getByTestId('contract-name').fill('approved_choice_contract');
+
+      await selectOption(
+        page,
+        page.getByTestId('contract-entity-status'),
+        'Approved'
+      );
+
+      const createResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/dataContracts') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      const created = await createResponse;
+
+      expect(created.ok()).toBe(true);
+      expect((await created.json()).entityStatus).toBe('Approved');
+
+      const statusCard = page.getByTestId('contract-status-card');
+      const statusBadge = statusCard.getByText('Approved', { exact: true });
+
+      await expect(statusBadge).toBeVisible();
+      await expect(statusBadge).toHaveClass(/utility-success/);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
 });
 
 entitiesWithDataContracts.forEach((EntityClass) => {

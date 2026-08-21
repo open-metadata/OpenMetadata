@@ -67,6 +67,7 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeColor } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -500,13 +501,13 @@ const ContractDetail: React.FC<{
               orientation="vertical"
             />
 
-            <Box align="center" gap={2}>
+            <Box align="center" data-testid="contract-status-card" gap={2}>
               <Typography data-testid="contract-status-label">
                 {`${t('label.status')} : `}
               </Typography>
 
               <BadgeWithIcon
-                color="success"
+                color={getEntityStatusBadgeColor(contract.entityStatus)}
                 iconLeading={Flag04}
                 size="sm"
                 type="pill-color">
@@ -520,7 +521,7 @@ const ContractDetail: React.FC<{
             />
 
             <Box align="center" data-testid="contract-owner-card" gap={2}>
-              <Typography data-testid="contract-status-label">
+              <Typography data-testid="contract-owner-label">
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
