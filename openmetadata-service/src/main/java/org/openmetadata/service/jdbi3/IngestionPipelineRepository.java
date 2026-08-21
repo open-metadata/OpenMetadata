@@ -1398,6 +1398,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, afterCursor);
 
     Map<String, Object> result = new HashMap<>();
+    String error = logs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      result.put(PipelineServiceClientInterface.LOGS_ERROR_KEY, error);
+      return result;
+    }
     result.put("logs", DefaultLogStorage.extractLogContent(logs));
     result.put("after", logs.get("after"));
     result.put("total", logs.getOrDefault("total", "0"));

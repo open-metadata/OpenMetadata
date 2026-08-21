@@ -146,7 +146,8 @@
         "playwright/e2e/Search/**/*.spec.ts",
         "playwright/e2e/Features/SearchSeparation/**/*.spec.ts",
         "playwright/e2e/**/*AfterReindex.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
@@ -186,6 +187,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",

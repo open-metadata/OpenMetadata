@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -67,22 +72,24 @@ export class DatabaseSchemaClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
+    const service = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    const database = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create database',
+      createPath: '/api/v1/databases',
+      fqnSegments: [this.service.name, this.database.name],
       data: this.database,
     });
-    const entityResponse = await apiContext.post('/api/v1/databaseSchemas', {
+    const entity = await createOrFetch(apiContext, {
+      label: 'DatabaseSchemaClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      fqnSegments: [this.service.name, this.database.name, this.entity.name],
       data: this.entity,
     });
-
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -102,17 +109,19 @@ export class DatabaseSchemaClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await apiContext.patch(
-      `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const serviceResponse = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    const entity = await serviceResponse.json();
+    const entity = await okJson(serviceResponse, 'DatabaseSchemaClass.patch');
 
     this.entityResponseData = entity;
 

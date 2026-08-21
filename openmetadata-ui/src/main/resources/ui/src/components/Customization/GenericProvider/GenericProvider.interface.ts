@@ -13,6 +13,7 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -33,6 +34,10 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   customizedPage?: Page | null;
   newTagsUI?: boolean;
   columnFqn?: string;
+  // The tab the page is actually rendering. Pages whose landing URL carries no `:tab`
+  // segment, and the domain tree view (which never writes the tab to the URL at all),
+  // must pass this so the widget layout matches the tab on screen.
+  activeTab?: EntityTabs;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
