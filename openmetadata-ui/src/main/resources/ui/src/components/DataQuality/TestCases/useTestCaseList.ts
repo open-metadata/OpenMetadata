@@ -12,7 +12,7 @@
  */
 import { FormInstance } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniq } from 'lodash';
+import { castArray, isEmpty, uniq } from 'lodash';
 import {
   Dispatch,
   SetStateAction,
@@ -35,6 +35,7 @@ import {
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -114,7 +115,9 @@ export const useTestCaseList = ({
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue ? `*${searchValue}*` : undefined,
+          q: searchValue
+            ? `*${escapeESReservedCharacters(searchValue)}*`
+            : undefined,
           offset: (page - 1) * pageSize,
         });
         setTestCase(data);
@@ -161,7 +164,14 @@ export const useTestCaseList = ({
       }
       setSelectedFilter(updatedValue);
       fetchTestCases(currentPage, updatedValue);
-      form.setFieldsValue(params);
+      // AntD multi-select requires an array even when the URL contains the
+      // legacy single-value status format.
+      form.setFieldsValue({
+        ...params,
+        testCaseStatus: params.testCaseStatus
+          ? castArray(params.testCaseStatus)
+          : undefined,
+      });
     } else {
       fetchTestCases(currentPage);
     }

@@ -26,6 +26,7 @@ import {
 } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -68,6 +69,8 @@ const CustomiseHomeModal = ({
         fqnPrefix: 'KnowledgePanel',
         limit: PAGE_SIZE_MEDIUM,
       });
+      const excludedWidgetFqns =
+        customizeMyDataPageClassBase.getExcludedWidgetFqns();
       setWidgets(
         data.filter(
           (widget) =>
@@ -75,7 +78,8 @@ const CustomiseHomeModal = ({
               LandingPageWidgetKeys.RECENTLY_VIEWED,
               LandingPageWidgetKeys.PIPELINE,
               LandingPageWidgetKeys.ANNOUNCEMENTS,
-            ].includes(widget.fullyQualifiedName as LandingPageWidgetKeys)
+            ].includes(widget.fullyQualifiedName as LandingPageWidgetKeys) &&
+            !excludedWidgetFqns.includes(widget.fullyQualifiedName ?? '')
         )
       );
     } catch (error) {

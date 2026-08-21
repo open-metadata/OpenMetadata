@@ -87,7 +87,7 @@ export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
   },
   props: {
     'data-testid': 'name',
-    disabled,
+    isDisabled: disabled,
   },
 });
 

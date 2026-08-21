@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: data-access-request-e2e-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   check-changes:
@@ -40,6 +40,12 @@ jobs:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/pages/WorkflowDefinitions/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/constants/WorkflowBuilder.constants.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/interface/WorkflowBuilder.interface.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/utils/WorkflowBuilderUtils.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/generated/governance/workflows/**'
 
   data-access-request-e2e:
     needs: check-changes

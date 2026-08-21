@@ -7,6 +7,7 @@ import type {
   ThHTMLAttributes,
 } from 'react';
 import { createContext, isValidElement, useContext } from 'react';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
   ChevronSelectorVertical,
@@ -39,25 +40,29 @@ import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 
-export const TableRowActionsDropdown = () => (
-  <Dropdown.Root>
-    <Dropdown.DotsButton />
+export const TableRowActionsDropdown = () => {
+  const { t } = useCoreTranslation();
 
-    <Dropdown.Popover className="tw:w-min">
-      <Dropdown.Menu>
-        <Dropdown.Item icon={Edit01}>
-          <span className="tw:pr-4">Edit</span>
-        </Dropdown.Item>
-        <Dropdown.Item icon={Copy01}>
-          <span className="tw:pr-4">Copy link</span>
-        </Dropdown.Item>
-        <Dropdown.Item icon={Trash01}>
-          <span className="tw:pr-4">Delete</span>
-        </Dropdown.Item>
-      </Dropdown.Menu>
-    </Dropdown.Popover>
-  </Dropdown.Root>
-);
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton />
+
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu>
+          <Dropdown.Item icon={Edit01}>
+            <span className="tw:pr-4">{t('label.edit', 'Edit')}</span>
+          </Dropdown.Item>
+          <Dropdown.Item icon={Copy01}>
+            <span className="tw:pr-4">{t('label.copy-link', 'Copy link')}</span>
+          </Dropdown.Item>
+          <Dropdown.Item icon={Trash01}>
+            <span className="tw:pr-4">{t('label.delete', 'Delete')}</span>
+          </Dropdown.Item>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
 
 const TableContext = createContext<{
   size: 'sm' | 'md';
@@ -150,6 +155,7 @@ interface TableRootProps
   size?: 'sm' | 'md';
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
+  containerClassName?: string;
 }
 
 const TableRoot = ({
@@ -157,6 +163,7 @@ const TableRoot = ({
   size = 'md',
   stickyHeader = false,
   containerStyle,
+  containerClassName,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
@@ -164,7 +171,9 @@ const TableRoot = ({
   return (
     <TableContext.Provider
       value={{ size: context?.size ?? size, stickyHeader }}>
-      <div className="tw:overflow-x-auto" style={containerStyle}>
+      <div
+        className={cx('tw:overflow-x-auto', containerClassName)}
+        style={containerStyle}>
         <AriaTable
           className={(state) =>
             cx(

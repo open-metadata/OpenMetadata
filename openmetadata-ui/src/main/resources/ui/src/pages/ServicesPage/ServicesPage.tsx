@@ -134,7 +134,7 @@ const ServicesPage = () => {
   }
 
   return viewAllPermission ? (
-    <PageLayoutV1 pageTitle={serviceName}>
+    <PageLayoutV1 pageTitle={startCase(serviceName)}>
       {isEmbedded && <div className="tw:h-4" />}
       <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
         <Col span={24}>

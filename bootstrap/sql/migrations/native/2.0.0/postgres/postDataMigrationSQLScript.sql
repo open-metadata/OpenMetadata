@@ -208,6 +208,19 @@ SET json = jsonb_set(
 WHERE serviceType = 'Databricks'
   AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'true'::jsonb;
 
+-- Unity Catalog: same defaults as Databricks (enabled/Full true, Column and Masked false).
+-- The field is new for this serviceType, so every existing row is missing the object
+-- entirely — one full-object write, no guarded flips.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{connection,config,policyAgentConfig}',
+    '{"enabled":true,"supportsColumnAccess":false,"supportsFullAccess":true,"supportsMaskedAccess":false}'::jsonb,
+    true
+)
+WHERE serviceType = 'UnityCatalog'
+  AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
+
 -- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
 -- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
@@ -320,3 +333,34 @@ WHERE json ->> 'fullyQualifiedName' = 'PII.Sensitive'
       WHERE rec ->> 'name' = 'CvvRecognizer'
         AND rec #>> '{recognizerConfig,patterns,0,regex}' = '\b\d{3,4}\b'
   );
+
+-- Offer Table Diff on Databricks, Unity Catalog and AzureSQL.
+-- tableDiff.json gained these three services in #31356, but test definitions are seed data and
+-- initializeEntity() skips a row that already exists, so an upgraded deployment keeps the old
+-- 10-service list and the Add Test form never offers Table Diff on those connectors.
+-- One statement per service so a customised list keeps its other entries, and each is a no-op
+-- once its service is present. An empty list already means "every service", so leave it alone
+-- rather than narrowing it to three.
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["Databricks"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["Databricks"]'::jsonb;
+
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["UnityCatalog"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["UnityCatalog"]'::jsonb;
+
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["AzureSQL"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["AzureSQL"]'::jsonb;

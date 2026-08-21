@@ -40,7 +40,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   extensionOptions,
 }) => {
   const { t, i18n } = useTranslation();
-  const [content, setContent] = useState<string>('');
+  const content = useMemo(() => formatClientContent(markdown), [markdown]);
 
   const [readMore, setReadMore] = useState<boolean>(false);
 
@@ -63,10 +63,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
     return content;
   }, [hasReadMore, readMore, maxLength, content]);
-
-  useEffect(() => {
-    setContent(formatClientContent(markdown));
-  }, [markdown]);
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));

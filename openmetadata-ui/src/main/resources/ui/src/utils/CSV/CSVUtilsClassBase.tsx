@@ -1089,7 +1089,10 @@ const InlineBulkEditReferencePickerEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1377,7 +1380,10 @@ const InlineCustomPropertiesEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);

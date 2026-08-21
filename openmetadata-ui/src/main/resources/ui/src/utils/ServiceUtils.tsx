@@ -35,6 +35,7 @@ import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSearchIndexFromService } from './ServicePureUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getOptionalFields = (
   service: ServicesType,
@@ -144,6 +145,33 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
     default:
       return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
   }
+};
+
+/**
+ * Only honour a deep-linked serviceType (router `state.serviceType`) that is actually a supported
+ * connector for the given category; otherwise return '' so the wizard shows the connector grid
+ * rather than landing on the Connect step with an unknown/empty connector.
+ *
+ * Shared by both add-service pages: the onboarding connector picker deep-links this way, and so
+ * does picking a card in the flattened "all services" grid, which navigates to that connector's
+ * own category with the type in router state.
+ */
+export const getValidatedServiceType = (
+  state: unknown,
+  serviceCategory: string
+): string => {
+  const requested = (state as { serviceType?: string } | null)?.serviceType;
+  if (!requested) {
+    return '';
+  }
+  const supported = (
+    serviceUtilClassBase.getSupportedServiceFromList() as Record<
+      string,
+      string[]
+    >
+  )[serviceCategory];
+
+  return (supported ?? []).includes(requested) ? requested : '';
 };
 
 export const getAddServiceEntityBreadcrumb = (
