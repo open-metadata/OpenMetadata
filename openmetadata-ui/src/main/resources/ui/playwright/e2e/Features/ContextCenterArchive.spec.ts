@@ -382,7 +382,8 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     // ── 3. File is visible in the documents list ─────────────────────────────
 
     await test.step('uploaded file is visible with correct folder label', async () => {
-      const docRow = await searchAndGetDocumentRow(page, documentFileName);
+      await selectFolderInSidebar(page, folderName);
+      const docRow = getDocumentRowByName(page, documentFileName);
       await expect(docRow).toBeVisible();
       await expect(docRow.getByTestId('document-folder-name')).toContainText(
         folderName
@@ -416,13 +417,10 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       await page.getByTestId('confirm-button').click();
       const folderDeleteRes = await folderDeleteResPromise;
       expect(folderDeleteRes.status()).toBe(200);
-      const browseResPromise = page.waitForResponse(
-        (res) =>
-          res.url().includes('/api/v1/contextCenter/drive/files') &&
-          !res.url().includes('search')
-      );
-      await getDocumentSearchInput(page).clear();
-      await browseResPromise;
+      await page
+        .getByTestId('document-row-skeleton')
+        .first()
+        .waitFor({ state: 'detached' });
     });
 
     // ── 5. File is absent from documents search ──────────────────────────────
