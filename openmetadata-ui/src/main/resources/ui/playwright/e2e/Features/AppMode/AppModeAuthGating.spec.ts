@@ -37,35 +37,36 @@ let userBApiContext: APIRequestContext;
 let disposeUserAContext: () => Promise<void>;
 let disposeUserBContext: () => Promise<void>;
 
-test.beforeAll('Create fixture users and per-user API contexts', async ({
-  browser,
-}) => {
-  const { apiContext: adminApiContext, afterAction: adminAfterAction } =
-    await createNewPage(browser);
-  await userA.create(adminApiContext);
-  await userB.create(adminApiContext);
-  await adminAfterAction();
+test.beforeAll(
+  'Create fixture users and per-user API contexts',
+  async ({ browser }) => {
+    const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+      await createNewPage(browser);
+    await userA.create(adminApiContext);
+    await userB.create(adminApiContext);
+    await adminAfterAction();
 
-  const contextA = await browser.newContext();
-  const pageA = await contextA.newPage();
-  await userA.login(pageA);
-  const resultA = await getApiContext(pageA);
-  userAApiContext = resultA.apiContext;
-  disposeUserAContext = async () => {
-    await resultA.afterAction();
-    await contextA.close();
-  };
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+    await userA.login(pageA);
+    const resultA = await getApiContext(pageA);
+    userAApiContext = resultA.apiContext;
+    disposeUserAContext = async () => {
+      await resultA.afterAction();
+      await contextA.close();
+    };
 
-  const contextB = await browser.newContext();
-  const pageB = await contextB.newPage();
-  await userB.login(pageB);
-  const resultB = await getApiContext(pageB);
-  userBApiContext = resultB.apiContext;
-  disposeUserBContext = async () => {
-    await resultB.afterAction();
-    await contextB.close();
-  };
-});
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+    await userB.login(pageB);
+    const resultB = await getApiContext(pageB);
+    userBApiContext = resultB.apiContext;
+    disposeUserBContext = async () => {
+      await resultB.afterAction();
+      await contextB.close();
+    };
+  }
+);
 
 test.afterAll('Cleanup fixture users', async ({ browser }) => {
   await disposeUserAContext?.();

@@ -47,9 +47,7 @@ test.describe('AppMode — interface toggle', () => {
 
     await test.step('The AI option is present but disabled; Classic is marked current', async () => {
       await expect(page.getByTestId('app-mode-option-ai')).toBeDisabled();
-      await expect(
-        page.getByTestId('app-mode-option-classic')
-      ).toBeEnabled();
+      await expect(page.getByTestId('app-mode-option-classic')).toBeEnabled();
       await expect(page.getByTestId('classic-current-badge')).toBeVisible();
     });
   });

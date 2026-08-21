@@ -174,13 +174,14 @@ test.describe.configure({ mode: 'serial' });
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe('AppMode — unified precedence', () => {
-  test.afterAll('Restore the tenant app-mode default to null', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await setAppDefaultMode(apiContext, null);
-    await afterAction();
-  });
+  test.afterAll(
+    'Restore the tenant app-mode default to null',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await setAppDefaultMode(apiContext, null);
+      await afterAction();
+    }
+  );
 
   // ── Rung 3 vs 4: user pref beats persona ────────────────────────────────
   test('Rung 3 (user pref) beats rung 4 (persona) — user has remembered Classic, persona says AI', async ({
