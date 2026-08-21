@@ -204,11 +204,19 @@ public class DistributedRdfIndexExecutor {
                     : Runtime.getRuntime().availableProcessors(),
                 Runtime.getRuntime().availableProcessors() * 2));
     int batchSize = jobConfiguration.getBatchSize() != null ? jobConfiguration.getBatchSize() : 100;
+    // Every participating server derives the same build target from the (stable during a run)
+    // serving pointer, so writes from all pods land in the dataset the coordinator will promote.
+    RdfRepository rdfRepository = RdfRepository.getInstance();
+    if (Boolean.TRUE.equals(jobConfiguration.getRecreateIndex())
+        && rdfRepository.isBlueGreenRebuildEnabled()) {
+      rdfRepository = rdfRepository.forDataset(rdfRepository.resolveBuildDatasetName());
+    }
     RdfBatchProcessor batchProcessor =
         new RdfBatchProcessor(
             collectionDAO,
-            RdfRepository.getInstance(),
-            RdfIndexingRunContext.forJob(jobConfiguration));
+            rdfRepository,
+            RdfIndexingRunContext.forJob(jobConfiguration)
+                .withJobIdentity(currentJob != null ? currentJob.getId() : null, serverId));
 
     workerExecutor =
         Executors.newFixedThreadPool(

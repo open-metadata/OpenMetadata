@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -33,10 +34,36 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
-  private final Cache<String, UUID> glossaryTermIdCache =
-      Caffeine.newBuilder().maximumSize(1000).build();
-  private final Cache<String, UUID> classificationTagIdCache =
-      Caffeine.newBuilder().maximumSize(1000).build();
+
+  private static final int RESOLUTION_CACHE_MAX_SIZE = 10_000;
+  private static final Duration RESOLUTION_CACHE_TTL = Duration.ofMinutes(15);
+  private static final int MERGED_CONTEXT_CACHE_MAX_SIZE = 50;
+  private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
+
+  // Process-wide, bounded. These were per-instance while the translator built a
+  // fresh mapper per entity, so the caches never survived past one entity and
+  // every tagged entity re-resolved the same handful of tag/term FQNs against
+  // the database — hundreds of thousands of redundant lookups per reindex run.
+  // The TTL bounds staleness when a tag or term is deleted and recreated with
+  // the same FQN (a new UUID): stale URIs self-correct within one TTL or on the
+  // next reconcile of the affected entity.
+  private static final Cache<String, UUID> glossaryTermIdCache =
+      Caffeine.newBuilder()
+          .maximumSize(RESOLUTION_CACHE_MAX_SIZE)
+          .expireAfterWrite(RESOLUTION_CACHE_TTL)
+          .build();
+  private static final Cache<String, UUID> classificationTagIdCache =
+      Caffeine.newBuilder()
+          .maximumSize(RESOLUTION_CACHE_MAX_SIZE)
+          .expireAfterWrite(RESOLUTION_CACHE_TTL)
+          .build();
+
+  // Context files are static after startup, so each context array is flattened
+  // exactly once per mapper instead of once per entity (~660 map entries copied
+  // per entity previously).
+  private final Cache<String, Map<String, Object>> mergedContextCache =
+      Caffeine.newBuilder().maximumSize(MERGED_CONTEXT_CACHE_MAX_SIZE).build();
+
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
 
   // Common namespace URIs
@@ -120,16 +147,16 @@ public class RdfPropertyMapper {
       // Convert entity to JSON to access all properties
       JsonNode entityJson = objectMapper.valueToTree(entity);
 
-      // Get the appropriate context for this entity type
+      // Get the appropriate context for this entity type. An EMPTY context map
+      // still runs field processing (every field falls through to the unmapped
+      // om: path); only an ABSENT context skips it — matching the pre-cache
+      // instanceof-List/Map dispatch.
       String entityType = entity.getEntityReference().getType();
-      Object context = contextCache.get(getContextName(entityType));
+      Map<String, Object> mappings =
+          mergedContextCache.get(getContextName(entityType), this::flattenContext);
 
-      if (context instanceof java.util.List) {
-        // Process array context (includes base + specific mappings)
-        processArrayContext((java.util.List<Object>) context, entityJson, entityResource, model);
-      } else if (context instanceof Map) {
-        // Process single context object
-        processContextMappings((Map<String, Object>) context, entityJson, entityResource, model);
+      if (mappings != null) {
+        processContextMappings(mappings, entityJson, entityResource, model);
       }
 
       // Always add standard properties
@@ -140,27 +167,31 @@ public class RdfPropertyMapper {
     }
   }
 
-  private void processArrayContext(
-      java.util.List<Object> contextArray,
-      JsonNode entityJson,
-      Resource entityResource,
-      Model model) {
-    // Flatten all context maps in the array into one combined map BEFORE iterating
-    // entity fields, so each field gets resolved against the union of mappings
-    // exactly once. Without this, processContextMappings runs per-context-map and
-    // the same field can be emitted multiple times: e.g. `owners` is mapped in
-    // base.jsonld (→ om:hasOwner) but absent from `dataAsset-complete`, so the
-    // second pass falls through to processUnmappedField and emits an extra
-    // `om:owners` predicate alongside om:hasOwner — duplicate triples for the
-    // same logical relationship. Later contexts win on key conflicts (standard
-    // JSON-LD context-merge semantics).
-    Map<String, Object> mergedContext = new java.util.HashMap<>();
-    for (Object contextItem : contextArray) {
-      if (contextItem instanceof Map) {
-        mergedContext.putAll((Map<String, Object>) contextItem);
+  /**
+   * Flatten a context (array or single map) into one combined field→mapping map BEFORE iterating
+   * entity fields, so each field resolves against the union of mappings exactly once. Without
+   * this, processContextMappings would run per-context-map and the same field could be emitted
+   * multiple times: e.g. {@code owners} is mapped in base.jsonld (→ om:hasOwner) but absent from
+   * {@code dataAsset-complete}, so a second pass would fall through to processUnmappedField and
+   * emit an extra {@code om:owners} predicate alongside om:hasOwner. Later contexts win on key
+   * conflicts (standard JSON-LD context-merge semantics).
+   */
+  private Map<String, Object> flattenContext(String contextName) {
+    Object context = contextCache.get(contextName);
+    Map<String, Object> mergedContext = null;
+    if (context instanceof java.util.List<?> contextArray) {
+      mergedContext = new java.util.HashMap<>();
+      for (Object contextItem : contextArray) {
+        if (contextItem instanceof Map) {
+          mergedContext.putAll((Map<String, Object>) contextItem);
+        }
       }
+    } else if (context instanceof Map) {
+      mergedContext = new java.util.HashMap<>((Map<String, Object>) context);
     }
-    processContextMappings(mergedContext, entityJson, entityResource, model);
+    // null (context absent) is deliberately NOT cached by Caffeine, so a
+    // context registered later is picked up on the next lookup.
+    return mergedContext;
   }
 
   // Fields that are handled separately with typed predicates (not via JSON-LD context)
@@ -326,9 +357,19 @@ public class RdfPropertyMapper {
     } else if (fieldValue.isBoolean()) {
       entityResource.addProperty(property, model.createTypedLiteral(fieldValue.asBoolean()));
     } else if (fieldValue.isArray() || fieldValue.isObject()) {
-      // Store complex types as JSON
-      entityResource.addProperty(
-          property, model.createTypedLiteral(fieldValue.toString(), XSDDatatype.XSDstring));
+      // Store complex types as JSON — but never megabyte blobs. A wide table's
+      // unmapped subobject serialized as one literal bloats every write request
+      // (and is opaque to SPARQL anyway); past the cap the field is skipped.
+      String json = fieldValue.toString();
+      if (json.length() > MAX_UNMAPPED_JSON_LITERAL_CHARS) {
+        LOG.debug(
+            "Skipping unmapped field {}: {} chars exceeds the {}-char JSON-literal cap",
+            fieldName,
+            json.length(),
+            MAX_UNMAPPED_JSON_LITERAL_CHARS);
+      } else {
+        entityResource.addProperty(property, model.createTypedLiteral(json, XSDDatatype.XSDstring));
+      }
     }
   }
 
@@ -490,7 +531,10 @@ public class RdfPropertyMapper {
         return resolvedId;
       }
 
-      Tag tag = Entity.getEntityByName(Entity.TAG, tagFqn, "", Include.NON_DELETED, false);
+      // Read-through the repository's name cache: the reindex path has no
+      // read-your-own-write requirement on tag FQNs, and skipping the cache
+      // meant one DB round trip per unresolved tag per entity.
+      Tag tag = Entity.getEntityByName(Entity.TAG, tagFqn, "", Include.NON_DELETED);
       UUID id = tag != null ? tag.getId() : null;
       if (id != null) {
         classificationTagIdCache.put(tagFqn, id);
@@ -520,7 +564,7 @@ public class RdfPropertyMapper {
       }
 
       GlossaryTerm term =
-          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED, false);
+          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
       UUID termId = term != null ? term.getId() : null;
       if (termId != null) {
         glossaryTermIdCache.put(termFqn, termId);
@@ -1245,32 +1289,7 @@ public class RdfPropertyMapper {
   }
 
   private String getContextName(String entityType) {
-    return switch (entityType.toLowerCase()) {
-      case "table",
-          "database",
-          "databaseschema",
-          "storedprocedure",
-          "pipeline",
-          "topic",
-          "dashboard",
-          "dashboarddatamodel",
-          "chart",
-          "mlmodel",
-          "container",
-          "searchindex",
-          "apiendpoint",
-          "apicollection",
-          "report" -> "dataAsset-complete";
-      case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice" -> "service";
-      case "user", "team", "role" -> "team";
-      case "glossary", "glossaryterm", "tag", "classification" -> "governance";
-      default -> "base";
-    };
+    return RdfContextRegistry.contextNameFor(entityType);
   }
 
   private String getRdfType(String entityType) {

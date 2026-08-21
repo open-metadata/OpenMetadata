@@ -80,6 +80,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   private final RdfRepository rdfRepository;
   private RdfBatchProcessor batchProcessor;
+  // Non-null only while a blue/green rebuild is populating an idle dataset; cleared once the
+  // rebuild is promoted or abandoned.
+  private volatile String buildDataset;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -176,18 +179,24 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // write can leave duplicate literal values until the next recreate run;
       // that accepted race is no worse than the reverse lost-update race in the
       // previous clear-and-reconcile implementation.
+      buildDataset = resolveBlueGreenBuildDataset();
+      RdfRepository indexingRepository =
+          buildDataset != null ? rdfRepository.forDataset(buildDataset) : rdfRepository;
       batchProcessor =
           new RdfBatchProcessor(
-              collectionDAO, rdfRepository, RdfIndexingRunContext.forJob(jobData));
+              collectionDAO, indexingRepository, RdfIndexingRunContext.forJob(jobData));
 
       LOG.info(
-          "RDF Index Job Started for Entities: {}, RecreateIndex: {}",
+          "RDF Index Job Started for Entities: {}, RecreateIndex: {}, BuildDataset: {}",
           jobData.getEntities(),
-          jobData.getRecreateIndex());
+          jobData.getRecreateIndex(),
+          buildDataset != null ? buildDataset : "<serving>");
 
       initializeJob(jobExecutionContext);
 
-      if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+      if (buildDataset != null) {
+        prepareBuildDataset(indexingRepository, buildDataset);
+      } else if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
         LOG.info("Clearing existing RDF data");
         clearRdfData();
       }
@@ -201,7 +210,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       if (stopped) {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
+        abandonBuildDataset();
       } else {
+        promoteBuildDataset(indexingRepository);
         // Mark the job COMPLETED BEFORE compacting. compactStorage is a
         // blocking call (up to COMPACT_MAX_WAIT_MS = 10 min while it polls
         // /$/tasks/{id}); doing it before the status update would delay the
@@ -211,36 +222,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
         // is best-effort hygiene; surface job-completion to the UI first
         // and run compaction as the very last step.
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
-        // Final compaction after a successful run. The recreate branch already
-        // compacted *before* the reindex (against the empty post-clearAll
-        // state) to maximise the reclaim; on the incremental branch nothing
-        // had ever compacted, so weeks of incremental runs piled the TDB2
-        // free-list and journal up to tens of GB even though the live triple
-        // count stayed bounded. Running compact at the end of every successful
-        // reindex caps growth at one-run's worth of churn regardless of which
-        // path took us here.
-        //
-        // Defensive try/catch: JenaFusekiStorage.compactStorage() already
-        // catches its own exceptions, but RdfRepository.compactStorage() is
-        // a thin pass-through and a future storage backend (QLever, etc.)
-        // may not honor the same swallow-failures contract. Worse, a race
-        // between isEnabled() and storageService.compactStorage() could
-        // surface an NPE. Catch here so any unexpected runtime failure
-        // can NEVER demote a job that's already COMPLETED to FAILED via
-        // the outer catch's handleJobFailure().
-        try {
-          rdfRepository.compactStorage();
-        } catch (RuntimeException compactFailure) {
-          LOG.warn(
-              "Post-run compaction failed for this RDF reindex job; disk reclamation "
-                  + "skipped, but the job itself completed successfully. Reason: {}",
-              compactFailure.getMessage(),
-              compactFailure);
-        }
+        compactAfterSuccessfulRun();
       }
 
       LOG.info("RDF Index Job Completed for Entities: {}", jobData.getEntities());
     } catch (Exception ex) {
+      abandonBuildDataset();
       if (stopped) {
         LOG.info("RDF Index Job Stopped for Entities: {}", jobData.getEntities());
         jobData.setStatus(EventPublisherJob.Status.STOPPED);
@@ -253,6 +240,38 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
+  /**
+   * Post-run compaction policy. Incremental runs must compact: weeks of DELETE+INSERT
+   * reconciliation pile the TDB2 free-list and journal up to tens of GB even though the live
+   * triple count stays bounded. Recreate runs skip it: clearRdfData() already compacted the empty
+   * post-clearAll store and INSERT_ONLY appends leave nothing to reclaim, while TDB2 compaction
+   * blocks writers for up to COMPACT_MAX_WAIT_MS — delaying resumed live traffic for no benefit.
+   *
+   * <p>Defensive try/catch: JenaFusekiStorage.compactStorage() already catches its own exceptions,
+   * but RdfRepository.compactStorage() is a thin pass-through and a future storage backend (QLever,
+   * etc.) may not honor the same swallow-failures contract. Worse, a race between isEnabled() and
+   * storageService.compactStorage() could surface an NPE. Catch here so any unexpected runtime
+   * failure can NEVER demote a job that's already COMPLETED to FAILED via the outer catch's
+   * handleJobFailure().
+   */
+  private void compactAfterSuccessfulRun() {
+    if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+      LOG.info(
+          "Skipping post-run compaction: recreate runs compact the empty store up front "
+              + "and only append after");
+    } else {
+      try {
+        rdfRepository.compactStorage();
+      } catch (RuntimeException compactFailure) {
+        LOG.warn(
+            "Post-run compaction failed for this RDF reindex job; disk reclamation "
+                + "skipped, but the job itself completed successfully. Reason: {}",
+            compactFailure.getMessage(),
+            compactFailure);
+      }
+    }
+  }
+
   private void initializeJob(JobExecutionContext jobExecutionContext) {
     LOG.debug("Executing RDF Indexing Job with JobData: {}", jobData);
     updateJobStatus(EventPublisherJob.Status.RUNNING);
@@ -260,6 +279,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
     LOG.debug("Initializing job statistics.");
     rdfIndexStats.set(initializeTotalRecords(jobData.getEntities()));
     jobData.setStats(rdfIndexStats.get());
+
+    cleanupPreviousRunFailures();
 
     // bulkAddGlossaryTermRelations has no per-batch DELETE side, so stale
     // glossary-term relations would accumulate forever across reindex runs.
@@ -298,6 +319,118 @@ public class RdfIndexApp extends AbstractNativeApplication {
     long maxQueueMemory = (long) (maxMemory * 0.15);
     int memoryBasedLimit = (int) (maxQueueMemory / (estimatedEntitySize * batchSize));
     return Math.min(requestedSize, Math.max(100, memoryBasedLimit));
+  }
+
+  /**
+   * Drop failure records from earlier runs so the table stays bounded by a single run's failures
+   * rather than growing forever, and so an operator inspecting failures after a run sees only that
+   * run's. Safe to wipe wholesale: the reindex lock prevents two RDF index jobs from overlapping.
+   * Best-effort — a cleanup problem must not stop an indexing run from starting.
+   */
+  private void cleanupPreviousRunFailures() {
+    try {
+      int deleted = collectionDAO.rdfIndexFailureDAO().deleteAll();
+      if (deleted > 0) {
+        LOG.info("Cleaned up {} RDF index failure record(s) from previous runs", deleted);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not clean up RDF index failure records from previous runs", e);
+    }
+  }
+
+  /**
+   * The dataset a blue/green rebuild should populate, or null to index the serving dataset in
+   * place. Only full rebuilds qualify: an incremental run reconciles against existing triples, so
+   * it must write where the data already is.
+   *
+   * <p>The name is derived (whichever alternate is not currently serving) rather than stored, so
+   * every server participating in the job computes the same target without extra coordination. The
+   * pointer only moves at the end of a successful run, so it is stable for the run's duration.
+   */
+  private String resolveBlueGreenBuildDataset() {
+    String target = null;
+    if (Boolean.TRUE.equals(jobData.getRecreateIndex())
+        && rdfRepository.isBlueGreenRebuildEnabled()) {
+      try {
+        target = rdfRepository.resolveBuildDatasetName();
+      } catch (Exception e) {
+        LOG.warn(
+            "Could not resolve a blue/green build dataset; falling back to rebuilding the "
+                + "serving dataset in place. Reason: {}",
+            e.getMessage());
+      }
+    }
+    return target;
+  }
+
+  /**
+   * Bring the build dataset to an empty, ontology-seeded state. The clear and compaction here are
+   * the same operations that make an in-place rebuild disruptive — but this dataset is not serving
+   * traffic, so their cost is invisible to users, and clearing on reuse is what lets the rebuild
+   * alternate between two fixed names instead of leaking a dataset directory per run.
+   */
+  private void prepareBuildDataset(RdfRepository indexingRepository, String targetDataset) {
+    LOG.info("Preparing blue/green build dataset '{}'", targetDataset);
+    rdfRepository.createBuildDataset(targetDataset);
+    indexingRepository.clearAll();
+    indexingRepository.compactStorage();
+    indexingRepository.reloadOntologies();
+    LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
+  }
+
+  /**
+   * Switch serving to the freshly built dataset. The sanity check exists because promoting a
+   * silently-empty build would take the knowledge graph down more thoroughly than the in-place
+   * rebuild it replaces; on failure the pointer is left alone and the previous graph keeps serving.
+   * The old dataset is deliberately NOT deleted here — leaving it in place until the next rebuild
+   * clears it provides a rollback window.
+   */
+  private void promoteBuildDataset(RdfRepository indexingRepository) {
+    if (buildDataset == null) {
+      return;
+    }
+    long triples = indexingRepository.getTripleCount();
+    long successRecords = successRecordsSoFar();
+    if (successRecords > 0 && triples <= 0) {
+      throw new IllegalStateException(
+          String.format(
+              "Refusing to activate RDF dataset '%s': indexed %d records but the dataset reports "
+                  + "%d triples",
+              buildDataset, successRecords, triples));
+    }
+    rdfRepository.activateDataset(buildDataset, getApp() != null ? getApp().getName() : "system");
+    LOG.info(
+        "Activated RDF dataset '{}' ({} triples). Previous dataset retained for rollback until "
+            + "the next rebuild.",
+        buildDataset,
+        triples);
+    buildDataset = null;
+  }
+
+  /**
+   * Success count so far, or 0 when stats are unavailable. Never throws: an accounting gap must not
+   * turn a successful rebuild into a failed job.
+   */
+  private long successRecordsSoFar() {
+    Stats stats = rdfIndexStats.get();
+    StepStats jobStats = stats != null ? stats.getJobStats() : null;
+    Integer successRecords = jobStats != null ? jobStats.getSuccessRecords() : null;
+    return successRecords != null ? successRecords : 0L;
+  }
+
+  /**
+   * Leave the serving pointer untouched after a failed or stopped rebuild. The half-built dataset
+   * is retained rather than deleted so it can be inspected; the next rebuild clears it before
+   * reuse.
+   */
+  private void abandonBuildDataset() {
+    if (buildDataset != null) {
+      LOG.warn(
+          "RDF rebuild did not complete; serving dataset unchanged and build dataset '{}' left "
+              + "in place for inspection",
+          buildDataset);
+      buildDataset = null;
+    }
   }
 
   private void clearRdfData() {
@@ -353,7 +486,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   private void reIndexFromStartToEnd() throws InterruptedException {
     long totalEntities = rdfIndexStats.get().getJobStats().getTotalRecords();
-    int numProducers = Math.clamp((int) (totalEntities / 5000), 2, MAX_PRODUCER_THREADS);
+    int numProducers =
+        jobData.getProducerThreads() != null
+            ? Math.clamp(jobData.getProducerThreads(), 1, MAX_PRODUCER_THREADS)
+            : Math.clamp((int) (totalEntities / 5000), 2, MAX_PRODUCER_THREADS);
     int numConsumers =
         jobData.getConsumerThreads() != null
             ? Math.min(jobData.getConsumerThreads(), MAX_CONSUMER_THREADS)
@@ -604,10 +740,30 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private int calculateTotalBatches(Set<String> entities, int batchSize) {
     int total = 0;
     for (String entityType : entities) {
-      int entityTotal = getTotalEntityRecords(entityType);
+      int entityTotal = getTotalRecordsFromStats(entityType);
       total += (entityTotal + batchSize - 1) / batchSize;
     }
     return total;
+  }
+
+  /**
+   * Per-type totals are counted against the database exactly once, by initializeTotalRecords();
+   * every later consumer reads the seeded stats instead of re-issuing COUNT(*) (three extra
+   * full-table counts per entity type on large catalogs otherwise).
+   */
+  private int getTotalRecordsFromStats(String entityType) {
+    int result;
+    Stats stats = rdfIndexStats.get();
+    StepStats entityStats =
+        stats != null && stats.getEntityStats() != null
+            ? stats.getEntityStats().getAdditionalProperties().get(entityType)
+            : null;
+    if (entityStats != null && entityStats.getTotalRecords() != null) {
+      result = entityStats.getTotalRecords();
+    } else {
+      result = getTotalEntityRecords(entityType);
+    }
+    return result;
   }
 
   private void processEntityType(String entityType, int batchSize, CountDownLatch producerLatch) {
@@ -615,7 +771,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
     try {
       EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      int totalRecords = getTotalEntityRecords(entityType);
+      int totalRecords = getTotalRecordsFromStats(entityType);
       int numBatches = (totalRecords + batchSize - 1) / batchSize;
 
       for (int batch = 0; batch < numBatches; batch++) {
@@ -642,7 +798,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
           entityType,
           new StepStats()
               .withSuccessRecords(0)
-              .withFailedRecords(getTotalEntityRecords(entityType)));
+              .withFailedRecords(getTotalRecordsFromStats(entityType)));
     }
   }
 

@@ -31,9 +31,40 @@ Start with the defaults and tune one setting at a time:
 | `RDF_BULK_ENTITY_BATCH_SIZE` | `100` | Entity models per SPARQL update. |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | `100` | Source entities reconciled per relationship update. |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` | Detailed lineage edges per update. |
+| `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` | Approximate serialized-size cap per reconciling bulk write; oversized chunks split automatically. |
+| `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` | Serialized-size cap per insert-only append. |
+| `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` | Entity models per insert-only append. |
 | `RDF_REQUEST_TIMEOUT_MS` | `60000` | Maximum time for one RDF request. |
 
+Insert-only writes — the mode a `recreateIndex` run uses after the graph is cleared — are budgeted
+separately and far more generously than reconciling updates. They carry no DELETE statements and
+Fuseki parses them with the streaming RDF parser instead of the SPARQL grammar, so the limiting
+factor is transaction count rather than request size. Because TDB2 serializes writers, collapsing a
+rebuild from thousands of transactions into dozens is the single largest throughput lever available
+without changing the deployment. Raising `RDF_MAX_APPEND_PAYLOAD_BYTES` also raises peak heap in the
+OpenMetadata server: one chunk is materialized as an in-memory RDF model per worker before it is
+sent, so budget roughly a few times the byte cap per concurrent worker.
+
 Larger batches reduce transaction and journal overhead but increase request size, parse time, and retry cost. If a larger batch approaches `RDF_REQUEST_TIMEOUT_MS`, either reduce the batch or raise the timeout. Wide tables can produce tens of megabytes of N-Triples per 100-entity batch, so validate changes against representative catalogs.
+
+### What not to tune
+
+- **Do not raise `consumerThreads` or `producerThreads` to fix slow indexing.** TDB2 serializes
+  write transactions; extra workers only queue on Fuseki's writer lock and multiply concurrent
+  abandoned requests when timeouts occur.
+- **Do not raise `RDF_WRITE_MAX_RETRIES` when requests are timing out.** The client-side deadline
+  does not cancel the server-side update — Fuseki keeps parsing and committing the abandoned
+  request, so each same-size retry multiplies server load. A run whose batches time out degrades
+  into minutes per batch (timeout × retries, then per-entity fallback, then circuit-breaker
+  cooldowns) and reports large failed-record counts concentrated in wide entity types.
+- **Fuseki sizing is the primary unlock for wide-table catalogs.** Before touching batch or retry
+  settings, give Fuseki production resources: at least 2 CPU cores (the Kubernetes manifest's
+  `500m` CPU request is a development default), heap per the capacity table above, and container
+  memory headroom beyond `-Xmx` for TDB2's page cache. If a trivial `ASK { ?s ?p ?o }` is slow,
+  Fuseki is resource-starved and no client-side tuning will help.
+- When timeouts persist on healthy hardware, prefer *smaller* batches over longer timeouts: a
+  smaller batch bounds the blast radius of a failure and keeps the single writer's transactions
+  short.
 
 ## Scheduling
 
@@ -53,9 +84,27 @@ Keep the jobs separated manually. Both scan the metadata database and hydrate en
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
 
+## Blue/green rebuilds
+
+By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
+every query returns partial results until the run finishes — on a large catalog that window is
+measured in hours. Setting `RDF_BLUE_GREEN_REBUILD_ENABLED=true` changes the shape of a rebuild:
+the run builds into an idle second dataset and switches to it only after the build succeeds and
+passes a sanity check, so the previous graph keeps serving throughout and remains available for
+rollback until the next rebuild reuses it.
+
+Two datasets alternate — for a configured dataset named `openmetadata`, the builds land in
+`openmetadata_a` and `openmetadata_b` — which bounds disk at two copies rather than leaking a new
+dataset per run. Size the volume accordingly: blue/green needs room for two full datasets, on top
+of the compaction headroom described below.
+
+Because the build target is not serving traffic, the clear and compaction that precede it are free
+from a user's perspective, and the build itself runs entirely with insert-only appends (see
+`RDF_MAX_APPEND_PAYLOAD_BYTES` above).
+
 ## Compaction and disk growth
 
-OpenMetadata requests Fuseki compaction after clearing a recreate run and after every successful indexing run. Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
+OpenMetadata requests Fuseki compaction after clearing a recreate run and after every successful incremental indexing run. Recreate runs skip the post-run compaction: the store was compacted while empty right after the clear, and insert-only writes leave nothing to reclaim, while compaction would block writers for up to ten minutes. Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
 
 To compact manually:
 
@@ -85,6 +134,10 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BULK_ENTITY_BATCH_SIZE` | `100` |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | `100` |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` |
+| `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` |
+| `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` |
+| `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` |
+| `RDF_BLUE_GREEN_REBUILD_ENABLED` | `false` |
 | `RDF_REMOTE_USERNAME` | `admin` |
 | `RDF_REMOTE_PASSWORD` | `admin` |
 | `RDF_DATASET` | `openmetadata` |

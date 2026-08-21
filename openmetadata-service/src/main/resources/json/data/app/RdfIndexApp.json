@@ -9,7 +9,8 @@
     "consumerThreads": 3,
     "queueSize": 5000,
     "useDistributedIndexing": true,
-    "partitionSize": 10000
+    "partitionSize": 10000,
+    "maxRetries": 3
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

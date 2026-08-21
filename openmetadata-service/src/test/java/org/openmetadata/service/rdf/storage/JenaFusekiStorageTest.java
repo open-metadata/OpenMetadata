@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.ConnectException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -144,6 +147,7 @@ class JenaFusekiStorageTest {
                       () -> {},
                       () -> {},
                       failureRecords::incrementAndGet,
+                      () -> false,
                       () -> false));
 
       assertSame(failure, thrown);
@@ -174,12 +178,146 @@ class JenaFusekiStorageTest {
           () -> {},
           successes::incrementAndGet,
           failureRecords::incrementAndGet,
+          () -> false,
           () -> false);
 
       assertEquals(3, attempts.get());
       assertEquals(1, successes.get());
       assertEquals(2, failureRecords.get());
       assertEquals(750, delayMs.get());
+    }
+
+    @Test
+    @DisplayName("timeouts on large payloads abort retries with RdfPayloadTooLargeException")
+    void largePayloadTimeoutAbortsRetries() {
+      AtomicInteger attempts = new AtomicInteger();
+      AtomicInteger failureRecords = new AtomicInteger();
+
+      RdfPayloadTooLargeException thrown =
+          assertThrows(
+              RdfPayloadTooLargeException.class,
+              () ->
+                  JenaFusekiStorage.runWriteWithRetry(
+                      () -> {
+                        attempts.incrementAndGet();
+                        throw new RuntimeException("timed out", new TimeoutException());
+                      },
+                      "testWrite",
+                      2,
+                      250,
+                      2_000,
+                      delay -> {},
+                      () -> {},
+                      () -> {},
+                      failureRecords::incrementAndGet,
+                      () -> false,
+                      () -> true));
+
+      assertTrue(thrown.getMessage().contains("split the batch"));
+      assertEquals(1, attempts.get(), "an oversized timeout must never retry at the same size");
+      assertEquals(1, failureRecords.get(), "the timeout still counts toward the breaker");
+    }
+
+    @Test
+    @DisplayName("non-timeout transient failures still retry even when the payload is large")
+    void largePayloadConnectFailureStillRetries() {
+      AtomicInteger attempts = new AtomicInteger();
+
+      JenaFusekiStorage.runWriteWithRetry(
+          () -> {
+            if (attempts.incrementAndGet() <= 1) {
+              throw new RuntimeException("connect", new ConnectException("refused"));
+            }
+          },
+          "testWrite",
+          2,
+          250,
+          2_000,
+          delay -> {},
+          () -> {},
+          () -> {},
+          () -> {},
+          () -> false,
+          () -> true);
+
+      assertEquals(2, attempts.get(), "connect failures are transient regardless of payload size");
+    }
+  }
+
+  @Nested
+  @DisplayName("payload guard")
+  class PayloadGuardTests {
+
+    @Test
+    @DisplayName("oversized batches bisect until each part fits under the cap")
+    void oversizedBatchesAreBisectedUntilUnderCap() {
+      List<RdfStorageInterface.EntityWriteRequest> requests =
+          List.of(request(), request(), request(), request());
+      List<Integer> executedSizes = new ArrayList<>();
+      AtomicInteger oversizedSingles = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          requests,
+          chunk -> "x".repeat(100 * chunk.size()),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> oversizedSingles.incrementAndGet());
+
+      assertEquals(List.of(1, 1, 1, 1), executedSizes);
+      assertEquals(0, oversizedSingles.get());
+    }
+
+    @Test
+    @DisplayName("a batch under the cap executes once, unsplit")
+    void underCapBatchExecutesOnce() {
+      List<RdfStorageInterface.EntityWriteRequest> requests = List.of(request(), request());
+      List<Integer> executedSizes = new ArrayList<>();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          requests,
+          chunk -> "x".repeat(50 * chunk.size()),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> {});
+
+      assertEquals(List.of(2), executedSizes);
+    }
+
+    @Test
+    @DisplayName("a single oversized request is still sent, alone, with the warning callback")
+    void singleOversizedRequestIsSentAloneWithWarning() {
+      List<Integer> executedSizes = new ArrayList<>();
+      AtomicInteger oversizedSingles = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          List.of(request()),
+          chunk -> "x".repeat(400),
+          150,
+          (update, chunk) -> executedSizes.add(chunk.size()),
+          oversized -> oversizedSingles.incrementAndGet());
+
+      assertEquals(List.of(1), executedSizes);
+      assertEquals(1, oversizedSingles.get());
+    }
+
+    @Test
+    @DisplayName("an empty update never executes")
+    void emptyUpdateNeverExecutes() {
+      AtomicInteger executions = new AtomicInteger();
+
+      JenaFusekiStorage.writeWithPayloadGuard(
+          List.of(request()),
+          chunk -> "",
+          150,
+          (update, chunk) -> executions.incrementAndGet(),
+          oversized -> executions.incrementAndGet());
+
+      assertEquals(0, executions.get());
+    }
+
+    private RdfStorageInterface.EntityWriteRequest request() {
+      return new RdfStorageInterface.EntityWriteRequest(
+          "table", UUID.randomUUID(), ModelFactory.createDefaultModel());
     }
   }
 
@@ -224,6 +362,42 @@ class JenaFusekiStorageTest {
       assertFalse(update.contains("DELETE"));
       assertTrue(update.startsWith("INSERT DATA"));
       assertTrue(update.contains("orders"));
+    }
+  }
+
+  @Nested
+  @DisplayName("dataset redirection")
+  class DatasetRedirectionTests {
+
+    @Test
+    @DisplayName("redirects the dataset path, preserving scheme host and port")
+    void redirectsDatasetPath() {
+      assertEquals(
+          "http://fuseki:3030/openmetadata_a",
+          JenaFusekiStorage.redirectToDataset("http://fuseki:3030/openmetadata", "openmetadata_a"));
+    }
+
+    @Test
+    @DisplayName("preserves embedded credentials so admin calls stay authenticated")
+    void preservesEmbeddedCredentials() {
+      assertEquals(
+          "http://user:pass@fuseki:3030/openmetadata_b",
+          JenaFusekiStorage.redirectToDataset(
+              "http://user:pass@fuseki:3030/openmetadata", "openmetadata_b"));
+    }
+
+    @Test
+    @DisplayName("no override leaves the endpoint untouched")
+    void noOverrideLeavesEndpointUntouched() {
+      String endpoint = "http://fuseki:3030/openmetadata";
+      assertEquals(endpoint, JenaFusekiStorage.redirectToDataset(endpoint, null));
+      assertEquals(endpoint, JenaFusekiStorage.redirectToDataset(endpoint, "  "));
+    }
+
+    @Test
+    @DisplayName("an unparseable endpoint falls back rather than targeting the wrong dataset")
+    void unparseableEndpointFallsBack() {
+      assertEquals("not-a-url", JenaFusekiStorage.redirectToDataset("not-a-url", "openmetadata_a"));
     }
   }
 
@@ -294,6 +468,10 @@ class JenaFusekiStorageTest {
     @DisplayName("malformed URL returns null (caller skips the admin operation)")
     void malformedUrlReturnsNull() {
       assertNull(JenaFusekiStorage.parseDatasetEndpoint("not a url"));
+      // Parses as a relative URI, so it must be rejected on the missing scheme/host rather
+      // than producing a "null://null" server base.
+      assertNull(JenaFusekiStorage.parseDatasetEndpoint("not-a-url"));
+      assertNull(JenaFusekiStorage.parseDatasetEndpoint("/openmetadata"));
     }
 
     @Test

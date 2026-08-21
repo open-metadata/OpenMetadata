@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -54,6 +55,10 @@ public class RdfPartitionWorker {
     long processedCount = partition.getProcessedCount();
     long successCount = partition.getSuccessCount();
     long failedCount = partition.getFailedCount();
+    // Seeded from the partition row (like the counts) so a reclaimed partition
+    // keeps the prior claim's accumulated timing instead of restarting at zero.
+    long readerTimeMs = partition.getReaderTimeMs();
+    long sinkTimeMs = partition.getSinkTimeMs();
     long relationshipFailureCount = 0;
     String lastError = null;
 
@@ -63,8 +68,10 @@ public class RdfPartitionWorker {
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
         int currentBatchSize = (int) Math.min(batchSize, partition.getRangeEnd() - currentOffset);
+        long readStartNanos = System.nanoTime();
         ResultList<? extends EntityInterface> resultList =
             readEntitiesKeyset(entityType, keysetCursor, currentBatchSize);
+        readerTimeMs += TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - readStartNanos);
 
         if (resultList == null || listOrEmpty(resultList.getData()).isEmpty()) {
           break;
@@ -106,6 +113,7 @@ public class RdfPartitionWorker {
         failedCount += batchResult.failedCount() + recovered.failedCount() + unrecoverable;
         relationshipFailureCount +=
             batchResult.relationshipFailureCount() + recovered.relationshipFailureCount();
+        sinkTimeMs += batchResult.sinkTimeMs() + recovered.sinkTimeMs();
         currentOffset += batchProcessed;
         if (batchResult.lastError() != null) {
           lastError = batchResult.lastError();
@@ -122,6 +130,8 @@ public class RdfPartitionWorker {
                   .processedCount(processedCount)
                   .successCount(successCount)
                   .failedCount(failedCount)
+                  .readerTimeMs(readerTimeMs)
+                  .sinkTimeMs(sinkTimeMs)
                   .build());
         }
 
@@ -133,6 +143,19 @@ public class RdfPartitionWorker {
           }
         }
       }
+
+      // Flush the final timing interval before terminal-state updates: the
+      // completion/fail updates deliberately do NOT touch the timing columns,
+      // so this is the write that makes the tail of the partition's timing
+      // durable.
+      flushTimingProgress(
+          partition,
+          currentOffset,
+          processedCount,
+          successCount,
+          failedCount,
+          readerTimeMs,
+          sinkTimeMs);
 
       if (stopped.get() || Thread.currentThread().isInterrupted()) {
         return new PartitionResult(
@@ -164,6 +187,32 @@ public class RdfPartitionWorker {
 
   public void stop() {
     stopped.set(true);
+  }
+
+  private void flushTimingProgress(
+      RdfIndexPartition partition,
+      long cursor,
+      long processedCount,
+      long successCount,
+      long failedCount,
+      long readerTimeMs,
+      long sinkTimeMs) {
+    try {
+      coordinator.updatePartitionProgress(
+          partition.toBuilder()
+              .cursor(cursor)
+              .processedCount(processedCount)
+              .successCount(successCount)
+              .failedCount(failedCount)
+              .readerTimeMs(readerTimeMs)
+              .sinkTimeMs(sinkTimeMs)
+              .build());
+    } catch (Exception statsFailure) {
+      LOG.warn(
+          "Could not flush final timing progress for partition {}",
+          partition.getId(),
+          statsFailure);
+    }
   }
 
   /**
@@ -200,6 +249,7 @@ public class RdfPartitionWorker {
             "RDF reindex could not deserialize a {} row — dropping it from the graph. Reason: {}",
             entityType,
             message);
+        batchProcessor.recordReaderFailure(entityType, message);
       }
     }
     return firstDropped != null ? firstDropped : firstMessage;

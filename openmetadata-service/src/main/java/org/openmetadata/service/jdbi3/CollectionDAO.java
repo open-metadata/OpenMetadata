@@ -575,6 +575,12 @@ public interface CollectionDAO {
   RdfIndexPartitionDAO rdfIndexPartitionDAO();
 
   @CreateSqlObject
+  RdfIndexFailureDAO rdfIndexFailureDAO();
+
+  @CreateSqlObject
+  RdfActiveDatasetDAO rdfActiveDatasetDAO();
+
+  @CreateSqlObject
   RdfReindexLockDAO rdfReindexLockDAO();
 
   @CreateSqlObject
@@ -15118,14 +15124,18 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "UPDATE rdf_index_partition SET processingCursor = :cursor, processedCount = :processedCount, "
-            + "successCount = :successCount, failedCount = :failedCount, lastUpdateAt = :lastUpdateAt "
-            + "WHERE id = :id")
+            + "successCount = :successCount, failedCount = :failedCount, "
+            + "readerTimeMs = :readerTimeMs, processTimeMs = :processTimeMs, sinkTimeMs = :sinkTimeMs, "
+            + "lastUpdateAt = :lastUpdateAt WHERE id = :id")
     void updateProgress(
         @Bind("id") String id,
         @Bind("cursor") long cursor,
         @Bind("processedCount") long processedCount,
         @Bind("successCount") long successCount,
         @Bind("failedCount") long failedCount,
+        @Bind("readerTimeMs") long readerTimeMs,
+        @Bind("processTimeMs") long processTimeMs,
+        @Bind("sinkTimeMs") long sinkTimeMs,
         @Bind("lastUpdateAt") long lastUpdateAt);
 
     @SqlUpdate("UPDATE rdf_index_partition SET lastUpdateAt = :lastUpdateAt WHERE id = :id")
@@ -15266,6 +15276,9 @@ public interface CollectionDAO {
             + "SUM(processedCount) as processedRecords, "
             + "SUM(successCount) as successRecords, "
             + "SUM(failedCount) as failedRecords, "
+            + "SUM(readerTimeMs) as readerTimeMs, "
+            + "SUM(processTimeMs) as processTimeMs, "
+            + "SUM(sinkTimeMs) as sinkTimeMs, "
             + "COUNT(*) as totalPartitions, "
             + "SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completedPartitions, "
             + "SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failedPartitions "
@@ -15333,6 +15346,9 @@ public interface CollectionDAO {
             rs.getLong("processedCount"),
             rs.getLong("successCount"),
             rs.getLong("failedCount"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
             rs.getString("assignedServer"),
             (Long) rs.getObject("claimedAt"),
             (Long) rs.getObject("startedAt"),
@@ -15353,6 +15369,9 @@ public interface CollectionDAO {
             rs.getLong("processedRecords"),
             rs.getLong("successRecords"),
             rs.getLong("failedRecords"),
+            rs.getLong("readerTimeMs"),
+            rs.getLong("processTimeMs"),
+            rs.getLong("sinkTimeMs"),
             rs.getInt("totalPartitions"),
             rs.getInt("completedPartitions"),
             rs.getInt("failedPartitions"));
@@ -15405,6 +15424,9 @@ public interface CollectionDAO {
         long processedCount,
         long successCount,
         long failedCount,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
         String assignedServer,
         Long claimedAt,
         Long startedAt,
@@ -15420,6 +15442,9 @@ public interface CollectionDAO {
         long processedRecords,
         long successRecords,
         long failedRecords,
+        long readerTimeMs,
+        long processTimeMs,
+        long sinkTimeMs,
         int totalPartitions,
         int completedPartitions,
         int failedPartitions) {}
@@ -15665,6 +15690,149 @@ public interface CollectionDAO {
             rs.getLong("failedRecords"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));
+      }
+    }
+  }
+
+  /**
+   * Single-row pointer naming the RDF dataset that currently serves reads and live writes. A
+   * blue/green rebuild populates the other dataset and then flips this row, so the served graph is
+   * never cleared out from under queries. An absent row means "use the dataset named in the
+   * configured endpoint" — the behaviour before blue/green existed — so upgrades are inert until an
+   * operator enables it.
+   */
+  interface RdfActiveDatasetDAO {
+
+    String POINTER_ID = "active";
+
+    @SqlQuery("SELECT datasetName FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
+    String getActiveDataset();
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
+                + "VALUES ('"
+                + POINTER_ID
+                + "', :datasetName, :updatedAt, :updatedBy) "
+                + "ON DUPLICATE KEY UPDATE datasetName = VALUES(datasetName), "
+                + "updatedAt = VALUES(updatedAt), updatedBy = VALUES(updatedBy)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
+                + "VALUES ('"
+                + POINTER_ID
+                + "', :datasetName, :updatedAt, :updatedBy) "
+                + "ON CONFLICT (id) DO UPDATE SET datasetName = EXCLUDED.datasetName, "
+                + "updatedAt = EXCLUDED.updatedAt, updatedBy = EXCLUDED.updatedBy",
+        connectionType = POSTGRES)
+    void setActiveDataset(
+        @Bind("datasetName") String datasetName,
+        @Bind("updatedAt") long updatedAt,
+        @Bind("updatedBy") String updatedBy);
+
+    @SqlUpdate("DELETE FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
+    void clearActiveDataset();
+  }
+
+  /**
+   * DAO for RDF index failure records. Mirrors {@link SearchIndexFailureDAO}: failed records are
+   * persisted per job so they can be inspected and retried at end-of-run instead of being silently
+   * lost until the next full reindex.
+   */
+  interface RdfIndexFailureDAO {
+
+    String STAGE_ENTITY_WRITE = "ENTITY_WRITE";
+    String STAGE_RELATIONSHIP = "RELATIONSHIP";
+    String STAGE_LINEAGE = "LINEAGE";
+    String STAGE_READER = "READER";
+
+    /** Bean class for @BindBean compatibility (records use id() not getId()) */
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class RdfIndexFailureRecord {
+      private final String id;
+      private final String jobId;
+      private final String serverId;
+      private final String entityType;
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureStage;
+      private final String errorMessage;
+      private final String stackTrace;
+      private final long timestamp;
+    }
+
+    @SqlUpdate(
+        "INSERT INTO rdf_index_failures (id, jobId, serverId, entityType, entityId, entityFqn, "
+            + "failureStage, errorMessage, stackTrace, timestamp) "
+            + "VALUES (:id, :jobId, :serverId, :entityType, :entityId, :entityFqn, "
+            + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
+    void insert(
+        @Bind("id") String id,
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureStage") String failureStage,
+        @Bind("errorMessage") String errorMessage,
+        @Bind("stackTrace") String stackTrace,
+        @Bind("timestamp") long timestamp);
+
+    @SqlBatch(
+        "INSERT INTO rdf_index_failures (id, jobId, serverId, entityType, entityId, entityFqn, "
+            + "failureStage, errorMessage, stackTrace, timestamp) "
+            + "VALUES (:id, :jobId, :serverId, :entityType, :entityId, :entityFqn, "
+            + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
+    void insertBatch(@BindBean List<RdfIndexFailureRecord> failures);
+
+    @SqlQuery(
+        "SELECT * FROM rdf_index_failures WHERE jobId = :jobId "
+            + "ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RdfIndexFailureMapper.class)
+    List<RdfIndexFailureRecord> findByJobId(
+        @Bind("jobId") String jobId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM rdf_index_failures WHERE jobId = :jobId")
+    int countByJobId(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT * FROM rdf_index_failures WHERE jobId = :jobId AND failureStage = :failureStage "
+            + "ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RdfIndexFailureMapper.class)
+    List<RdfIndexFailureRecord> findByJobIdAndStage(
+        @Bind("jobId") String jobId,
+        @Bind("failureStage") String failureStage,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlUpdate("DELETE FROM rdf_index_failures WHERE jobId = :jobId")
+    int deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM rdf_index_failures WHERE id = :id")
+    int deleteById(@Bind("id") String id);
+
+    @SqlUpdate("DELETE FROM rdf_index_failures WHERE timestamp < :cutoffTime")
+    int deleteOlderThan(@Bind("cutoffTime") long cutoffTime);
+
+    @SqlUpdate("DELETE FROM rdf_index_failures")
+    int deleteAll();
+
+    class RdfIndexFailureMapper implements RowMapper<RdfIndexFailureRecord> {
+      @Override
+      public RdfIndexFailureRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new RdfIndexFailureRecord(
+            rs.getString("id"),
+            rs.getString("jobId"),
+            rs.getString("serverId"),
+            rs.getString("entityType"),
+            rs.getString("entityId"),
+            rs.getString("entityFqn"),
+            rs.getString("failureStage"),
+            rs.getString("errorMessage"),
+            rs.getString("stackTrace"),
+            rs.getLong("timestamp"));
       }
     }
   }

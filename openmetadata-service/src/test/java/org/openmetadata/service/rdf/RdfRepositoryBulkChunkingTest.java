@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -27,7 +28,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -140,6 +143,130 @@ class RdfRepositoryBulkChunkingTest {
     assertEquals(
         RdfRepository.DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE,
         RdfRepository.resolveBulkLineageEdgeBatchSize(config));
+    assertEquals(
+        RdfStorageInterface.DEFAULT_MAX_UPDATE_PAYLOAD_BYTES,
+        RdfStorageInterface.resolveMaxUpdatePayloadBytes(config));
+    assertEquals(
+        RdfStorageInterface.DEFAULT_MAX_APPEND_PAYLOAD_BYTES,
+        RdfStorageInterface.resolveMaxAppendPayloadBytes(config));
+    assertEquals(
+        RdfStorageInterface.DEFAULT_BULK_APPEND_ENTITY_BATCH_SIZE,
+        RdfStorageInterface.resolveBulkAppendEntityBatchSize(config));
+    assertTrue(
+        RdfStorageInterface.DEFAULT_MAX_APPEND_PAYLOAD_BYTES
+            > RdfStorageInterface.DEFAULT_MAX_UPDATE_PAYLOAD_BYTES,
+        "appends must be allowed larger bodies than reconciling updates");
+  }
+
+  @Test
+  @DisplayName("wide entity models split by estimated payload budget before the count cap")
+  void wideModelsSplitByPayloadBudget() {
+    RdfStorageInterface storage = storageMock();
+    // 100 triples × 220 bytes ≈ 22,000 estimated bytes per request; a 50,000-byte
+    // budget fits two requests per chunk while the count cap (default 100) never binds.
+    RdfRepository repository =
+        new RdfRepository(config().withMaxUpdatePayloadBytes(50_000), storage, null);
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        List.of(
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100));
+
+    repository.bulkStoreEntityRequests(requests);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<RdfStorageInterface.EntityWriteRequest>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(storage, times(3)).bulkStoreEntities(captor.capture(), eq(RdfWriteMode.RECONCILE));
+    assertEquals(2, captor.getAllValues().get(0).size());
+    assertEquals(2, captor.getAllValues().get(1).size());
+    assertEquals(1, captor.getAllValues().get(2).size());
+  }
+
+  @Test
+  @DisplayName("insert-only appends use the larger append budget and count cap")
+  void appendModeUsesAppendBudget() {
+    RdfStorageInterface storage = storageMock();
+    // Same models as wideModelsSplitByPayloadBudget (≈22,000 estimated bytes each)
+    // but under append limits that comfortably fit all five in one request.
+    RdfRepository repository =
+        new RdfRepository(
+            config()
+                .withMaxUpdatePayloadBytes(50_000)
+                .withMaxAppendPayloadBytes(1_000_000)
+                .withBulkAppendEntityBatchSize(1_000),
+            storage,
+            null);
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        List.of(
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100),
+            entityRequest(100));
+
+    repository.bulkStoreEntityRequests(requests, RdfWriteMode.INSERT_ONLY);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<RdfStorageInterface.EntityWriteRequest>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(storage, times(1)).bulkStoreEntities(captor.capture(), eq(RdfWriteMode.INSERT_ONLY));
+    assertEquals(5, captor.getValue().size(), "append mode should not split under its own budget");
+  }
+
+  @Test
+  @DisplayName("append mode still splits when its own byte budget is exceeded")
+  void appendModeStillSplitsOverItsBudget() {
+    RdfStorageInterface storage = storageMock();
+    RdfRepository repository =
+        new RdfRepository(
+            config().withMaxAppendPayloadBytes(50_000).withBulkAppendEntityBatchSize(1_000),
+            storage,
+            null);
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        List.of(entityRequest(100), entityRequest(100), entityRequest(100));
+
+    repository.bulkStoreEntityRequests(requests, RdfWriteMode.INSERT_ONLY);
+
+    verify(storage, times(2)).bulkStoreEntities(anyList(), eq(RdfWriteMode.INSERT_ONLY));
+  }
+
+  @Test
+  @DisplayName("append count cap bounds a chunk of very small entities")
+  void appendCountCapBoundsTinyEntities() {
+    RdfStorageInterface storage = storageMock();
+    RdfRepository repository =
+        new RdfRepository(
+            config().withMaxAppendPayloadBytes(10_000_000).withBulkAppendEntityBatchSize(2),
+            storage,
+            null);
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        List.of(entityRequest(1), entityRequest(1), entityRequest(1), entityRequest(1));
+
+    repository.bulkStoreEntityRequests(requests, RdfWriteMode.INSERT_ONLY);
+
+    verify(storage, times(2)).bulkStoreEntities(anyList(), eq(RdfWriteMode.INSERT_ONLY));
+  }
+
+  @Test
+  @DisplayName("a single request above the payload budget is still sent, alone")
+  void singleOversizedRequestIsSentAlone() {
+    RdfStorageInterface storage = storageMock();
+    RdfRepository repository =
+        new RdfRepository(config().withMaxUpdatePayloadBytes(50_000), storage, null);
+    List<RdfStorageInterface.EntityWriteRequest> requests =
+        List.of(entityRequest(300), entityRequest(10));
+
+    repository.bulkStoreEntityRequests(requests);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<RdfStorageInterface.EntityWriteRequest>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(storage, times(2)).bulkStoreEntities(captor.capture(), eq(RdfWriteMode.RECONCILE));
+    assertEquals(1, captor.getAllValues().get(0).size());
+    assertEquals(1, captor.getAllValues().get(1).size());
   }
 
   @Test
@@ -180,6 +307,16 @@ class RdfRepositoryBulkChunkingTest {
   private static RdfStorageInterface.EntityWriteRequest entityRequest() {
     return new RdfStorageInterface.EntityWriteRequest(
         "table", UUID.randomUUID(), ModelFactory.createDefaultModel());
+  }
+
+  private static RdfStorageInterface.EntityWriteRequest entityRequest(int tripleCount) {
+    UUID entityId = UUID.randomUUID();
+    Model model = ModelFactory.createDefaultModel();
+    Resource subject = model.createResource(entityUri("table", entityId));
+    for (int i = 0; i < tripleCount; i++) {
+      subject.addProperty(model.createProperty(BASE_URI + "ontology/property" + i), "value" + i);
+    }
+    return new RdfStorageInterface.EntityWriteRequest("table", entityId, model);
   }
 
   private static RdfStorageInterface.RelationshipData relationship(UUID fromId, UUID toId) {

@@ -727,7 +727,7 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      // Four-step recreate flow on TDB2:
+      // Three-step recreate flow on TDB2:
       //  1. clearAll()       — SPARQL CLEAR ALL (logical delete only)
       //  2. compactStorage() — physically reclaim disk via /$/compact admin
       //                        endpoint while the dataset is empty; MUST run
@@ -736,16 +736,15 @@ class RdfIndexAppTest {
       //  3. reloadOntologies() — repopulate ontology/shapes graphs that
       //                        CLEAR ALL wiped, so post-wipe inference /
       //                        federated SPARQL queries keep working.
-      //  4. compactStorage() — final compaction at end of successful run to
-      //                        cap journal/free-list growth from the reindex
-      //                        churn itself. Fires on every successful run
-      //                        regardless of branch.
+      // No end-of-run compaction on recreate: the store was compacted while
+      // empty and INSERT_ONLY appends leave nothing to reclaim, while TDB2
+      // compaction blocks writers for up to ten minutes.
       // Use InOrder so a future change reordering these calls fails this test.
       InOrder recreateFlow = inOrder(mockRdfRepository);
       recreateFlow.verify(mockRdfRepository).clearAll();
       recreateFlow.verify(mockRdfRepository).compactStorage();
       recreateFlow.verify(mockRdfRepository).reloadOntologies();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
+      verify(mockRdfRepository, times(1)).compactStorage();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
     }
 
@@ -801,8 +800,9 @@ class RdfIndexAppTest {
       // pre-reindex compactStorage live behind the recreateIndex=true branch.
       verify(mockRdfRepository, never()).clearAll();
       verify(mockRdfRepository, never()).reloadOntologies();
-      // …but the FINAL compactStorage call still fires on every successful
-      // run regardless of branch. Pre-this-PR, the incremental path's
+      // …but the FINAL compactStorage call still fires at the end of every
+      // successful INCREMENTAL run (recreate runs skip it — they compacted the
+      // empty store up front and only appended after). The incremental path's
       // clearAllGlossaryTermRelations + re-add cycle leaked free space on
       // every weekly run with no compaction ever — the customer's
       // 50 GB-on-2k-entities case. End-of-run compaction caps growth at

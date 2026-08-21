@@ -389,6 +389,9 @@ public class DistributedRdfIndexCoordinator {
             partition.getProcessedCount(),
             partition.getSuccessCount(),
             partition.getFailedCount(),
+            partition.getReaderTimeMs(),
+            partition.getProcessTimeMs(),
+            partition.getSinkTimeMs(),
             System.currentTimeMillis());
   }
 
@@ -703,6 +706,9 @@ public class DistributedRdfIndexCoordinator {
                             .processedRecords(record.processedRecords())
                             .successRecords(record.successRecords())
                             .failedRecords(record.failedRecords())
+                            .readerTimeMs(record.readerTimeMs())
+                            .processTimeMs(record.processTimeMs())
+                            .sinkTimeMs(record.sinkTimeMs())
                             .totalPartitions(record.totalPartitions())
                             .completedPartitions(record.completedPartitions())
                             .failedPartitions(record.failedPartitions())
@@ -938,6 +944,9 @@ public class DistributedRdfIndexCoordinator {
         .processedCount(record.processedCount())
         .successCount(record.successCount())
         .failedCount(record.failedCount())
+        .readerTimeMs(record.readerTimeMs())
+        .processTimeMs(record.processTimeMs())
+        .sinkTimeMs(record.sinkTimeMs())
         .assignedServer(record.assignedServer())
         .claimedAt(record.claimedAt())
         .startedAt(record.startedAt())

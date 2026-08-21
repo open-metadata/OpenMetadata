@@ -21,6 +21,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -45,6 +49,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
@@ -163,6 +168,10 @@ public class RdfRepository {
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
 
       loadOntologies();
+      if (isBlueGreenRebuildEnabled()) {
+        refreshActiveDataset();
+        startActiveDatasetWatcher();
+      }
     } else {
       this.storageService = null;
       this.translator = null;
@@ -188,6 +197,166 @@ public class RdfRepository {
 
   static int resolveBulkLineageEdgeBatchSize(RdfConfiguration config) {
     return positiveInt(config.getBulkLineageEdgeBatchSize(), DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE);
+  }
+
+  // Blue/green rebuild support. The pointer row names the dataset that serves reads and live
+  // writes; a rebuild populates the *other* dataset and flips the pointer on success, so the
+  // served graph is never cleared out from under queries.
+  private static final String BUILD_DATASET_SUFFIX_A = "_a";
+  private static final String BUILD_DATASET_SUFFIX_B = "_b";
+  private static final long ACTIVE_DATASET_REFRESH_SECONDS = 15L;
+
+  private final Map<String, RdfStorageInterface> buildStorages = new ConcurrentHashMap<>();
+  private ScheduledExecutorService activeDatasetWatcher;
+
+  public boolean isBlueGreenRebuildEnabled() {
+    return isEnabled()
+        && Boolean.TRUE.equals(config.getBlueGreenRebuildEnabled())
+        && storageService.supportsDatasetManagement();
+  }
+
+  /** Dataset named in the configured endpoint — what serving used before blue/green existed. */
+  public String configuredDatasetName() {
+    return storageService != null ? storageService.currentDatasetName() : null;
+  }
+
+  /**
+   * Name of the dataset currently serving. Falls back to the configured endpoint's dataset when no
+   * pointer row exists, so an install that never enabled blue/green behaves exactly as before.
+   */
+  public String activeDatasetName() {
+    String pointer = null;
+    try {
+      CollectionDAO dao = Entity.getCollectionDAO();
+      pointer = dao != null ? dao.rdfActiveDatasetDAO().getActiveDataset() : null;
+    } catch (Exception e) {
+      LOG.debug("Could not read active RDF dataset pointer; using configured dataset", e);
+    }
+    return pointer != null && !pointer.isBlank() ? pointer : configuredDatasetName();
+  }
+
+  /**
+   * The dataset a rebuild should populate: whichever of the two alternates is not currently
+   * serving. Alternating between exactly two names bounds disk at two copies — Fuseki does not
+   * guarantee that deleting a dataset reclaims its files, so minting a fresh name per run would
+   * leak a directory every time.
+   */
+  public String resolveBuildDatasetName() {
+    String base = configuredDatasetName();
+    if (base == null) {
+      throw new IllegalStateException("Cannot resolve RDF build dataset: no configured dataset");
+    }
+    return alternateDatasetName(base, activeDatasetName());
+  }
+
+  static String alternateDatasetName(String base, String activeDataset) {
+    String candidateA = base + BUILD_DATASET_SUFFIX_A;
+    return candidateA.equals(activeDataset) ? base + BUILD_DATASET_SUFFIX_B : candidateA;
+  }
+
+  /**
+   * A repository view whose writes land in {@code datasetName} instead of the serving dataset.
+   * Blue/green rebuilds hand this to the indexer so every existing write path targets the build
+   * dataset without threading a dataset argument through each call. Config and translator are
+   * shared; only the storage handle differs.
+   */
+  public RdfRepository forDataset(String datasetName) {
+    if (datasetName == null
+        || datasetName.isBlank()
+        || datasetName.equals(storageService.currentDatasetName())) {
+      return this;
+    }
+    return new RdfRepository(config, storageForDataset(datasetName), translator);
+  }
+
+  /** Create the rebuild target on the server if it is not already present. */
+  public void createBuildDataset(String datasetName) {
+    storageService.createDatasetIfMissing(datasetName);
+  }
+
+  /** Total triples across all graphs in this repository's dataset. */
+  public long getTripleCount() {
+    return storageService != null ? storageService.getTripleCount() : 0L;
+  }
+
+  /** Storage handle bound to a specific dataset, for writing into a rebuild target. */
+  public RdfStorageInterface storageForDataset(String datasetName) {
+    if (datasetName == null
+        || datasetName.isBlank()
+        || datasetName.equals(storageService.currentDatasetName())) {
+      return storageService;
+    }
+    return buildStorages.computeIfAbsent(
+        datasetName, name -> RdfStorageFactory.createStorage(config, name));
+  }
+
+  /**
+   * Point serving at {@code datasetName} and persist the choice. Other servers converge when their
+   * own refresh picks up the new pointer, which is why the caller waits before retiring the old
+   * dataset.
+   */
+  public void activateDataset(String datasetName, String updatedBy) {
+    Entity.getCollectionDAO()
+        .rdfActiveDatasetDAO()
+        .setActiveDataset(datasetName, System.currentTimeMillis(), updatedBy);
+    refreshActiveDataset();
+    LOG.info("RDF serving dataset switched to '{}'", datasetName);
+  }
+
+  /** Re-point the serving storage if another server has flipped the pointer. */
+  public void refreshActiveDataset() {
+    if (!isBlueGreenRebuildEnabled()) {
+      return;
+    }
+    try {
+      String active = activeDatasetName();
+      if (active != null && !active.equals(storageService.currentDatasetName())) {
+        storageService.repointToDataset(active);
+        buildStorages.remove(active);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not refresh active RDF dataset pointer", e);
+    }
+  }
+
+  public long activeDatasetRefreshSeconds() {
+    return ACTIVE_DATASET_REFRESH_SECONDS;
+  }
+
+  /**
+   * Poll the serving pointer so a flip performed by whichever server ran the rebuild reaches every
+   * other server. Without this, other servers would keep answering from the previous dataset until
+   * they restarted. Only started when blue/green is enabled, so the default deployment gains no
+   * background work.
+   */
+  private void startActiveDatasetWatcher() {
+    activeDatasetWatcher =
+        Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().daemon().name("rdf-active-dataset-watcher").factory());
+    activeDatasetWatcher.scheduleWithFixedDelay(
+        this::refreshActiveDataset,
+        ACTIVE_DATASET_REFRESH_SECONDS,
+        ACTIVE_DATASET_REFRESH_SECONDS,
+        TimeUnit.SECONDS);
+  }
+
+  long payloadBudgetBytes(RdfWriteMode writeMode) {
+    return writeMode == RdfWriteMode.INSERT_ONLY
+        ? RdfStorageInterface.resolveMaxAppendPayloadBytes(config)
+        : RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
+  }
+
+  static final int BATCH_WRITE_BUDGET_TIMEOUT_MULTIPLIER = 4;
+
+  /**
+   * Wall-clock budget for one indexer batch's write cascade (the bulk attempt plus bisect
+   * fallback leaves). Bounding it at a small multiple of the per-request timeout means a
+   * pathological batch costs minutes, never hours — the 164-hour production incident was exactly
+   * an unbounded cascade of timeout × retries × per-entity fallback per batch.
+   */
+  public long batchWriteBudgetMs() {
+    return BATCH_WRITE_BUDGET_TIMEOUT_MULTIPLIER
+        * RdfStorageInterface.resolveRequestTimeoutMs(config);
   }
 
   private static int positiveInt(Integer value, int defaultValue) {
@@ -354,11 +523,54 @@ public class RdfRepository {
     if (requests == null || requests.isEmpty()) {
       return;
     }
-    int chunkSize = resolveBulkEntityBatchSize(config);
-    for (int start = 0; start < requests.size(); start += chunkSize) {
-      int end = Math.min(start + chunkSize, requests.size());
-      storageService.bulkStoreEntities(requests.subList(start, end), writeMode);
+    for (List<RdfStorageInterface.EntityWriteRequest> chunk :
+        chunkByPayloadBudget(requests, writeMode)) {
+      storageService.bulkStoreEntities(chunk, writeMode);
     }
+  }
+
+  /**
+   * Chunks are bounded by BOTH an entity-count cap and an estimated-bytes budget, each of which
+   * differs by write mode. Count-only chunking let a batch of wide tables (hundreds of columns
+   * each) serialize into multi-MB requests that time out server-side; budgeting by {@code
+   * Model.size()} × the per-triple planning factor packs narrow entities densely while wide
+   * entities split automatically. A single entity over the budget still ships alone — the storage
+   * layer's post-serialization guard owns that case.
+   *
+   * <p>Insert-only appends get much larger limits than reconciling updates: they carry no DELETE
+   * statements, the backend parses them with the streaming parser rather than the SPARQL grammar,
+   * and collapsing thousands of transactions into dozens is the dominant throughput lever on a
+   * single-writer store.
+   */
+  private List<List<RdfStorageInterface.EntityWriteRequest>> chunkByPayloadBudget(
+      List<RdfStorageInterface.EntityWriteRequest> requests, RdfWriteMode writeMode) {
+    boolean appendOnly = writeMode == RdfWriteMode.INSERT_ONLY;
+    int maxCount =
+        appendOnly
+            ? RdfStorageInterface.resolveBulkAppendEntityBatchSize(config)
+            : resolveBulkEntityBatchSize(config);
+    long byteBudget = payloadBudgetBytes(writeMode);
+    List<List<RdfStorageInterface.EntityWriteRequest>> chunks = new ArrayList<>();
+    List<RdfStorageInterface.EntityWriteRequest> current = new ArrayList<>();
+    long currentBytes = 0;
+    for (RdfStorageInterface.EntityWriteRequest request : requests) {
+      long estimatedBytes =
+          request.model().size() * (long) RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE;
+      boolean overflows =
+          !current.isEmpty()
+              && (current.size() >= maxCount || currentBytes + estimatedBytes > byteBudget);
+      if (overflows) {
+        chunks.add(current);
+        current = new ArrayList<>();
+        currentBytes = 0;
+      }
+      current.add(request);
+      currentBytes += estimatedBytes;
+    }
+    if (!current.isEmpty()) {
+      chunks.add(current);
+    }
+    return chunks;
   }
 
   public void delete(EntityReference entityReference) {
@@ -988,7 +1200,12 @@ public class RdfRepository {
       return;
     }
 
-    StringBuilder update = new StringBuilder();
+    // Edge models vary wildly in size (sqlQuery + column lineage), so the
+    // count-based chunk from bulkAddLineage gets a second, size-based bound
+    // here: flush the accumulated update whenever the estimated body crosses
+    // the payload budget instead of letting 50 wide edges ride one request.
+    long byteBudget = payloadBudgetBytes(writeMode);
+    StringBuilder deletes = new StringBuilder();
     Model combinedModel = ModelFactory.createDefaultModel();
     for (LineageEdgeData edge : edges) {
       Model edgeModel =
@@ -998,19 +1215,32 @@ public class RdfRepository {
       edgeModel.close();
 
       if (writeMode != RdfWriteMode.INSERT_ONLY) {
-        if (!update.isEmpty()) {
-          update.append(";\n");
+        if (!deletes.isEmpty()) {
+          deletes.append(";\n");
         }
-        update.append(
+        deletes.append(
             buildLineageDeleteStatements(
                 entityUri(edge.fromType(), edge.fromId()),
                 entityUri(edge.toType(), edge.toId()),
                 lineageDetailsUri(edge.fromId(), edge.toId())));
       }
-    }
 
+      long estimatedBytes =
+          combinedModel.size() * (long) RdfStorageInterface.ESTIMATED_BYTES_PER_TRIPLE
+              + deletes.length();
+      if (estimatedBytes > byteBudget) {
+        flushLineageUpdate(deletes, combinedModel);
+        deletes = new StringBuilder();
+        combinedModel = ModelFactory.createDefaultModel();
+      }
+    }
+    flushLineageUpdate(deletes, combinedModel);
+  }
+
+  private void flushLineageUpdate(StringBuilder deletes, Model combinedModel) {
     String triples = serializeModel(combinedModel);
     combinedModel.close();
+    StringBuilder update = new StringBuilder(deletes);
     if (!triples.isBlank()) {
       if (!update.isEmpty()) {
         update.append(";\n");
@@ -1027,11 +1257,18 @@ public class RdfRepository {
   }
 
   String buildLineageDeleteStatements(String fromUri, String toUri, String detailsUri) {
+    // The details subtree (plan + columnLineage nodes) is deleted by following the
+    // hadPlan/hasColumnLineage links from the details node instead of a
+    // STRSTARTS(STR(?s), prefix) filter: the filter form is an unbound full-graph
+    // scan, and bulk reconcile emits this block once per edge (up to
+    // bulkLineageEdgeBatchSize times in a single update). The subtree statement
+    // must run before the details-node statement — it needs the links intact.
     return String.format(
         "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
             + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
             + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
-            + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
+            + " DELETE { GRAPH <%s> { ?sub ?p ?o } } WHERE { GRAPH <%s> { <%s> (<https://open-metadata.org/ontology/hasColumnLineage>|<http://www.w3.org/ns/prov#hadPlan>) ?sub . ?sub ?p ?o } };"
+            + " DELETE WHERE { GRAPH <%s> { <%s> ?p ?o . } };"
             + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
         KNOWLEDGE_GRAPH,
         fromUri,
@@ -1043,6 +1280,8 @@ public class RdfRepository {
         fromUri,
         detailsUri,
         KNOWLEDGE_GRAPH,
+        KNOWLEDGE_GRAPH,
+        detailsUri,
         KNOWLEDGE_GRAPH,
         detailsUri,
         KNOWLEDGE_GRAPH,
@@ -4440,6 +4679,12 @@ public class RdfRepository {
   }
 
   public void close() {
+    if (activeDatasetWatcher != null) {
+      activeDatasetWatcher.shutdownNow();
+      activeDatasetWatcher = null;
+    }
+    buildStorages.values().forEach(RdfStorageInterface::close);
+    buildStorages.clear();
     if (storageService != null) {
       storageService.close();
     }

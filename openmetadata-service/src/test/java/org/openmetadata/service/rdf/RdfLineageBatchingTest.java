@@ -70,7 +70,8 @@ class RdfLineageBatchingTest {
             "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
                 + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
                 + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
-                + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
+                + " DELETE { GRAPH <%s> { ?sub ?p ?o } } WHERE { GRAPH <%s> { <%s> (<https://open-metadata.org/ontology/hasColumnLineage>|<http://www.w3.org/ns/prov#hadPlan>) ?sub . ?sub ?p ?o } };"
+                + " DELETE WHERE { GRAPH <%s> { <%s> ?p ?o . } };"
                 + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
             KNOWLEDGE_GRAPH,
             fromUri,
@@ -87,9 +88,28 @@ class RdfLineageBatchingTest {
             KNOWLEDGE_GRAPH,
             detailsUri,
             KNOWLEDGE_GRAPH,
+            detailsUri,
+            KNOWLEDGE_GRAPH,
             detailsUri);
 
     assertEquals(expected, repository.buildLineageDeleteStatements(fromUri, toUri, detailsUri));
+  }
+
+  @Test
+  void lineageDeleteBuilderNeverScansTheWholeGraph() {
+    RdfRepository repository = repository(mock(RdfStorageInterface.class));
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    String fromUri = BASE_URI + "entity/table/" + fromId;
+    String toUri = BASE_URI + "entity/table/" + toId;
+    String detailsUri = BASE_URI + "lineageDetails/" + fromId + "/" + toId;
+
+    String statements = repository.buildLineageDeleteStatements(fromUri, toUri, detailsUri);
+
+    // A STRSTARTS/regex prefix filter over ?s forces an unbound full-graph scan per
+    // edge; every delete pattern must anchor on a ground subject or object instead.
+    assertFalse(statements.contains("STRSTARTS"));
+    assertDoesNotThrow(() -> UpdateFactory.create(statements));
   }
 
   @Test

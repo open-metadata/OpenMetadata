@@ -78,6 +78,29 @@
       "default": 50,
       "minimum": 1
     },
+    "maxUpdatePayloadBytes": {
+      "description": "Approximate maximum serialized payload size in bytes for a single bulk RDF write request. Chunks are budgeted by estimated triple size and split when the serialized body exceeds this cap, so wide entities cannot produce requests that overwhelm the storage backend. A single entity larger than the cap is still sent alone.",
+      "type": "integer",
+      "default": 4194304,
+      "minimum": 65536
+    },
+    "maxAppendPayloadBytes": {
+      "description": "Approximate maximum serialized payload size in bytes for an insert-only (append) bulk RDF write. Append writes carry no DELETE statements and are parsed by the streaming RDF parser rather than the SPARQL grammar, so they tolerate much larger bodies than reconciling updates; larger bodies mean fewer storage transactions, which is the main throughput lever on a single-writer store. Raising this also raises peak heap in the indexer, since a whole chunk is materialized as an in-memory model before it is sent.",
+      "type": "integer",
+      "default": 16777216,
+      "minimum": 65536
+    },
+    "bulkAppendEntityBatchSize": {
+      "description": "Maximum number of entity models written in a single insert-only (append) bulk request. Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot grow without bound.",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1
+    },
+    "blueGreenRebuildEnabled": {
+      "description": "Build full RDF rebuilds into an idle dataset and switch to it on success, instead of clearing the served dataset first. When disabled (the default), a rebuild clears the live graph up front and queries return partial results for the duration of the run. Requires the storage backend to support creating and deleting datasets.",
+      "type": "boolean",
+      "default": false
+    },
     "username": {
       "description": "Username for RDF storage authentication",
       "type": "string"
