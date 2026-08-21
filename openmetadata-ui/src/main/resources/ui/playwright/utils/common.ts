@@ -131,17 +131,23 @@ export const redirectToExplorePage = async (page: Page) => {
 export const removeLandingBanner = async (page: Page) => {
   try {
     const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
+
+    // storageState sessions never show the banner (auth.setup records the user
+    // in the `loggedInUsers` localStorage key that gates it), but specs that log
+    // in a freshly created user on a new context do render it on first /my-data,
+    // and it paints a tick after currentUser resolves — so wait briefly for it
+    // rather than racing an instant check. Absence is the common case, so keep
+    // the timeout short.
     await welcomePageCloseButton
       .waitFor({
         state: 'visible',
-        timeout: 5000,
+        timeout: 2000,
       })
       .catch(() => {
         // Do nothing if the welcome banner does not exist
         return;
       });
 
-    // Close the welcome banner if it exists
     if (await welcomePageCloseButton.isVisible()) {
       await welcomePageCloseButton.click();
     }
