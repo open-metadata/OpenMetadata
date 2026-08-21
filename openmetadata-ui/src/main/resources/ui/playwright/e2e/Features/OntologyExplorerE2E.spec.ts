@@ -12,14 +12,10 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { OntologyExplorerE2EData as E2EData } from '../../support/entity/OntologyExplorerDataClass';
 import {
-  addRelationTypeWithCardinality,
-  addTermRelation,
   applyGlossaryFilter,
   createApiContext,
-  deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readCardinalityMap,
@@ -30,60 +26,23 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// Unique suffix per worker/repeat so parallel runs don't share relation type names.
-const RUN_ID = Math.random().toString(36).slice(2, 8);
-const CUSTOM_OWNS_RELATION = `pw-gp-owns-${RUN_ID}`;
-
-const catalog = new Glossary();
-const termProduct = new GlossaryTerm(catalog);
-const termCategory = new GlossaryTerm(catalog);
-const termBrand = new GlossaryTerm(catalog);
-
 test.describe('Ontology Explorer — E2E', () => {
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-
-    await catalog.create(apiContext);
-    await termProduct.create(apiContext);
-    await termCategory.create(apiContext);
-    await termBrand.create(apiContext);
-
-    await addRelationTypeWithCardinality(apiContext, {
-      name: CUSTOM_OWNS_RELATION,
-      displayName: 'GP Owns',
-      cardinality: 'ONE_TO_MANY',
-    });
-
-    await addTermRelation(apiContext, termProduct, termCategory, 'partOf');
-    await addTermRelation(apiContext, termBrand, termCategory, 'partOf');
-    await addTermRelation(apiContext, termProduct, termBrand, 'relatedTo');
-    await addTermRelation(
-      apiContext,
-      termCategory,
-      termBrand,
-      CUSTOM_OWNS_RELATION
-    );
-
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await E2EData.setup(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      termProduct,
-      termCategory,
-      termBrand,
-      catalog
-    );
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await E2EData.teardown(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, catalog.responseData.id);
+    await applyGlossaryFilter(page, E2EData.catalog.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -107,9 +66,9 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termProduct.responseData.id]).toBeDefined();
-    expect(positions[termCategory.responseData.id]).toBeDefined();
-    expect(positions[termBrand.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termProduct.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termCategory.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termBrand.responseData.id]).toBeDefined();
   });
 
   test('graph edges contain all four expected relation types', async ({
@@ -126,15 +85,15 @@ test.describe('Ontology Explorer — E2E', () => {
 
     expect(types.has('partOf') || types.has('hasPart')).toBe(true);
     expect(types.has('relatedTo')).toBe(true);
-    expect(types.has(CUSTOM_OWNS_RELATION)).toBe(true);
+    expect(types.has(E2EData.CUSTOM_OWNS_RELATION)).toBe(true);
   });
 
   test('custom ONE_TO_MANY relation shows "1" at source and "M" at target', async ({
     page,
   }) => {
-    const map = await readCardinalityMap(page, CUSTOM_OWNS_RELATION);
+    const map = await readCardinalityMap(page, E2EData.CUSTOM_OWNS_RELATION);
 
-    expect(map[CUSTOM_OWNS_RELATION]).toEqual({
+    expect(map[E2EData.CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
       endLabelText: 'M',
     });
@@ -156,8 +115,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termCategory.responseData.id].x,
-      positions[termCategory.responseData.id].y
+      positions[E2EData.termCategory.responseData.id].x,
+      positions[E2EData.termCategory.responseData.id].y
     );
 
     await expect(
@@ -172,8 +131,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termProduct.responseData.id].x,
-      positions[termProduct.responseData.id].y
+      positions[E2EData.termProduct.responseData.id].x,
+      positions[E2EData.termProduct.responseData.id].y
     );
 
     await expect(
@@ -257,7 +216,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await page.getByTestId('fit-view').click();
 
     const categoryName =
-      termCategory.responseData.displayName ?? termCategory.responseData.name;
+      E2EData.termCategory.responseData.displayName ??
+      E2EData.termCategory.responseData.name;
     await page
       .getByTestId('ontology-graph-search')
       .locator('input')
@@ -265,7 +225,7 @@ test.describe('Ontology Explorer — E2E', () => {
 
     const positions = await readNodePositions(page);
 
-    expect(positions[termCategory.responseData.id]).toBeDefined();
+    expect(positions[E2EData.termCategory.responseData.id]).toBeDefined();
   });
 
   test('searching for a non-existent term shows the empty state', async ({
@@ -292,8 +252,8 @@ test.describe('Ontology Explorer — E2E', () => {
     await expect(toggle).toHaveAttribute('data-selected', 'true');
     await page.getByTestId('graph-settings-close').click();
 
-    const map = await readCardinalityMap(page, CUSTOM_OWNS_RELATION);
-    expect(map[CUSTOM_OWNS_RELATION]).toEqual({
+    const map = await readCardinalityMap(page, E2EData.CUSTOM_OWNS_RELATION);
+    expect(map[E2EData.CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
       endLabelText: 'M',
     });
