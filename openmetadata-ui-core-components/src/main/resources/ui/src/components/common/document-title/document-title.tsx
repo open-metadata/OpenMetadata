@@ -16,28 +16,24 @@ import type { DocumentTitleProps } from './document-title.types';
 
 export type { DocumentTitleProps } from './document-title.types';
 
-// Resolved from the host app's default i18n namespace (not the library's `core`
-// namespace) — the brand name and its `{{brandName}}` interpolation variable are
-// owned by the consuming app, exactly as the app's own DocumentTitle does. Kept
-// in a const so the library's core-key check doesn't treat it as a `core` key.
-const BRAND_NAME_KEY = 'label.brand-name';
-
 /**
  * Sets the browser tab title via react-helmet-async, appending the brand name
  * (` | {brand}`) to match the rest of the app.
  *
- * Prerequisites on the consuming app: a `HelmetProvider` above this component
- * (the OpenMetadata shell wraps its root in one) and a `label.brand-name` key in
- * the default i18n namespace with a `brandName` interpolation variable (the app
- * sets both). When the host resolves neither, the suffix is omitted.
+ * `label.brand-name` is resolved from the host app's default i18n namespace, not
+ * the library's `core` namespace — the app owns the key and its `{{brandName}}`
+ * value (sourced from the `BRAND_NAME` env var via i18next `defaultVariables`),
+ * and the shared i18next instance carries that value into the library. The
+ * suffix is appended only when the host resolves a real value.
+ *
+ * Requires a `HelmetProvider` above this component (the OpenMetadata shell wraps
+ * its root in one).
  */
 export const DocumentTitle = ({ title }: DocumentTitleProps) => {
   const { t } = useTranslation();
 
-  const brand = t(BRAND_NAME_KEY);
-  // Append the brand only when the host actually resolved it — otherwise the key
-  // echoes back (namespace missing) or a raw `{{brandName}}` token remains.
-  const hasBrand = brand !== BRAND_NAME_KEY && !brand.includes('{{');
+  const brand = t('label.brand-name');
+  const hasBrand = brand !== 'label.brand-name' && !brand.includes('{{');
   const fullTitle = hasBrand ? `${title} | ${brand}` : title;
 
   return (
