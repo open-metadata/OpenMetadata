@@ -40,9 +40,38 @@ interface Props {
   children: ReactNode;
 }
 
+// Test-only escape hatch. Playwright's `msal-mock` fixture pre-populates
+// `window.__omTestMsal` via `page.addInitScript` with a shim that returns the
+// same shape `useMsal()` does — an `instance` exposing `loginRedirect`,
+// `loginPopup`, `acquireTokenSilent`, `acquireTokenPopup`, and
+// `handleRedirectPromise`. When present, we use that instead of the real
+// react-msal context so the Playwright suite can exercise this component's
+// login / renew / redirect branches without a live Azure AD tenant.
+//
+// Gated on `process.env.NODE_ENV !== 'production'` — Vite inlines this at
+// build time (same behavior as `import.meta.env.MODE`), Jest sets it to
+// `'test'`, so the whole branch tree-shakes out of prod bundles while still
+// being reachable from the test runner. `useMsal()` is still always called
+// to satisfy the Rules of Hooks; only its return value is swapped.
+type MsalContextShape = ReturnType<typeof useMsal>;
+
+const readTestMsalOverride = (): MsalContextShape | undefined => {
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return (window as unknown as { __omTestMsal?: MsalContextShape })
+    .__omTestMsal;
+};
+
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
-    const { instance, accounts, inProgress } = useMsal();
+    const realMsal = useMsal();
+    const testMsal = readTestMsalOverride();
+    const { instance, accounts, inProgress } = testMsal ?? realMsal;
     const account = useAccount(accounts[0] || {});
     const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
       useAuthProvider();
