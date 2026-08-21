@@ -113,6 +113,32 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         self.assertEqual(len(query_list), 1)
         self.assertIsInstance(query_list[0], QueryByProcedure)
 
+    def test_yield_stored_procedure_queries_skips_failing_engine(self):
+        """A query failure on one engine (e.g. one MSSQL database) is recorded in status
+        and the remaining engines are still read."""
+        bad_engine = MagicMock()
+        bad_engine.connect.side_effect = Exception("VIEW SERVER STATE denied")
+
+        row_data = {
+            "PROCEDURE_NAME": "proc1",
+            "QUERY_TEXT": "SELECT * FROM t1",
+            "QUERY_TYPE": "SELECT",
+            "PROCEDURE_TEXT": "CALL proc1()",
+            "PROCEDURE_START_TIME": datetime.now(),
+            "PROCEDURE_END_TIME": datetime.now(),
+        }
+        good_row = Mock()
+        good_row._asdict.return_value = row_data
+        good_engine = _create_engine_mock([good_row])
+
+        self.mixin.get_stored_procedure_engines = lambda: iter([bad_engine, good_engine])
+
+        results = list(self.mixin.yield_stored_procedure_queries())
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], QueryByProcedure)
+        self.mixin.status.failed.assert_called_once()
+
     def test_procedure_lineage_producer_streaming(self):
         """Test that procedure_lineage_producer streams data efficiently"""
         # Create real stored procedure objects

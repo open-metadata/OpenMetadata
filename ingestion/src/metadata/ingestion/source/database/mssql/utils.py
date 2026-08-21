@@ -478,15 +478,22 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
 
 def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
     """
-    returns sqlaclhemdy engine date format by running config query
+    Return the server's configured dateformat by running the config query.
+
+    Returns None when the setting cannot be read (e.g. a permission error on the
+    config DMV) so callers fall back to their documented default datetime format.
     """
-    with engine.connect() as conn:
-        result = conn.execute(text(GET_DB_CONFIGS)).all()
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(GET_DB_CONFIGS)).all()
+    except Exception as exc:
+        logger.debug("Could not read MSSQL dateformat, using the default: %s", exc, exc_info=True)
+        return None
     for row in result:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return  # noqa: RET502
+    return None
 
 
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
