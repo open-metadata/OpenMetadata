@@ -348,22 +348,37 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         pagingResponse = response.paging;
       }
 
-      // Discard stale responses BEFORE touching any shared pagination state, so
-      // a request issued for a now-inactive context (search term, status
-      // filter, or glossary) cannot advance the search offset or continuation
-      // cursor that the active glossary's scrolling relies on.
-      if (
-        !data ||
-        !Array.isArray(data) ||
+      // A response is applied only while it still matches the context it was
+      // issued for (same request sequence, search term, status filter, and
+      // glossary). Re-checked at every await boundary — including the follow-up
+      // count request below — so a request that goes stale mid-flight touches
+      // no shared state (pagination cursor, term list, or count).
+      const isSuperseded = () =>
         requestSeq !== fetchRequestSeqRef.current ||
         fetchSearchTerm !== searchTermRef.current ||
         fetchStatusKey !== selectedStatusRef.current.join(',') ||
-        fetchGlossaryFqn !== activeGlossaryFqnRef.current
-      ) {
+        fetchGlossaryFqn !== activeGlossaryFqnRef.current;
+
+      if (!data || !Array.isArray(data) || isSuperseded()) {
         return;
       }
 
-      // Advance pagination state now that the response is known to be current.
+      // A status-filtered empty page needs a follow-up total for the empty
+      // state. Fetch it before applying anything and re-validate afterwards so
+      // the previous context's empty result cannot overwrite the active one.
+      let totalCount = data.length;
+      if (data.length === 0 && isStatusFilterActive) {
+        const countResponse = await getFirstLevelGlossaryTermsPaginated(
+          fetchGlossaryFqn || '',
+          0
+        );
+        if (isSuperseded()) {
+          return;
+        }
+        totalCount = countResponse.paging?.total ?? 0;
+      }
+
+      // Advance pagination state now that the response is confirmed current.
       if (searchTerm) {
         const newOffset = searchOffset + PAGE_SIZE_LARGE;
         const hasMore =
@@ -383,15 +398,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         }));
       }
 
-      if (data.length === 0 && isStatusFilterActive) {
-        const countResponse = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          0
-        );
-        setTotalTermsCount(countResponse.paging?.total ?? 0);
-      } else {
-        setTotalTermsCount(data.length);
-      }
+      setTotalTermsCount(totalCount);
 
       const newTerms = data as ModifiedGlossary[];
 
