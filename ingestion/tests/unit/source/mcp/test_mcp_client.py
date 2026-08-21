@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from metadata.ingestion.source.mcp.client import (
+    MCP_PROTOCOL_VERSION,
     HttpTransport,
     McpClient,
     McpProtocolError,
@@ -127,6 +128,7 @@ class TestHttpTransport:
         transport.connect()
         assert "Authorization" in transport.session.headers
         assert transport.session.headers["Authorization"] == "Bearer test-api-key-00000"
+        assert transport.session.headers["Accept"] == "application/json, text/event-stream"
         assert transport.session.headers["Content-Type"] == "application/json"
 
     @patch("requests.Session.post")
@@ -140,12 +142,13 @@ class TestHttpTransport:
         mock_response.raise_for_status = MagicMock()
         mock_post.return_value = mock_response
 
-        transport = HttpTransport(url="http://localhost:8080")
+        transport = HttpTransport(url="https://example.test/custom/mcp")
         transport.connect()
         result = transport.send_request("tools/list")
 
         assert result == {"tools": []}
         mock_post.assert_called_once()
+        assert mock_post.call_args.args[0] == "https://example.test/custom/mcp"
 
     @patch("requests.Session.post")
     def test_send_request_error_response(self, mock_post):
@@ -177,6 +180,7 @@ class TestHttpTransport:
             transport.send_notification("notifications/initialized", {})
             mock_logger.error.assert_called_once()
             assert "server down" in str(mock_logger.error.call_args)
+        assert mock_post.call_args.args[0] == "http://localhost:8080"
 
 
 class TestMcpClient:
@@ -192,6 +196,31 @@ class TestMcpClient:
         assert client.server_config == server
         assert client.connection_timeout == 30
         assert client.initialization_timeout == 60
+
+    def test_initialize_uses_supported_protocol_version(self):
+        server = McpServerInfo(name="test", command="echo")
+        client = McpClient(server_config=server)
+        transport = MagicMock()
+        transport.send_request.return_value = {
+            "serverInfo": {"name": "test-server"},
+            "capabilities": {},
+        }
+        client._transport = transport
+
+        client.initialize()
+
+        transport.send_request.assert_called_once_with(
+            "initialize",
+            {
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "openmetadata-ingestion",
+                    "version": "1.0.0",
+                },
+            },
+        )
+        assert MCP_PROTOCOL_VERSION == "2025-11-25"
 
     def test_list_tools_not_initialized(self):
         server = McpServerInfo(name="test", command="echo")

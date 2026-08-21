@@ -32,7 +32,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # MCP Protocol Version
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = "2025-11-25"
 
 # Client info sent during initialization
 CLIENT_INFO = {
@@ -273,6 +273,7 @@ class HttpTransport:
         """Initialize HTTP session"""
         if self.api_key:
             self.session.headers["Authorization"] = f"Bearer {self.api_key}"
+        self.session.headers["Accept"] = "application/json, text/event-stream"
         self.session.headers["Content-Type"] = "application/json"
 
     def send_notification(self, method: str, params: Optional[Dict] = None) -> None:  # noqa: UP006, UP045
@@ -282,7 +283,7 @@ class HttpTransport:
             notification["params"] = params
         try:
             self.session.post(
-                f"{self.url}/mcp",
+                self.url,
                 json=notification,  # pyright: ignore[reportArgumentType]
                 timeout=self.timeout,
             )
@@ -301,7 +302,7 @@ class HttpTransport:
 
         try:
             response = self.session.post(
-                f"{self.url}/mcp",
+                self.url,
                 json=request,  # pyright: ignore[reportArgumentType]
                 timeout=self.timeout,
             )
