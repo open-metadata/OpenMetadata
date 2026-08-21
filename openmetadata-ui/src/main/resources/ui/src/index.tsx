@@ -15,6 +15,8 @@ import { initCoreI18n } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
+import SilentCallback from './components/Auth/SilentCallback';
+import { APP_ROUTER_ROUTES } from './constants/router.constants';
 import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
 import i18next from './utils/i18next/LocalUtil';
@@ -60,11 +62,36 @@ if (!container) {
 
 recordPlaywrightAppBoot();
 
+// Silent-renew iframe path: when the current document is the hidden iframe
+// oidc-client uses to refresh tokens, render ONLY the tiny <SilentCallback />
+// component — never mount `<AppRoot />`, and never enter the AuthProvider /
+// AppRouter tree. Doing so previously caused every silent refresh to load
+// the full app inside the iframe just to postMessage a token back to the
+// parent tab. (Parked concern from the AuthCoordinator refactor summary;
+// asserted by scenario 7 of the SSO test refactor.) `startsWith` covers the
+// case where the deploy-time base path is prepended to the pathname.
+const isSilentCallbackRoute = (() => {
+  const path = globalThis.location.pathname;
+  const basePath = getBasePath();
+  const fullPath = basePath
+    ? `${basePath}${APP_ROUTER_ROUTES.SILENT_CALLBACK}`
+    : APP_ROUTER_ROUTES.SILENT_CALLBACK;
+
+  return path === fullPath || path === APP_ROUTER_ROUTES.SILENT_CALLBACK;
+})();
+
 // The SSO "Test Login" popup returns to the configured callback URL. When this
 // document is that isolated popup, handle the OIDC handshake separately and
 // NEVER mount the app, so the test can't touch the admin's real session. A real
 // login on the same callback URL is not diverted (see isSsoTestLoginPopup).
-if (isSsoTestLoginPopup()) {
+if (isSilentCallbackRoute) {
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <SilentCallback />
+    </React.StrictMode>
+  );
+} else if (isSsoTestLoginPopup()) {
   import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap')
     .then((module) => module.runSsoTestCallback())
     // If the chunk fails to load, close the popup so the opener doesn't hang.
