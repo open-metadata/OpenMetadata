@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { lazy } from 'react';
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
 import {
@@ -24,6 +25,7 @@ import {
   getWidgetWidthLabelFromKey,
 } from './CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from './CustomizableLandingPageUtils';
+import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
 jest.mock(
   '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper',
@@ -37,20 +39,21 @@ jest.mock(
   })
 );
 
-jest.mock('./CustomizeMyDataPageClassBase', () => {
-  const React = require('react');
-  const PendingWidget = React.lazy(() => new Promise(() => undefined));
-
-  return {
-    __esModule: true,
-    default: {
-      getWidgetsFromKey: jest.fn(() => PendingWidget),
-    },
-  };
-});
-
 describe('CustomizableLandingPageUtils', () => {
   describe('getWidgetFromKey', () => {
+    // Keep the lazy component pending so each assertion observes the Suspense fallback.
+    const PendingWidget = lazy(() => new Promise(() => undefined));
+
+    beforeEach(() => {
+      jest
+        .spyOn(customizeMyDataPageClassBase, 'getWidgetsFromKey')
+        .mockReturnValue(PendingWidget);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('should render normal widget chunks without a per-widget loader', () => {
       const { container } = render(
         getWidgetFromKey({
@@ -90,7 +93,7 @@ describe('CustomizableLandingPageUtils', () => {
       );
     });
 
-    it('should preserve empty placeholder slots while placeholder chunks load', async () => {
+    it('should render empty placeholders immediately', () => {
       render(
         getWidgetFromKey({
           handleOpenAddWidgetModal: jest.fn(),
@@ -106,14 +109,7 @@ describe('CustomizableLandingPageUtils', () => {
         })
       );
 
-      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
-        'data-loading',
-        'true'
-      );
-
-      await act(async () => {
-        await Promise.resolve();
-      });
+      expect(screen.getByTestId('add-widget-button')).toBeInTheDocument();
     });
   });
 
