@@ -14,6 +14,25 @@ name: SSO Login Nightly
 on:
   schedule:
     - cron: '0 3 * * *'
+  # PR gate: runs whenever a PR touches auth code — every provider fixture
+  # SELF-GATES on required secrets via SsoProviderFixture.isAvailable(), so
+  # legs that need a live tenant (okta) skip cleanly on fork PRs without
+  # secrets rather than failing the workflow. Same is true for Keycloak
+  # legs when the required env vars aren't set. The wasted docker startup
+  # for those legs is accepted — the job still passes with tests skipped
+  # and the report surfaces the reason.
+  pull_request:
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/src/components/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/utils/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/hooks/useApplicationStore.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/AppRoot.tsx'
+      - 'openmetadata-ui/src/main/resources/ui/src/index.tsx'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/**'
+      - 'docker/development/docker-compose.yml'
+      - 'docker/development/openldap/**'
+      - '.github/workflows/playwright-sso-login-nightly.yml'
   workflow_dispatch:
     inputs:
       sso_provider:
@@ -22,6 +41,12 @@ on:
         default: okta
         type: choice
         options:
+          - basic
+          - ldap
+          - keycloak-oidc-confidential
+          - keycloak-oidc-public
+          - msal-mock
+          - auth0-mock
           - okta
           - keycloak-azure-saml
           - keycloak-azure-saml-crosssite
@@ -36,25 +61,28 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  group: sso-login-nightly-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
   # To onboard a new provider:
-  #   1. Add a matrix entry below (`name` is the lowercase provider id used by
-  #      the Playwright helper; `env_prefix` is the uppercase/underscore form
-  #      used to look up credentials). Also add `name` to the dispatch
-  #      `options:` list above.
+  #   1. Add a matrix entry below. `name` is the fixture's `slug` from
+  #      SsoProviderFixture (used as the @<slug> tag in SsoScenarios.spec.ts
+  #      describe blocks). `env_prefix` is the uppercase/underscore form
+  #      used to look up credentials. `filter` is the Playwright CLI arg
+  #      (usually `--grep @<slug>`); legacy legs may use `--grep-invert ...`
+  #      when their specs aren't in the SsoScenarios file. Also add `name`
+  #      to the dispatch `options:` list above.
   #   2. Add <ENV_PREFIX>_SSO_USERNAME (variable) and <ENV_PREFIX>_SSO_PASSWORD
   #      (variable) to the `test` environment. Use a secret instead of a
   #      variable for the password if the provider uses a real (non-fixture)
-  #      credential.
-  #   3. Register the helper in playwright/utils/sso-providers/index.ts.
-  #   4. Set `excluded_tags` to the provider tags this fixture cannot serve,
-  #      pipe-separated. Specs carry a provider tag (@okta) or a capability tag
-  #      (@tokenRenewal); untagged specs run everywhere. An entry that omits
-  #      `excluded_tags` collects every spec, so wrong-provider tests fail
-  #      loudly rather than silently not running.
+  #      credential. Basic/LDAP/msal-mock/auth0-mock don't need CI-side
+  #      credentials — their fixtures either use seeded admin creds or
+  #      inject the SDK entirely in the browser context.
+  #   3. If the fixture requires an external service (Keycloak, OpenLDAP),
+  #      wire the compose-up step below.
+  #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
+  #      — the filter picks a leg's own describes automatically.
   sso-login:
     runs-on: ubuntu-latest
     environment: test
@@ -64,12 +92,26 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
-          || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
-              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"}]')
-              || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
-                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
-                  || fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"}]'))) }}
+          && fromJSON('[{"name":"basic","env_prefix":"BASIC","filter":"--grep @basic","needs_docker":""},{"name":"ldap","env_prefix":"LDAP","filter":"--grep @ldap","needs_docker":"ldap"},{"name":"keycloak-oidc-confidential","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-confidential","needs_docker":"keycloak"},{"name":"keycloak-oidc-public","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-public","needs_docker":"keycloak"},{"name":"msal-mock","env_prefix":"MSAL_MOCK","filter":"--grep @msal-mock","needs_docker":""},{"name":"auth0-mock","env_prefix":"AUTH0_MOCK","filter":"--grep @auth0-mock","needs_docker":""},{"name":"okta","env_prefix":"OKTA","filter":"--grep-invert @tokenRenewal|@sso-matrix","needs_docker":""},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","filter":"--grep-invert @okta|@sso-matrix","needs_docker":"keycloak"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","filter":"--grep-invert @okta|@tokenRenewal|@sso-matrix","needs_docker":"keycloak"}]')
+          || github.event_name == 'pull_request'
+          && fromJSON('[{"name":"basic","env_prefix":"BASIC","filter":"--grep @basic","needs_docker":""},{"name":"ldap","env_prefix":"LDAP","filter":"--grep @ldap","needs_docker":"ldap"},{"name":"keycloak-oidc-confidential","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-confidential","needs_docker":"keycloak"},{"name":"keycloak-oidc-public","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-public","needs_docker":"keycloak"},{"name":"msal-mock","env_prefix":"MSAL_MOCK","filter":"--grep @msal-mock","needs_docker":""},{"name":"auth0-mock","env_prefix":"AUTH0_MOCK","filter":"--grep @auth0-mock","needs_docker":""},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","filter":"--grep-invert @okta|@sso-matrix","needs_docker":"keycloak"}]')
+          || (github.event.inputs.sso_provider == 'basic'
+              && fromJSON('[{"name":"basic","env_prefix":"BASIC","filter":"--grep @basic","needs_docker":""}]')
+              || (github.event.inputs.sso_provider == 'ldap'
+                  && fromJSON('[{"name":"ldap","env_prefix":"LDAP","filter":"--grep @ldap","needs_docker":"ldap"}]')
+                  || (github.event.inputs.sso_provider == 'keycloak-oidc-confidential'
+                      && fromJSON('[{"name":"keycloak-oidc-confidential","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-confidential","needs_docker":"keycloak"}]')
+                      || (github.event.inputs.sso_provider == 'keycloak-oidc-public'
+                          && fromJSON('[{"name":"keycloak-oidc-public","env_prefix":"KEYCLOAK_OIDC","filter":"--grep @keycloak-oidc-public","needs_docker":"keycloak"}]')
+                          || (github.event.inputs.sso_provider == 'msal-mock'
+                              && fromJSON('[{"name":"msal-mock","env_prefix":"MSAL_MOCK","filter":"--grep @msal-mock","needs_docker":""}]')
+                              || (github.event.inputs.sso_provider == 'auth0-mock'
+                                  && fromJSON('[{"name":"auth0-mock","env_prefix":"AUTH0_MOCK","filter":"--grep @auth0-mock","needs_docker":""}]')
+                                  || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
+                                      && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","filter":"--grep-invert @okta|@sso-matrix","needs_docker":"keycloak"}]')
+                                      || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
+                                          && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","filter":"--grep-invert @okta|@tokenRenewal|@sso-matrix","needs_docker":"keycloak"}]')
+                                          || fromJSON('[{"name":"okta","env_prefix":"OKTA","filter":"--grep-invert @tokenRenewal|@sso-matrix","needs_docker":""}]')))))))) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -93,6 +135,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Reuses the pulled openldap / keycloak images across runs on the same
+      # runner so we don't re-pull ~50MB (openldap) or ~500MB (keycloak) every
+      # nightly. Cache is keyed on the docker-compose file hash so a bump of
+      # any pinned image invalidates it deterministically.
+      - name: Cache SSO Docker images
+        if: ${{ matrix.provider.needs_docker != '' }}
+        uses: actions/cache@v5
+        with:
+          path: /tmp/sso-docker-cache
+          key: sso-docker-images-${{ hashFiles('docker/development/docker-compose.yml', 'docker/local-sso/keycloak-saml/docker-compose.yml') }}-v1
+
+      - name: Load cached Docker images
+        if: ${{ matrix.provider.needs_docker != '' && hashFiles('/tmp/sso-docker-cache/*.tar') != '' }}
+        run: |
+          for image in /tmp/sso-docker-cache/*.tar; do
+            [ -f "$image" ] && docker load -i "$image" || true
+          done
+
       - name: Setup OpenMetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -113,8 +173,20 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.57.0 install chromium --with-deps
 
+      - name: Start OpenLDAP
+        if: ${{ matrix.provider.needs_docker == 'ldap' }}
+        run: |
+          docker compose -f docker/development/docker-compose.yml --profile sso-playwright up -d openldap
+          # Wait for the healthcheck to pass — LDIF seeding happens on first
+          # boot and can take 10-20s on cold cache.
+          timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" openmetadata_openldap 2>/dev/null | grep -q healthy; do sleep 2; done'
+          # OM backend needs to reach OpenLDAP by service name inside the
+          # compose network; attach it to ometa_network so the LDAP bind
+          # from the app container resolves.
+          docker network connect ometa_network openmetadata_openldap || true
+
       - name: Start Keycloak SAML IdP
-        if: startsWith(matrix.provider.name, 'keycloak-')
+        if: ${{ matrix.provider.needs_docker == 'keycloak' }}
         env:
           # Must name the host this leg's browser uses, or Keycloak answers
           # "Invalid Request". The '-crosssite' leg fronts the IdP on 127.0.0.1.
@@ -126,7 +198,20 @@ jobs:
           docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
-      - name: Run SSO Login Spec
+      - name: Save Docker images for cache
+        if: ${{ matrix.provider.needs_docker != '' }}
+        run: |
+          mkdir -p /tmp/sso-docker-cache
+          # Save whichever images this leg actually pulled — smallest set.
+          if [ "${{ matrix.provider.needs_docker }}" = "ldap" ]; then
+            docker save bitnami/openldap:2.6.7 -o /tmp/sso-docker-cache/openldap.tar || true
+          fi
+          if [ "${{ matrix.provider.needs_docker }}" = "keycloak" ]; then
+            # keycloak image tag is decided by docker/local-sso/keycloak-saml/docker-compose.yml
+            docker save $(docker inspect openmetadata-keycloak-saml --format='{{.Image}}') -o /tmp/sso-docker-cache/keycloak.tar || true
+          fi
+
+      - name: Run SSO Scenarios
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
@@ -139,7 +224,7 @@ jobs:
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
           PLAYWRIGHT_IS_OSS: true
-        run: npx playwright test --project=sso-auth --workers=1 --grep-invert "${{ matrix.provider.excluded_tags }}"
+        run: npx playwright test --project=sso-auth --workers=1 ${{ matrix.provider.filter }}
 
       - name: Upload HTML report
         if: always()
@@ -163,6 +248,7 @@ jobs:
         if: always()
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
+          docker compose -f docker/development/docker-compose.yml --profile sso-playwright down --remove-orphans || true
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
