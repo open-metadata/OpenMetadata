@@ -58,13 +58,15 @@ test.describe('Explore Assets Discovery', () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-            name: domain.responseData.name,
-            displayName: domain.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+              name: domain.responseData.name,
+              displayName: domain.responseData.displayName,
+            },
+          ],
         },
       ],
     });

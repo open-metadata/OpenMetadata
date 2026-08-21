@@ -50,7 +50,7 @@ permissions:
 
 concurrency:
   group: maven-build-collate-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   maven-collate-ci:
     runs-on: ubuntu-latest
@@ -87,7 +87,12 @@ jobs:
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha || github.sha }}
         with:
           workflow: OpenMetadata Collate Test
-          ref: main
+          # Collate mirrors each OpenMetadata release line on an identically
+          # named branch, so build the Collate branch matching the PR base.
+          # Dispatching main for a 1.13 PR builds main-only Collate code
+          # against a 1.13 checkout. Falls through to the pushed/dispatched ref
+          # when there is no pull request in the payload.
+          ref: ${{ github.event.pull_request.base.ref || github.ref_name || 'main' }}
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true

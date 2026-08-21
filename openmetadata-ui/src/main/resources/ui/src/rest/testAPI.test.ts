@@ -91,6 +91,33 @@ describe('testAPI tests', () => {
         expect(result).toEqual(mockPagingResponse);
       });
 
+      it('should serialize multiple test case statuses as a comma-separated parameter', async () => {
+        const mockGet = jest
+          .fn()
+          .mockResolvedValue({ data: mockPagingResponse });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getListTestCaseBySearch } = require('./testAPI');
+
+        await getListTestCaseBySearch({
+          testCaseStatus: [TestCaseStatus.Success, TestCaseStatus.Queued],
+        });
+
+        expect(mockGet).toHaveBeenCalledWith(
+          '/dataQuality/testCases/search/list',
+          {
+            params: {
+              testCaseStatus: `${TestCaseStatus.Success},${TestCaseStatus.Queued}`,
+            },
+          }
+        );
+      });
+
       it('should handle empty search parameters', async () => {
         const mockGet = jest
           .fn()

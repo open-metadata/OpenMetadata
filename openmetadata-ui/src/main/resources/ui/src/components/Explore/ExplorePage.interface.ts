@@ -142,6 +142,7 @@ export interface ExploreQuickFilterField {
   searchKey?: string;
   dropdownClassName?: string;
   singleSelect?: boolean;
+  sourceFields?: string;
 }
 
 // Type for all the explore tab entities
