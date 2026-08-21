@@ -1286,24 +1286,43 @@ test.describe(
         await testCaseTypeByAll;
 
         // Test case filter by status
-        const testCaseStatusBySuccess = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Success*`
-        );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Success').click();
+        const testCaseStatusBySuccess = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+            url.searchParams.get('testCaseStatus') === 'Success'
+          );
+        });
+        const statusFilter = page.getByTestId('status-select-filter');
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Success', { exact: true })
+          .click();
         await testCaseStatusBySuccess;
 
         await expect(
           page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
-        // Test case filter by status
-        const testCaseStatusByFailed = page.waitForResponse(
-          `/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Failed*`
+        // Adding Failed must retain Success because selected statuses are combined with OR.
+        const testCaseStatusesBySuccessAndFailed = page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+              url.searchParams.get('testCaseStatus') === 'Success,Failed'
+            );
+          }
         );
-        await page.getByTestId('status-select-filter').click();
-        await page.getByTitle('Failed').click();
-        await testCaseStatusByFailed;
+        await statusFilter.getByRole('combobox').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Failed', { exact: true })
+          .click();
+        await testCaseStatusesBySuccessAndFailed;
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
 

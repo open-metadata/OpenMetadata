@@ -147,7 +147,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByText('Name', { exact: true }).click();
 
-    await page.getByTestId('status-select-filter').locator('div').click();
+    await page.getByTestId('status-select-filter').click();
 
     const filteredResults = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'

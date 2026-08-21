@@ -4,8 +4,6 @@ import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefix
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
-import io.modelcontextprotocol.spec.McpError;
-import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -75,6 +73,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
+
+  static final String BEARER_PREFIX = "Bearer ";
 
   // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
   // the CORS preflight fail, and the user just sees a network error.
@@ -383,16 +383,35 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   protected boolean authenticateRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     String tokenWithType = request.getHeader("Authorization");
+    boolean authenticated = false;
 
-    try {
-      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
-      return true;
-    } catch (Exception e) {
-      LOG.debug("Bearer token authentication failed", e);
-      sendAuthErrorWithChallenge(
-          response, "Invalid or expired token", HttpServletResponse.SC_UNAUTHORIZED);
-      return false;
+    if (!presentsBearerCredentials(tokenWithType)) {
+      sendAuthErrorWithChallenge(response, AuthFailure.MISSING_CREDENTIALS);
+    } else {
+      try {
+        validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        authenticated = true;
+      } catch (Exception e) {
+        LOG.debug("Bearer token authentication failed", e);
+        sendAuthErrorWithChallenge(response, AuthFailure.INVALID_TOKEN);
+      }
     }
+    return authenticated;
+  }
+
+  /**
+   * RFC 6750 section 3: {@code invalid_token} may only answer a request that actually presented a
+   * bearer credential. No {@code Authorization} header, or one using another auth-scheme, is a
+   * request that simply did not authenticate, and telling that caller their token is invalid sends
+   * them hunting for a token they never had. The scheme is matched case-insensitively per RFC 7235.
+   */
+  static boolean presentsBearerCredentials(String authorizationHeader) {
+    boolean presented = false;
+    if (authorizationHeader != null
+        && authorizationHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+      presented = !authorizationHeader.substring(BEARER_PREFIX.length()).isBlank();
+    }
+    return presented;
   }
 
   /**
@@ -423,37 +442,97 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   /**
-   * Sends an authentication error response with WWW-Authenticate header (MCP requirement).
-   * @param response The HTTP response
-   * @param message The error message
-   * @param statusCode The HTTP status code
+   * How a bearer credential failed. RFC 6750 section 3 keeps these apart on the wire: the challenge
+   * carries {@code error="invalid_token"} only when a token was supplied and rejected, and must
+   * carry no {@code error} parameter at all when the request presented no credentials.
+   *
+   * <p>Each kind owns its JSON-RPC code rather than sharing one, so a kind added later for a
+   * different HTTP status cannot silently inherit an authentication code that does not describe it.
    */
-  private void sendAuthErrorWithChallenge(
-      HttpServletResponse response, String message, int statusCode) throws IOException {
+  enum AuthFailure {
+    MISSING_CREDENTIALS(
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        null,
+        "Missing bearer token"),
+    INVALID_TOKEN(
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        "invalid_token",
+        "Invalid or expired bearer token");
 
-    // Build WWW-Authenticate header per RFC 6750 and MCP spec
-    StringBuilder challenge = new StringBuilder("Bearer");
-    challenge.append(" resource_metadata=\"").append(resourceMetadataUrl).append("\"");
+    private final int statusCode;
+    private final int jsonRpcCode;
+    private final String challengeError;
+    private final String message;
 
-    // Use provider-aware scopes
-    List<String> scopes = getSupportedScopesForProvider();
-    challenge.append(", scope=\"").append(String.join(" ", scopes)).append("\"");
-
-    if (statusCode == HttpServletResponse.SC_FORBIDDEN) {
-      challenge.append(", error=\"insufficient_scope\"");
+    AuthFailure(int statusCode, int jsonRpcCode, String challengeError, String message) {
+      this.statusCode = statusCode;
+      this.jsonRpcCode = jsonRpcCode;
+      this.challengeError = challengeError;
+      this.message = message;
     }
 
-    response.setHeader("WWW-Authenticate", challenge.toString());
+    int statusCode() {
+      return statusCode;
+    }
+
+    int jsonRpcCode() {
+      return jsonRpcCode;
+    }
+
+    String challengeError() {
+      return challengeError;
+    }
+
+    String message() {
+      return message;
+    }
+  }
+
+  /**
+   * Sends an authentication error response with WWW-Authenticate header (MCP requirement).
+   * @param response The HTTP response
+   * @param failure How the bearer credential failed
+   */
+  private void sendAuthErrorWithChallenge(HttpServletResponse response, AuthFailure failure)
+      throws IOException {
+    writeAuthError(response, failure, resourceMetadataUrl, getSupportedScopesForProvider());
+  }
+
+  /**
+   * Split out from {@link #sendAuthErrorWithChallenge} so the challenge and the 401 body can be unit
+   * tested — the constructor needs a full running auth stack.
+   */
+  static void writeAuthError(
+      HttpServletResponse response,
+      AuthFailure failure,
+      URI resourceMetadataUrl,
+      List<String> scopes)
+      throws IOException {
+    response.setHeader(
+        "WWW-Authenticate", buildAuthChallenge(failure, resourceMetadataUrl, scopes));
     response.setContentType("application/json");
     response.setCharacterEncoding("UTF-8");
-    response.setStatus(statusCode);
-
-    McpError error = McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR).message(message).build();
-    String jsonError = getObjectMapper().writeValueAsString(error);
+    response.setStatus(failure.statusCode());
 
     PrintWriter writer = response.getWriter();
-    writer.write(jsonError);
+    // The id is null and not echoed: authentication runs before the request body is read.
+    writer.write(JsonRpcErrorBody.of(null, failure.jsonRpcCode(), failure.message()));
     writer.flush();
+  }
+
+  /** Builds the WWW-Authenticate challenge per RFC 6750 and the MCP spec. */
+  static String buildAuthChallenge(
+      AuthFailure failure, URI resourceMetadataUrl, List<String> scopes) {
+    StringBuilder challenge = new StringBuilder("Bearer");
+    challenge.append(" resource_metadata=\"").append(resourceMetadataUrl).append("\"");
+    challenge.append(", scope=\"").append(String.join(" ", scopes)).append("\"");
+
+    if (failure.challengeError() != null) {
+      challenge.append(", error=\"").append(failure.challengeError()).append("\"");
+    }
+    return challenge.toString();
   }
 
   @Override
