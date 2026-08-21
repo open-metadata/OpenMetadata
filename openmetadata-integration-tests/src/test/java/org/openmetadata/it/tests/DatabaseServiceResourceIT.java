@@ -259,6 +259,59 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void put_updateWithoutConnection_preservesExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("service_unmask_null_conn"));
+
+    DatabaseService service = createEntity(request);
+    assertNotNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated via PUT without connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT omitting connection on an existing service with a connection must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    DatabaseService reFetched = getEntity(service.getId().toString());
+    assertEquals("Updated via PUT without connection", reFetched.getDescription());
+    assertNotNull(reFetched.getConnection(), "Existing connection must be preserved, not wiped");
+  }
+
+  @Test
+  void put_updateWithoutConnection_whenNoExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("service_no_conn_at_all"))
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Initial description");
+
+    DatabaseService service = createEntity(request);
+    assertNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated description, still no connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT with no connection on either side must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
+  }
+
+  @Test
   void test_databaseServiceVersionHistory(TestNamespace ns) {
     CreateDatabaseService request = createMinimalRequest(ns);
     request.setName(ns.prefix("service_version"));
