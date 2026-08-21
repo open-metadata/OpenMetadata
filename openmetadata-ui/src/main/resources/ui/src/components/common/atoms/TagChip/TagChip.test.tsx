@@ -13,6 +13,9 @@
 import { render, screen } from '@testing-library/react';
 import TagChip from './TagChip';
 
+// The global test setup stubs MUI styling; this suite needs real sx-generated CSS.
+jest.unmock('@mui/styled-engine');
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
