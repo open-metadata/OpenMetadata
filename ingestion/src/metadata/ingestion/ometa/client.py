@@ -365,7 +365,7 @@ class REST:
         Returns the body json in the 200 status.
 
         When ``raw`` is set, returns the ``Response`` after the same retry/limit
-        decisions (503/504/429 still retry) instead of the decoded body, so the caller
+        decisions (retries on 503/504; 429 triggers limit handling) instead of the decoded body, so the caller
         can read a status the error handling below would otherwise drop.
         """
         retry_codes = self._retry_codes
