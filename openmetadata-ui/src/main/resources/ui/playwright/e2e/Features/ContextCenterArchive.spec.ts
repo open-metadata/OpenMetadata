@@ -469,6 +469,22 @@ test.describe('Context Center - Folder Delete: file absent from search and prese
         await afterAction();
       }
 
+      // Drive the debounced search state through a distinct value before restoring the
+      // document name. Clearing and refilling within one debounce window leaves the
+      // debounced value unchanged, so no request is emitted for the final fill.
+      const noMatchQuery = `deleted-folder-no-match-${uuid()}`;
+      const noMatchResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
+
+        return (
+          url.pathname.includes('/api/v1/search/query') &&
+          url.searchParams.get('index') === 'contextFile' &&
+          url.searchParams.get('q') === noMatchQuery
+        );
+      });
+      await searchInput.fill(noMatchQuery);
+      await noMatchResPromise;
+
       const searchResPromise = page.waitForResponse((res) => {
         const url = new URL(res.url());
 

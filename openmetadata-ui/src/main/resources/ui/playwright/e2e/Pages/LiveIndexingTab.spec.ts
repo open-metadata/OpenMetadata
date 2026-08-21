@@ -10,15 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import test, { expect, Page } from '@playwright/test';
+import { getDefaultAdminAPIContext } from '../../utils/common';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const RETRY_QUEUE_API =
   '/api/v1/apps/name/SearchIndexingApplication/live-indexing-queue*';
+const SEARCH_INDEXING_APP_PATH = '/settings/apps/SearchIndexingApplication';
+
+const navigateToSearchIndexingApplication = async (page: Page) => {
+  const appResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        '/api/v1/apps/name/SearchIndexingApplication' &&
+      response.request().method() === 'GET'
+  );
+
+  await page.goto(SEARCH_INDEXING_APP_PATH);
+  expect((await appResponse).status()).toBe(200);
+};
 
 const SAMPLE_RETRY_RECORDS = [
   {
@@ -49,8 +60,8 @@ test.describe(
   { tag: ['@Platform'] },
   () => {
     test.beforeAll('Seed retry queue records', async ({ browser }) => {
-      const { apiContext, afterAction } = await getApiContext(
-        await browser.newPage()
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
       );
 
       for (const record of SAMPLE_RETRY_RECORDS) {
@@ -67,8 +78,8 @@ test.describe(
     });
 
     test.afterAll('Clean up retry queue records', async ({ browser }) => {
-      const { apiContext, afterAction } = await getApiContext(
-        await browser.newPage()
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
       );
 
       for (const record of SAMPLE_RETRY_RECORDS) {
@@ -90,14 +101,7 @@ test.describe(
       test.slow();
 
       await test.step('Navigate to SearchIndexingApplication', async () => {
-        await redirectToHomePage(page);
-        await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await navigateToSearchIndexingApplication(page);
       });
 
       await test.step('Click Live Indexing tab', async () => {
@@ -141,14 +145,7 @@ test.describe(
       page,
     }) => {
       await test.step('Navigate to SearchIndexingApplication', async () => {
-        await redirectToHomePage(page);
-        await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await navigateToSearchIndexingApplication(page);
       });
 
       await test.step('Verify empty state message when queue is empty', async () => {
@@ -211,14 +208,7 @@ test.describe(
       ];
 
       await test.step('Navigate to SearchIndexingApplication', async () => {
-        await redirectToHomePage(page);
-        await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await navigateToSearchIndexingApplication(page);
       });
 
       await test.step('Mock and verify retry queue data', async () => {

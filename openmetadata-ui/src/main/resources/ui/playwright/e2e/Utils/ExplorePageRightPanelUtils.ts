@@ -43,6 +43,14 @@ export async function navigateToKCEntity(page: Page, entityName: string) {
 
 export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
   const panel = page.locator('[data-testid="entity-summary-panel-container"]');
+
+  // This helper is used as an "ensure owner" precondition by removal and permission
+  // tests. Selecting an already-active owner toggles it off, so return when the panel
+  // already reflects the requested state.
+  if (await panel.getByTestId(ownerName).isVisible()) {
+    return;
+  }
+
   await panel.getByTestId('edit-owners').click();
 
   const ownerTabs = page.getByTestId('select-owner-tabs');

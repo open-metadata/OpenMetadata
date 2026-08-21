@@ -1485,6 +1485,9 @@ test.describe(
           );
 
           await expect(pageSizeDropdown).toBeVisible();
+          // The list response can finish before React clears the pagination loading state.
+          // Hovering the disabled Ant Dropdown trigger is ignored and is not replayed later.
+          await expect(pageSizeDropdown).toBeEnabled();
           // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
           // button only runs its preventDefault handler and may not open the menu.
           await pageSizeDropdown.hover();
