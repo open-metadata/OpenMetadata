@@ -41,6 +41,7 @@ import {
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { assignDomainToEntity } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
@@ -127,6 +128,11 @@ test.describe(
       await table3.create(apiContext);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
+      await Promise.all(
+        [table1, table2, table3].map((table) =>
+          assignDomainToEntity(apiContext, table, domain)
+        )
+      );
       await dataProduct.addAssets(apiContext, [
         { id: table1.entityResponseData.id, type: 'table' },
         { id: table2.entityResponseData.id, type: 'table' },
