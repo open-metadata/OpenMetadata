@@ -402,6 +402,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() =>
         expect(getAggregationOptions).toHaveBeenCalledTimes(1)
       );
+
       expect(mockGetAggregationOptions.mock.calls[0][1]).toBe(
         'domains.displayName.keyword'
       );
@@ -412,6 +413,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() =>
         expect(getAggregationOptions).toHaveBeenCalledTimes(2)
       );
+
       expect(mockGetAggregationOptions.mock.calls[1][1]).toBe(
         'entityType.keyword'
       );
