@@ -417,6 +417,15 @@ public class ActivityStreamRepository {
     return activityStreamDAO.deleteOlderThan(cutoffTimestamp);
   }
 
+  /**
+   * Delete every activity event of a specific entity. Called when an entity is hard deleted so a
+   * later entity recreated with the same fully qualified name does not inherit its history (#28923).
+   * Keyed by entity id (not FQN) so it can never remove a same-named successor's events.
+   */
+  public int deleteByEntity(String entityType, UUID entityId) {
+    return activityStreamDAO.deleteByEntity(entityType, entityId.toString());
+  }
+
   /** Get an activity event by ID. */
   public ActivityEvent getById(UUID id) {
     String json = activityStreamDAO.findById(id.toString());

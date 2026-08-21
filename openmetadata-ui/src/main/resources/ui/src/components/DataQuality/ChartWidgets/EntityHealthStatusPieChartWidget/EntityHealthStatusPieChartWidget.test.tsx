@@ -142,12 +142,14 @@ describe('EntityHealthStatusPieChartWidget', () => {
     });
 
     expect(getTestCaseTabPath).toHaveBeenCalledWith(
-      TestCaseStatus.Success,
+      [TestCaseStatus.Success, TestCaseStatus.Queued],
       undefined
     );
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Success}`,
+      search:
+        `testCaseStatus%5B%5D=${TestCaseStatus.Success}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Queued}`,
     });
 
     mockNavigate.mockClear();
@@ -159,12 +161,14 @@ describe('EntityHealthStatusPieChartWidget', () => {
     });
 
     expect(getTestCaseTabPath).toHaveBeenCalledWith(
-      TestCaseStatus.Failed,
+      [TestCaseStatus.Failed, TestCaseStatus.Aborted],
       undefined
     );
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Failed}`,
+      search:
+        `testCaseStatus%5B%5D=${TestCaseStatus.Failed}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Aborted}`,
     });
   });
 
@@ -191,7 +195,8 @@ describe('EntityHealthStatusPieChartWidget', () => {
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/observability/data-quality/test-cases',
       search:
-        `testCaseStatus=${TestCaseStatus.Failed}` +
+        `testCaseStatus%5B%5D=${TestCaseStatus.Failed}` +
+        `&testCaseStatus%5B%5D=${TestCaseStatus.Aborted}` +
         '&lastRunRange%5BstartTs%5D=100' +
         '&lastRunRange%5BendTs%5D=200' +
         '&lastRunRange%5Bkey%5D=customRange' +
@@ -202,9 +207,12 @@ describe('EntityHealthStatusPieChartWidget', () => {
       '../../../../utils/DataQuality/DataQualityPureUtils'
     ) as { getTestCaseTabPath: jest.Mock };
 
-    expect(getTestCaseTabPath).toHaveBeenCalledWith(TestCaseStatus.Failed, {
-      startTs: 100,
-      endTs: 200,
-    });
+    expect(getTestCaseTabPath).toHaveBeenCalledWith(
+      [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      {
+        startTs: 100,
+        endTs: 200,
+      }
+    );
   });
 });

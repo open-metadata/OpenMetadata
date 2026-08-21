@@ -453,12 +453,22 @@ export const buildDataQualityDashboardFilters = (data: {
     );
   }
 
-  if (filters?.testCaseStatus) {
-    mustFilter.push({
-      term: {
-        'testCaseResult.testCaseStatus': filters.testCaseStatus,
-      },
-    });
+  if (!isEmpty(filters?.testCaseStatus)) {
+    // Elasticsearch `term` only accepts one value; URL-backed multi-selects
+    // need `terms` so the selected statuses are matched with OR semantics.
+    if (isArray(filters?.testCaseStatus)) {
+      mustFilter.push({
+        terms: {
+          'testCaseResult.testCaseStatus': filters.testCaseStatus,
+        },
+      });
+    } else {
+      mustFilter.push({
+        term: {
+          'testCaseResult.testCaseStatus': filters?.testCaseStatus,
+        },
+      });
+    }
   }
 
   if (filters?.testCaseType) {
@@ -779,7 +789,7 @@ export const getTestCaseListPath = (
 });
 
 export const getTestCaseTabPath = (
-  testCaseStatus: TestCaseStatus,
+  testCaseStatus: TestCaseStatus | TestCaseStatus[],
   filters?: DataQualityDashboardChartFilters
 ) => getTestCaseListPath(filters, { testCaseStatus });
 

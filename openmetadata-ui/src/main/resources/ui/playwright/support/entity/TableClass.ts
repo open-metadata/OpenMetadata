@@ -20,6 +20,7 @@ import {
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { buildFqn, okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -235,8 +236,15 @@ export class TableClass extends EntityClass {
     const createResponse = await apiContext.post(createPath, { data });
 
     if (createResponse.status() === 409) {
+      // Ask for the relationship fields. The API answers `null` for anything not
+      // requested, so a bare lookup reports `domains: null` on an entity that
+      // already has a domain — and a caller that then re-applies its own
+      // `add /domains/0` is rejected with `RULE_VIOLATION: Multiple Domains are
+      // not allowed`. All four collections here declare these fields.
       const getResponse = await apiContext.get(
-        `${fetchPath}/${encodeURIComponent(entityFqn)}`
+        `${fetchPath}/${encodeURIComponent(
+          entityFqn
+        )}?include=all&fields=domains,owners,tags`
       );
 
       if (!getResponse.ok()) {
@@ -262,37 +270,43 @@ export class TableClass extends EntityClass {
       apiContext,
       '/api/v1/services/databaseServices',
       '/api/v1/services/databaseServices/name',
-      this.service.name,
+      buildFqn(this.service.name),
       'service',
       this.service
     );
 
-    const databaseFqn = `${service.fullyQualifiedName}.${this.database.name}`;
+    // Compose the lookup FQNs from raw names via buildFqn rather than appending to
+    // the parent's fullyQualifiedName. The parent FQN is already escaped, but the
+    // name being appended is not, so a fixture name carrying a `.` would produce a
+    // lookup for an FQN that does not exist.
     const database = await this.createOrFetch<ResponseDataWithServiceType>(
       apiContext,
       '/api/v1/databases',
       '/api/v1/databases/name',
-      databaseFqn,
+      buildFqn(this.service.name, this.database.name),
       'database',
       { ...this.database, service: service.fullyQualifiedName }
     );
 
-    const schemaFqn = `${database.fullyQualifiedName}.${this.schema.name}`;
     const schema = await this.createOrFetch<ResponseDataWithServiceType>(
       apiContext,
       '/api/v1/databaseSchemas',
       '/api/v1/databaseSchemas/name',
-      schemaFqn,
+      buildFqn(this.service.name, this.database.name, this.schema.name),
       'schema',
       { ...this.schema, database: database.fullyQualifiedName }
     );
 
-    const tableFqn = `${schema.fullyQualifiedName}.${this.entity.name}`;
     const entity = await this.createOrFetch<Table>(
       apiContext,
       '/api/v1/tables',
       '/api/v1/tables/name',
-      tableFqn,
+      buildFqn(
+        this.service.name,
+        this.database.name,
+        this.schema.name,
+        this.entity.name
+      ),
       'table',
       {
         ...this.entity,
@@ -332,7 +346,10 @@ export class TableClass extends EntityClass {
         ...tableData,
       },
     });
-    const entity = await entityResponse.json();
+    const entity = await okJson(
+      entityResponse,
+      'TableClass.createAdditionalTable'
+    );
     this.additionalEntityTableResponseData = [
       ...this.additionalEntityTableResponseData,
       entity,
@@ -416,7 +433,7 @@ export class TableClass extends EntityClass {
       },
     });
 
-    const query = await queryResponse.json();
+    const query = await okJson(queryResponse, 'TableClass.createQuery');
 
     this.queryResponseData.push(query);
 
@@ -530,7 +547,7 @@ export class TableClass extends EntityClass {
       { data: testCaseResult }
     );
 
-    return await testCaseResultResponse.json();
+    return await okJson(testCaseResultResponse, 'TableClass.addTestCaseResult');
   }
 
   async patch({
@@ -570,19 +587,23 @@ export class TableClass extends EntityClass {
       ? `?${new URLSearchParams(queryParams).toString()}`
       : '';
 
-    const response = await apiContext.patch(
-      tableId
-        ? `/api/v1/tables/${tableId}${queryString}`
-        : `/api/v1/tables/name/${encodeURIComponent(tableFqn!)}${queryString}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        tableId
+          ? `/api/v1/tables/${tableId}${queryString}`
+          : `/api/v1/tables/name/${encodeURIComponent(
+              tableFqn!
+            )}${queryString}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'TableClass.patch');
 
     return {
       entity: this.entityResponseData,
