@@ -116,9 +116,10 @@ export const redirectToHomePage = async (
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForURL('**/my-data', {
-    waitUntil: 'domcontentloaded',
-  });
+  await page.waitForURL(
+    (url) => ['/my-data', '/signin'].includes(url.pathname),
+    { waitUntil: 'domcontentloaded' }
+  );
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -155,6 +156,10 @@ export const redirectToHomePage = async (
       if (_waitForLoaders) {
         await waitForAllLoadersToDisappear(page);
       }
+    } else {
+      throw new Error(
+        `Stored user ${storedUser ?? '<unknown>'} was redirected to /signin`
+      );
     }
   }
 };
