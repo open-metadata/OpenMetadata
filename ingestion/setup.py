@@ -616,6 +616,12 @@ setup(
                 "deltalake",
                 "deltalake-spark",
                 "sklearn",
+                # adbc-driver-flightsql ships libadbc_driver_flightsql.so, a 32 MB
+                # prebuilt Go object (1.12.0 is built with go1.26.5), so the whole
+                # go/stdlib CVE set is reported against any image carrying this extra.
+                # The fix is go1.26.6 and there is no release built with it yet, so
+                # there is no pip-level remedy -- only dropping the plugin.
+                "iomete",
             }
         ),
         "docs": docs,

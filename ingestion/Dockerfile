@@ -154,14 +154,6 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
 RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
 
-# Drop the teradatasql driver libraries this platform cannot load. The wheel ships
-# all ten platform builds (337 MB of Go shared objects); only the two this
-# architecture can load are kept, taking the package to 48 MB (arm64) / 70 MB (amd64);
-# see ingestion/scripts/strip_teradatasql_arch_libs.sh. Same placement rule as the
-# spaCy strip -- after the final pip install, or a later install restores them.
-COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
-RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
-
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
