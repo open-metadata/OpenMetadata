@@ -498,11 +498,13 @@ export const AuthProvider = ({
   // The coordinator owns 401 detection, the refresh call, cross-tab
   // coordination, and the same-tab proactive timer (previously duplicated
   // here via `pendingRequests`/`isRefreshDriverActive`/`startTokenExpiryTimer`/
-  // a local `visibilitychange` listener — all deleted). Without the
-  // `refreshed` subscription, a silent refresh would update storage but never
-  // tell the router the user was authenticated again, so a route guard
-  // reading stale `isAuthenticated` kept bouncing to /signin even though the
-  // retried request had already succeeded.
+  // a local `visibilitychange` listener — all deleted, including the hotfix
+  // v2 visibility guard from #31819 which the coordinator's VisibilityWatcher
+  // now handles more thoroughly). Without the `refreshed` subscription, a
+  // silent refresh would update storage but never tell the router the user
+  // was authenticated again, so a route guard reading stale `isAuthenticated`
+  // kept bouncing to /signin even though the retried request had already
+  // succeeded.
   //
   // `handleStoreProtectedRedirectPath` is passed as the third argument so it
   // fires the moment a 401 kicks off a refresh cycle — matching the timing

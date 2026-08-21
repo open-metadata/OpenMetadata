@@ -61,7 +61,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event.inputs.sso_provider || 'scheduled' }}
+  # PR runs key on the PR number so re-pushes on the same PR cancel the
+  # in-flight run; scheduled + dispatch runs key on ref+provider so branch
+  # and per-provider dispatches don't cancel each other.
+  group: sso-login-nightly-${{ github.event_name == 'pull_request' && github.event.pull_request.number || format('{0}-{1}', github.ref, github.event.inputs.sso_provider || 'scheduled') }}
   cancel-in-progress: true
 
 jobs:
