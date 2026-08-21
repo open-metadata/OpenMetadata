@@ -127,7 +127,8 @@ SQLSERVER_ERRORS = ErrorPack(
     when(
         Matchers.any_of(
             _sqlserver_errno(10928, 10929, 10936),
-            Matchers.contains("has been reached"),
+            Matchers.contains("limit for the database is"),
+            Matchers.contains("limit for the elastic pool is"),
             Matchers.contains("is currently too busy to support requests"),
         )
     ).diagnose(
