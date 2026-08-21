@@ -42,7 +42,8 @@ const GenericTab = withSuspenseFallback(
     import('../components/Customization/GenericTab/GenericTab').then(
       (module) => ({ default: module.GenericTab })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const CommonWidgets = withSuspenseFallback(

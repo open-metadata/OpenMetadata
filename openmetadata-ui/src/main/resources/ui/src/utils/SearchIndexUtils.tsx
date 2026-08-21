@@ -73,7 +73,8 @@ const SampleDataWithMessages = withSuspenseFallback(
       import(
         '../components/Database/SampleDataWithMessages/SampleDataWithMessages'
       )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 const SearchIndexFieldsTab = withSuspenseFallback(
   lazy(
