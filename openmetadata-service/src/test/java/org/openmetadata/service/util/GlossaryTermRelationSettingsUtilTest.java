@@ -115,6 +115,56 @@ class GlossaryTermRelationSettingsUtilTest {
   }
 
   @Test
+  void validateSystemDefinedRelationTypesRejectsNewSystemDefinedType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("partOf").withIsSystemDefined(true)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("fakeSys").withIsSystemDefined(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals(
+        "Cannot create or promote system-defined relation types: fakeSys", exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesRejectsPromotionOfCustomType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("dependsOn").withIsSystemDefined(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("partOf").withIsSystemDefined(true),
+                    relationType("dependsOn").withIsSystemDefined(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals(
+        "Cannot create or promote system-defined relation types: dependsOn",
+        exception.getMessage());
+  }
+
+  @Test
   void validateSystemDefinedRelationTypesAllowsCustomTypeModification() {
     GlossaryTermRelationSettings current =
         new GlossaryTermRelationSettings()

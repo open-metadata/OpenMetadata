@@ -118,6 +118,31 @@ public final class GlossaryTermRelationSettingsUtil {
               + String.join(", ", missingSystemDefinedNames));
     }
 
+    // system-defined is a seeded classification: a settings update must not create a new
+    // system-defined type or promote a custom type to system-defined. Only names already seeded
+    // as system-defined may carry isSystemDefined=true.
+    Set<String> currentSystemDefinedNames = new HashSet<>();
+    for (GlossaryTermRelationType relationType : current.getRelationTypes()) {
+      if (Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
+        currentSystemDefinedNames.add(relationType.getName());
+      }
+    }
+    List<String> illegallySystemDefinedNames = new ArrayList<>();
+    if (updated != null && updated.getRelationTypes() != null) {
+      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
+        if (relationType != null
+            && Boolean.TRUE.equals(relationType.getIsSystemDefined())
+            && !currentSystemDefinedNames.contains(relationType.getName())) {
+          illegallySystemDefinedNames.add(relationType.getName());
+        }
+      }
+    }
+    if (!illegallySystemDefinedNames.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot create or promote system-defined relation types: "
+              + String.join(", ", illegallySystemDefinedNames));
+    }
+
     // System-defined relation types are immutable: their fields (e.g. isTransitive, color,
     // category) must not be edited. The dedicated relationTypes endpoint and the UI already
     // enforce this; the generic settings PUT is the remaining path that must too.
