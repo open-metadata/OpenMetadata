@@ -54,6 +54,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtil
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
+  getErrorText,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
@@ -99,7 +100,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     >
   >({});
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
-  const [hasSearchError, setHasSearchError] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<AxiosError>();
 
   const pagingRef = useRef(INITIAL_PAGING_STATE);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -347,7 +348,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     async (isLoadMore = false) => {
       const setLoadingState = isLoadMore ? setIsLoadingMore : setIsLoading;
       setLoadingState(true);
-      setHasSearchError(false);
+      setSearchError(undefined);
 
       if (!isLoadMore) {
         setPaging(INITIAL_PAGING_STATE);
@@ -453,7 +454,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       if (value) {
         try {
           setIsLoading(true);
-          setHasSearchError(false);
+          setSearchError(undefined);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
 
@@ -476,8 +477,8 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
-        } catch {
-          setHasSearchError(true);
+        } catch (error) {
+          setSearchError(error as AxiosError);
           setTreeData([]);
         } finally {
           setIsLoading(false);
@@ -529,14 +530,19 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
-    } else if (hasSearchError) {
+    } else if (searchError) {
       return (
         <div
           className="tw:py-4 tw:text-center tw:text-sm tw:text-tertiary"
           data-testid="domain-search-error">
-          {t('server.entity-fetch-error', {
-            entity: t('label.domain-plural'),
-          })}
+          <div className="tw:px-4 tw:break-words tw:line-clamp-4">
+            {getErrorText(
+              searchError,
+              t('server.entity-fetch-error', {
+                entity: t('label.domain-plural'),
+              })
+            )}
+          </div>
           <Button
             className="tw:mt-2"
             color="link-color"
@@ -588,7 +594,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       );
     }
   }, [
-    hasSearchError,
+    searchError,
     isLoading,
     isLoadingMore,
     onSearch,

@@ -52,6 +52,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtil
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
+  getErrorText,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
@@ -100,7 +101,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     >
   >({});
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
-  const [hasSearchError, setHasSearchError] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<AxiosError>();
 
   const { activeDomain } = useDomainStore();
   const pagingRef = useRef(INITIAL_PAGING_STATE);
@@ -353,7 +354,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     async (isLoadMore = false) => {
       const setLoadingState = isLoadMore ? setIsLoadingMore : setIsLoading;
       setLoadingState(true);
-      setHasSearchError(false);
+      setSearchError(undefined);
 
       if (!isLoadMore) {
         setPaging(INITIAL_PAGING_STATE);
@@ -451,7 +452,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       if (value) {
         try {
           setIsLoading(true);
-          setHasSearchError(false);
+          setSearchError(undefined);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
           const filteredResults = restrictedDomains?.length
@@ -478,8 +479,8 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
-        } catch {
-          setHasSearchError(true);
+        } catch (error) {
+          setSearchError(error as AxiosError);
           setTreeData([]);
         } finally {
           setIsLoading(false);
@@ -537,7 +538,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
-    } else if (hasSearchError) {
+    } else if (searchError) {
       return (
         <Box
           align="center"
@@ -546,10 +547,15 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           direction="col"
           gap={2}
           justify="center">
-          <Typography className="tw:text-text-tertiary" size="text-sm">
-            {t('server.entity-fetch-error', {
-              entity: t('label.domain-plural'),
-            })}
+          <Typography
+            className="tw:text-text-tertiary tw:px-4 tw:text-center tw:break-words tw:line-clamp-4"
+            size="text-sm">
+            {getErrorText(
+              searchError,
+              t('server.entity-fetch-error', {
+                entity: t('label.domain-plural'),
+              })
+            )}
           </Typography>
           <Button
             color="link-color"
@@ -618,7 +624,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     }
   }, [
-    hasSearchError,
+    searchError,
     isLoading,
     isLoadingMore,
     isSubmitLoading,

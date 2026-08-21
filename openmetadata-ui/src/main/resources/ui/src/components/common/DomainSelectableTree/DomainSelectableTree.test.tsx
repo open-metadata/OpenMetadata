@@ -110,6 +110,11 @@ jest.mock('../../../utils/EntityReferenceUtils', () => ({
 jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((value) => value),
   getEncodedFqn: jest.fn().mockImplementation((value) => value),
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error, fallback) => error?.response?.data?.message ?? fallback
+    ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -457,6 +462,33 @@ describe('DomainSelectableTree', () => {
     expect(screen.getByTestId('retry-domain-search')).toBeInTheDocument();
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(showErrorToast).not.toHaveBeenCalled();
+    // no message on the error, so the static fallback is shown
+    expect(screen.getByText('server.entity-fetch-error')).toBeInTheDocument();
+  });
+
+  it("should show the server's own message when the response carries one", async () => {
+    const error = new AxiosError('Request failed with status code 400');
+    error.response = {
+      status: 400,
+      data: { code: 400, message: 'Invalid field name childrenCount' },
+    } as never;
+    jest.spyOn(domainAPI, 'searchDomains').mockRejectedValueOnce(error);
+
+    renderComponent();
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'eng' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Invalid field name childrenCount')
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText('server.entity-fetch-error')
+    ).not.toBeInTheDocument();
   });
 
   it('should retry the search from the inline error and recover', async () => {
