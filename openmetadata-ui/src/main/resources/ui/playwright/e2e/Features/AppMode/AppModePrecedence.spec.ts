@@ -31,12 +31,29 @@
  * registered (the "install gate" — see its doc comment). Any rung whose
  * expected WINNER is `'ai'` can therefore never resolve in stock OM
  * regardless of correctness, so only the rungs whose winner is `'default'`
- * are portable without a registered second mode:
+ * looked portable without a registered second mode:
  *
  *   - Rung 3 vs 4: a user pref of `'classic'` beats a persona of `'AI'` —
  *     `resolveEffectiveAppMode` picks `userPref` unconditionally over
  *     `personaMode`, before the install gate is even consulted.
  *   - Rung 6 alone: nothing set anywhere resolves to `DEFAULT_APP_MODE`.
+ *
+ * Round 1 of this port asserted `assertAppMode(page, 'default')` for both.
+ * Fix round 1 caught that the Rung-3-vs-4 case is a **false positive**:
+ * `'classic'` is exactly as unregistered in stock OM's
+ * `useAppRoutesRegistry` as `'ai'` is (only the literal string
+ * `DEFAULT_APP_MODE` — `'default'` — is exempt from the install gate). So
+ * the resolver's install gate refuses to write `'classic'` for the exact
+ * same reason it would refuse `'ai'`, and the tab's session tuple stays
+ * empty — indistinguishable, via `assertAppMode`, from Rung 6's "nothing
+ * set anywhere" case. The test was passing without ever proving rung 3
+ * beat rung 4; it would have passed identically if `resolveEffectiveAppMode`
+ * had been broken. That test is now `test.skip(...)`'d below rather than
+ * kept as a misleading pass — see the TODO comment on it for what unskips
+ * it.
+ *
+ * Rung 6 alone is genuine, unaffected coverage: it doesn't depend on any
+ * mode being registered, so it stays as a real, passing assertion.
  *
  * The original's rung-4-vs-5 ("persona beats tenant default"),
  * rung-5-vs-6 ("tenant default beats the constant"), and rung-1
@@ -48,8 +65,8 @@
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { AppModeExpectation, assertAppMode } from '../../../utils/appMode';
 import { withAppConfigLock } from '../../../utils/appConfigMutex';
+import { AppModeExpectation, assertAppMode } from '../../../utils/appMode';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
@@ -187,6 +204,21 @@ test.describe('AppMode — unified precedence', () => {
   test('Rung 3 (user pref) beats rung 4 (persona) — user has remembered Classic, persona says AI', async ({
     browser,
   }) => {
+    // TODO: unskip when a route is registered for a second mode (currently
+    // every mode but the default is disabled in stock OSS — see the
+    // install gate in `useResolvedAppMode.ts`, "Install gate" comment).
+    // `'classic'` is refused by that gate exactly like `'ai'` would be, so
+    // asserting `assertAppMode(page, 'default')` here can't distinguish
+    // "rung 3 beat rung 4" from "the resolver wrote nothing at all" — see
+    // the file header for the full false-positive analysis from fix round
+    // 1. Registering a lightweight test-only mode (or unskipping once a
+    // real second mode ships) is required before this rung is provable
+    // against the *rendered* state; see task-6-report.md for the
+    // follow-up recommendation.
+    test.skip(
+      true,
+      'False positive in stock OM — see TODO above and task-6-report.md.'
+    );
     // Persona create + user assign + user pref PUT + fresh context login —
     // bump for CI headroom.
     test.setTimeout(240_000);
