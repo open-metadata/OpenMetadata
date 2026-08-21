@@ -1,4 +1,14 @@
-FROM eclipse-temurin:21-jdk-jammy
+# Pinned by DIGEST, not by the `21-jdk-jammy` tag alone: a tag can be re-pushed, which would change
+# the base under a build whose every other input (Maven, Node, ANTLR) is checksum-verified — the one
+# floating input defeats the reproducibility of all of them. The tag is kept beside it for readability;
+# the digest is what resolves.
+#
+# It is the multi-arch INDEX digest, deliberately. An arch-specific manifest digest would pin this to
+# whichever machine looked it up and break the other, and this image is built on arm64 locally and
+# amd64 in CI. Bump with:
+#   docker buildx imagetools inspect eclipse-temurin:21-jdk-jammy --format '{{.Manifest.Digest}}'
+# and check the result is an `image.index`, not an `image.manifest`.
+FROM eclipse-temurin:21-jdk-jammy@sha256:dbfd085220ae632a0830166e443747d1ee89e9038d92e3b48c3e5e9d8292b9a7
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
