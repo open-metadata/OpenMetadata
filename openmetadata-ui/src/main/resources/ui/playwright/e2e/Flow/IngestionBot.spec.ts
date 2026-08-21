@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -50,8 +50,10 @@ const test = base.extend<{
 
     const page = await browser.newPage();
     await page.goto('/signin');
-    await page.waitForFunction(() =>
-      Boolean(navigator.serviceWorker?.controller)
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker?.controller)
     );
 
     await setToken(page, tokenData.config.JWTToken);
