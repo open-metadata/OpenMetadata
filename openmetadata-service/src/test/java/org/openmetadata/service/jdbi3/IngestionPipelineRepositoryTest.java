@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
@@ -25,8 +28,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -36,6 +42,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
@@ -166,6 +173,273 @@ class IngestionPipelineRepositoryTest {
         mock(IngestionPipelineRepository.class, Mockito.CALLS_REAL_METHODS);
     cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
     return cleanupRepository;
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("legacySourceConfigTypes")
+  void deployLegacyPipelineAddsDefaultSourceConfigTypeBeforeCallingRunner(
+      String testCase, PipelineType pipelineType, String serviceType, String expectedConfigType) {
+    IngestionPipeline pipeline = legacyPipeline(pipelineType, serviceType);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals(expectedConfigType, sourceConfigMap(pipeline).get("type"));
+    assertEquals("preserved", sourceConfigMap(pipeline).get("existingSetting"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  @Test
+  void deployLegacyPipelineRejectsUnknownSourceConfigTypeBeforeCallingRunner() {
+    IngestionPipeline pipeline = legacyPipeline(PipelineType.USAGE, Entity.DASHBOARD_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config.type is required", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @Test
+  void deployPipelineRejectsMalformedSourceConfigBeforeCallingRunner() {
+    IngestionPipeline pipeline = legacyPipeline(PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    pipeline.getSourceConfig().setConfig("not-an-object");
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config must be an object with type", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidLegacySourceConfigs")
+  void deployLegacyPipelineRejectsInvalidExplicitSourceConfigTypeBeforeCallingRunner(
+      String testCase, Object config) {
+    IngestionPipeline pipeline =
+        legacyPipelineWithConfig(config, PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config.type is required", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @Test
+  void deployNewPipelineWithoutSourceConfigTypeRejectsBeforeCallingRunner() {
+    IngestionPipeline pipeline = legacyPipeline(PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    pipeline.setId(null);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                deploymentRepository.deployIngestionPipeline(
+                    pipeline, mock(ServiceEntityInterface.class)));
+
+    assertEquals("sourceConfig.config.type is required", exception.getMessage());
+    verifyNoInteractions(pipelineServiceClient);
+  }
+
+  @Test
+  void deployLegacyPipelineWithNullSourceConfigTypeAddsDefaultBeforeCallingRunner() {
+    Map<String, Object> config = new HashMap<>();
+    config.put("type", null);
+    IngestionPipeline pipeline =
+        legacyPipelineWithConfig(config, PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals("DatabaseMetadata", sourceConfigMap(pipeline).get("type"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  @Test
+  void deployLegacyReverseIngestionAddsDefaultSourceConfigTypeBeforeCallingRunner() {
+    Map<String, Object> config = new HashMap<>();
+    config.put("operations", List.of());
+    IngestionPipeline pipeline =
+        legacyPipelineWithConfig(config, PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals("ReverseIngestion", sourceConfigMap(pipeline).get("type"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  @Test
+  void deployPipelinePreservesExplicitSourceConfigType() {
+    IngestionPipeline pipeline =
+        legacyPipelineWithConfig(
+            new HashMap<>(Map.of("type", "DatabaseMetadata")),
+            PipelineType.METADATA,
+            Entity.DATABASE_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals("DatabaseMetadata", sourceConfigMap(pipeline).get("type"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  private static Stream<Arguments> legacySourceConfigTypes() {
+    return Stream.of(
+        Arguments.of(
+            "database metadata",
+            PipelineType.METADATA,
+            Entity.DATABASE_SERVICE,
+            "DatabaseMetadata"),
+        Arguments.of(
+            "dashboard metadata",
+            PipelineType.METADATA,
+            Entity.DASHBOARD_SERVICE,
+            "DashboardMetadata"),
+        Arguments.of(
+            "messaging metadata",
+            PipelineType.METADATA,
+            Entity.MESSAGING_SERVICE,
+            "MessagingMetadata"),
+        Arguments.of(
+            "pipeline metadata",
+            PipelineType.METADATA,
+            Entity.PIPELINE_SERVICE,
+            "PipelineMetadata"),
+        Arguments.of(
+            "machine-learning metadata",
+            PipelineType.METADATA,
+            Entity.MLMODEL_SERVICE,
+            "MlModelMetadata"),
+        Arguments.of(
+            "storage metadata", PipelineType.METADATA, Entity.STORAGE_SERVICE, "StorageMetadata"),
+        Arguments.of(
+            "drive metadata", PipelineType.METADATA, Entity.DRIVE_SERVICE, "DriveMetadata"),
+        Arguments.of(
+            "search metadata", PipelineType.METADATA, Entity.SEARCH_SERVICE, "SearchMetadata"),
+        Arguments.of("api metadata", PipelineType.METADATA, Entity.API_SERVICE, "ApiMetadata"),
+        Arguments.of("mcp metadata", PipelineType.METADATA, Entity.MCP_SERVICE, "McpMetadata"),
+        Arguments.of(
+            "security metadata",
+            PipelineType.METADATA,
+            Entity.SECURITY_SERVICE,
+            "SecurityMetadata"),
+        Arguments.of(
+            "OpenMetadata service metadata",
+            PipelineType.METADATA,
+            Entity.METADATA_SERVICE,
+            "DatabaseMetadata"),
+        Arguments.of(
+            "database usage", PipelineType.USAGE, Entity.DATABASE_SERVICE, "DatabaseUsage"),
+        Arguments.of(
+            "database lineage", PipelineType.LINEAGE, Entity.DATABASE_SERVICE, "DatabaseLineage"),
+        Arguments.of(
+            "dashboard lineage",
+            PipelineType.LINEAGE,
+            Entity.DASHBOARD_SERVICE,
+            "DashboardMetadata"),
+        Arguments.of(
+            "database profiler", PipelineType.PROFILER, Entity.DATABASE_SERVICE, "Profiler"),
+        Arguments.of(
+            "database auto classification",
+            PipelineType.AUTO_CLASSIFICATION,
+            Entity.DATABASE_SERVICE,
+            "AutoClassification"),
+        Arguments.of(
+            "messaging auto classification",
+            PipelineType.AUTO_CLASSIFICATION,
+            Entity.MESSAGING_SERVICE,
+            "AutoClassification"),
+        Arguments.of(
+            "storage auto classification",
+            PipelineType.AUTO_CLASSIFICATION,
+            Entity.STORAGE_SERVICE,
+            "AutoClassification"),
+        Arguments.of("dbt", PipelineType.DBT, Entity.DATABASE_SERVICE, "DBT"),
+        Arguments.of("test suite", PipelineType.TEST_SUITE, Entity.TEST_SUITE, "TestSuite"),
+        Arguments.of(
+            "data insight", PipelineType.DATA_INSIGHT, Entity.METADATA_SERVICE, "dataInsight"),
+        Arguments.of(
+            "search reindex",
+            PipelineType.ELASTIC_SEARCH_REINDEX,
+            Entity.METADATA_SERVICE,
+            "MetadataToElasticSearch"),
+        Arguments.of(
+            "application", PipelineType.APPLICATION, Entity.METADATA_SERVICE, "Application"),
+        Arguments.of(
+            "policy agent", PipelineType.POLICY_AGENT, Entity.DATABASE_SERVICE, "PolicyAgent"));
+  }
+
+  private static Stream<Arguments> invalidLegacySourceConfigs() {
+    return Stream.of(
+        Arguments.of("blank type", Map.of("type", "   ")),
+        Arguments.of("non-string type", Map.of("type", 42)),
+        Arguments.of(
+            "raw-map enum type",
+            Map.of(
+                "type",
+                DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA)));
   }
 
   @Test
@@ -505,6 +779,25 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
+  }
+
+  private static IngestionPipeline legacyPipeline(PipelineType pipelineType, String serviceType) {
+    return legacyPipelineWithConfig(
+        new HashMap<>(Map.of("existingSetting", "preserved")), pipelineType, serviceType);
+  }
+
+  private static IngestionPipeline legacyPipelineWithConfig(
+      Object config, PipelineType pipelineType, String serviceType) {
+    IngestionPipeline pipeline = pipelineWithConfig(config);
+    pipeline.setId(UUID.randomUUID());
+    pipeline.setName("legacy-pipeline");
+    pipeline.setPipelineType(pipelineType);
+    pipeline.setService(new EntityReference().withName("legacy-service").withType(serviceType));
+    return pipeline;
+  }
+
+  private static Map<?, ?> sourceConfigMap(IngestionPipeline pipeline) {
+    return (Map<?, ?>) pipeline.getSourceConfig().getConfig();
   }
 
   private static IngestionPipeline pipelineWithConfig(Object config) {

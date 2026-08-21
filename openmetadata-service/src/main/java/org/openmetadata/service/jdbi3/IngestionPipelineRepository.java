@@ -27,6 +27,7 @@ import jakarta.ws.rs.sse.SseEventSink;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,6 +100,55 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
   private static final String PATCH_FIELDS =
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
+  private static final String SOURCE_CONFIG_TYPE = "type";
+  private static final String SOURCE_CONFIG_TYPE_REQUIRED = "sourceConfig.config.type is required";
+  private static final String SOURCE_CONFIG_OBJECT_REQUIRED =
+      "sourceConfig.config must be an object with type";
+  private static final String REVERSE_INGESTION_OPERATIONS = "operations";
+  private static final String REVERSE_INGESTION_CONFIG_TYPE = "ReverseIngestion";
+
+  private static final Map<String, Map<PipelineType, String>> LEGACY_SOURCE_CONFIG_TYPES =
+      Map.ofEntries(
+          Map.entry(
+              Entity.DATABASE_SERVICE,
+              Map.of(
+                  PipelineType.METADATA, "DatabaseMetadata",
+                  PipelineType.USAGE, "DatabaseUsage",
+                  PipelineType.LINEAGE, "DatabaseLineage",
+                  PipelineType.PROFILER, "Profiler",
+                  PipelineType.AUTO_CLASSIFICATION, "AutoClassification")),
+          Map.entry(
+              Entity.DASHBOARD_SERVICE,
+              Map.of(
+                  PipelineType.METADATA, "DashboardMetadata",
+                  PipelineType.LINEAGE, "DashboardMetadata")),
+          Map.entry(
+              Entity.MESSAGING_SERVICE,
+              Map.of(
+                  PipelineType.METADATA, "MessagingMetadata",
+                  PipelineType.AUTO_CLASSIFICATION, "AutoClassification")),
+          Map.entry(Entity.PIPELINE_SERVICE, Map.of(PipelineType.METADATA, "PipelineMetadata")),
+          Map.entry(Entity.MLMODEL_SERVICE, Map.of(PipelineType.METADATA, "MlModelMetadata")),
+          Map.entry(
+              Entity.STORAGE_SERVICE,
+              Map.of(
+                  PipelineType.METADATA, "StorageMetadata",
+                  PipelineType.AUTO_CLASSIFICATION, "AutoClassification")),
+          Map.entry(Entity.DRIVE_SERVICE, Map.of(PipelineType.METADATA, "DriveMetadata")),
+          Map.entry(Entity.SEARCH_SERVICE, Map.of(PipelineType.METADATA, "SearchMetadata")),
+          Map.entry(Entity.API_SERVICE, Map.of(PipelineType.METADATA, "ApiMetadata")),
+          Map.entry(Entity.MCP_SERVICE, Map.of(PipelineType.METADATA, "McpMetadata")),
+          Map.entry(Entity.SECURITY_SERVICE, Map.of(PipelineType.METADATA, "SecurityMetadata")),
+          Map.entry(Entity.METADATA_SERVICE, Map.of(PipelineType.METADATA, "DatabaseMetadata")));
+
+  private static final Map<PipelineType, String> LEGACY_SOURCE_CONFIG_TYPES_BY_PIPELINE =
+      Map.of(
+          PipelineType.DBT, "DBT",
+          PipelineType.TEST_SUITE, "TestSuite",
+          PipelineType.DATA_INSIGHT, "dataInsight",
+          PipelineType.ELASTIC_SEARCH_REINDEX, "MetadataToElasticSearch",
+          PipelineType.APPLICATION, "Application",
+          PipelineType.POLICY_AGENT, "PolicyAgent");
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
@@ -514,28 +564,70 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
+    Object config = getRequiredSourceConfig(ingestionPipeline);
+    Map<?, ?> configMap = getSourceConfigMap(config);
+    if (!hasSourceConfigType(config, configMap)) {
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
+    }
+  }
+
+  private static void repairLegacySourceConfig(IngestionPipeline ingestionPipeline) {
+    Object config = getRequiredSourceConfig(ingestionPipeline);
+    Map<?, ?> configMap = getSourceConfigMap(config);
+    if (ingestionPipeline.getId() == null || configMap.get(SOURCE_CONFIG_TYPE) != null) {
+      return;
+    }
+
+    String sourceConfigType = getLegacySourceConfigType(ingestionPipeline, configMap);
+    if (sourceConfigType == null) {
+      return;
+    }
+
+    Map<String, Object> repairedConfig = new LinkedHashMap<>();
+    configMap.forEach((key, value) -> repairedConfig.put(String.valueOf(key), value));
+    repairedConfig.put(SOURCE_CONFIG_TYPE, sourceConfigType);
+    ingestionPipeline.getSourceConfig().setConfig(repairedConfig);
+  }
+
+  private static Object getRequiredSourceConfig(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline.getSourceConfig() == null
         || ingestionPipeline.getSourceConfig().getConfig() == null) {
-      throw new BadRequestException("sourceConfig.config.type is required");
+      throw new BadRequestException(SOURCE_CONFIG_TYPE_REQUIRED);
     }
+    return ingestionPipeline.getSourceConfig().getConfig();
+  }
 
-    Object config = ingestionPipeline.getSourceConfig().getConfig();
-    Object type;
-    boolean generatedConfig = !(config instanceof Map<?, ?>);
+  private static Map<?, ?> getSourceConfigMap(Object config) {
     try {
-      type =
-          generatedConfig ? JsonUtils.getMap(config).get("type") : ((Map<?, ?>) config).get("type");
+      return config instanceof Map<?, ?> map ? map : JsonUtils.getMap(config);
     } catch (IllegalArgumentException e) {
-      throw new BadRequestException("sourceConfig.config must be an object with type");
+      throw new BadRequestException(SOURCE_CONFIG_OBJECT_REQUIRED);
+    }
+  }
+
+  private static boolean hasSourceConfigType(Object config, Map<?, ?> configMap) {
+    Object type = configMap.get(SOURCE_CONFIG_TYPE);
+    return type instanceof String typeValue && !typeValue.isBlank()
+        || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
+  }
+
+  private static String getLegacySourceConfigType(
+      IngestionPipeline ingestionPipeline, Map<?, ?> configMap) {
+    if (configMap.containsKey(REVERSE_INGESTION_OPERATIONS)) {
+      return REVERSE_INGESTION_CONFIG_TYPE;
     }
 
-    if (type instanceof String typeValue && !typeValue.isBlank()) {
-      return;
-    }
-    if (generatedConfig && type instanceof Enum<?>) {
-      return;
-    }
-    throw new BadRequestException("sourceConfig.config.type is required");
+    Map<PipelineType, String> serviceConfigTypes =
+        ingestionPipeline.getService() == null
+            ? null
+            : LEGACY_SOURCE_CONFIG_TYPES.get(ingestionPipeline.getService().getType());
+    String sourceConfigType =
+        serviceConfigTypes == null
+            ? null
+            : serviceConfigTypes.get(ingestionPipeline.getPipelineType());
+    return sourceConfigType == null
+        ? LEGACY_SOURCE_CONFIG_TYPES_BY_PIPELINE.get(ingestionPipeline.getPipelineType())
+        : sourceConfigType;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
@@ -1621,6 +1713,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    repairLegacySourceConfig(ingestionPipeline);
+    validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
