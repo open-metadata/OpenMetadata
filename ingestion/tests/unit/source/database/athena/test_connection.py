@@ -35,8 +35,10 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.athena import connection as athena_connection
 from metadata.ingestion.source.database.athena.connection import (
     ATHENA_ERRORS,
+    AthenaAssumeRoleStrategy,
     AthenaChecks,
     AthenaConnection,
+    AthenaStandardStrategy,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.athena.connection"
@@ -74,10 +76,36 @@ def test_athena_connection_is_base_connection():
     assert issubclass(AthenaConnection, BaseConnection)
 
 
-def test_get_client_uses_the_class_url_builder():
-    with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection:
+def test_standard_strategy_does_not_resolve_connection_arguments_before_the_builder():
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_connection,
+        patch(f"{CONNECTION_MODULE}.get_connection_args_common") as mock_connection_args,
+    ):
         _ = AthenaConnection(_config()).client
+    assert mock_connection_args.call_count == 0
     assert mock_connection.call_args.kwargs["get_connection_url_fn"].__name__ == "get_connection_url"
+    assert mock_connection.call_args.kwargs["get_connection_args_fn"] is mock_connection_args
+
+
+def test_get_client_selects_the_standard_strategy_without_an_assume_role():
+    with patch.object(AthenaStandardStrategy, "build", return_value=MagicMock()) as mock_build:
+        _ = AthenaConnection(_config()).client
+
+    mock_build.assert_called_once_with()
+
+
+def test_get_client_selects_the_assume_role_strategy_with_an_assume_role():
+    config = _config(
+        awsConfig=AWSCredentials(
+            awsRegion="us-east-2",
+            assumeRoleArn="arn:aws:iam::123456789012:role/metadata-reader",
+        )
+    )
+
+    with patch.object(AthenaAssumeRoleStrategy, "build", return_value=MagicMock()) as mock_build:
+        _ = AthenaConnection(config).client
+
+    mock_build.assert_called_once_with()
 
 
 def test_assume_role_uses_refreshable_session_without_url_credentials():
