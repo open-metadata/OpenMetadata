@@ -11,7 +11,7 @@
 """REST source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import Iterable, List, Optional, Set  # noqa: UP035
 
 from pydantic import AnyUrl
 
@@ -64,6 +64,8 @@ class RestSource(ApiServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
+        self.json_response: dict = {}
+        self._collections: Optional[List[RESTCollection]] = None  # noqa: UP006, UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -73,47 +75,109 @@ class RestSource(ApiServiceSource):
             raise InvalidSourceException(f"Expected RestConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_api_collections(self, *args, **kwargs) -> Iterable[RESTCollection]:
+    def _get_openapi_schema(self) -> dict:
+        """Fetch and parse the OpenAPI document once.
+
+        Both topology nodes produce from ``get_api_collections``, so without this a
+        large document would be downloaded and parsed twice.
         """
-        Method to list all collections to process.
-        Here is where filtering happens
-        """
-        try:
+        if not self.json_response:
             if isinstance(self.connection, dict):
                 self.json_response = self.connection
             else:
                 self.json_response = parse_openapi_schema(self.connection)
-            collections_list = []
-            tags_collection_set = set()
-            if self.json_response.get("tags", []):
-                # Works only if list of tags are present in schema so we can fetch collection names
-                for collection in self.json_response.get("tags", []):
-                    if not collection.get("name"):
-                        continue
-                    collections_list.append(collection)
-                    tags_collection_set.update({collection.get("name")})
-            # append default tag for endpoints that don't have any collection tag
-            if DEFAULT_TAG not in tags_collection_set:
-                tags_collection_set.update({DEFAULT_TAG})
-                collections_list.append({"name": DEFAULT_TAG})
-            # iterate through paths if there's any missing collection not present in tags
-            collections_set = set()
-            for path, methods in self.json_response.get("paths", {}).items():  # noqa: B007, PERF102
-                for method_type, info in methods.items():  # noqa: B007, PERF102
-                    collections_set.update({tag for tag in info.get("tags", [])})  # noqa: C416
-            for collection_name in collections_set:
-                if collection_name not in tags_collection_set:
-                    collections_list.append({"name": collection_name})  # noqa: PERF401
-            for collection in collections_list:
-                if filter_by_collection(
-                    self.source_config.apiCollectionFilterPattern,
-                    collection.get("name"),
-                ):
-                    self.status.filter(collection.get("name"), "Collection filtered out")
-                    continue
-                yield RESTCollection(**collection)
+        return self.json_response
+
+    def _tag_collections(self, json_response: dict) -> List[dict]:  # noqa: UP006
+        """Collection definitions declared in the document's root ``tags``.
+
+        Non-conforming entries (the spec requires an object with a ``name``) are
+        skipped instead of aborting: a tag only referenced from ``paths`` is still
+        recovered by ``_path_collection_names``.
+        """
+        collections_list = []
+        for collection in json_response.get("tags") or []:
+            if not isinstance(collection, dict):
+                logger.warning(f"Skipping malformed tag entry, expected an object with a name: {collection}")
+                continue
+            collection_name = collection.get("name")
+            if isinstance(collection_name, str) and collection_name:
+                collections_list.append({**collection, "name": collection_name})
+        return collections_list
+
+    def _path_collection_names(self, json_response: dict) -> Set[str]:  # noqa: UP006
+        """Tag names referenced by operations under ``paths``."""
+        collections_set: Set[str] = set()  # noqa: UP006
+        for methods in (json_response.get("paths") or {}).values():
+            if not isinstance(methods, dict):
+                continue
+            for info in methods.values():
+                if isinstance(info, dict):
+                    collections_set.update(tag for tag in info.get("tags") or [] if isinstance(tag, str))
+        return collections_set
+
+    def _derive_collections(self) -> List[RESTCollection]:  # noqa: UP006
+        """Derive every collection the document describes.
+
+        A collection that cannot be built is reported and skipped so one malformed
+        tag cannot silently drop the rest of the document - the previous single
+        try/except around the whole walk stopped the generator on the first bad
+        entry, leaving the service with few or no collections.
+        """
+        collections: List[RESTCollection] = []  # noqa: UP006
+        try:
+            json_response = self._get_openapi_schema()
         except Exception as err:
             logger.error(f"Error while fetching collections from schema URL :{err}")
+            logger.debug(traceback.format_exc())
+            return collections
+
+        collections_list = self._tag_collections(json_response)
+        tags_collection_set = {str(collection["name"]) for collection in collections_list}
+        # append default tag for endpoints that don't have any collection tag
+        if DEFAULT_TAG not in tags_collection_set:
+            tags_collection_set.add(DEFAULT_TAG)
+            collections_list.append({"name": DEFAULT_TAG})
+        # iterate through paths if there's any missing collection not present in tags
+        # sorted() so a rerun derives the collections in the same order every time
+        collections_list.extend(
+            {"name": collection_name}
+            for collection_name in sorted(self._path_collection_names(json_response))
+            if collection_name not in tags_collection_set
+        )
+
+        for collection in collections_list:
+            collection_name = str(collection["name"])
+            if filter_by_collection(
+                self.source_config.apiCollectionFilterPattern,
+                collection_name,
+            ):
+                self.status.filter(collection_name, "Collection filtered out")
+                continue
+            try:
+                collections.append(RESTCollection(**collection))
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name=collection_name,
+                        error=f"Error building api collection [{collection_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+        return collections
+
+    def get_api_collections(self, *args, **kwargs) -> Iterable[RESTCollection]:
+        """
+        Method to list all collections to process.
+        Here is where filtering happens
+
+        Memoized: the endpoint node replays this producer and needs the very same
+        objects, since ``yield_api_collection`` resolves ``collection.url`` in place
+        and ``_generate_endpoint_url`` builds endpoint URLs from it.
+        """
+        if self._collections is None:
+            self._collections = self._derive_collections()
+        yield from self._collections
 
     def yield_api_collection(self, collection: RESTCollection) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
