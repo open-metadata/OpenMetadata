@@ -18,6 +18,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { openEntitySummaryPanel } from './entityPanel';
+import { waitForAggregation } from './searchAggregation';
 
 export interface Bucket {
   key: string;
@@ -42,10 +43,11 @@ export const searchAndClickOnOption = async (
   checkedAfterClick: boolean
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
-  // Filtering for tiers is done on client side, so no API call will be triggered
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
-  );
+
+  const searchRes = waitForAggregation(page, {
+    field: filter.key,
+    value: filter.value ?? null,
+  });
 
   await page.fill('[data-testid="search-input"]', filter.value ?? '');
   await searchRes;
@@ -143,9 +145,10 @@ export const selectDataAssetFilter = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
   );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: filterValue,
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
@@ -198,6 +201,9 @@ export const expandServiceInExploreTree = async (
     // Expanding the serviceType groups its services. The service drill-down
     // goes through the aggregate API (POST /search/aggregate) so the buckets
     // carry service.style top hits for custom service icons.
+    // Not a facet dropdown: the tree drill-down is a POST aggregate with no
+    // field/value pair for waitForAggregation to discriminate on.
+    // eslint-disable-next-line openmetadata-playwright/require-aggregation-wait-helper
     const serviceNameRes = page.waitForResponse(
       (response) =>
         response.url().endsWith('/api/v1/search/aggregate') &&
