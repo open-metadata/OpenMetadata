@@ -537,7 +537,9 @@ describe('DomainSelectableTree', () => {
       expect(screen.getByTestId('domain-search-error')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '' } });
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: '' },
+    });
 
     await waitFor(() => {
       expect(
