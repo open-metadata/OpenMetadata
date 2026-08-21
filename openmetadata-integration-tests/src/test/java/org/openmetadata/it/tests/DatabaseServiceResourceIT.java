@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -820,7 +821,8 @@ public class DatabaseServiceResourceIT
                     .withName(ns.prefix("ref_table"))
                     .withDatabaseSchema(schema.getFullyQualifiedName())
                     .withColumns(
-                        List.of(new Column().withName("ref_id").withDataType(ColumnDataType.BIGINT))));
+                        List.of(
+                            new Column().withName("ref_id").withDataType(ColumnDataType.BIGINT))));
     String refIdFqn = refTable.getFullyQualifiedName() + ".ref_id";
 
     List<TableConstraint> constraints =
@@ -896,6 +898,94 @@ public class DatabaseServiceResourceIT
         List.of(refIdFqn),
         fk.getReferredColumns(),
         "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+  }
+
+  @Test
+  void test_importExportRecursive_preservesColumnCustomProperties(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_col_ext_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    // Columns carry free-form custom properties (column.extension).
+    Column idColumn =
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withExtension(Map.of("colGovOwner", "id-col@example.com"));
+    Column emailColumn =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withExtension(Map.of("colGovOwner", "email-col@example.com"));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("col_ext_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(idColumn, emailColumn)));
+
+    // Precondition: column custom properties persisted on create.
+    Table created =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(
+        columnByName(created, "id").getExtension(),
+        "Column custom properties should persist on create");
+
+    // Recursive export then re-import unchanged (the whole-tree path the UI uses at
+    // service/database/schema level). The recursive CSV has no column for column custom
+    // properties, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(
+        columnByName(reloaded, "id").getExtension(),
+        "Column 'id' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "id").getExtension().toString().contains("id-col@example.com"),
+        "Column 'id' custom property value must be preserved after a recursive import");
+    assertNotNull(
+        columnByName(reloaded, "email").getExtension(),
+        "Column 'email' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "email").getExtension().toString().contains("email-col@example.com"),
+        "Column 'email' custom property value must be preserved after a recursive import");
+  }
+
+  private Column columnByName(Table table, String name) {
+    return table.getColumns().stream()
+        .filter(c -> name.equals(c.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Column not found: " + name));
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {
