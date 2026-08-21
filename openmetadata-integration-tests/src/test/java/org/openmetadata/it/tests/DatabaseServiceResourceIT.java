@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
@@ -786,6 +787,87 @@ public class DatabaseServiceResourceIT
         streetColumnAfterRemoval.getTags().stream()
             .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
         "Street column should STILL have glossary term (not removed)");
+  }
+
+  @Test
+  void test_importExportRecursive_preservesTableConstraints(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_constraints_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    List<TableConstraint> constraints =
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+                .withColumns(List.of("id")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("email")));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("constrained_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                            new Column()
+                                .withName("email")
+                                .withDataType(ColumnDataType.VARCHAR)
+                                .withDataLength(255)))
+                    .withTableConstraints(constraints));
+
+    assertEquals(
+        2, table.getTableConstraints().size(), "Table should start with 2 table constraints");
+
+    // Recursive export then re-import unchanged: this is the whole-tree path the UI uses when
+    // importing at service/database/schema level. The recursive CSV has no column for table
+    // constraints, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tableConstraints");
+    assertNotNull(
+        reloaded.getTableConstraints(),
+        "Table constraints must survive a recursive CSV round trip");
+    assertEquals(
+        2,
+        reloaded.getTableConstraints().size(),
+        "Both PRIMARY_KEY and UNIQUE constraints must be preserved after a recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY),
+        "PRIMARY_KEY constraint must be preserved after a recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE),
+        "UNIQUE constraint must be preserved after a recursive import");
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {
