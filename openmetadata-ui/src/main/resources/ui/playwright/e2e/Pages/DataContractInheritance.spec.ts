@@ -77,7 +77,7 @@ const fillContractDetailsForm = async (
   await page.fill('.om-block-editor[contenteditable="true"]', description);
 
   await page.getByTestId('select-owners').click();
-  const firstOwner = page.locator('.rc-virtual-list-holder-inner li').first();
+  const firstOwner = page.getByTestId('owner-option').first();
   await expect(firstOwner).toBeVisible();
   await firstOwner.click();
 
