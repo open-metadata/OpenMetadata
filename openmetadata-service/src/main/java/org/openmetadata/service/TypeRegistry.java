@@ -78,6 +78,23 @@ public class TypeRegistry {
   protected static final Cache<String, Boolean> RECENTLY_REFRESHED_TYPES =
       Caffeine.newBuilder().maximumSize(1_000).expireAfterWrite(Duration.ofSeconds(2)).build();
 
+  /**
+   * Last-loaded {@code updatedAt} per type, keyed by type name. A custom property edited or deleted
+   * on a peer replica is a cache <em>hit</em> locally, so the miss-heal never re-reads it; comparing
+   * this stamp against the type row's current {@code updatedAt} detects that a hit has gone stale.
+   * Bounded by the fixed number of types (tens), never by the number of custom properties.
+   */
+  protected static final Map<String, Long> TYPE_UPDATED_AT = new ConcurrentHashMap<>();
+
+  /**
+   * Coalesces the per-type freshness check to at most once per window per type, so request volume
+   * does not translate into one {@code updatedAt} read per request. Independent of
+   * {@link #RECENTLY_REFRESHED_TYPES} (which coalesces miss-heal reloads) to avoid one path
+   * suppressing the other.
+   */
+  protected static final Cache<String, Boolean> RECENTLY_VERSION_CHECKED_TYPES =
+      Caffeine.newBuilder().maximumSize(1_000).expireAfterWrite(Duration.ofSeconds(2)).build();
+
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
   private TypeRegistry() {
@@ -120,9 +137,13 @@ public class TypeRegistry {
   public void addType(Type type) {
     TYPES.put(type.getName(), type);
 
-    // Store custom properties added to a type
-    for (CustomProperty property : type.getCustomProperties()) {
+    // Store custom properties added to a type. Property (Category.Field) types carry no custom
+    // properties, so a self-heal reload of one yields a null list — guard with listOrEmpty.
+    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       TypeRegistry.instance().addCustomProperty(type.getName(), property.getName(), property);
+    }
+    if (type.getUpdatedAt() != null) {
+      TYPE_UPDATED_AT.put(type.getName(), type.getUpdatedAt());
     }
   }
 
@@ -164,6 +185,7 @@ public class TypeRegistry {
 
   public Schema getSchema(String entityType, String propertyName) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    ensureTypeCurrent(entityType);
     ensureCustomPropertyLoaded(entityType, customPropertyFQN);
     return CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
   }
@@ -231,13 +253,90 @@ public class TypeRegistry {
     return refreshed;
   }
 
+  /**
+   * Detects an edit or deletion of a custom property that happened on a peer replica. A stale entry
+   * is a cache <em>hit</em> locally, so the miss-heal never re-reads it; before trusting a hit, this
+   * confirms the owning type's {@code updatedAt} has not advanced since it was loaded. If it has, the
+   * type's cached custom properties are evicted and the type is reloaded from the shared database, so
+   * edits are refreshed and deletions dropped. The check is coalesced to once per type per window and
+   * reads only the small {@code type_entity} row (custom properties are stored separately), so an
+   * unchanged type costs a single-row read and the full reload runs only on an actual change.
+   */
+  private void ensureTypeCurrent(String entityType) {
+    boolean shouldCheck =
+        TYPE_UPDATED_AT.containsKey(entityType)
+            && RECENTLY_VERSION_CHECKED_TYPES.getIfPresent(entityType) == null;
+    if (shouldCheck) {
+      RECENTLY_VERSION_CHECKED_TYPES.put(entityType, Boolean.TRUE);
+      reloadIfTypeChanged(entityType);
+    }
+  }
+
+  private void reloadIfTypeChanged(String entityType) {
+    Long loadedUpdatedAt = TYPE_UPDATED_AT.get(entityType);
+    Long currentUpdatedAt = fetchTypeUpdatedAt(entityType);
+    if (currentUpdatedAt == null) {
+      RECENTLY_VERSION_CHECKED_TYPES.invalidate(entityType);
+    } else if (!currentUpdatedAt.equals(loadedUpdatedAt)) {
+      evictCustomProperties(entityType);
+      refreshTypeFromDb(entityType);
+    }
+  }
+
+  private Long fetchTypeUpdatedAt(String entityType) {
+    Long updatedAt = null;
+    TypeRepository repository = Entity.getTypeRepository();
+    if (repository != null) {
+      try {
+        updatedAt = repository.getUpdatedAt(entityType);
+      } catch (RuntimeException e) {
+        LOG.debug("Could not read updatedAt for type '{}': {}", entityType, e.getMessage());
+      }
+    }
+    return updatedAt;
+  }
+
+  private void evictCustomProperties(String entityType) {
+    String prefix = getCustomPropertyFQNPrefix(entityType) + Entity.SEPARATOR;
+    CUSTOM_PROPERTIES.keySet().removeIf(fqn -> fqn.startsWith(prefix));
+    CUSTOM_PROPERTY_SCHEMAS.keySet().removeIf(fqn -> fqn.startsWith(prefix));
+  }
+
   public void validateCustomProperties(Type type) {
     // Validate custom properties added to a type
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
-      if (TYPES.get(property.getPropertyType().getName()) == null) {
+      String propertyTypeName = property.getPropertyType().getName();
+      if (TYPES.get(propertyTypeName) == null) {
+        // A property type created on a peer replica is absent from this process's startup-loaded
+        // registry; re-read it from the shared database before rejecting it as unknown.
+        reloadTypeFromDb(propertyTypeName);
+      }
+      if (TYPES.get(propertyTypeName) == null) {
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(
-                Entity.TYPE, property.getPropertyType().getName()));
+            CatalogExceptionMessage.entityNotFound(Entity.TYPE, propertyTypeName));
+      }
+    }
+  }
+
+  /**
+   * Re-reads a single type by name from the shared database and repopulates the registry. Self-heals
+   * the {@code TYPES} map when a custom property references a type that was created on a peer replica
+   * and is therefore missing from this process's startup-loaded registry. A failed read is swallowed
+   * so the caller falls through to its existing not-found handling.
+   */
+  private void reloadTypeFromDb(String typeName) {
+    TypeRepository repository = Entity.getTypeRepository();
+    if (repository != null) {
+      try {
+        EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+        Type type = repository.getByName(null, typeName, fields);
+        addType(type);
+        LOG.debug("Self-healed type '{}' from database after registry cache miss", typeName);
+      } catch (RuntimeException e) {
+        LOG.debug(
+            "Could not load type '{}' from database on registry cache miss: {}",
+            typeName,
+            e.getMessage());
       }
     }
   }
@@ -260,6 +359,7 @@ public class TypeRegistry {
 
   public static String getCustomPropertyType(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
+    instance().ensureTypeCurrent(entityType);
     instance().ensureCustomPropertyLoaded(entityType, fqn);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
     if (property == null) {
@@ -271,6 +371,7 @@ public class TypeRegistry {
 
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
+    instance().ensureTypeCurrent(entityType);
     instance().ensureCustomPropertyLoaded(entityType, fqn);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
     if (property != null
