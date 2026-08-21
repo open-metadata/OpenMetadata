@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -163,9 +164,9 @@ class TaskWorkflowHandlerTest {
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
 
-      IllegalStateException exception =
+      TaskStateConflictException exception =
           assertThrows(
-              IllegalStateException.class,
+              TaskStateConflictException.class,
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(
@@ -199,9 +200,9 @@ class TaskWorkflowHandlerTest {
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
 
-      IllegalStateException exception =
+      TaskStateConflictException exception =
           assertThrows(
-              IllegalStateException.class,
+              TaskStateConflictException.class,
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(

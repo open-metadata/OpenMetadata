@@ -78,6 +78,7 @@ import { EventType } from '../../generated/type/changeEvent';
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
+import { EntityIconSize } from '../EntityIconUtils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
@@ -1238,28 +1239,24 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[],
   showIcon?: boolean
 ) =>
-  resources.map((resource) => {
-    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
-
-    return {
-      label: (
-        <div
-          className="d-flex items-center gap-2"
-          data-testid={`${resource}-option`}>
-          {showCheckbox && (
-            <Checkbox checked={selectedResource?.includes(resource)} />
+  resources.map((resource) => ({
+    label: (
+      <div
+        className="d-flex items-center gap-2"
+        data-testid={`${resource}-option`}>
+        {showCheckbox && (
+          <Checkbox checked={selectedResource?.includes(resource)} />
+        )}
+        {showIcon &&
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            EntityIconSize.Size14
           )}
-          {sourceIcon && showIcon && (
-            <div className="d-flex items-center justify-center h-4 w-4">
-              {sourceIcon}
-            </div>
-          )}
-          <span>{getEntityNameLabel(resource ?? '')}</span>
-        </div>
-      ),
-      value: resource ?? '',
-    };
-  });
+        <span>{getEntityNameLabel(resource ?? '')}</span>
+      </div>
+    ),
+    value: resource ?? '',
+  }));
 
 export const getAlertRecentEventsFilterOptions = () => {
   const filters: MenuProps['items'] = Object.values(

@@ -496,10 +496,13 @@ test.describe(
         await waitForExportJobCompleted(apiContext, jobId);
         await afterAction();
 
-        const downloadButton = page
-          .getByRole('button', { name: 'Download' })
-          .first();
+        // Scope to the specific job's tray row so we don't accidentally click
+        // an already-visible Download button from a different completed job
+        // (e.g. "Exported Lineage") whose result URL won't match jobId.
+        const jobRow = page.locator(`[data-testid="csv-job-${jobId}"]`);
+        await expect(jobRow).toBeVisible();
 
+        const downloadButton = jobRow.getByRole('button', { name: 'Download' });
         await expect(downloadButton).toBeVisible();
 
         const resultResponsePromise = page.waitForResponse(

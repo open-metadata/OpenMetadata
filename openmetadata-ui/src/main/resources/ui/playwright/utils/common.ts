@@ -343,6 +343,49 @@ export const toastNotification = async (
   await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
+/**
+ * Waits until the toast carrying `message` is gone.
+ *
+ * Always filter by message instead of waiting on a bare `alert-bar` locator: toasts
+ * are a stacking queue, and the backend fans async-delete/job notifications out to
+ * every socket of the logged-in user — so a parallel worker's cleanup can pop an
+ * unrelated toast into this page and turn an unfiltered locator into a strict-mode
+ * violation.
+ */
+export const waitForToastToDisappear = async (
+  page: Page,
+  message: string | RegExp,
+  timeout?: number
+) => {
+  await page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first()
+    .waitFor({ state: 'detached', timeout });
+};
+
+/**
+ * Asserts that the page is showing no error toast, optionally narrowed to the
+ * ones carrying `message`.
+ *
+ * Scoped to the error variant on purpose — a bare `alert-bar` assertion also
+ * catches the background success notifications the backend fans out to every
+ * socket of the logged-in user (async delete, export jobs), which a parallel
+ * worker can trigger at any moment.
+ */
+export const expectNoErrorToast = async (
+  page: Page,
+  message?: string | RegExp
+) => {
+  const errorToast = page.locator(
+    '[data-testid="alert-bar"][data-variant="error"]'
+  );
+
+  await expect(
+    message ? errorToast.filter({ hasText: message }) : errorToast
+  ).toHaveCount(0);
+};
+
 export const clickOutside = async (page: Page) => {
   await page.locator('body').click({
     position: {
@@ -350,6 +393,29 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+/**
+ * Blocks until every open Ant Design overlay has finished its enter animation.
+ *
+ * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
+ * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
+ * before the `-active` class that begins the transition. Playwright's actionability
+ * check ("bounding box unchanged across two consecutive animation frames") can be
+ * satisfied on those pre-transition frames, so the click point gets computed against
+ * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
+ * item above the intended one — the click silently selects the wrong option.
+ *
+ * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
+ * is the signal that the popup geometry is final.
+ */
+export const waitForAntdPopupToSettle = async (page: Page) => {
+  await expect(
+    page.locator(
+      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
+        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
+    )
+  ).toHaveCount(0);
 };
 
 export const searchFromSearchInput = async (
@@ -1190,13 +1256,15 @@ export const testPaginationNavigation = async (
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
     }
+    await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible();
-    if (!isMenuVisibleAfterHover) {
-      await pageSizeDropdown.click();
-    }
-    await menuItem.waitFor({ state: 'visible' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await menuItem.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(menuItem).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
     const pageSizeChangePromise = page.waitForResponse((response) =>
       response.url().includes(apiEndpointPattern)
@@ -1417,11 +1485,13 @@ export const testClientSidePaginationNavigation = async (
   }
 
   const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  if (!(await menuItem.isVisible())) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
+  await expect(async () => {
+    await pageSizeDropdown.hover();
+    if (!(await menuItem.isVisible())) {
+      await pageSizeDropdown.click();
+    }
+    await expect(menuItem).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
   await menuItem.click();
   await waitForAllLoadersToDisappear(page);
 

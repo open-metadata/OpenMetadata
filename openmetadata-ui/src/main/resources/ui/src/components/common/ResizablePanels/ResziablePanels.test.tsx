@@ -90,4 +90,38 @@ describe('ResizablePanels', () => {
 
     expect(container.querySelector('.test-class')).toBeInTheDocument();
   });
+
+  it('should scroll on the first panel itself when allowScroll is set', () => {
+    // The panel spans the full width, so owning the scroll there keeps the wheel working over the
+    // blank margins beside a width-limited form body.
+    const { getByTestId } = render(
+      <ResizablePanels
+        firstPanel={{ ...firstPanel, allowScroll: true }}
+        pageTitle="Test Page"
+        secondPanel={secondPanel}
+      />
+    );
+
+    expect(getByTestId(firstPanel.className)).toHaveClass(
+      'h-full',
+      'overflow-y-auto'
+    );
+  });
+
+  it('should leave the first panel unscrollable and scroll its card instead by default', () => {
+    const { getByTestId, container } = render(
+      <ResizablePanels
+        firstPanel={firstPanel}
+        pageTitle="Test Page"
+        secondPanel={secondPanel}
+      />
+    );
+
+    expect(getByTestId(firstPanel.className)).not.toHaveClass(
+      'overflow-y-auto'
+    );
+    expect(
+      container.querySelector('.ant-card.h-full.overflow-y-auto')
+    ).toBeInTheDocument();
+  });
 });

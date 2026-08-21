@@ -92,4 +92,27 @@ describe('ResizableLeftPanels', () => {
 
     expect(container.querySelector('.test-class')).toBeInTheDocument();
   });
+
+  it('should render a medium-weight title without strong emphasis', () => {
+    render(
+      <ResizableLeftPanels
+        firstPanel={{
+          ...firstPanel,
+          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
+          title: 'Browse Estate',
+          titleClassName: 'tw:font-medium',
+          titleStrong: false,
+        }}
+        secondPanel={secondPanel}
+      />
+    );
+
+    const title = screen.getByText('Browse Estate');
+
+    expect(title.closest('.ant-card')).toHaveClass(
+      'tw:[&_.ant-card-head-title]:pb-2'
+    );
+    expect(title).toHaveClass('tw:font-medium');
+    expect(title.closest('strong')).not.toBeInTheDocument();
+  });
 });
