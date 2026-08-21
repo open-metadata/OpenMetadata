@@ -252,15 +252,25 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            with self.engine.connect() as conn:
-                results = conn.execute(
-                    text(
-                        MSSQL_GET_STORED_PROCEDURES.format(
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
+            schema_name = self.context.get().database_schema
+            try:
+                with self.engine.connect() as conn:
+                    results = conn.execute(
+                        text(
+                            MSSQL_GET_STORED_PROCEDURES.format(
+                                database_name=self.context.get().database,
+                                schema_name=schema_name,
+                            )
                         )
-                    )
-                ).all()
+                    ).all()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error listing stored procedures for schema {schema_name}: {exc}")
+                self.status.warning(
+                    schema_name,
+                    f"Error listing stored procedures for schema {schema_name}: {exc}",
+                )
+                return
             for row in results:
                 try:
                     stored_procedure = MssqlStoredProcedure.model_validate(row._asdict())

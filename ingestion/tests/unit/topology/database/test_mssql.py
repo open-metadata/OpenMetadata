@@ -311,6 +311,25 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
+    def test_get_stored_procedures_degrades_gracefully_on_query_failure(self):
+        """A permission/syntax failure listing stored procedures for one schema
+        is reported as a warning, not a hard failure that tanks the workflow's
+        success percentage - the rest of ingestion is unaffected."""
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.status = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.connect.side_effect = Exception("The SELECT permission was denied on sql_modules")
+        self.mssql.engine = mock_engine
+
+        results = list(self.mssql.get_stored_procedures())
+
+        self.assertEqual(results, [])
+        self.mssql.status.warning.assert_called_once()
+        self.mssql.status.failed.assert_not_called()
+
 
 class TestUpdateMssqlIschemaNames:
     """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
@@ -746,6 +765,27 @@ class TestMssqlQueryStoreSelection:
         assert "sys.dm_exec_procedure_stats" in statement
 
 
+class TestMssqlDateformatProbe:
+    """get_sqlalchemy_engine_dateformat: falls back to the caller's documented
+    default instead of crashing source/usage/lineage construction when the
+    DBCC USEROPTIONS probe itself fails (e.g. a transient connection issue)."""
+
+    def test_returns_dateformat_value(self):
+        engine = MagicMock()
+        conn = engine.connect.return_value.__enter__.return_value
+        row = MagicMock()
+        row._asdict.return_value = {"Set Option": "dateformat", "Value": "ymd"}
+        conn.execute.return_value.all.return_value = [row]
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) == "ymd"
+
+    def test_returns_none_when_probe_errors(self):
+        engine = MagicMock()
+        engine.connect.side_effect = Exception("connection reset")
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) is None
+
+
 class TestMssqlPerDatabaseQueryStore:
     """Per-database Query Store engine iteration for ingest-all-databases runs."""
 
@@ -846,6 +886,16 @@ class TestMssqlPerDatabaseQueryStore:
         ]
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
+
+    def test_databases_to_scan_degrades_gracefully_on_query_failure(self):
+        """A transient failure listing databases (network blip, timeout) must not
+        crash the whole ingest-all-databases run - it falls back to the single,
+        already-connected engine instead."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.engine.connect.side_effect = Exception("connection reset")
+
+        assert list(source._databases_to_scan()) == []
+        assert list(source.get_engine()) == [source.engine]
 
     def test_falls_back_to_dmv_when_no_user_databases_scanned(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
