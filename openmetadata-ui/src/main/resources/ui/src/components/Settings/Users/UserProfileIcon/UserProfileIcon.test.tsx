@@ -73,6 +73,10 @@ jest.mock('react-i18next', () => ({
       i18n: mockI18n,
     };
   },
+  // AppModeSwitcher's "remember" row uses <Trans>; the dropdown mounts it
+  // unconditionally (as part of the closed popover's content), so it needs
+  // a renderable stand-in even though no test here asserts on its text.
+  Trans: ({ i18nKey }: { i18nKey?: string }) => <>{i18nKey}</>,
 }));
 
 const mockPersonas: EntityReference[] = [
@@ -251,6 +255,20 @@ describe('UserProfileIcon', () => {
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+  });
+
+  it('renders the AppModeSwitcher inside the profile dropdown', async () => {
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    openDropdown();
+
+    expect(
+      await screen.findByTestId('app-mode-switcher-trigger')
+    ).toBeInTheDocument();
   });
 
   it('should update dropdown labels when language changes', async () => {
