@@ -210,7 +210,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 load_description_map()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
+                logger.warning(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]

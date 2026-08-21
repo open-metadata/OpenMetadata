@@ -119,6 +119,17 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         for database in databases:
             engine = self._engine_for_database(database)
             self._active_query_store = is_query_store_enabled(engine)
+            if self._active_query_store:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is enabled.",
+                    database,
+                )
+            else:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is not enabled or not accessible, "
+                    "using plan-cache DMVs.",
+                    database,
+                )
             try:
                 yield engine
             finally:

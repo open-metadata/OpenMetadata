@@ -116,6 +116,13 @@ SQLSERVER_ERRORS = ErrorPack(
         "Insufficient privileges",
         fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
     ),
+    # Azure SQL DTU/vCore resource-governance throttling - not an auth or permission
+    # error, keyed by number only since the message text varies by which limit was hit.
+    when(_sqlserver_errno(10928, 10929)).diagnose(
+        "Azure SQL resource limit reached (throttled)",
+        fix="The database's DTU/vCore limit was reached. Reduce concurrent load or scale up the "
+        "Azure SQL database, then retry.",
+    ),
 )
 
 MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
