@@ -67,9 +67,15 @@ const executeTokenOperation = async (
             reject(request.error);
           };
 
-          // Handle case where database doesn't exist yet
-          request.onupgradeneeded = () => {
-            resolve(null);
+          // Initialize the store when this is the first IndexedDB access for
+          // the origin. Resolving during onupgradeneeded used to leave an
+          // empty version-1 database behind; the following write would then
+          // wait forever because there was no store and no further upgrade.
+          request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains(storeName)) {
+              db.createObjectStore(storeName);
+            }
           };
         });
       };

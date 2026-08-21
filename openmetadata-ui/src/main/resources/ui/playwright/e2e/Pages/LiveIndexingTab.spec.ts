@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
-import { getDefaultAdminAPIContext } from '../../utils/common';
+import { GlobalSettingOptions } from '../../constant/settings';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
