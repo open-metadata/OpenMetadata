@@ -17,6 +17,11 @@ import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// These tests share classifications created in beforeAll and removed in
+// afterAll. Fully-parallel execution lets one test delete them while the other
+// is still navigating to its classification page.
+test.describe.configure({ mode: 'serial' });
+
 const userClassification = new ClassificationClass();
 const systemClassification = new ClassificationClass({
   provider: 'system',

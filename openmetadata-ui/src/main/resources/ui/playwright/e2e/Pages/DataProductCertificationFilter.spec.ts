@@ -133,6 +133,11 @@ test.describe(
   'Data Products - Certification filter',
   { tag: '@Governance' },
   () => {
+    // Both tests share the module-scoped tags and data products created by this
+    // hook. In a fully-parallel project Playwright otherwise runs the hook once
+    // per test, and the second invocation recreates the same tags with a 409.
+    test.describe.configure({ mode: 'serial' });
+
     test.beforeAll('Setup certified data products', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 

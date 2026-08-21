@@ -223,6 +223,12 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editTags(tagName: string): Promise<OverviewPageObject> {
+    // Callers use this method to ensure a tag is assigned. Avoid reopening the selector
+    // when an earlier test using the same entity has already established that state.
+    if (await this.tagListContainer.getByText(tagName).isVisible()) {
+      return this;
+    }
+
     // Use dispatchEvent to avoid Playwright's internal scroll-into-view on click().
     // Scrolling the panel container triggers a React re-render that detaches the icon,
     // causing Playwright to retry the scroll → re-render → infinite loop under load.
@@ -276,6 +282,12 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editGlossaryTerms(termName: string): Promise<OverviewPageObject> {
+    // Callers use this method to ensure a term is assigned. Selecting an active term is a
+    // toggle, and confirming an unchanged selector may not emit the PATCH awaited below.
+    if (await this.glossaryTermListContainer.getByText(termName).isVisible()) {
+      return this;
+    }
+
     await this.editGlossaryTermsIcon.click();
 
     await this.selectableList.waitFor({ state: 'visible' });

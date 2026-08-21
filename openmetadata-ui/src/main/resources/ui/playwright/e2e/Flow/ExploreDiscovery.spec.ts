@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
@@ -31,6 +31,27 @@ let table: TableClass;
 let table1: TableClass;
 let user: UserClass;
 let domain: Domain;
+
+const waitForFacetSearchResponse = (
+  page: Page,
+  field: string,
+  value: string,
+  deleted: boolean
+) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/search/aggregate' &&
+      url.searchParams.get('index') === 'dataAsset' &&
+      url.searchParams.get('field') === field &&
+      url.searchParams
+        .get('value')
+        ?.toLowerCase()
+        .includes(value.toLowerCase()) === true &&
+      url.searchParams.get('deleted') === String(deleted)
+    );
+  });
 
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
@@ -257,15 +278,18 @@ test.describe('Explore Assets Discovery', () => {
 
     // The user should not be visible in the owners filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Owners"]');
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=false*`
+    const searchResOwner = waitForFacetSearchResponse(
+      page,
+      'ownerDisplayName',
+      user.responseData.displayName,
+      false
     );
 
     await page.fill(
       '[data-testid="search-input"]',
       user.responseData.displayName
     );
-    await searchResOwner;
+    expect((await searchResOwner).ok()).toBeTruthy();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -280,15 +304,18 @@ test.describe('Explore Assets Discovery', () => {
     // The domain should not be visible in the domains filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=false*`
+    const searchResDomain = waitForFacetSearchResponse(
+      page,
+      'domains.displayName.keyword',
+      domain.responseData.displayName,
+      false
     );
 
     await page.fill(
       '[data-testid="search-input"]',
       domain.responseData.displayName
     );
-    await searchResDomain;
+    expect((await searchResDomain).ok()).toBeTruthy();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -317,12 +344,15 @@ test.describe('Explore Assets Discovery', () => {
     const ownerSearchText = user.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Owners"]');
 
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=true*`
+    const searchResOwner = waitForFacetSearchResponse(
+      page,
+      'ownerDisplayName',
+      ownerSearchText,
+      true
     );
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
-    await searchResOwner;
+    expect((await searchResOwner).ok()).toBeTruthy();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -346,21 +376,23 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Owners dropdown before opening the next — immediate-apply keeps
     // it open after selection, and a stale open menu has its own search-input
     await page.keyboard.press('Escape');
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId(ownerSearchText)
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.locator('[data-testid="drop-down-menu"]:visible')
+    ).toHaveCount(0);
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=true*`
+    const searchResDomain = waitForFacetSearchResponse(
+      page,
+      'domains.displayName.keyword',
+      domainSearchText,
+      true
     );
 
     await page.fill('[data-testid="search-input"]', domainSearchText);
-    await searchResDomain;
+    expect((await searchResDomain).ok()).toBeTruthy();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -386,22 +418,25 @@ test.describe('Explore Assets Discovery', () => {
 
     // Close the Domains dropdown before opening the Data Assets one
     await page.keyboard.press('Escape');
-
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId(domainSearchText)
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.locator('[data-testid="drop-down-menu"]:visible')
+    ).toHaveCount(0);
 
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
+    const dataAssetResponse = waitForFacetSearchResponse(
+      page,
+      'entityType.keyword',
+      '',
+      true
+    );
     await page.click('[data-testid="search-dropdown-Data Assets"]');
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    expect((await dataAssetResponse).ok()).toBeTruthy();
+    const dataAssetMenu = page.locator(
+      '[data-testid="drop-down-menu"]:visible'
+    );
+    await dataAssetMenu.getByTestId('loader').waitFor({ state: 'detached' });
 
-    await expect(
-      page.getByTestId('drop-down-menu').getByTestId('table')
-    ).toBeAttached();
+    await expect(dataAssetMenu.getByTestId('table')).toBeAttached();
   });
 });

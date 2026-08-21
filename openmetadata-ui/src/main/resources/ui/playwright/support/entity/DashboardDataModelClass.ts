@@ -196,6 +196,16 @@ export class DashboardDataModelClass extends EntityClass {
         data: this.entity,
       });
     }
+    // A transient 5xx can be returned after the create transaction committed.
+    // The retry then correctly answers 409; reconcile that outcome with the
+    // exact entity instead of reporting a duplicate fixture as a test failure.
+    if (entityResponse.status() === 409) {
+      entityResponse = await apiContext.get(
+        `/api/v1/dashboard/datamodels/name/${encodeURIComponent(
+          `${this.service.name}.${this.entity.name}`
+        )}`
+      );
+    }
     if (!entityResponse.ok()) {
       throw new Error(
         `Dashboard data model create failed (${entityResponse.status()}): ${await entityResponse.text()}`

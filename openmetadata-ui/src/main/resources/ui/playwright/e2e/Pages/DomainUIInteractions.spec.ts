@@ -56,6 +56,12 @@ test.describe('Domain Owner Management', () => {
     try {
       await domain.create(apiContext);
       await user.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        user.getUserName(),
+        'user_search_index',
+        { timeout: 60_000, intervals: [2_000] }
+      );
 
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
@@ -72,43 +78,26 @@ test.describe('Domain Owner Management', () => {
       await page.getByRole('tab', { name: 'Users' }).click();
       await waitForAllLoadersToDisappear(page);
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // The exact user is indexed before opening the picker, so one scoped
+      // request is sufficient and cannot be satisfied by the empty-query
+      // request emitted by clear().
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
       const ownerItem = page.getByRole('listitem', {
         name: user.getUserDisplayName(),
         exact: true,
       });
-      const maxRetries = 5;
+      const searchResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/search/query') &&
+          res.url().includes('user') &&
+          decodeURIComponent(res.url()).includes(user.getUserName())
+      );
+      await searchBar.fill(user.getUserName());
+      expect((await searchResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await ownerItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          await waitForSearchIndexed(
-            apiContext,
-            user.getUserName(),
-            'user_search_index',
-            { timeout: 3000 }
-          ).catch(() => undefined);
-        }
-      }
-
-      await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
+      await ownerItem.waitFor({ state: 'visible', timeout: 30_000 });
       await ownerItem.click();
 
       // Click update button and wait for patch

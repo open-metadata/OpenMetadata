@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { OntologyExplorerFiltersData as FiltersData } from '../../support/entity/OntologyExplorerDataClass';
+import { closeFirstPopupAlert } from '../../utils/common';
 import {
   applyGlossaryFilter,
   applyMultiGlossaryFilter,
@@ -24,6 +25,26 @@ import {
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+const switchToModelMode = async (page: Page) => {
+  const modelTab = page.getByRole('tab', { name: 'Model' });
+
+  // Async job notifications are broadcast to every admin socket. Full AUT
+  // runs can therefore stack another worker's toasts over these bottom-aligned
+  // tabs. Dismiss one per attempt and retry the real user click until the mode
+  // change is committed, instead of bypassing actionability with a forced click.
+  await expect(async () => {
+    if ((await modelTab.getAttribute('aria-selected')) === 'true') {
+      return;
+    }
+
+    await closeFirstPopupAlert(page);
+    await modelTab.click({ timeout: 2_000 });
+    await expect(modelTab).toHaveAttribute('aria-selected', 'true', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 30_000, intervals: [250, 500, 1_000] });
+};
 
 test.describe('Ontology Explorer - Filters and Tabs', () => {
   test.beforeAll(async ({ browser }) => {
@@ -239,11 +260,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Data' }).click();
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Model' }).click();
-      await expect(page.getByRole('tab', { name: 'Model' })).toHaveAttribute(
-        'aria-selected',
-        'true'
-      );
+      await switchToModelMode(page);
     });
 
     test('should show graph stats after switching to Data mode', async ({
@@ -273,7 +290,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-clear-all-btn')).toBeVisible();
 
-      await page.getByRole('tab', { name: 'Model' }).click();
+      await switchToModelMode(page);
       await waitForGraphLoaded(page);
       await expect(stats).toContainText('2 Terms');
     });
@@ -377,7 +394,7 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
       await waitForGraphLoaded(page);
       await page.getByRole('tab', { name: 'Data' }).click();
       await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Model' }).click();
+      await switchToModelMode(page);
 
       await expect(page.getByTestId('view-mode-select')).not.toHaveAttribute(
         'data-disabled',

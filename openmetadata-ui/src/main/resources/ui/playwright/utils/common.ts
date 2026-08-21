@@ -27,7 +27,10 @@ import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-import { getToken as getTokenFromStorage } from './tokenStorage';
+import {
+  getToken as getTokenFromStorage,
+  setToken as setTokenInStorage,
+} from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -113,12 +116,51 @@ export const redirectToHomePage = async (
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForURL('**/my-data', {
-    waitUntil: 'domcontentloaded',
-  });
+  await page.waitForURL(
+    (url) => ['/my-data', '/signin'].includes(url.pathname),
+    { waitUntil: 'domcontentloaded' }
+  );
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
+  }
+
+  // Under the full AUT fan-out Chromium can occasionally restore the cookies/localStorage from
+  // admin.json before its IndexedDB token record. The app then redirects an otherwise valid
+  // admin context to /signin. Recover only the known admin fixture; never replace a role user's
+  // identity. Validate the recovery on the authenticated user request before returning.
+  if (new URL(page.url()).pathname === '/signin') {
+    const storedUser = await page.evaluate(() =>
+      localStorage.getItem('loggedInUsers')
+    );
+
+    if (storedUser === 'admin') {
+      await setTokenInStorage(page, await getSavedAdminToken());
+      const loggedInUserResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/users/loggedInUser',
+        { timeout: 30_000 }
+      );
+      await page.goto('/my-data', {
+        waitUntil: 'domcontentloaded',
+      });
+      const response = await loggedInUserResponse;
+      if (!response.ok()) {
+        throw new Error(
+          `Admin storage-state recovery failed (${response.status()})`
+        );
+      }
+      await page.waitForURL('**/my-data', {
+        waitUntil: 'domcontentloaded',
+      });
+      if (_waitForLoaders) {
+        await waitForAllLoadersToDisappear(page);
+      }
+    } else {
+      throw new Error(
+        `Stored user ${storedUser ?? '<unknown>'} was redirected to /signin`
+      );
+    }
   }
 };
 
@@ -159,13 +201,13 @@ type CreateNewPageResult = {
 type NavigatedPageResult = CreateNewPageResult & { page: Page };
 type APIOnlyPageResult = CreateNewPageResult & { page?: never };
 
-export const getSavedAdminToken = async () => {
+export async function getSavedAdminToken() {
   const tokenFile = JSON.parse(await readFile(adminApiTokenFile, 'utf8')) as {
     token: string;
   };
 
   return tokenFile.token;
-};
+}
 
 const createValidatedWorkerAdminAPIContext = async () => {
   const apiContext = await getAuthContext(await getSavedAdminToken());

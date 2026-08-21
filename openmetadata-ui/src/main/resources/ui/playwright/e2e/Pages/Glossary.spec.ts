@@ -1192,6 +1192,68 @@ test.describe('Glossary tests', () => {
         'Add',
         EntityTypeEndpoint.Table
       );
+      const entityFqn = get(
+        table,
+        'entityResponseData.fullyQualifiedName'
+      ) as string;
+      const queryFilter = {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'tags.tagFQN': glossaryTerm1.responseData.fullyQualifiedName,
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      // The glossary Assets tab reads from the search index, which is updated
+      // asynchronously after the entity PATCH. Wait for the exact entity to be
+      // searchable before mounting the tab; waiting for a browser response is
+      // racy because a one-term glossary can fetch before the explicit click.
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get('/api/v1/search/query', {
+              params: {
+                q: '*',
+                index: 'all',
+                from: 0,
+                size: 10,
+                deleted: false,
+                query_filter: JSON.stringify(queryFilter),
+              },
+            });
+
+            if (!response.ok()) {
+              return false;
+            }
+
+            const result = (await response.json()) as {
+              hits?: {
+                hits?: Array<{
+                  _source?: { fullyQualifiedName?: string };
+                }>;
+              };
+            };
+
+            return (
+              result.hits?.hits?.some(
+                (hit) => hit._source?.fullyQualifiedName === entityFqn
+              ) ?? false
+            );
+          },
+          {
+            message: `Wait for ${entityFqn} to be indexed with glossary term`,
+            timeout: 60_000,
+            intervals: [1_000, 2_000, 5_000],
+          }
+        )
+        .toBe(true);
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
@@ -1207,7 +1269,6 @@ test.describe('Glossary tests', () => {
           )
         )
         .toBeGreaterThanOrEqual(1);
-      const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
       await expect(
         page.getByTestId(`table-data-card_${entityFqn}`)

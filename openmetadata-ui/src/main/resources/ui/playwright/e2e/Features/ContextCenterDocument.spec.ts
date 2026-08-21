@@ -569,7 +569,14 @@ test.describe('Context Center - Documents Page', () => {
       view.locator(`[data-testid="document-row-${outsideDoc.id}"]`)
     ).toBeVisible();
 
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
     await searchInput.clear();
+    await browseResPromise;
+    await expect(searchInput).toHaveValue('');
     await waitForAllLoadersToDisappear(page);
     await selectFolderInSidebar(page, folderName);
 

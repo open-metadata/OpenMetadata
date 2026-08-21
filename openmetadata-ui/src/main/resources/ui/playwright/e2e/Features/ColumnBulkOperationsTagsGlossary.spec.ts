@@ -136,6 +136,11 @@ function getColumnRowCheckbox(page: Page, rowId: string) {
 }
 
 test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () => {
+  // This suite deliberately shares one table and glossary term from beforeAll.
+  // Opt out of fully-parallel execution so Playwright does not run beforeAll
+  // once per test and race two creates for the same glossary name.
+  test.describe.configure({ mode: 'default' });
+
   const CLASSIFICATION_TAG_FQN = 'PII.Sensitive';
   const table = new TableClass();
   const glossaryTerm = new GlossaryTerm();

@@ -53,6 +53,11 @@ const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
     )
     .first();
 
+export const isLandingPageWidgetConfigured = async (
+  page: Page,
+  widgetKey: string
+) => (await getLandingPageWidgetSlot(page, widgetKey).count()) > 0;
+
 const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const slot = getLandingPageWidgetSlot(page, widgetKey);
 
@@ -265,11 +270,28 @@ export const waitForLandingPageWidget = async (
 ): Promise<Locator> => {
   const widget = page.getByTestId(widgetKey);
 
-  await revealLandingPageWidget(page, widgetKey);
+  // The persona layout can finish loading immediately after the first slot lookup. If the
+  // widget is below the fold, a one-shot lookup misses that newly attached slot and the
+  // DeferredWidget never intersects the viewport, so waiting on the child alone deadlocks.
+  // Re-run the reveal step until the slot can be scrolled and its child mounts.
+  await expect
+    .poll(
+      async () => {
+        await revealLandingPageWidget(page, widgetKey);
 
-  await expect(widget).toBeVisible();
+        return widget.isVisible().catch(() => false);
+      },
+      {
+        intervals: [250, 500, 1_000],
+        message: `Landing page widget ${widgetKey} did not mount`,
+        timeout: 60_000,
+      }
+    )
+    .toBe(true);
 
-  await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
+  await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden({
+    timeout: 60_000,
+  });
 
   return widget;
 };
@@ -316,7 +338,11 @@ export const setUserDefaultPersona = async (
     page.locator('[data-testid="default-persona-select-list"]')
   ).toBeVisible();
 
-  const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
+  const setDefaultPersona = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/') &&
+      response.request().method() === 'PATCH'
+  );
 
   // Click on the persona option by text within the dropdown
   await page.click(`.ant-select-dropdown:visible [title="${personaName}"]`);
@@ -325,7 +351,8 @@ export const setUserDefaultPersona = async (
     .locator('[data-testid="user-profile-default-persona-edit-save"]')
     .click();
 
-  await setDefaultPersona;
+  const setDefaultPersonaResponse = await setDefaultPersona;
+  expect(setDefaultPersonaResponse.ok()).toBeTruthy();
 
   await expect(
     page.locator('[data-testid="persona-details-card"]')

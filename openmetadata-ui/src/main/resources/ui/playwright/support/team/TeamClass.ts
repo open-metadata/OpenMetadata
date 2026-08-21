@@ -74,12 +74,12 @@ export class TeamClass {
       return;
     }
 
-    const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
-    );
+    // The organization record is cached after the first team test, so a later
+    // visit is not guaranteed to issue this GET. The rendered listing is the
+    // contract we need; waiting for an optional cache miss causes a 60s stall.
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);
-    await fetchOrganizationResponse;
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     await searchTeam(page, expectedDisplayName);
 

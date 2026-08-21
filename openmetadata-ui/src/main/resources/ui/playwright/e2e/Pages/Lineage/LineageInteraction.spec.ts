@@ -168,27 +168,39 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('Verify edge delete button in drawer', async ({ page }) => {
       const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
       const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      const { apiContext, afterAction } = await getApiContext(page);
 
-      await editLineage(page);
+      try {
+        await editLineage(page);
 
-      await clickEdgeBetweenNodes(page, table1, topic, false);
+        await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      const deleteBtn = page.getByTestId('add-pipeline');
-      await expect(deleteBtn).toBeVisible();
+        const deleteBtn = page.getByTestId('add-pipeline');
+        await expect(deleteBtn).toBeVisible();
 
-      await deleteBtn.click();
+        await deleteBtn.click();
 
-      await page.getByTestId('remove-edge-button').click();
+        await page.getByTestId('remove-edge-button').click();
 
-      await page.getByRole('button', { name: /confirm/i }).waitFor();
-      await page.getByRole('button', { name: /confirm/i }).click();
+        await page.getByRole('button', { name: /confirm/i }).waitFor();
+        await page.getByRole('button', { name: /confirm/i }).click();
 
-      await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-      await editLineageClick(page);
+        await editLineageClick(page);
 
-      const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
-      await expect(edgeDiv).not.toBeVisible();
+        const edgeDiv = page.getByTestId(`edge-${table1Fqn}-${topicFqn}`);
+        await expect(edgeDiv).not.toBeVisible();
+      } finally {
+        // The outer suite shares this edge. Restore it even when an assertion
+        // fails so later node-interaction tests do not inherit a one-node graph.
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: table1.entityResponseData.id, type: 'table' },
+          { id: topic.entityResponseData.id, type: 'topic' }
+        );
+        await afterAction();
+      }
     });
 
     test('Verify function data in edge drawer', async ({ page }) => {

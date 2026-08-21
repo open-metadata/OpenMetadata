@@ -114,6 +114,11 @@ const getDatabaseNgramBoost = (request: { postDataJSON: () => unknown }) => {
 };
 
 test.describe('Search Settings', () => {
+  // Every test in this file reads or writes the same tenant-wide search settings document.
+  // Keep the tests independent, but do not let fullyParallel split them across workers and
+  // restore the document underneath one another.
+  test.describe.configure({ mode: 'default' });
+
   test.beforeAll(async ({ browser }) => {
     adminUser = new AdminClass();
 
@@ -124,8 +129,15 @@ test.describe('Search Settings', () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await afterAction();
+    try {
+      const resetResponse = await apiContext.put(
+        '/api/v1/system/settings/reset/searchSettings'
+      );
+      expect(resetResponse.ok()).toBeTruthy();
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test.describe('Search Settings Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -475,8 +487,17 @@ test.describe('Search Settings', () => {
         );
         await ngramPanel.click();
 
-        // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        // Always choose a value that differs from the current setting. A prior
+        // interrupted run may already have persisted 5, in which case the Save
+        // button correctly remains disabled and a hard-coded value deadlocks.
+        // A one-point delta can map to the same physical slider pixel and leave
+        // Save disabled. Move by a material amount while staying in range.
+        const changedNgramBoost =
+          initialNgramBoost <= 50
+            ? Math.min(100, initialNgramBoost + 25)
+            : Math.max(0, initialNgramBoost - 25);
+        await setSliderValue(page, 'field-weight-slider', changedNgramBoost);
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>

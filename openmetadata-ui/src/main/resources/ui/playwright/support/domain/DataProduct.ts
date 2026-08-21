@@ -140,7 +140,11 @@ export class DataProduct extends EntityClass {
   }
 
   private getFqn() {
-    return this.data?.fullyQualifiedName ?? this.data.name;
+    return (
+      this.responseData?.fullyQualifiedName ??
+      this.data?.fullyQualifiedName ??
+      this.data.name
+    );
   }
 
   async addAssets(apiContext: APIRequestContext, assets: AssetReference[]) {
@@ -151,12 +155,18 @@ export class DataProduct extends EntityClass {
       }
     );
 
-    // A 400 here is a bulk-operation report (numberOfRowsFailed and a
-    // failedRequest list), not a transport failure, so the caller inspects the
-    // body rather than having it raised.
     const data = await response.json();
-    this.responseData = data;
 
+    if (!response.ok()) {
+      throw new Error(
+        `DataProduct.addAssets() failed with status ${response.status()}: ${JSON.stringify(
+          data
+        )}`
+      );
+    }
+
+    // Do not replace responseData: this endpoint returns a bulk-operation
+    // result, not a DataProduct.
     return data;
   }
 

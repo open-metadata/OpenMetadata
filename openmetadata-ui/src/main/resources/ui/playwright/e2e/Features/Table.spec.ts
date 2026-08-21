@@ -415,12 +415,19 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe('Tags and glossary terms should be consistent for search ', () => {
+  let isolatedTable: TableClass;
+  let isolatedTableFqn = '';
+  let isolatedColumnFqn = '';
+  let isolatedColumnName = '';
+  let isolatedTagColumnFqn = '';
+  let isolatedTagColumnName = '';
   let glossary: Glossary;
   let glossaryTerm: GlossaryTerm;
   let testClassification: ClassificationClass;
   let testTag: TagClass;
 
   test.beforeAll(async ({ browser }) => {
+    isolatedTable = new TableClass();
     glossary = new Glossary();
     glossaryTerm = new GlossaryTerm(glossary);
     testClassification = new ClassificationClass();
@@ -431,6 +438,24 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
+      await isolatedTable.create(apiContext);
+      isolatedTableFqn =
+        isolatedTable.entityResponseData.fullyQualifiedName ?? '';
+      isolatedColumnFqn =
+        isolatedTable.entityResponseData.columns?.[0].fullyQualifiedName ?? '';
+      isolatedColumnName =
+        isolatedTable.entityResponseData.columns?.[0].name ?? '';
+      isolatedTagColumnFqn =
+        isolatedTable.entityResponseData.columns?.[1].fullyQualifiedName ?? '';
+      isolatedTagColumnName =
+        isolatedTable.entityResponseData.columns?.[1].name ?? '';
+
+      expect(isolatedTableFqn).not.toBe('');
+      expect(isolatedColumnFqn).not.toBe('');
+      expect(isolatedColumnName).not.toBe('');
+      expect(isolatedTagColumnFqn).not.toBe('');
+      expect(isolatedTagColumnName).not.toBe('');
+
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
       await testClassification.create(apiContext);
@@ -440,12 +465,25 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     }
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await isolatedTable.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test('Glossary term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
-    const tableRoute = '/table/sample_data.ecommerce_db.shopify.dim_customer';
-    const glossaryRowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
+    const tableRoute = `/table/${encodeURIComponent(isolatedTableFqn)}`;
+    const glossaryRowSelector = `[data-row-key="${isolatedColumnFqn}"]`;
 
     await expect
       .poll(
@@ -469,8 +507,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
     // Check if add button exists and is visible
-    const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
+    const rowSelector = `${glossaryRowSelector} [data-testid*="glossary-tags"]`;
 
     const addButton = glossaryTagsCell.getByTestId('add-tag');
     if (await addButton.isVisible().catch(() => false)) {
@@ -520,7 +557,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await page
       .getByTestId('search-bar-container')
       .getByTestId('searchbar')
-      .fill('customer_id');
+      .fill(isolatedColumnName);
     await page
       .getByTestId('entity-table')
       .getByTestId('loader')
@@ -576,19 +613,23 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
   test('Tags term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
+    const tableRoute = `/table/${encodeURIComponent(isolatedTableFqn)}`;
     const columnsResponse = page.waitForResponse(
-      '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
+      (response) =>
+        response.url().includes('/api/v1/tables/name/') &&
+        response.url().includes('/columns?') &&
+        response.request().method() === 'GET' &&
+        response.ok()
     );
 
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto(tableRoute);
 
     // Wait for page to be fully loaded
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
     // Check if add button exists and is visible
-    const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+    const rowSelector = `[data-row-key="${isolatedTagColumnFqn}"] [data-testid*="classification-tags"]`;
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
     if (await addButton.isVisible()) {
@@ -626,12 +667,16 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
-      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
+      (response) =>
+        response.url().includes('/api/v1/tables/name/') &&
+        response.url().includes('/columns/') &&
+        response.request().method() === 'GET' &&
+        response.ok()
     );
     await page
       .getByTestId('search-bar-container')
       .getByTestId('searchbar')
-      .fill('shop_id');
+      .fill(isolatedTagColumnName);
 
     await getRequest;
 
@@ -641,9 +686,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.click(
-      `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
-    );
+    await page.locator(rowSelector).getByTestId('edit-button').click();
 
     await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
     await page

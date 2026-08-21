@@ -14,6 +14,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
+import { searchQuery } from '../rest/searchAPI';
 import {
   getFeedHeaderTextFromCardStyle,
   getFieldOperationIcon,
@@ -68,6 +69,10 @@ jest.mock('./FqnUtils', () => ({
 }));
 
 describe('Feed Utils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should getEntityType return the correct entity type', () => {
     expect(getEntityType('<#E::table::db.schema.table>')).toBe('table');
   });
@@ -100,6 +105,21 @@ describe('Feed Utils', () => {
         type: 'team',
       },
     ]);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+      })
+    );
+  });
+
+  it('should preserve relevance ordering for a typed mention search', async () => {
+    await suggestions('Table1', '@');
+
+    const request = jest.mocked(searchQuery).mock.calls[0][0];
+
+    expect(request).not.toHaveProperty('sortField');
+    expect(request).not.toHaveProperty('sortOrder');
   });
 
   it('should return correct backend format for a given message', () => {

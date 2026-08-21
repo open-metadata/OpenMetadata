@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { Browser, Page, test as base } from '@playwright/test';
-import { disableEtagConditionalReads } from '../../utils/common';
+import {
+  disableEtagConditionalReads,
+  getSavedAdminToken,
+} from '../../utils/common';
+import { setToken } from '../../utils/tokenStorage';
 
 // Define the type for our custom fixtures
 export type CustomFixtures = {
@@ -30,6 +34,14 @@ export type CustomFixtures = {
 const openRolePage = async (browser: Browser, storageState: string) => {
   const page = await browser.newPage({ storageState });
   await disableEtagConditionalReads(page);
+
+  if (storageState === 'playwright/.auth/admin.json') {
+    // Establish the application origin before touching IndexedDB, then write the validated
+    // worker token explicitly. This removes the cold-context restoration race seen at high
+    // concurrency while leaving every non-admin role fixture unchanged.
+    await page.goto('/api/v1/system/config/auth');
+    await setToken(page, await getSavedAdminToken());
+  }
 
   return page;
 };

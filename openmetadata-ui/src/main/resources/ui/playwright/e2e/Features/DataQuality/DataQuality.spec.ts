@@ -1076,6 +1076,14 @@ test.describe(
         }
       };
 
+      const toggleAdvancedFilter = async (page: Page, value: string) => {
+        await page.getByTestId('advanced-filter').click();
+
+        const visibleDropdown = page.locator('.ant-dropdown:visible');
+        await expect(visibleDropdown).toBeVisible();
+        await visibleDropdown.locator(`[value="${value}"]`).click();
+      };
+
       try {
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -1083,14 +1091,10 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // get all the filters
-        await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="testPlatforms"]');
-        await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
-        await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="serviceName"]');
-        await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="tier"]');
+        await toggleAdvancedFilter(page, 'testPlatforms');
+        await toggleAdvancedFilter(page, 'lastRunRange');
+        await toggleAdvancedFilter(page, 'serviceName');
+        await toggleAdvancedFilter(page, 'tier');
 
         // Test case search filter
         const searchTestCaseResponse = page.waitForResponse(
@@ -1137,11 +1141,10 @@ test.describe(
         await verifyFilter2TestCase(page);
 
         // remove service filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="serviceName"]');
+        await toggleAdvancedFilter(page, 'serviceName');
         await getTestCase;
 
         // Test case filter by Tags
@@ -1171,11 +1174,10 @@ test.describe(
         await verifyFilter2TestCase(page, true);
 
         // remove tags filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tags"]');
+        await toggleAdvancedFilter(page, 'tags');
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
@@ -1192,11 +1194,10 @@ test.describe(
         await verifyFilter2TestCase(page, true);
 
         // remove tier filter
-        await page.click('[data-testid="advanced-filter"]');
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tier"]');
+        await toggleAdvancedFilter(page, 'tier');
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
@@ -1329,8 +1330,7 @@ test.describe(
 
         expect(page.url()).toBe(url);
 
-        await page.getByTestId('advanced-filter').click();
-        await page.click('[value="testPlatforms"]');
+        await toggleAdvancedFilter(page, 'testPlatforms');
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1485,6 +1485,9 @@ test.describe(
           );
 
           await expect(pageSizeDropdown).toBeVisible();
+          // The list response can finish before React clears the pagination loading state.
+          // Hovering the disabled Ant Dropdown trigger is ignored and is not replayed later.
+          await expect(pageSizeDropdown).toBeEnabled();
           // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
           // button only runs its preventDefault handler and may not open the menu.
           await pageSizeDropdown.hover();

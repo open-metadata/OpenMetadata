@@ -791,7 +791,8 @@ test.describe('Glossary P3 Tests', () => {
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
-      await page.goto(`/glossary/NonExistentGlossary_${Date.now()}`);
+      const invalidGlossaryPath = `/glossary/NonExistentGlossary_${Date.now()}`;
+      await page.goto(invalidGlossaryPath);
       await page.waitForLoadState('domcontentloaded');
       await waitForAllLoadersToDisappear(page).catch(() => {});
 
@@ -803,31 +804,28 @@ test.describe('Glossary P3 Tests', () => {
       // Check for glossary page elements (redirect behavior)
       const glossaryHeader = page.getByTestId('entity-header-name');
       const addGlossaryButton = page.getByTestId('add-glossary');
+      const addGlossaryListButton = page
+        .getByRole('button', { name: 'Add', exact: true })
+        .first();
       const glossarySidebar = page.locator('.left-panel-card');
-
-      // Any of these states is acceptable for error handling
-      const hasValidResponse =
-        (await badMessage
-          .first()
-          .isVisible({ timeout: 10000 })
-          .catch(() => false)) ||
-        (await errorState
-          .first()
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await noDataPlaceholder
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await glossaryHeader
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await addGlossaryButton
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
-        (await glossarySidebar.isVisible({ timeout: 2000 }).catch(() => false));
-
-      // Verify the app handled the invalid URL (either error page or redirect)
-      expect(hasValidResponse).toBeTruthy();
+      // locator.isVisible() is an immediate probe; its timeout option does not
+      // wait for a lazy route to finish mounting. Poll the complete set of
+      // accepted error/fallback states so the assertion observes the rendered
+      // route instead of the transient full-screen loader.
+      await expect
+        .poll(
+          async () =>
+            new URL(page.url()).pathname !== invalidGlossaryPath ||
+            (await badMessage.first().isVisible()) ||
+            (await errorState.first().isVisible()) ||
+            (await noDataPlaceholder.isVisible()) ||
+            (await glossaryHeader.isVisible()) ||
+            (await addGlossaryButton.isVisible()) ||
+            (await addGlossaryListButton.isVisible()) ||
+            (await glossarySidebar.isVisible()),
+          { timeout: 15_000 }
+        )
+        .toBeTruthy();
     } finally {
       await afterAction();
     }

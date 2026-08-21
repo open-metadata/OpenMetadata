@@ -323,9 +323,9 @@ test.describe('Context Center - Archive Page', () => {
   });
 });
 
-// ─── Suite: Folder delete — file absent from search and archive ────────────────
+// ─── Suite: Folder delete — file absent from search, present in archive ───────
 
-test.describe('Context Center - Folder Delete: file absent from search and archive', () => {
+test.describe('Context Center - Folder Delete: file absent from search and present in archive', () => {
   let folder: ContextCenterFolder;
   let documentId = '';
   const folderName = `folder-delete-test-${uuid()}`;
@@ -353,7 +353,7 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     await redirectToHomePage(page);
   });
 
-  test('file in deleted folder is absent from search and not added to archive', async ({
+  test('file in deleted folder is absent from search and added to archive', async ({
     browser,
     page,
   }) => {
@@ -431,37 +431,75 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
-      await waitForDocumentAbsentFromSearch(apiContext, documentFileName);
-      await afterAction();
-
       const searchInput = getDocumentSearchInput(page);
 
-      await expect
-        .poll(
-          async () => {
-            const searchResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes('/api/v1/search/query') &&
-                res.url().includes('index=contextFile')
-            );
-            await searchInput.fill('');
-            await searchInput.fill(documentFileName);
-            await searchResPromise;
+      try {
+        // Poll the API directly. Clearing and immediately refilling the debounced UI input with
+        // the same final value does not issue a second request, so the previous implementation
+        // only checked the index once immediately after deletion and then waited for a response
+        // that could never arrive.
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get('/api/v1/search/query', {
+                params: {
+                  q: documentFileName,
+                  index: 'contextFile',
+                  from: 0,
+                  size: 10,
+                  deleted: false,
+                },
+              });
+              expect(response.ok()).toBeTruthy();
+              const body = await response.json();
 
-            return getDocumentRowByName(page, documentFileName)
-              .isVisible()
-              .catch(() => false);
-          },
-          {
-            intervals: [3000, 5000, 10000],
-            message: `File ${documentFileName} still visible in search after its folder was deleted`,
-            timeout: 60000,
-          }
-        )
-        .toBe(false);
+              return (body?.hits?.hits ?? []).some(
+                (hit: { _id?: string; _source?: { id?: string } }) =>
+                  hit._id === documentId || hit._source?.id === documentId
+              );
+            },
+            {
+              intervals: [3000, 5000, 10000],
+              message: `File ${documentFileName} still visible in search after its folder was deleted`,
+              timeout: 60000,
+            }
+          )
+          .toBe(false);
+      } finally {
+        await afterAction();
+      }
+
+      // Drive the debounced search state through a distinct value before restoring the
+      // document name. Clearing and refilling within one debounce window leaves the
+      // debounced value unchanged, so no request is emitted for the final fill.
+      const noMatchQuery = `deleted-folder-no-match-${uuid()}`;
+      const noMatchResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
+
+        return (
+          url.pathname.includes('/api/v1/search/query') &&
+          url.searchParams.get('index') === 'contextFile' &&
+          url.searchParams.get('q') === noMatchQuery
+        );
+      });
+      await searchInput.fill(noMatchQuery);
+      await noMatchResPromise;
+
+      const searchResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
+
+        return (
+          url.pathname.includes('/api/v1/search/query') &&
+          url.searchParams.get('index') === 'contextFile' &&
+          url.searchParams.get('q') === documentFileName
+        );
+      });
+      await searchInput.fill(documentFileName);
+      await searchResPromise;
+      await expect(getDocumentRowByName(page, documentFileName)).toBeHidden();
     });
 
-    // ── 6. Archive page UI — file row is absent ───────────────────────────────
+    // ── 6. Archive page UI — soft-deleted file row is present ────────────────
 
     await test.step('file should be visibile in the archive page', async () => {
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(

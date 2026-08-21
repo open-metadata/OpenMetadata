@@ -635,11 +635,38 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
+const closeCertificationPopover = async (page: Page) => {
+  const popover = page.locator('.certification-card-popover');
+
+  if (!(await popover.isVisible())) {
+    return;
+  }
+
+  const closeButton = page.getByTestId('close-certification');
+  if (await closeButton.isVisible()) {
+    // A successful PATCH closes this controlled popover asynchronously. The
+    // button can therefore be visible for this check and detach before
+    // Playwright finishes its actionability checks. Keep that race bounded;
+    // the hidden-state assertion below is the actual close contract.
+    await closeButton.click({ timeout: 2_000 }).catch(() => undefined);
+  }
+
+  if (await popover.isVisible()) {
+    await clickOutside(page);
+  }
+
+  await expect(popover).toBeHidden({ timeout: 5_000 });
+};
+
 export const assignCertification = async (
   page: Page,
   certification: TagClass,
   endpoint: string
 ) => {
+  // A previous entity update can leave the controlled popover mounted over the
+  // next entity's edit button. Normalize that state before opening it again.
+  await closeCertificationPopover(page);
+
   const certificationResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/tags') &&
@@ -655,17 +682,28 @@ export const assignCertification = async (
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  await readElementInListWithScroll(
-    page,
-    page.getByTestId(
-      `radio-btn-${certification.responseData.fullyQualifiedName}`
-    ),
-    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  const certificationRadio = page.getByTestId(
+    `radio-btn-${certification.responseData.fullyQualifiedName}`
+  );
+  const certificationCards = page.locator(
+    '[data-testid="certification-cards"] .ant-radio-group'
   );
 
-  await page
-    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
-    .click();
+  await expect(async () => {
+    // The popover shell becomes visible before its opening animation exposes
+    // the Radio.Group. Wait for that stable child instead of treating the
+    // transient hidden state as missing and toggling the popover closed again.
+    await expect(certificationCards).toBeVisible({ timeout: 5_000 });
+
+    await readElementInListWithScroll(
+      page,
+      certificationRadio,
+      certificationCards
+    );
+    await expect(certificationRadio).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 25_000, intervals: [250, 500, 1000] });
+
+  await certificationRadio.click();
   const patchRequest = page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/${endpoint}`) &&
@@ -677,7 +715,7 @@ export const assignCertification = async (
   expect(patchResponse.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await closeCertificationPopover(page);
 
   await expect(page.getByTestId('certification-label')).toContainText(
     certification.responseData.displayName
@@ -685,6 +723,7 @@ export const assignCertification = async (
 };
 
 export const removeCertification = async (page: Page, endpoint: string) => {
+  await closeCertificationPopover(page);
   await page.getByTestId('edit-certification').click();
   await page
     .locator('.certification-card-popover')
@@ -701,7 +740,7 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
+  await closeCertificationPopover(page);
 
   await expect(page.getByTestId('certification-label')).toContainText('--');
 };

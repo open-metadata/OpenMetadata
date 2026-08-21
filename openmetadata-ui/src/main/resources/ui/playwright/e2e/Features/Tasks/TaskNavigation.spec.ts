@@ -474,18 +474,16 @@ test.describe('Task Navigation - URL Validation', () => {
     await page.goto('/table/TASK-00001');
     await waitForPageLoaded(page);
 
-    // Should show 404 or "No data available"
-    const noData = page.getByText('No data available');
-    const notFound = page.getByText('404');
-    const pageNotFound = page.getByText('Page not found', { exact: false });
-
-    const isError =
-      (await noData.isVisible()) ||
-      (await notFound.isVisible()) ||
-      (await pageNotFound.isVisible());
-
-    // This URL pattern should result in an error/404
-    expect(isError).toBe(true);
+    // Depending on the entity-page route, an invalid FQN renders either the
+    // full PageNotFound view or the entity shell's stable empty placeholder.
+    // Both are valid error states; the route must not render table data.
+    await expect(
+      page
+        .locator(
+          '[data-testid="no-page-found"]:visible, [data-testid="no-data-placeholder"]:visible'
+        )
+        .first()
+    ).toBeVisible();
   });
 
   test('task detail page with valid task ID should work', async ({

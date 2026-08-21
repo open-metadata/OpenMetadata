@@ -69,6 +69,10 @@ export const test = baseTest.extend<{
 });
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
+  // Every test mutates the same Knowledge Center. Keep the tests independent, but do not
+  // let fullyParallel run conflicting owner/tag/glossary patches at the same time.
+  test.describe.configure({ mode: 'default' });
+
   test.beforeAll(async ({ browser }) => {
     test.slow(true);
     const { apiContext, afterAction } = await performAdminLogin(browser);
