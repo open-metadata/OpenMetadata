@@ -24,7 +24,6 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
-  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -219,13 +218,19 @@ class ServiceBaseClass {
     await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
 
-    // Creating the service triggers AutoPilot, whose toast renders bottom-center
-    // — directly over the wizard footer. A click on Next while it is up is
-    // intercepted by the toast, and the action then auto-waits until the test
-    // times out. Let it dismiss first.
-    await waitForToastToDisappear(page, /AutoPilot/i);
-
-    await page.click('[data-testid="next-button"]');
+    // Creating the service triggers AutoPilot, whose success toast renders
+    // bottom-center — directly over the wizard footer — and auto-closes after 5s
+    // (showSuccessToast(..., 5000) in AddServicePage). A click landing inside
+    // that window is intercepted by the toast, and with no per-action timeout
+    // the retry loop runs to the end of the test instead.
+    //
+    // Bounding the click is what fixes it, not waiting the toast out: the toast
+    // is fired by the create call several steps earlier, so whether it is on
+    // screen when we get here depends on how fast those steps ran. Gating on it
+    // being gone is a no-op when it has not rendered yet and when it has already
+    // closed. A bounded click covers every ordering — Playwright retries the
+    // intercepted click for the whole timeout, which outlasts the toast.
+    await page.click('[data-testid="next-button"]', { timeout: 30_000 });
 
     // Go back and data should persist
     await page.click('[data-testid="previous-button"]');
