@@ -290,11 +290,35 @@ class HttpTransport:
         except Exception as e:
             logger.error(f"Failed to send notification '{method}': {e}")
 
+    @staticmethod
+    def _parse_sse_response(response: requests.Response, request_id: str) -> dict[str, Any]:
+        data_lines = []
+        for line in [*response.text.splitlines(), ""]:
+            if line.startswith("data:"):
+                data_lines.append(line[5:].lstrip())
+                continue
+            if line or not data_lines:
+                continue
+
+            try:
+                event = json.loads("\n".join(data_lines))
+            except json.JSONDecodeError as exc:
+                raise McpProtocolError(f"Invalid SSE response: {exc}") from exc
+            data_lines.clear()
+
+            if not isinstance(event, dict):
+                raise McpProtocolError("Invalid SSE response: expected a JSON-RPC object")
+            if event.get("id") == request_id:
+                return event
+
+        raise McpProtocolError("SSE stream ended without a matching response")
+
     def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
         """Send a JSON-RPC request via HTTP POST"""
+        request_id = str(uuid.uuid4())
         request: Dict[str, Any] = {  # noqa: UP006
             "jsonrpc": "2.0",
-            "id": str(uuid.uuid4()),
+            "id": request_id,
             "method": method,
         }
         if params:
@@ -307,7 +331,12 @@ class HttpTransport:
                 timeout=self.timeout,
             )
             response.raise_for_status()
-            result = response.json()
+            content_type = response.headers.get("Content-Type", "").partition(";")[0].strip().lower()
+            result = (
+                self._parse_sse_response(response, request_id)
+                if content_type == "text/event-stream"
+                else response.json()
+            )
 
             if "error" in result:
                 raise McpProtocolError(f"MCP error: {result['error'].get('message', 'Unknown error')}")

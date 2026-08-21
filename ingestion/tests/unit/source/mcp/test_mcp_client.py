@@ -168,6 +168,25 @@ class TestHttpTransport:
             transport.send_request("invalid/method")
         assert "Invalid Request" in str(exc_info.value)
 
+    @patch("metadata.ingestion.source.mcp.client.uuid.uuid4", return_value="request-id")
+    @patch("requests.Session.post")
+    def test_send_request_sse_success(self, mock_post, _mock_uuid):
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "text/event-stream; charset=utf-8"}
+        mock_response.text = (
+            ": keepalive\n\n"
+            'event: message\ndata: {"jsonrpc":"2.0","method":"notifications/progress"}\n\n'
+            'event: message\ndata: {"jsonrpc":"2.0","id":"request-id",'
+            '"result":{"tools":[]}}\n\n'
+        )
+        mock_response.raise_for_status = MagicMock()
+        mock_post.return_value = mock_response
+
+        transport = HttpTransport(url="https://example.test/mcp")
+        transport.connect()
+
+        assert transport.send_request("tools/list") == {"tools": []}
+
     @patch("requests.Session.post")
     def test_send_notification_logs_on_failure(self, mock_post):
         """send_notification should log warnings, not silently swallow errors"""
