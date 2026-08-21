@@ -349,8 +349,35 @@ def get_pk_constraint(self, connection, tablename, dbname, owner=None, schema=No
 
 
 @reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
-    raise NotImplementedError()
+@db_plus_owner
+def get_unique_constraints(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument
+    """
+    This function overrides to get unique constraints
+    """
+    tc_ = ischema.constraints
+    c_key_constraint = ischema.key_constraints.alias("C")
+
+    query_ = (
+        sql.select(
+            c_key_constraint.c.column_name,
+            c_key_constraint.c.constraint_name,
+        )
+        .where(
+            sql.and_(
+                tc_.c.constraint_name == c_key_constraint.c.constraint_name,
+                tc_.c.table_schema == c_key_constraint.c.table_schema,
+                tc_.c.constraint_type == "UNIQUE",
+                c_key_constraint.c.table_name == tablename,
+                c_key_constraint.c.table_schema == owner,
+            ),
+        )
+        .order_by(c_key_constraint.c.constraint_name, c_key_constraint.c.ordinal_position)
+    )
+    cursor = connection.execution_options(future_result=True).execute(query_)
+    constraints: dict = {}
+    for row in cursor.mappings():
+        constraints.setdefault(row[c_key_constraint.c.constraint_name.name], []).append(row["COLUMN_NAME"])
+    return [{"name": name, "column_names": columns} for name, columns in constraints.items()]
 
 
 @reflection.cache
