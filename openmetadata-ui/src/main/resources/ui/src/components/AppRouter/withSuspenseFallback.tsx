@@ -11,24 +11,29 @@
  *  limitations under the License.
  */
 
-import { ComponentType, forwardRef, Suspense } from 'react';
+import { ComponentType, forwardRef, ReactNode, Suspense } from 'react';
 import Loader from '../common/Loader/Loader';
 
+export const TAB_CONTENT_FALLBACK = <Loader />;
+
 export function withSuspenseFallback<T extends object>(
-  Component: ComponentType<T>
+  Component: ComponentType<T>,
+  // Keep embedded/background lazy chunks silent unless a caller opts into visible progress.
+  fallback: ReactNode = null
 ) {
   return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
     return (
-      <Suspense
-        fallback={
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        }>
+      <Suspense fallback={fallback}>
         <Component {...(props as T)} ref={ref} />
       </Suspense>
     );
   });
+}
+
+export function withPageSuspenseFallback<T extends object>(
+  Component: ComponentType<T>
+) {
+  return withSuspenseFallback(Component, <Loader fullScreen />);
 }
 
 export default withSuspenseFallback;

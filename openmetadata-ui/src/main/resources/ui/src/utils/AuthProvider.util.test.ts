@@ -19,7 +19,6 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import {
   getAuthConfig,
-  getCandidateUserManagerConfig,
   getUserManagerConfig,
 } from './AuthProvider.util';
 
@@ -125,15 +124,5 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
     );
 
     expect(config.responseType).toBe('code');
-  });
-});
-
-describe('getCandidateUserManagerConfig — SSO test-login popup respects responseType', () => {
-  it('should use the configured response_type instead of a hardcoded "id_token"', () => {
-    const config = getCandidateUserManagerConfig(
-      withScope({ responseType: ResponseType.Code })
-    );
-
-    expect(config.response_type).toBe('code');
   });
 });

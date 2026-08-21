@@ -57,7 +57,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [endTime, setEndTime] = useState(getCurrentMillis());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchPipelineStatus = async (startRange: number, endRange: number) => {
     try {
