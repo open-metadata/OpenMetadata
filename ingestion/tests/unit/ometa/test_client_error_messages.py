@@ -134,6 +134,21 @@ class TestHtmlResponseIsNamed:
         assert client.get("/system/version") is None
 
 
+class TestRetryableServiceUnavailable:
+    def test_503_is_retried_until_the_service_recovers(self):
+        unavailable = _response(503, "upstream unavailable", "text/plain")
+        recovered = _response(200, '{"version":"1.13.1"}')
+        client = REST(ClientConfig(base_url="https://release-1-13.getcollate.io"))
+        client._session = MagicMock()
+        client._session.request.side_effect = [unavailable, recovered]
+
+        with patch("metadata.ingestion.ometa.client.time.sleep"):
+            response = client.get_raw("/system/version", retries=1)
+
+        assert response.status_code == 200
+        assert client._session.request.call_count == 2
+
+
 class TestGetServerVersionErrors:
     """Every failure mode of /system/version must say what to fix."""
 
@@ -228,7 +243,7 @@ class TestGetServerVersionErrors:
         assert "text/yaml" in message
 
     def test_retry_budget_exhausted(self):
-        """`_request` answers None once the 504/429 retries run out."""
+        """`_request` answers None once the 503/504 retries run out."""
         client = MagicMock()
         client.get_raw.return_value = None
 
