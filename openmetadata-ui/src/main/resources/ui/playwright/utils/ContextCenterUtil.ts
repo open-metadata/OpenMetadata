@@ -555,8 +555,17 @@ export async function waitForDocumentAbsentFromSearch(
     }
 
     const body = await response.json();
-    const hits = body.hits?.hits ?? [];
-    if (hits.length === 0) {
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
       return;
     }
 
