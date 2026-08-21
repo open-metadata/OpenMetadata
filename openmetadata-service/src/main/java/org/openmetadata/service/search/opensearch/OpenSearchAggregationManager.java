@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -84,6 +83,30 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext)) {
       requestBuilder.contextMemoryVisibilityResolved();
     }
+  }
+
+  /**
+   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
+   * indexes, so without this a caller can read documents they are denied on the corresponding
+   * listing. A {@code null} or exempt subject (admin, bot, access control disabled) is left
+   * unfiltered.
+   */
+  private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
+    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      return query;
+    }
+    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+    if (rbacQueryBuilder == null) {
+      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
+      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
+      return Query.of(qb -> qb.matchNone(m -> m));
+    }
+    Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+    if (query == null) {
+      return rbacQuery;
+    }
+    final Query existingQuery = query;
+    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
   }
 
   /**
@@ -358,27 +381,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      // Apply RBAC conditions
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-          if (parsedQuery != null) {
-            final Query existingQuery = parsedQuery;
-            parsedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-          } else {
-            parsedQuery = rbacQuery;
-          }
-        }
-      }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
       searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
@@ -465,11 +468,18 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      // combineQueries subsumes main's inline bool building and additionally applies the
-      // subject's visibility filter; both it and restrictToOrgWideMemories tolerate a null query.
-      final Query combinedQuery =
-          combineQueries(parsedQuery, filterQuery, buildVisibilityQuery(subjectContext));
-      searchRequestBuilder.query(restrictToOrgWideMemories(combinedQuery));
+      final Query finalParsedQuery = parsedQuery;
+      final Query finalFilterQuery = filterQuery;
+
+      Query combinedQuery = finalParsedQuery;
+      if (finalFilterQuery != null) {
+        combinedQuery =
+            finalParsedQuery != null
+                ? Query.of(q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)))
+                : Query.of(q -> q.bool(b -> b.filter(finalFilterQuery)));
+      }
+      searchRequestBuilder.query(
+          restrictToOrgWideMemories(applyRbacQuery(combinedQuery, subjectContext)));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -492,33 +502,6 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
-  }
-
-  private Query buildVisibilityQuery(SubjectContext subjectContext) {
-    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      return null;
-    }
-    OMQueryBuilder queryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-    return queryBuilder == null ? null : ((OpenSearchQueryBuilder) queryBuilder).buildV2();
-  }
-
-  private static Query combineQueries(Query query, Query filter, Query visibility) {
-    List<Query> filters = Stream.of(filter, visibility).filter(item -> item != null).toList();
-    if (query == null && filters.isEmpty()) {
-      return null;
-    }
-    return Query.of(
-        root ->
-            root.bool(
-                bool -> {
-                  if (query != null) {
-                    bool.must(query);
-                  }
-                  if (!filters.isEmpty()) {
-                    bool.filter(filters);
-                  }
-                  return bool;
-                }));
   }
 
   @Override

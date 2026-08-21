@@ -68,23 +68,21 @@ public interface AggregationManagementClient {
       throws IOException;
 
   /**
-   * Execute an aggregation query with RBAC visibility filters for the requesting subject.
+   * Same as {@link #aggregate(String, String, SearchAggregation, String)} but evaluates the caller's
+   * policies against the aggregation query, so an aggregation cannot surface documents the caller may
+   * not read. Defaults to the subject-less overload, which applies no policy filtering.
    *
-   * @param query the search query
-   * @param index the index to search
-   * @param searchAggregation the search aggregation configuration
-   * @param filter additional filter query
-   * @param subjectContext the requesting subject used to enforce search visibility
-   * @return the aggregation results as JsonObject
-   * @throws IOException if the aggregation operation fails
+   * @param subjectContext the caller, used to build the RBAC query
    */
-  JsonObject aggregate(
+  default JsonObject aggregate(
       String query,
       String index,
       SearchAggregation searchAggregation,
       String filter,
       SubjectContext subjectContext)
-      throws IOException;
+      throws IOException {
+    return aggregate(query, index, searchAggregation, filter);
+  }
 
   /**
    * Get entity type counts with aggregation.

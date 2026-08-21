@@ -597,8 +597,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.test-suite'),
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.ingestion'),
             })}
           />
         }
@@ -611,11 +611,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
@@ -627,11 +623,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY_WITH_TAB}
@@ -643,11 +635,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_SUITE,
               permissions
             )}>
-            <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
-              })}
-            />
+            <DataQualityPage pageTitle={t('label.data-quality')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DATA_QUALITY}
@@ -760,8 +748,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddObservabilityPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.observability'),
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.observability-alert'),
             })}
           />
         }

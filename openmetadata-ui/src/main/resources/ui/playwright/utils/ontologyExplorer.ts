@@ -249,16 +249,26 @@ export async function createApiContext(browser: Browser) {
   await redirectToHomePage(page);
   const token = await getToken(page);
   const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
 
-  return { page, apiContext };
+  return { page, apiContext, afterAction };
 }
 
 export async function disposeApiContext(
-  page: Page,
+  afterActionOrPage: (() => Promise<void>) | Page,
   apiContext: APIRequestContext
 ) {
+  if (typeof afterActionOrPage === 'function') {
+    await afterActionOrPage();
+
+    return;
+  }
+
   await apiContext.dispose();
-  await page.close();
+  await afterActionOrPage.close();
 }
 
 export async function deleteEntities(

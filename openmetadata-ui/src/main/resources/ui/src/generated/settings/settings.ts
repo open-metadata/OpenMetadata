@@ -172,8 +172,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when
@@ -340,6 +346,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs?: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -353,7 +363,9 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**

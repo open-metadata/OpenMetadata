@@ -41,15 +41,18 @@ const test = base.extend<{
   ingestionBotPage: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const page = await browser.newPage();
-    await page.goto('/');
-
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
       .then((response) => response.json());
     const tokenData = await apiContext
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
+
+    const page = await browser.newPage();
+    await page.goto('/signin');
+    await page.waitForFunction(() =>
+      Boolean(navigator.serviceWorker?.controller)
+    );
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
