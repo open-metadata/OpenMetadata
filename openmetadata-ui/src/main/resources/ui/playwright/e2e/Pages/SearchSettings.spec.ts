@@ -114,6 +114,11 @@ const getDatabaseNgramBoost = (request: { postDataJSON: () => unknown }) => {
 };
 
 test.describe('Search Settings', () => {
+  // Every test in this file reads or writes the same tenant-wide search settings document.
+  // Keep the tests independent, but do not let fullyParallel split them across workers and
+  // restore the document underneath one another.
+  test.describe.configure({ mode: 'default' });
+
   test.beforeAll(async ({ browser }) => {
     adminUser = new AdminClass();
 
@@ -124,8 +129,15 @@ test.describe('Search Settings', () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await afterAction();
+    try {
+      const resetResponse = await apiContext.put(
+        '/api/v1/system/settings/reset/searchSettings'
+      );
+      expect(resetResponse.ok()).toBeTruthy();
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test.describe('Search Settings Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
