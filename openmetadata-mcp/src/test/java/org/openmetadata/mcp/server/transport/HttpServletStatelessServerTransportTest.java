@@ -20,6 +20,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.modelcontextprotocol.spec.McpError;
+import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -123,6 +125,55 @@ class HttpServletStatelessServerTransportTest {
   @Test
   void responseFlush_writerOnly() {
     verifyNoInteractions(response);
+  }
+
+  // ── responseError ─────────────────────────────────────────────────────────
+
+  /**
+   * Regression guard for the /mcp stack-trace leak: responseError used to hand the McpError
+   * exception itself to Jackson, so every 400/500 body carried stackTrace, cause and suppressed.
+   */
+  @Test
+  void responseError_omitsThrowableState() throws Exception {
+    HttpServletStatelessServerTransport.responseError(
+        response,
+        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+        McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+            .message("Internal server error")
+            .build());
+
+    assertThat(body.toString())
+        .doesNotContain("stackTrace")
+        .doesNotContain("cause")
+        .doesNotContain("suppressed")
+        .doesNotContain("localizedMessage");
+  }
+
+  @Test
+  void responseError_writesJsonRpcEnvelope() throws Exception {
+    HttpServletStatelessServerTransport.responseError(
+        response,
+        HttpServletResponse.SC_BAD_REQUEST,
+        McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+            .message("Invalid message format")
+            .build());
+
+    assertThat(body.toString())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,"
+                + "\"error\":{\"code\":-32600,\"message\":\"Invalid message format\"}}");
+  }
+
+  @Test
+  void responseError_setsContentTypeAndStatus() throws Exception {
+    HttpServletStatelessServerTransport.responseError(
+        response,
+        HttpServletResponse.SC_BAD_REQUEST,
+        McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST).message("nope").build());
+
+    verify(response).setContentType(HttpServletStatelessServerTransport.APPLICATION_JSON);
+    verify(response).setCharacterEncoding(HttpServletStatelessServerTransport.UTF_8);
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
   }
 
   @Test
