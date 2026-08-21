@@ -24,6 +24,7 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
+  waitForToastToDisappear,
 } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -217,6 +218,12 @@ class ServiceBaseClass {
     // Add ingestion page
     await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
+
+    // Creating the service triggers AutoPilot, whose toast renders bottom-center
+    // — directly over the wizard footer. A click on Next while it is up is
+    // intercepted by the toast, and the action then auto-waits until the test
+    // times out. Let it dismiss first.
+    await waitForToastToDisappear(page, /AutoPilot/i);
 
     await page.click('[data-testid="next-button"]');
 
