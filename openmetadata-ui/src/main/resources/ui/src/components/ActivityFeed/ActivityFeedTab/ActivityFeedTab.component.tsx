@@ -190,14 +190,6 @@ export const ActivityFeedTab = ({
     [isTaskActiveTab, isMentionTabSelected]
   );
 
-  // `subTab` is only supplied by the user profile page; entity pages leave it
-  // undefined and the sub-tab arrives as a URL param read into `activeTab`.
-  // Keying off the values that identify the query makes a URL/back-button driven
-  // switch show the loader instead of the previous query's list.
-  useEffect(() => {
-    setIsFirstLoad(true);
-  }, [activeTab, taskFilter]);
-
   const handleTabChange = useCallback(
     (subTab: string) => {
       setIsFirstLoad(true);
@@ -369,11 +361,10 @@ export const ActivityFeedTab = ({
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
       // Only a "load more" page keeps the current list on screen. A first-page
-      // refetch replaces the list, so the in-list loader has to stay enabled or
-      // the cleared list would flash the empty placeholder.
-      if (after) {
-        setIsFirstLoad(false);
-      }
+      // refetch replaces it, so the in-list loader has to be switched back ON —
+      // once pagination has cleared this flag, `isFirstLoad && loading` is false
+      // and the cleared list renders the empty placeholder next to the spinner.
+      setIsFirstLoad(!after);
       if (isTaskListTab) {
         getTaskData(feedFilter, after, entityType, fqn, taskFilter);
       } else {
@@ -401,6 +392,11 @@ export const ActivityFeedTab = ({
 
   useEffect(() => {
     if (fqn) {
+      // Every dep here identifies a different query, so this is always a
+      // first-page fetch that replaces the list — sub-tab (via feedFilter), task
+      // filter, entity or domain. The loader has to be on for the window where
+      // the provider has cleared the rows but the response has not landed.
+      setIsFirstLoad(true);
       if (isTaskListTab) {
         getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
       } else {

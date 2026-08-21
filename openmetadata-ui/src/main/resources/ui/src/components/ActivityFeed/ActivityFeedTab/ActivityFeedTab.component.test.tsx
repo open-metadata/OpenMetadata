@@ -329,18 +329,37 @@ describe('ActivityFeedTab', () => {
   });
 
   describe('Sub-tab changes show the loader, never a stale list', () => {
-    it('keeps the in-list loader on for a first-page refetch', async () => {
-      mockLoading = true;
+    it('switches the in-list loader back on for a first-page refetch after paginating', async () => {
       mockTasks = [{ id: 'stale-my-task' }];
+      // Scrolled to the bottom with a cursor: the one path that legitimately
+      // turns the in-list loader off.
+      mockEntityPaging = { after: 'cursor-1' };
+      mockIsInView = true;
 
       renderComponent(ActivityFeedTabs.TASKS);
 
-      const taskList = await screen.findByTestId('task-list');
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          'cursor-1',
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
 
-      expect(taskList).toHaveAttribute('data-loading', 'true');
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'false'
+        )
+      );
 
-      // onAfterClose refetches the first page, which replaces the list. Clearing
-      // isFirstLoad here dropped the loader and showed the outgoing list instead.
+      // onAfterClose refetches the first page, and the provider clears `tasks`
+      // for it. Once pagination has cleared isFirstLoad, only switching it back
+      // on keeps the loader up — otherwise the emptied list renders the
+      // "no tasks" placeholder next to the pagination spinner.
+      mockLoading = true;
       fireEvent.click(screen.getByTestId('task-after-close'));
 
       await waitFor(() =>

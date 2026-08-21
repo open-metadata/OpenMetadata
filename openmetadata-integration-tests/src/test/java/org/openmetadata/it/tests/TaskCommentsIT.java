@@ -353,6 +353,18 @@ public class TaskCommentsIT {
       assertFalse(
           mentionedIds.contains(unrelated.getId()),
           "mentionedUser filter must exclude tasks that do not mention the user");
+
+      // The UI sends the FQN, which is quoted for a dotted username, but a bare
+      // name has to resolve to the same mention rows or the filter silently
+      // returns nothing for those users.
+      ListParams byFqn =
+          new ListParams()
+              .addFilter("mentionedUser", shared.USER2.getFullyQualifiedName())
+              .setLimit(1000);
+      assertTrue(
+          adminClient.tasks().list(byFqn).getData().stream()
+              .anyMatch(t -> t.getId().equals(mentioning.getId())),
+          "mentionedUser must match on the quoted FQN as well as the bare name");
     } finally {
       adminClient
           .tasks()
