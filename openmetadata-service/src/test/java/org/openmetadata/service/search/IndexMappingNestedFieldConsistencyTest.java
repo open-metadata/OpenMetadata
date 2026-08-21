@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -22,6 +24,9 @@ import org.openmetadata.search.IndexMappingLoader;
 class IndexMappingNestedFieldConsistencyTest {
 
   private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final String TESTS_SCHEMA_DIR = "json/schema/tests/";
+  private static final String RESOLUTION_STATUS_ENTITY = "testCaseResolutionStatus";
+  private static final String RESOLUTION_DETAILS_FIELD = "testCaseResolutionStatusDetails";
   private static Map<String, JsonNode> allMappings;
 
   @BeforeAll
@@ -205,6 +210,71 @@ class IndexMappingNestedFieldConsistencyTest {
       }
     }
     assertTrue(violations.isEmpty(), "Audit report mapping gaps: " + violations);
+  }
+
+  @Test
+  void resolutionStatusDetailsMappingMustMatchSchemaProperties() throws IOException {
+    Set<String> schemaProperties = resolutionDetailsSchemaProperties();
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      String entity = RESOLUTION_STATUS_ENTITY + "[" + language + "]";
+      JsonNode mapping = allMappings.get(entity);
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      assertNotNull(properties, "Index mapping for '" + entity + "' was not loaded.");
+      Set<String> mapped = fieldNames(properties.path(RESOLUTION_DETAILS_FIELD).path("properties"));
+      if (!mapped.equals(schemaProperties)) {
+        violations.add(entity + " maps " + mapped);
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "The '"
+            + RESOLUTION_DETAILS_FIELD
+            + "' mapping must declare exactly the properties its schema allows "
+            + schemaProperties
+            + ". testCaseResolutionStatus.json models this field as a oneOf over closed "
+            + "(additionalProperties=false) branches, so a mapped subfield the schema does not "
+            + "declare can never match a document — the boost/filter that targets it is dead — and "
+            + "a schema property the mapping omits is left to dynamic mapping, losing its declared "
+            + "type and per-language analyzer. Violations: "
+            + violations);
+  }
+
+  /**
+   * The union of the properties of every {@code oneOf} branch of {@code
+   * testCaseResolutionStatusDetails}, read from the JSON Schema so that adding a property to
+   * assigned.json / resolved.json fails this test until the mappings follow.
+   */
+  private static Set<String> resolutionDetailsSchemaProperties() throws IOException {
+    JsonNode branches =
+        readSchema(TESTS_SCHEMA_DIR + "testCaseResolutionStatus.json")
+            .path("properties")
+            .path(RESOLUTION_DETAILS_FIELD)
+            .path("oneOf");
+    assertTrue(
+        branches.isArray() && !branches.isEmpty(), RESOLUTION_DETAILS_FIELD + " has no oneOf");
+    Set<String> properties = new TreeSet<>();
+    for (JsonNode branch : branches) {
+      String fileName = branch.path("$ref").asText().replaceFirst("^\\./", "");
+      properties.addAll(fieldNames(readSchema(TESTS_SCHEMA_DIR + fileName).path("properties")));
+    }
+    return properties;
+  }
+
+  private static JsonNode readSchema(String resource) throws IOException {
+    try (InputStream in =
+        IndexMappingNestedFieldConsistencyTest.class
+            .getClassLoader()
+            .getResourceAsStream(resource)) {
+      assertNotNull(in, "Schema resource not found on the classpath: " + resource);
+      return JsonUtils.readTree(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+    }
+  }
+
+  private static Set<String> fieldNames(JsonNode node) {
+    Set<String> names = new TreeSet<>();
+    node.fieldNames().forEachRemaining(names::add);
+    return names;
   }
 
   private static void findExtensionTypeViolations(
