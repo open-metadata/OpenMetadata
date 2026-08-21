@@ -19,6 +19,11 @@ import pytest
 import requests
 
 from metadata.generated.schema.entity.data.table import Table
+
+# Imported as a module, not by name: `test_reimport_new_client_modules_for_coverage`
+# reloads `ometa_api`, which rebinds these attributes - a name bound here at import
+# time would be a stale class by the time these tests run.
+from metadata.ingestion.ometa import ometa_api
 from metadata.ingestion.ometa.client import (
     REST,
     ClientConfig,
@@ -31,7 +36,6 @@ from metadata.ingestion.ometa.mixins.server_mixin import (
     VersionMismatchException,
     VersionNotFoundException,
 )
-from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
 
 VERSION_URL = "https://release-1-13.getcollate.io/v1/system/version"
 
@@ -82,13 +86,13 @@ def _rest_returning(
     return client
 
 
-def _ometa_with(client: REST) -> OpenMetadata:
+def _ometa_with(client: REST) -> "ometa_api.OpenMetadata":
     """An OpenMetadata client wired to `client`, skipping the real __init__.
 
     `__init__` builds auth providers and validates versions; these tests only
     exercise what the entity calls do with the body they get back.
     """
-    ometa = OpenMetadata.__new__(OpenMetadata)
+    ometa = ometa_api.OpenMetadata.__new__(ometa_api.OpenMetadata)
     ometa.client = client
     ometa._use_raw_data = False
     return ometa
@@ -383,7 +387,7 @@ class TestEmptyPayloadOnListCalls:
         client = MagicMock()
         client.get.return_value = None
 
-        with pytest.raises(EmptyPayloadException) as err:
+        with pytest.raises(ometa_api.EmptyPayloadException) as err:
             _ometa_with(client).list_entities(entity=Table)
 
         assert "/tables" in str(err.value)
@@ -392,7 +396,7 @@ class TestEmptyPayloadOnListCalls:
         client = MagicMock()
         client.get.return_value = None
 
-        with pytest.raises(EmptyPayloadException) as err:
+        with pytest.raises(ometa_api.EmptyPayloadException) as err:
             _ometa_with(client).list_services(entity=Table)
 
         assert "/tables" in str(err.value)
@@ -401,7 +405,7 @@ class TestEmptyPayloadOnListCalls:
         client = MagicMock()
         client.get.return_value = None
 
-        with pytest.raises(EmptyPayloadException) as err:
+        with pytest.raises(ometa_api.EmptyPayloadException) as err:
             _ometa_with(client).list_versions("d7c3a8f2-0000-0000-0000-000000000000", Table)
 
         assert "/versions" in str(err.value)
