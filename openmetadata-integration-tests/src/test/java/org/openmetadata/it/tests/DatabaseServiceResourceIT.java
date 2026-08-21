@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
@@ -786,6 +788,204 @@ public class DatabaseServiceResourceIT
         streetColumnAfterRemoval.getTags().stream()
             .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
         "Street column should STILL have glossary term (not removed)");
+  }
+
+  @Test
+  void test_importExportRecursive_preservesTableConstraints(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_constraints_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    // Referenced table for the FOREIGN_KEY (exercises the table-to-table RELATED_TO edge path).
+    Table refTable =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("ref_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("ref_id").withDataType(ColumnDataType.BIGINT))));
+    String refIdFqn = refTable.getFullyQualifiedName() + ".ref_id";
+
+    List<TableConstraint> constraints =
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+                .withColumns(List.of("id")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("email")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("ref_fk"))
+                .withReferredColumns(List.of(refIdFqn)));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("constrained_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                            new Column()
+                                .withName("email")
+                                .withDataType(ColumnDataType.VARCHAR)
+                                .withDataLength(255),
+                            new Column().withName("ref_fk").withDataType(ColumnDataType.BIGINT)))
+                    .withTableConstraints(constraints));
+
+    assertEquals(
+        3, table.getTableConstraints().size(), "Table should start with 3 table constraints");
+
+    // Recursive export then re-import unchanged: this is the whole-tree path the UI uses when
+    // importing at service/database/schema level. The recursive CSV has no column for table
+    // constraints, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tableConstraints");
+    assertNotNull(
+        reloaded.getTableConstraints(),
+        "Table constraints must survive a recursive CSV round trip");
+    assertEquals(
+        3,
+        reloaded.getTableConstraints().size(),
+        "PRIMARY_KEY, UNIQUE and FOREIGN_KEY constraints must all be preserved after recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY),
+        "PRIMARY_KEY constraint must be preserved after a recursive import");
+    assertTrue(
+        reloaded.getTableConstraints().stream()
+            .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE),
+        "UNIQUE constraint must be preserved after a recursive import");
+    // FOREIGN_KEY carries the referenced-table linkage (referredColumns); it must survive intact.
+    TableConstraint fk =
+        reloaded.getTableConstraints().stream()
+            .filter(c -> c.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(fk, "FOREIGN_KEY constraint must be preserved after a recursive import");
+    assertEquals(
+        List.of(refIdFqn),
+        fk.getReferredColumns(),
+        "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+  }
+
+  @Test
+  void test_importExportRecursive_preservesColumnCustomProperties(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_col_ext_service");
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    // Columns carry free-form custom properties (column.extension).
+    Column idColumn =
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withExtension(Map.of("colGovOwner", "id-col@example.com"));
+    Column emailColumn =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withExtension(Map.of("colGovOwner", "email-col@example.com"));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("col_ext_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(idColumn, emailColumn)));
+
+    // Precondition: column custom properties persisted on create.
+    Table created =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(
+        columnByName(created, "id").getExtension(),
+        "Column custom properties should persist on create");
+
+    // Recursive export then re-import unchanged (the whole-tree path the UI uses at
+    // service/database/schema level). The recursive CSV has no column for column custom
+    // properties, so a round trip must not drop them.
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table reloaded =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(
+        columnByName(reloaded, "id").getExtension(),
+        "Column 'id' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "id").getExtension().toString().contains("id-col@example.com"),
+        "Column 'id' custom property value must be preserved after a recursive import");
+    assertNotNull(
+        columnByName(reloaded, "email").getExtension(),
+        "Column 'email' custom properties must survive a recursive CSV round trip");
+    assertTrue(
+        columnByName(reloaded, "email").getExtension().toString().contains("email-col@example.com"),
+        "Column 'email' custom property value must be preserved after a recursive import");
+  }
+
+  private Column columnByName(Table table, String name) {
+    return table.getColumns().stream()
+        .filter(c -> name.equals(c.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Column not found: " + name));
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {

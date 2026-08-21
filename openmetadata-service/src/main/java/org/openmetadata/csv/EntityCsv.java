@@ -1743,11 +1743,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withId(UUID.randomUUID());
       }
     } else {
-      // Dry Run = false, True Run: Use dependency resolution helper
+      // Dry Run = false, True Run: Use dependency resolution helper.
+      // Fetch tableConstraints/tablePartition (the recursive CSV has no column for them) and
+      // columns (column extension is only hydrated when both "columns" and "extension" are
+      // requested) so the createOrUpdate below carries them through instead of dropping them.
       try {
         table =
             getEntityWithDependencyResolution(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE,
+                tableFqn,
+                "owners,tags,domains,extension,tableConstraints,tablePartition,columns",
+                Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Table not found, create a new one
         LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
