@@ -317,23 +317,50 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ? selectedStatus.filter((s) => s !== 'all').join(',')
         : undefined;
 
-      // Use search API if search term is present
+      // Fetch the page first and defer every shared-state mutation until the
+      // response is confirmed current by the stale-context guard below.
+      let searchOffset = 0;
       if (searchTerm) {
-        const currentOffset = loadMore ? searchPaging.offset : 0;
+        searchOffset = loadMore ? searchPaging.offset : 0;
         const response = await searchGlossaryTermsPaginated({
           q: searchTerm,
           glossaryFqn: activeGlossary?.fullyQualifiedName,
           limit: PAGE_SIZE_LARGE,
-          offset: currentOffset,
+          offset: searchOffset,
           fields:
             'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
           entityStatus: entityStatusParam,
         });
         data = response.data;
         pagingResponse = response.paging;
+      } else {
+        const response = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          PAGE_SIZE_LARGE,
+          loadMore ? paging.after : undefined,
+          entityStatusParam
+        );
+        data = response.data;
+        pagingResponse = response.paging;
+      }
 
-        // Update search pagination state
-        const newOffset = currentOffset + PAGE_SIZE_LARGE;
+      // Discard stale responses BEFORE touching any shared pagination state, so
+      // a request issued for a now-inactive context (search term, status
+      // filter, or glossary) cannot advance the search offset or continuation
+      // cursor that the active glossary's scrolling relies on.
+      if (
+        !data ||
+        !Array.isArray(data) ||
+        fetchSearchTerm !== searchTermRef.current ||
+        fetchStatusKey !== selectedStatusRef.current.join(',') ||
+        fetchGlossaryFqn !== activeGlossaryFqnRef.current
+      ) {
+        return;
+      }
+
+      // Advance pagination state now that the response is known to be current.
+      if (searchTerm) {
+        const newOffset = searchOffset + PAGE_SIZE_LARGE;
         const hasMore =
           data.length === PAGE_SIZE_LARGE &&
           (pagingResponse?.total === undefined ||
@@ -344,37 +371,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           hasMore,
         });
       } else {
-        // Use regular listing API when no search term
-        const response = await getFirstLevelGlossaryTermsPaginated(
-          activeGlossary?.fullyQualifiedName || '',
-          PAGE_SIZE_LARGE,
-          loadMore ? paging.after : undefined,
-          entityStatusParam
-        );
-        data = response.data;
-        pagingResponse = response.paging;
-
-        // Update regular paging state for next page
         handlePagingChange((prev) => ({
           ...prev,
           after: pagingResponse?.after,
           total: pagingResponse?.total || prev.total,
         }));
-      }
-
-      // Apply the response only when it still matches the active context — the
-      // same search term, status filter, and glossary it was issued for. A
-      // response computed for a now-outdated context (a request in flight when
-      // the user typed a query, changed the filter, or switched glossaries) is
-      // discarded so it cannot repopulate the table against the user's intent.
-      if (
-        !data ||
-        !Array.isArray(data) ||
-        fetchSearchTerm !== searchTermRef.current ||
-        fetchStatusKey !== selectedStatusRef.current.join(',') ||
-        fetchGlossaryFqn !== activeGlossaryFqnRef.current
-      ) {
-        return;
       }
 
       if (data.length === 0 && isStatusFilterActive) {
