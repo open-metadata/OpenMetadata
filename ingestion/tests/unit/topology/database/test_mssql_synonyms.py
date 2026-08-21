@@ -442,6 +442,7 @@ class TestMssqlSourcePrepare:
     def test_prepare_wires_the_sweep_into_synonym_map(self):
         source = MagicMock(spec=MssqlSource)
         source.engine = MagicMock()
+        source.service_connection = MagicMock(includeSynonyms=True)
         source._in_scope_database_names.return_value = ["analytics_core"]
         expected_map = SynonymMap()
         expected_map.add("svc.analytics_master.dbo.orders", "svc.analytics_core.dbo.orders")
@@ -462,6 +463,7 @@ class TestMssqlSourcePrepare:
     def test_prepare_leaves_the_existing_synonym_map_untouched_when_the_sweep_fails(self):
         source = MagicMock(spec=MssqlSource)
         source.engine = MagicMock()
+        source.service_connection = MagicMock(includeSynonyms=True)
         # What __init__ would have set before prepare() ever ran.
         source.synonym_map = SynonymMap()
         source._in_scope_database_names.return_value = ["analytics_core"]
@@ -480,3 +482,35 @@ class TestMssqlSourcePrepare:
         MssqlSource.close(source)
 
         assert source.status.warnings == []
+
+
+class TestIncludeSynonymsFlag:
+    """includeSynonyms gates the sweep so an opted-out service runs no synonym queries."""
+
+    def test_disabled_skips_the_sweep_entirely(self):
+        source = MagicMock(spec=MssqlSource)
+        source.service_connection = MagicMock(includeSynonyms=False)
+        source.synonym_map = SynonymMap()
+
+        with patch("metadata.ingestion.source.database.mssql.metadata.build_synonym_map") as sweep:
+            MssqlSource.prepare(source)
+
+        sweep.assert_not_called()
+        assert source.synonym_map.is_empty() is True
+
+    def test_enabled_runs_the_sweep(self):
+        source = MagicMock(spec=MssqlSource)
+        source.engine = MagicMock()
+        source.service_connection = MagicMock(includeSynonyms=True)
+        source._in_scope_database_names.return_value = ["analytics_core"]
+        built = SynonymMap()
+        built.add("svc.master.dbo.orders", "svc.core.dbo.orders")
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.metadata.build_synonym_map",
+            return_value=built,
+        ) as sweep:
+            MssqlSource.prepare(source)
+
+        sweep.assert_called_once()
+        assert source.synonym_map is built

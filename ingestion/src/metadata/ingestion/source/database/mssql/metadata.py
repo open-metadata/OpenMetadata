@@ -299,6 +299,10 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         run, so it is logged and ingestion continues with an empty map.
         """
         super().prepare()
+        if not self.service_connection.includeSynonyms:
+            logger.info("includeSynonyms is disabled; skipping MSSQL synonym discovery")
+
+            return
         try:
             self.synonym_map = build_synonym_map(
                 engine=self.engine,
