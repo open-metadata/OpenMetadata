@@ -79,6 +79,21 @@ class IngestionPipelineProgressStreamTest {
   }
 
   @Test
+  void streamProgressDoesNotReplaySnapshotWhenDelayedListenerReceivesSameInstance() {
+    String pipelineFqn = "service.pipeline";
+    UUID runId = UUID.randomUUID();
+    ProgressUpdate snapshot = update(runId, ProgressUpdateType.DISCOVERY, "snapshot");
+    DelayedSnapshotListenerTracker tracker = new DelayedSnapshotListenerTracker();
+    tracker.updateProgress(pipelineFqn, runId, snapshot);
+    CapturingSink sink = capturingSink();
+
+    repositoryWith(tracker).streamProgress(pipelineFqn, runId, sink, sse());
+    tracker.deliverDelayedCallback(snapshot);
+
+    assertMessages(sink, "snapshot");
+  }
+
+  @Test
   void streamProgressDoesNotEmitStaleSnapshotAfterLiveTerminalUpdate() {
     String pipelineFqn = "service.pipeline";
     UUID runId = UUID.randomUUID();
@@ -237,6 +252,25 @@ class IngestionPipelineProgressStreamTest {
         return frozenSnapshot;
       }
       return super.getProgressState(pipelineFqn, runId);
+    }
+  }
+
+  private static final class DelayedSnapshotListenerTracker extends IngestionProgressTracker {
+    private Consumer<ProgressUpdate> listener;
+
+    private DelayedSnapshotListenerTracker() {
+      super(new SimpleMeterRegistry());
+    }
+
+    @Override
+    public void registerProgressListener(
+        String pipelineFqn, UUID runId, Consumer<ProgressUpdate> registeredListener) {
+      super.registerProgressListener(pipelineFqn, runId, registeredListener);
+      listener = registeredListener;
+    }
+
+    void deliverDelayedCallback(ProgressUpdate snapshot) {
+      listener.accept(snapshot);
     }
   }
 }

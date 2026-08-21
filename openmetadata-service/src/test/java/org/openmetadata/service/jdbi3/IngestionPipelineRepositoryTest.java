@@ -299,6 +299,29 @@ class IngestionPipelineRepositoryTest {
   }
 
   @Test
+  void deployLegacyPipelineWithBlankSourceConfigTypeAddsDefaultBeforeCallingRunner() {
+    Map<String, Object> config = new HashMap<>();
+    config.put("type", "   ");
+    IngestionPipeline pipeline =
+        legacyPipelineWithConfig(config, PipelineType.METADATA, Entity.DATABASE_SERVICE);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    PipelineServiceClientResponse response = new PipelineServiceClientResponse().withCode(200);
+    when(pipelineServiceClient.deployPipeline(
+            any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(response);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    ServiceEntityInterface service = mock(ServiceEntityInterface.class);
+
+    PipelineServiceClientResponse actual =
+        deploymentRepository.deployIngestionPipeline(pipeline, service);
+
+    assertEquals(response, actual);
+    assertEquals("DatabaseMetadata", sourceConfigMap(pipeline).get("type"));
+    verify(pipelineServiceClient).deployPipeline(pipeline, service);
+  }
+
+  @Test
   void deployLegacyReverseIngestionAddsDefaultSourceConfigTypeBeforeCallingRunner() {
     Map<String, Object> config = new HashMap<>();
     config.put("operations", List.of());
@@ -433,7 +456,6 @@ class IngestionPipelineRepositoryTest {
 
   private static Stream<Arguments> invalidLegacySourceConfigs() {
     return Stream.of(
-        Arguments.of("blank type", Map.of("type", "   ")),
         Arguments.of("non-string type", Map.of("type", 42)),
         Arguments.of(
             "raw-map enum type",
