@@ -32,6 +32,7 @@ import {
   DummyEntityActivityFeedComponent,
   DummyFollowingActivityComponent,
   DummySetActiveActivityComponent,
+  DummyTaskListStateComponent,
 } from '../../../mocks/ActivityFeedProvider.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import {
@@ -329,6 +330,103 @@ describe('ActivityFeedProvider', () => {
     expect(listTasks).not.toHaveBeenCalledWith(
       expect.objectContaining({ mentionedUser: expect.anything() })
     );
+  });
+
+  describe('a first-page task fetch replaces the previous result set', () => {
+    const renderTaskListState = () =>
+      render(
+        <ActivityFeedProvider>
+          <DummyTaskListStateComponent />
+        </ActivityFeedProvider>
+      );
+
+    it('clears the rows and the paging cursor before the new response lands', async () => {
+      (listTasks as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'task-open', createdAt: 1 }],
+        paging: { after: 'cursor-1' },
+      });
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+
+      expect(screen.getByTestId('task-ids')).toHaveTextContent('task-open');
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-1');
+
+      let resolveClosed: (value: unknown) => void = () => undefined;
+      (listTasks as jest.Mock).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveClosed = resolve;
+        })
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      // Leaving the open rows and `cursor-1` in place is what kept the previous
+      // list on screen and let infinite scroll append the new query's next page
+      // onto it using the old cursor.
+      expect(screen.getByTestId('task-ids')).toBeEmptyDOMElement();
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('none');
+
+      await act(async () => {
+        resolveClosed({
+          data: [{ id: 'task-closed', createdAt: 2 }],
+          paging: { after: 'cursor-2' },
+        });
+      });
+
+      expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed');
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
+
+    it('ignores a response that resolves after a newer request started', async () => {
+      let resolveFirst: (value: unknown) => void = () => undefined;
+      let resolveSecond: (value: unknown) => void = () => undefined;
+
+      (listTasks as jest.Mock)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+        )
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+        );
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      await act(async () => {
+        resolveSecond({
+          data: [{ id: 'task-closed', createdAt: 2 }],
+          paging: { after: 'cursor-2' },
+        });
+      });
+      await act(async () => {
+        resolveFirst({
+          data: [{ id: 'task-open', createdAt: 1 }],
+          paging: { after: 'cursor-1' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed')
+      );
+
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
   });
 
   it('should call postFeed with button click', async () => {

@@ -75,7 +75,19 @@ async function switchToOpenFilter(page: import('@playwright/test').Page) {
   await page.getByTestId('open-tasks').click();
   await tasksListResponse;
 }
-test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
+const waitForMentionedTaskResponse = (page: import('@playwright/test').Page) =>
+  page.waitForResponse((response) => {
+    if (
+      response.request().method() !== 'GET' ||
+      !response.url().includes('/api/v1/tasks')
+    ) {
+      return false;
+    }
+
+    return Boolean(new URL(response.url()).searchParams.get('mentionedUser'));
+  });
+
+test.describe('ActivityFeedTab — task filter badge, placeholder and mentions', () => {
   const table = new TableClass();
   const assigneeUser = new UserClass();
 
@@ -226,6 +238,77 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
         .toBe(0);
     } finally {
       await countedTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Mentions sub-tab lists only the tasks the user is mentioned in', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the assertions below are exact card counts and chromium runs
+    // fullyParallel, so sharing the describe-level table would make them depend
+    // on test order.
+    const mentionTable = new TableClass();
+
+    try {
+      await mentionTable.create(apiContext);
+
+      const fqn = mentionTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      await createOpenTask(apiContext, fqn, assignee);
+      const mentionedTask = await createOpenTask(apiContext, fqn, assignee);
+
+      // A mention relationship is only written from the comment path, so the
+      // comment is what makes this task match ?mentionedUser=admin.
+      const commentResponse = await apiContext.post(
+        `/api/v1/tasks/${mentionedTask.id}/comments`,
+        { data: { message: 'Please take a look <#E::user::admin>' } }
+      );
+      expect(commentResponse.ok()).toBe(true);
+
+      await mentionTable.visitEntityPage(page);
+      await navigateToTasksPanel(page);
+
+      // My Tasks lists every task about the entity.
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(2);
+
+      const mentionsResponse = waitForMentionedTaskResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsResponse;
+
+      // The list has to actually switch — it used to keep rendering My Tasks
+      // because the mentions fetch wrote to the conversation feed state instead.
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+      await expect(
+        page.getByTestId('task-feed-card').getByTestId('entity-link')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('no-data-placeholder-container')
+      ).toHaveCount(0);
+
+      // Switching back restores the full list — guards the paging-cursor reset.
+      const myTasksResponse = waitForTaskListResponse(page);
+      await page.getByTestId('my-tasks-toggle').click();
+      await myTasksResponse;
+
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(2);
+
+      // Landing on the mentions URL directly used to show the empty placeholder.
+      const mentionsAgain = waitForMentionedTaskResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsAgain;
+
+      await page.reload();
+      await waitForPageLoaded(page);
+
+      await expect(page.getByTestId('task-feed-card')).toHaveCount(1);
+    } finally {
+      await mentionTable.delete(apiContext);
       await afterAction();
     }
   });

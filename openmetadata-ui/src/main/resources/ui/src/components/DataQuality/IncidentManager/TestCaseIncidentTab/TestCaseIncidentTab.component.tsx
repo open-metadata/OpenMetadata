@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import {
   lazy,
   RefObject,
@@ -175,12 +176,12 @@ const TestCaseIncidentTab = () => {
         <TaskListV1
           activeFeedId={selectedTask?.id}
           emptyPlaceholderText={t('message.no-tasks-assigned')}
-          isLoading={false}
+          isLoading={loading && isEmpty(tasks)}
           selectedTask={selectedTask}
           taskList={tasks}
           onTaskClick={handleTaskClick}
         />
-        {loader}
+        {!isEmpty(tasks) && loader}
         <div
           className="w-full"
           data-testid="observer-element"
