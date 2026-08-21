@@ -203,6 +203,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const searchTermRef = useRef(searchTerm);
   searchTermRef.current = searchTerm;
+  // Live ref to the active glossary so an in-flight request can verify the
+  // glossary is still the current one before applying its response — the
+  // component stays mounted across glossary switches, so an uncancelled request
+  // for the previous glossary must not repopulate the table.
+  const activeGlossaryFqnRef = useRef(activeGlossary?.fullyQualifiedName);
+  activeGlossaryFqnRef.current = activeGlossary?.fullyQualifiedName;
   const [searchInput, setSearchInput] = useState('');
   const [searchPaging, setSearchPaging] = useState<{
     offset: number;
@@ -299,6 +305,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     const requestSeq = ++fetchRequestSeqRef.current;
     const fetchSearchTerm = searchTerm;
     const fetchStatusKey = selectedStatus.join(',');
+    const fetchGlossaryFqn = activeGlossary?.fullyQualifiedName;
     initializeLoadingStates(loadMore);
 
     try {
@@ -355,16 +362,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         }));
       }
 
-      // Apply the response only when it still matches the active search context.
-      // A response computed for a different (now-outdated) search term — e.g. a
-      // listing request that was in flight when the user typed a query, or a
-      // stale search-mode fetch after the query changed — is discarded so it
-      // cannot repopulate or clear the table against the user's current intent.
+      // Apply the response only when it still matches the active context — the
+      // same search term, status filter, and glossary it was issued for. A
+      // response computed for a now-outdated context (a request in flight when
+      // the user typed a query, changed the filter, or switched glossaries) is
+      // discarded so it cannot repopulate the table against the user's intent.
       if (
         !data ||
         !Array.isArray(data) ||
         fetchSearchTerm !== searchTermRef.current ||
-        fetchStatusKey !== selectedStatusRef.current.join(',')
+        fetchStatusKey !== selectedStatusRef.current.join(',') ||
+        fetchGlossaryFqn !== activeGlossaryFqnRef.current
       ) {
         return;
       }
@@ -413,6 +421,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
+    const requestedGlossaryFqn = activeGlossary?.fullyQualifiedName;
 
     try {
       const allTerms: GlossaryTerm[] = [];
@@ -430,8 +439,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           ],
         });
         allTerms.push(...data);
-        after = paging?.after;
+        // Stop on no forward progress — an empty page or a cursor that did not
+        // advance — so termination never depends solely on the server nulling
+        // the token (a stuck cursor would otherwise loop forever).
+        const nextAfter = paging?.after;
+        const hasProgress = data.length > 0 && nextAfter !== after;
+        after = hasProgress ? nextAfter : undefined;
       } while (after);
+
+      // Discard the result if the user switched glossaries while paging.
+      if (requestedGlossaryFqn !== activeGlossaryFqnRef.current) {
+        return;
+      }
 
       setGlossaryChildTerms(buildTree(allTerms) as ModifiedGlossary[]);
       const keys = allTerms.reduce((prev, curr) => {
@@ -471,8 +490,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           fields: 'about,assignees',
         });
         tasks.push(...data);
-        after = paging?.after;
+        // Stop on no forward progress (empty page or non-advancing cursor) so
+        // termination never depends solely on the server nulling the token.
+        const nextAfter = paging?.after;
+        const hasProgress = data.length > 0 && nextAfter !== after;
+        after = hasProgress ? nextAfter : undefined;
       } while (after);
+
+      // Discard the result if the user switched glossaries while paging.
+      if (glossaryFqn !== activeGlossaryFqnRef.current) {
+        return;
+      }
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
