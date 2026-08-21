@@ -55,12 +55,8 @@ class IngestionPipelineRepositoryTest {
   @Test
   void deleteDeployedPipelineReportsSkippedCleanupForUnavailableRunner() {
     IngestionPipeline pipeline = createBasicPipeline();
-    PipelineServiceClientInterface pipelineServiceClient =
-        mock(PipelineServiceClientInterface.class);
-    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
-        .when(pipelineServiceClient)
-        .deletePipeline(pipeline);
-    IngestionPipelineRepository cleanupRepository = repositoryWithClient(pipelineServiceClient);
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
 
     boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
 
@@ -112,6 +108,48 @@ class IngestionPipelineRepositoryTest {
     boolean wasRunnerCleanupSkipped = cleanupRepository.deleteDeployedPipeline(pipeline, true);
 
     assertFalse(wasRunnerCleanupSkipped);
+  }
+
+  /**
+   * A runner that is down is the observable channel for whether the teardown was attempted at all:
+   * with {@code allowUnavailableRunner=false} — the mode every delete but {@code forceDelete} uses
+   * — {@code deleteDeployedPipeline} propagates {@link IngestionRunnerUnavailableException}, so the
+   * exception surfaces exactly when {@code postDelete} reaches the orchestrator and stays silent
+   * when it does not. The two tests below therefore pin both halves of the {@code hardDelete} guard
+   * through {@code postDelete} itself rather than through {@code deleteDeployedPipeline}, which the
+   * other tests in this class call directly and which would keep passing if the guard were dropped.
+   */
+  @Test
+  void postDeleteLeavesTheDeployedPipelineAloneOnSoftDelete() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertDoesNotThrow(
+        () -> cleanupRepository.postDelete(pipeline, false),
+        "A soft delete is reversible and restore cannot redeploy, so it must not touch the "
+            + "orchestrator — nor fail when the orchestrator is unreachable");
+  }
+
+  @Test
+  void postDeleteTearsDownTheDeployedPipelineOnHardDelete() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertThrows(
+        IngestionRunnerUnavailableException.class,
+        () -> cleanupRepository.postDelete(pipeline, true),
+        "A hard delete must still remove the DAG from the orchestrator");
+  }
+
+  private PipelineServiceClientInterface unavailableRunnerClient(IngestionPipeline pipeline) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(pipelineServiceClient)
+        .deletePipeline(pipeline);
+    return pipelineServiceClient;
   }
 
   private IngestionPipelineRepository repositoryWithClient(

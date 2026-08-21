@@ -29,6 +29,7 @@ import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.util.Config;
 import java.io.StringReader;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -447,8 +448,12 @@ public class K8sIngestionPipelineResourceIT {
               }
             });
 
-    // Delete pipeline
-    SdkClients.adminClient().ingestionPipelines().delete(pipeline.getId().toString());
+    // Hard delete: tearing the K8s resources down is irreversible, so it is bound to the
+    // irreversible delete. A soft delete leaves them in place so a restore yields a pipeline that
+    // still has its backing CronJob (see SoftDeleteRetentionIT and issue #27040).
+    SdkClients.adminClient()
+        .ingestionPipelines()
+        .delete(pipeline.getId().toString(), Map.of("hardDelete", "true"));
 
     // Verify all resources are cleaned up
     Awaitility.await()
