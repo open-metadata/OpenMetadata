@@ -198,5 +198,8 @@ def test_get_context_builds_okf_markdown_path():
 
     result = metadata.get_context(Table, "svc.db.sch.orders", query="refund rules")
 
-    metadata.client.get.assert_called_once_with("/tables/name/svc.db.sch.orders/context?query=refund%20rules")
+    # A markdown body, so the call opts out of the client's JSON expectation.
+    metadata.client.get.assert_called_once_with(
+        "/tables/name/svc.db.sch.orders/context?query=refund%20rules", expect_json=False
+    )
     assert result == '---\ntype: "table"\n---\n'

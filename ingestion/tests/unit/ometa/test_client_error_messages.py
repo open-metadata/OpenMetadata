@@ -18,13 +18,20 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from metadata.ingestion.ometa.client import REST, ClientConfig, HtmlResponseError
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.client import (
+    REST,
+    ClientConfig,
+    HtmlResponseError,
+    NonJsonResponseError,
+)
 from metadata.ingestion.ometa.client_utils import OMetaClientInitError, create_ometa_client
 from metadata.ingestion.ometa.mixins.server_mixin import (
     OMetaServerMixin,
     VersionMismatchException,
     VersionNotFoundException,
 )
+from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
 
 VERSION_URL = "https://release-1-13.getcollate.io/v1/system/version"
 
@@ -52,16 +59,39 @@ def _response(
     return resp
 
 
-def _rest_returning(resp: requests.Response, raise_on_html: bool = True) -> REST:
+def _rest_returning(
+    resp: requests.Response,
+    raise_on_html: bool = True,
+    expect_json: bool = False,
+) -> REST:
     """A REST client whose single request answers `resp`.
 
     `raise_on_html` defaults to True here because these tests exercise the
     OpenMetadata client, which opts in; the plain default is covered separately.
     """
-    client = REST(ClientConfig(base_url="https://release-1-13.getcollate.io", retry=0, raise_on_html=raise_on_html))
+    client = REST(
+        ClientConfig(
+            base_url="https://release-1-13.getcollate.io",
+            retry=0,
+            raise_on_html=raise_on_html,
+            expect_json=expect_json,
+        )
+    )
     client._session = MagicMock()
     client._session.request.return_value = resp
     return client
+
+
+def _ometa_with(client: REST) -> OpenMetadata:
+    """An OpenMetadata client wired to `client`, skipping the real __init__.
+
+    `__init__` builds auth providers and validates versions; these tests only
+    exercise what the entity calls do with the body they get back.
+    """
+    ometa = OpenMetadata.__new__(OpenMetadata)
+    ometa.client = client
+    ometa._use_raw_data = False
+    return ometa
 
 
 class _Server(OMetaServerMixin):
@@ -290,3 +320,88 @@ class TestCreateOMetaClientKeepsContext:
     def test_init_error_is_still_a_value_error(self):
         """Callers already catching ValueError must keep working."""
         assert issubclass(OMetaClientInitError, ValueError)
+
+
+class TestNonJsonBodyOnTheOpenMetadataApi:
+    """The API answers JSON, so a text body must name the endpoint that answered."""
+
+    def test_plain_text_body_raises_actionable_error(self):
+        """A gateway page where JSON is expected used to reach the caller as a
+        `Response` and fail with `'Response' object is not subscriptable`."""
+        client = _rest_returning(
+            _response(200, "Request blocked by the gateway", "text/plain"),
+            raise_on_html=False,
+            expect_json=True,
+        )
+
+        with pytest.raises(NonJsonResponseError) as err:
+            client.get("/tables?limit=100")
+
+        message = str(err.value)
+        assert "text/plain" in message
+        assert "Request blocked by the gateway" in message
+        assert "Expected a JSON body" in message
+
+    def test_html_keeps_the_more_specific_error(self):
+        """`expect_json` covers HTML too, but the page has its own advice."""
+        client = _rest_returning(_response(200, UI_INDEX_HTML, "text/html"), raise_on_html=False, expect_json=True)
+
+        with pytest.raises(HtmlResponseError):
+            client.get("/tables?limit=100")
+
+    def test_text_endpoints_opt_out_per_call(self):
+        """CSV / ODCS-YAML / markdown exports answer text on purpose."""
+        csv_body = "name,description\nfoo,bar\n"
+        client = _rest_returning(_response(200, csv_body, "text/plain"), expect_json=True)
+
+        response = client.get("/glossaries/name/g/export", expect_json=False)
+
+        assert isinstance(response, requests.Response)
+        assert response.text == csv_body
+
+    def test_connectors_are_unaffected(self):
+        """Connectors share this client and default to keeping the Response."""
+        client = _rest_returning(_response(200, "not json", "text/plain"), raise_on_html=False)
+
+        assert isinstance(client.get("/v2/version"), requests.Response)
+
+    def test_list_entities_names_the_endpoint(self):
+        """The reported traceback, one layer up: `resp["data"]` on a Response."""
+        client = _rest_returning(
+            _response(200, "Request blocked by the gateway", "text/plain"),
+            expect_json=True,
+        )
+
+        with pytest.raises(NonJsonResponseError):
+            _ometa_with(client).list_entities(entity=Table)
+
+
+class TestEmptyPayloadOnListCalls:
+    """`REST.get` answers None once the retry budget runs out - not a subscriptable body."""
+
+    def test_list_entities_reports_the_empty_response(self):
+        client = MagicMock()
+        client.get.return_value = None
+
+        with pytest.raises(EmptyPayloadException) as err:
+            _ometa_with(client).list_entities(entity=Table)
+
+        assert "/tables" in str(err.value)
+
+    def test_list_services_reports_the_empty_response(self):
+        client = MagicMock()
+        client.get.return_value = None
+
+        with pytest.raises(EmptyPayloadException) as err:
+            _ometa_with(client).list_services(entity=Table)
+
+        assert "/tables" in str(err.value)
+
+    def test_list_versions_reports_the_empty_response(self):
+        client = MagicMock()
+        client.get.return_value = None
+
+        with pytest.raises(EmptyPayloadException) as err:
+            _ometa_with(client).list_versions("d7c3a8f2-0000-0000-0000-000000000000", Table)
+
+        assert "/versions" in str(err.value)

@@ -339,9 +339,11 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
-            # The OpenMetadata API never answers HTML, so a page here means the
-            # request reached the UI or a proxy instead of the API.
-            raise_on_html=True,
+            # The OpenMetadata API answers JSON on every endpoint but its text
+            # exports (which opt out per call), so any other body means the request
+            # reached the UI, a proxy or a gateway instead of the API. Failing here
+            # beats handing a `Response` to a caller that subscripts it.
+            expect_json=True,
             **(additional_client_config_arguments or {}),
         )
 
@@ -588,7 +590,8 @@ class OpenMetadata(
         path = f"{self.get_suffix(entity)}/name/{quote(fqn)}/context"
         if query:
             path += f"?query={quote(query)}"
-        resp = self.client.get(path)
+        # An OKF markdown document, not JSON.
+        resp = self.client.get(path, expect_json=False)
         text = getattr(resp, "text", resp)
         return text if isinstance(text, str) else None
 
@@ -682,6 +685,12 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to LIST {suffix}. The server may be unreachable"
+                " or persistently returning 429/504."
+            )
+
         if skip_on_failure:
             entities = []
             for elmt in resp["data"]:
@@ -754,6 +763,9 @@ class OpenMetadata(
 
         if self._use_raw_data:
             return resp
+
+        if not resp:
+            raise EmptyPayloadException(f"Got an empty response when trying to GET from {suffix}{path}")
         return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:  # noqa: UP006
@@ -764,6 +776,9 @@ class OpenMetadata(
         resp = self.client.get(self.get_suffix(entity))
         if self._use_raw_data:
             return resp
+
+        if not resp:
+            raise EmptyPayloadException(f"Got an empty response when trying to LIST {self.get_suffix(entity)}")
 
         return [entity(**p) for p in resp["data"]]
 

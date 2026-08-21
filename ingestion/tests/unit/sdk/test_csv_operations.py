@@ -47,7 +47,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Verify
         assert result == mock_response
-        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/export")
+        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/export", expect_json=False)
 
     def test_csv_mixin_export_async(self):
         """Test async CSV export method."""
@@ -71,7 +71,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
         # Verify
         assert result == "export-job-123"
-        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync")
+        self.mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync", expect_json=False)
 
     def test_csv_mixin_import(self):
         """Test CSV import method."""
@@ -97,6 +97,7 @@ class TestCsvMixinOperations(unittest.TestCase):
             "/glossaries/name/test_glossary/import",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     def test_csv_mixin_import_dry_run(self):
@@ -123,6 +124,7 @@ class TestCsvMixinOperations(unittest.TestCase):
             "/glossaries/name/test_glossary/import?dryRun=true",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     def test_csv_mixin_import_async(self):
@@ -149,6 +151,7 @@ class TestCsvMixinOperations(unittest.TestCase):
             "/glossaries/name/test_glossary/importAsync",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     def test_base_entity_csv_export_integration(self):

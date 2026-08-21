@@ -37,7 +37,7 @@ class TestCsvMixin:
 
         # Verify
         assert result == "csv,data,here"
-        mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/export")
+        mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/export", expect_json=False)
         mock_get_endpoint.assert_called_once_with(Glossary)
 
     @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
@@ -59,7 +59,7 @@ class TestCsvMixin:
 
         # Verify
         assert result == "job-123"
-        mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync")
+        mock_client.get.assert_called_once_with("/glossaries/name/test_glossary/exportAsync", expect_json=False)
 
     @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
     def test_import_csv(self, mock_get_endpoint):
@@ -85,6 +85,7 @@ class TestCsvMixin:
             "/glossaries/name/test_glossary/import",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
@@ -111,6 +112,7 @@ class TestCsvMixin:
             "/glossaries/name/test_glossary/import?dryRun=true",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     @patch("metadata.ingestion.ometa.mixins.csv_mixin.CSVMixin._get_csv_endpoint")
@@ -137,6 +139,7 @@ class TestCsvMixin:
             "/glossaries/name/test_glossary/importAsync",
             csv_data,
             headers={"Content-Type": "text/plain"},
+            expect_json=False,
         )
 
     def test_get_csv_endpoint_glossary(self):

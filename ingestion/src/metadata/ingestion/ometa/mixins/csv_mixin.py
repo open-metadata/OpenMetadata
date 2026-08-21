@@ -42,7 +42,8 @@ class CSVMixin:
             endpoint = self._get_csv_endpoint(entity)
             path = f"/{endpoint}/name/{name}/export"
 
-            response = self.client.get(path)
+            # A CSV body, not JSON: opt out of the client's JSON expectation.
+            response = self.client.get(path, expect_json=False)
             if isinstance(response, str):
                 return response
             if isinstance(response, dict):
@@ -67,7 +68,7 @@ class CSVMixin:
             endpoint = self._get_csv_endpoint(entity)
             path = f"/{endpoint}/name/{name}/exportAsync"
 
-            response = self.client.get(path)
+            response = self.client.get(path, expect_json=False)
             # The async endpoint returns a job ID
             if isinstance(response, dict):
                 return response.get("jobId", "")
@@ -95,10 +96,13 @@ class CSVMixin:
             if dry_run:
                 path = f"{path}?dryRun=true"
 
+            # The import endpoints can answer a plain-text message rather than the
+            # CsvImportResult, so they opt out of the client's JSON expectation.
             response = self.client.put(
                 path,
                 csv_data,
                 headers={"Content-Type": "text/plain"},
+                expect_json=False,
             )
 
             if isinstance(response, dict):
@@ -133,6 +137,7 @@ class CSVMixin:
                 path,
                 csv_data,
                 headers={"Content-Type": "text/plain"},
+                expect_json=False,
             )
 
             if isinstance(response, dict):

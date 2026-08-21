@@ -77,6 +77,26 @@ class HtmlResponseError(Exception):
         self.status_code = status_code
 
 
+class NonJsonResponseError(Exception):
+    """A JSON body was expected but the endpoint answered another payload.
+
+    Raised instead of handing the caller a ``Response`` it would subscript - the
+    old behaviour surfaced as ``'Response' object is not subscriptable`` frames away
+    from the endpoint that answered wrong. ``HtmlResponseError`` covers the HTML
+    case, which gets its own advice.
+    """
+
+    def __init__(self, url: object, resp: requests.Response) -> None:
+        super().__init__(
+            f"Expected a JSON body from [{url}] but got HTTP {resp.status_code} with content type"
+            f" [{resp.headers.get('Content-Type', 'unknown')}]: {resp.text[:500].strip()}."
+            " The endpoint answered a payload this call cannot read - check the configured"
+            " host/URL and that no proxy or gateway is rewriting the response."
+        )
+        self.url = url
+        self.status_code = resp.status_code
+
+
 def is_html_body(resp: requests.Response) -> bool:
     """Whether a non-JSON body is an HTML page.
 
@@ -90,22 +110,31 @@ def is_html_body(resp: requests.Response) -> bool:
     return head.startswith("<") and "<html" in head.lower()
 
 
-def _decode_body(resp: requests.Response, url: object, raise_on_html: bool = False):
+def _decode_body(
+    resp: requests.Response,
+    url: object,
+    raise_on_html: bool = False,
+    expect_json: bool = False,
+):
     """Decode a successful response body.
 
     JSON when it parses; otherwise the ``Response`` itself, for the text payloads
     some endpoints answer with (CSV and ODCS-YAML exports).
 
-    ``raise_on_html`` turns an HTML page into an ``HtmlResponseError`` instead. It
-    is opt-in because callers disagree on what HTML means: the OpenMetadata API
-    never answers it, but connectors share this client and some deliberately
+    ``raise_on_html`` turns an HTML page into an ``HtmlResponseError``, and
+    ``expect_json`` any non-JSON body into a ``NonJsonResponseError`` (HTML still
+    gets the more specific error). Both are opt-in because callers disagree on what
+    a non-JSON body means: the OpenMetadata API answers JSON on every endpoint but
+    its text exports, while connectors share this client and some deliberately
     tolerate a non-JSON reply on their ingestion path.
     """
     try:
         return resp.json()
     except JSONDecodeError as json_decode_error:
-        if raise_on_html and is_html_body(resp):
+        if (raise_on_html or expect_json) and is_html_body(resp):
             raise HtmlResponseError(url, resp.status_code) from json_decode_error
+        if expect_json:
+            raise NonJsonResponseError(url, resp) from json_decode_error
         logger.debug(
             "Non-JSON response (%s) from [%s] with content type [%s] returned as-is: %s",
             resp.status_code,
@@ -198,6 +227,11 @@ class ClientConfig(ConfigModel):
     # Response. Off by default: connectors share this client against third-party
     # APIs, and some tolerate a non-JSON reply on purpose.
     raise_on_html: bool = False
+    # This API answers JSON on every endpoint: reject a body that is not JSON rather
+    # than handing the caller the raw Response it would subscript. Also off by
+    # default for the connectors; the few OpenMetadata endpoints that answer text
+    # (CSV / ODCS-YAML / markdown exports) opt out per call with `expect_json=False`.
+    expect_json: bool = False
     auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
     verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
     cookies: Optional[Any] = None  # noqa: UP045
@@ -256,6 +290,7 @@ class REST:
         retries: Optional[int] = None,  # noqa: UP045
         retry_wait: Optional[int] = None,  # noqa: UP045
         raw: bool = False,
+        expect_json: Optional[bool] = None,  # noqa: UP045
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -337,7 +372,7 @@ class REST:
         with http_cm, op_cm:
             while retry >= 0:
                 try:
-                    return self._one_request(method, url, opts, retry, raw)
+                    return self._one_request(method, url, opts, retry, raw, expect_json)
                 except LimitsException as exc:
                     logger.error(f"Feature limit exceeded for {url}")
                     self._limits_reached.add(path)
@@ -357,7 +392,15 @@ class REST:
                         traceback.format_exc()
             return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int, raw: bool = False):
+    def _one_request(
+        self,
+        method: str,
+        url: URL,
+        opts: dict,
+        retry: int,
+        raw: bool = False,
+        expect_json: Optional[bool] = None,  # noqa: UP045
+    ):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
@@ -378,7 +421,12 @@ class REST:
                 return resp
 
             if resp.text != "":
-                return _decode_body(resp, url, self.config.raise_on_html)
+                return _decode_body(
+                    resp,
+                    url,
+                    self.config.raise_on_html,
+                    self.config.expect_json if expect_json is None else expect_json,
+                )
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
@@ -394,8 +442,8 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
-        except HtmlResponseError:
-            # Already carries the actionable message; the catch-all below would
+        except (HtmlResponseError, NonJsonResponseError):
+            # Already carry the actionable message; the catch-all below would
             # downgrade it to a warning and hand the caller a None.
             raise
         except (
@@ -416,7 +464,7 @@ class REST:
 
         return None
 
-    def get(self, path, data=None, headers=None):
+    def get(self, path, data=None, headers=None, expect_json=None):
         """
         GET method
 
@@ -424,11 +472,14 @@ class REST:
             path (str):
             data ():
             headers (dict): Optional custom headers to override default headers
+            expect_json (bool): Override the client's `expect_json`. The text
+                endpoints (CSV / ODCS-YAML / markdown exports) pass False to keep
+                getting the `Response` back on a client that otherwise needs JSON.
 
         Returns:
             Response
         """
-        return self._request("GET", path, data, headers=headers)
+        return self._request("GET", path, data, headers=headers, expect_json=expect_json)
 
     def get_raw(
         self,
@@ -533,7 +584,7 @@ class REST:
             headers = {**headers, **extra_headers}
         return headers
 
-    def put(self, path, data=None, json=None, headers=None):
+    def put(self, path, data=None, json=None, headers=None, expect_json=None):
         """
         PUT method
 
@@ -542,11 +593,12 @@ class REST:
             data ():
             json ():
             headers (dict): Optional custom headers to override default headers
+            expect_json (bool): Override the client's `expect_json`, as in `get`.
 
         Returns:
             Response
         """
-        return self._request("PUT", path, data, json=json, headers=headers)
+        return self._request("PUT", path, data, json=json, headers=headers, expect_json=expect_json)
 
     def patch(self, path, data=None, headers=None):
         """

@@ -272,7 +272,10 @@ class OMetaDataContractMixin:
             YAML string if successful, None otherwise
         """
         try:
-            resp = self.client.get(f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/odcs/yaml")
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/odcs/yaml",
+                expect_json=False,
+            )
             if resp:
                 if hasattr(resp, "text"):
                     return resp.text
@@ -294,7 +297,7 @@ class OMetaDataContractMixin:
             YAML string if successful, None otherwise
         """
         try:
-            resp = self.client.get(f"{self.get_suffix(DataContract)}/name/{fqn}/odcs/yaml")
+            resp = self.client.get(f"{self.get_suffix(DataContract)}/name/{fqn}/odcs/yaml", expect_json=False)
             if resp:
                 if hasattr(resp, "text"):
                     return resp.text

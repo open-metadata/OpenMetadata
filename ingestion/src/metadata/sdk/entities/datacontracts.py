@@ -60,7 +60,7 @@ class ODCSExportOperation:
 
         if self.yaml_format:
             endpoint = f"{suffix}/{path_segment}/odcs/yaml"
-            resp = rest_client.get(endpoint)
+            resp = rest_client.get(endpoint, expect_json=False)
             if resp:
                 if hasattr(resp, "text"):
                     return resp.text
