@@ -38,30 +38,6 @@ describe('DocumentTitle', () => {
     await waitFor(() => expect(document.title).toBe('Explore | OpenMetadata'));
   });
 
-  it('omits the suffix when the brand key is unresolved', async () => {
-    mockBrand = 'label.brand-name';
-
-    render(
-      <HelmetProvider>
-        <DocumentTitle title="Explore" />
-      </HelmetProvider>
-    );
-
-    await waitFor(() => expect(document.title).toBe('Explore'));
-  });
-
-  it('omits the suffix when brandName is not interpolated', async () => {
-    mockBrand = '{{brandName}}';
-
-    render(
-      <HelmetProvider>
-        <DocumentTitle title="Explore" />
-      </HelmetProvider>
-    );
-
-    await waitFor(() => expect(document.title).toBe('Explore'));
-  });
-
   it('renders no visible DOM of its own', () => {
     const { container } = render(
       <HelmetProvider>

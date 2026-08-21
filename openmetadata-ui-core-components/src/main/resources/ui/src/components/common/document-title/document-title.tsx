@@ -16,29 +16,13 @@ import type { DocumentTitleProps } from './document-title.types';
 
 export type { DocumentTitleProps } from './document-title.types';
 
-/**
- * Sets the browser tab title via react-helmet-async, appending the brand name
- * (` | {brand}`) to match the rest of the app.
- *
- * `label.brand-name` is resolved from the host app's default i18n namespace, not
- * the library's `core` namespace — the app owns the key and its `{{brandName}}`
- * value (sourced from the `BRAND_NAME` env var via i18next `defaultVariables`),
- * and the shared i18next instance carries that value into the library. The
- * suffix is appended only when the host resolves a real value.
- *
- * Requires a `HelmetProvider` above this component (the OpenMetadata shell wraps
- * its root in one).
- */
+/** Requires a `HelmetProvider` above this component. */
 export const DocumentTitle = ({ title }: DocumentTitleProps) => {
   const { t } = useTranslation();
 
-  const brand = t('label.brand-name');
-  const hasBrand = brand !== 'label.brand-name' && !brand.includes('{{');
-  const fullTitle = hasBrand ? `${title} | ${brand}` : title;
-
   return (
     <Helmet>
-      <title>{fullTitle}</title>
+      <title>{`${title} | ${t('label.brand-name')}`}</title>
     </Helmet>
   );
 };
