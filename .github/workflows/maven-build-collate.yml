@@ -80,7 +80,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Trigger Collate build & wait
+      - name: Trigger Collate & AI Platform build and wait
         uses: benc-uk/workflow-dispatch@v1.3.2
         timeout-minutes: 60
         env:
@@ -88,7 +88,9 @@ jobs:
         with:
           workflow: OpenMetadata Collate Test
           # Collate mirrors each OpenMetadata release line on an identically
-          # named branch, so build the Collate branch matching the PR base.
+          # named branch, so build the Collate branch matching the PR base. That
+          # branch also pins the AI Platform (CAIP) line the dispatched workflow
+          # builds and tests alongside Collate.
           # Dispatching main for a 1.13 PR builds main-only Collate code
           # against a 1.13 checkout. Falls through to the pushed/dispatched ref
           # when there is no pull request in the payload.
