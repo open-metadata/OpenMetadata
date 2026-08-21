@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import { SsoBrokenConfigureResult, SsoProviderFixture } from './fixture';
 import { ProviderHelper } from './index';
 import {
   assertSupportedBaseUrl,
@@ -84,4 +91,93 @@ export const keycloakOidcConfidentialProviderHelper: ProviderHelper = {
   ),
   buildConfigPayload,
   performProviderLogin,
+};
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+
+export const keycloakOidcConfidentialProviderFixture: SsoProviderFixture = {
+  name: 'Keycloak OIDC (confidential)',
+  slug: 'keycloak-oidc-confidential',
+  clientType: 'confidential',
+  loginKind: 'redirect',
+
+  supportsCrossTab: true,
+  supportsSelfSignup: true,
+  supportsSilentCallback: false,
+
+  signInButtonPattern: /(sign in|log in) with Keycloak/i,
+
+  isAvailable: () => Boolean(process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL]),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.KEYCLOAK_SAML_BASE_URL} to run the Keycloak OIDC fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    await applyProviderConfig(apiContext, snapshot, buildConfigPayload());
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async configureBrokenBackend(
+    apiContext: APIRequestContext
+  ): Promise<SsoBrokenConfigureResult> {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    const payload = buildConfigPayload();
+    // Drop oidcConfiguration.discoveryUri — required for the server-side
+    // OIDC client to bootstrap. The validator must name this field.
+    const authConfig = payload.authenticationConfiguration as Record<
+      string,
+      unknown
+    >;
+    const oidcConfig = authConfig.oidcConfiguration as Record<string, unknown>;
+    delete oidcConfig.discoveryUri;
+
+    await applyProviderConfig(apiContext, snapshot, payload);
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+      expectedWarningPattern: /oidcConfiguration\.discoveryUri|discoveryUri/,
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page
+      .getByRole('button', { name: this.signInButtonPattern })
+      .click();
+    await performProviderLogin(page, {
+      username: process.env[SSO_ENV.USERNAME] ?? '',
+      password: process.env[SSO_ENV.PASSWORD] ?? '',
+    });
+    await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+      timeout: 60_000,
+    });
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('dropdown-profile').click();
+    await page.getByTestId('menu-item-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  async forceTokenExpiry(page: Page) {
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('oidcIdToken');
+      if (!raw) return;
+      const [header, , sig] = raw.split('.');
+      const payload = { exp: Math.floor(Date.now() / 1000) - 60 };
+      const b64 = (obj: unknown) =>
+        btoa(JSON.stringify(obj))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      localStorage.setItem('oidcIdToken', `${header}.${b64(payload)}.${sig}`);
+    });
+  },
 };
