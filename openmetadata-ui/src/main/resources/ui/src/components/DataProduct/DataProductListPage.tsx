@@ -173,7 +173,10 @@ const DataProductListPage = ({
               align="center"
               className={NAME_CELL_CLIP_CLASS}
               direction="row"
-              gap={3}>
+              gap={3}
+              onClick={() =>
+                dataProductListing.actionHandlers.onEntityClick?.(entity)
+              }>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
               <Box className="tw:min-w-0" direction="col">
                 <Typography
@@ -250,7 +253,7 @@ const DataProductListPage = ({
           return null;
       }
     },
-    []
+    [dataProductListing.actionHandlers.onEntityClick]
   );
 
   const selectedDataProductEntities = useMemo(

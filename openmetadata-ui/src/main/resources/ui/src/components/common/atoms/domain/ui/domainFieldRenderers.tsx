@@ -69,7 +69,8 @@ export const LIST_EMPTY_STATE_CLASS =
   'tw:flex tw:flex-1 tw:min-h-60 tw:items-center tw:justify-center';
 
 export const renderDomainNameCell = (
-  entity: Domain | DataProduct
+  entity: Domain | DataProduct,
+  onClick?: () => void
 ): ReactNode => {
   const entityName = getEntityName(entity);
 
@@ -78,7 +79,8 @@ export const renderDomainNameCell = (
       align="center"
       className={NAME_CELL_CLIP_CLASS}
       direction="row"
-      gap={3}>
+      gap={3}
+      onClick={onClick}>
       <Avatar size="md" {...getEntityAvatarProps(entity)} />
       <Typography
         className={CLIPPED_NAME_CLASS}
