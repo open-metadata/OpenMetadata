@@ -544,6 +544,7 @@ export async function waitForDocumentAbsentFromSearch(
         q: documentName,
         index: 'contextFile',
         deleted: false,
+        size: 100,
       },
     });
 
