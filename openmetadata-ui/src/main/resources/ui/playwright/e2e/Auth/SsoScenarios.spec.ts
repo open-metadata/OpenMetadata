@@ -301,6 +301,165 @@ for (const fixture of FIXTURES) {
         expect(elapsed).toBeLessThan(15_000);
         expect(page.url()).not.toContain('/signin');
       });
+
+      // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
+      // handoff and MUST NOT boot the full app. If AppRoot ever mounted here
+      // (regression: someone re-adds it under AuthProvider), a >2 MB main
+      // chunk would load and the sidebar shell would attach — this test
+      // catches both.
+      test('silent-callback iframe does not load the full app', async ({
+        page,
+      }) => {
+        if (!fixture.supportsSilentCallback) {
+          test.skip(
+            true,
+            `${fixture.slug} does not use the silent-callback iframe`
+          );
+
+          return;
+        }
+
+        const responses: Array<{ url: string; size: number }> = [];
+        page.on('response', async (resp) => {
+          if (
+            resp.url().endsWith('.js') ||
+            resp.url().endsWith('.js.map') ||
+            resp.url().endsWith('.css')
+          ) {
+            const body = await resp.body().catch(() => null);
+            responses.push({ url: resp.url(), size: body?.length ?? 0 });
+          }
+        });
+
+        await page.goto('/silent-callback');
+        // Wait a couple hundred ms for oidc-client to fire signinSilentCallback
+        // and any async work to complete; then snapshot the DOM.
+        await page.waitForTimeout(500);
+
+        // Full-app shell markers MUST NOT be present in the iframe DOM.
+        await expect(page.getByTestId(APP_BAR_HOME_TESTID)).not.toBeAttached();
+        await expect(page.locator('#appbar')).not.toBeAttached();
+
+        // Bundle-size budget: no single JS chunk larger than 500 KB should
+        // load for this route. The full-app bundle is >2 MB, so exceeding
+        // 500 KB means AppRoot mounted. Threshold picked to be loose enough
+        // for oidc-client itself and to survive Vite's hot-reload wrappers
+        // in dev; tighten if it proves too permissive.
+        const largeChunks = responses.filter((r) => r.size > 500_000);
+
+        expect(largeChunks).toEqual([]);
+      });
+
+      // Scenario 8 — validateAuthFieldsDetailed short-circuits AuthProvider
+      // when the backend advertises a broken config: ConfigErrorPage renders
+      // and NO /authorize request is fired at the IdP. Guards against a
+      // regression where the guard is removed and the user gets bounced
+      // through a half-configured IdP.
+      test('broken config renders ConfigErrorPage before IdP redirect', async ({
+        browser,
+        page,
+      }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        let restoreBroken: (() => Promise<void>) | undefined;
+        try {
+          const broken = await fixture.configureBrokenBackend(apiContext);
+          restoreBroken = broken.restore;
+        } finally {
+          await afterAction();
+        }
+
+        try {
+          // Track any /authorize or IdP-side call — none should fire.
+          let idpCalled = false;
+          page.on('request', (req) => {
+            const url = req.url();
+            if (
+              /\/authorize|\/oauth2|\/saml|\/openid-configuration/.test(url) &&
+              !url.includes('localhost:8585') // ignore our own JWKS
+            ) {
+              idpCalled = true;
+            }
+          });
+
+          await page.goto('/signin');
+          // ConfigErrorPage renders under AuthProvider's short-circuit. Match
+          // by the heading role — text goes through i18n so we assert on the
+          // "config" substring for stability across locales.
+          await expect(
+            page.getByRole('heading', { name: /config/i })
+          ).toBeVisible({ timeout: 20_000 });
+          expect(idpCalled).toBe(false);
+        } finally {
+          await restoreBroken?.();
+          // Restore the valid config so subsequent scenarios keep passing.
+          // The per-describe `beforeAll(fixture.configureBackend)` does not
+          // re-run for this test, so put the good config back explicitly and
+          // chain its restore into the outer `restoreConfig` closure so the
+          // `afterAll` teardown still works.
+          const { apiContext: apiCtx2, afterAction: afterAction2 } =
+            await performAdminLogin(browser);
+          try {
+            const good = await fixture.configureBackend(apiCtx2);
+            restoreConfig = good.restore;
+          } finally {
+            await afterAction2();
+          }
+        }
+      });
+
+      // Scenario 9 — validateAuthFieldsDetailed emits a `[AuthConfig] ...`
+      // console.warn naming the specific offending field. The fixture owns
+      // the expected pattern (each provider misconfigures its own field),
+      // so we assert the pattern shows up in at least one warn line.
+      test('broken config surfaces the specific field in a console.warn', async ({
+        browser,
+        page,
+      }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        let expectedPattern: RegExp | undefined;
+        let restoreBroken: (() => Promise<void>) | undefined;
+        try {
+          const broken = await fixture.configureBrokenBackend(apiContext);
+          restoreBroken = broken.restore;
+          expectedPattern = broken.expectedWarningPattern;
+        } finally {
+          await afterAction();
+        }
+
+        try {
+          const warnings: string[] = [];
+          page.on('console', (msg) => {
+            if (msg.type() === 'warning') {
+              warnings.push(msg.text());
+            }
+          });
+
+          await page.goto('/signin');
+          await expect(
+            page.getByRole('heading', { name: /config/i })
+          ).toBeVisible({ timeout: 20_000 });
+
+          // At least one warn line must match the fixture's expected pattern.
+          const authConfigWarnings = warnings.filter((w) =>
+            w.includes('[AuthConfig]')
+          );
+
+          expect(authConfigWarnings.length).toBeGreaterThan(0);
+          expect(
+            authConfigWarnings.some((w) => expectedPattern!.test(w))
+          ).toBe(true);
+        } finally {
+          await restoreBroken?.();
+          const { apiContext: apiCtx2, afterAction: afterAction2 } =
+            await performAdminLogin(browser);
+          try {
+            const good = await fixture.configureBackend(apiCtx2);
+            restoreConfig = good.restore;
+          } finally {
+            await afterAction2();
+          }
+        }
+      });
     }
   );
 }
