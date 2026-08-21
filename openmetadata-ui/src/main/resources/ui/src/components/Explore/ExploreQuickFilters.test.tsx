@@ -133,6 +133,13 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityIconWithBg: jest.fn(),
+  },
+}));
+
 const index = SearchIndex.TABLE;
 const mockFields: ExploreQuickFilterField[] = [
   {
@@ -351,6 +358,100 @@ describe('ExploreQuickFilters component', () => {
   });
 
   describe('Options fetching - Aggregations', () => {
+    it('ignores a stale response from the previously active dropdown', async () => {
+      let resolveDomainRequest!: (value: unknown) => void;
+      let resolveEntityTypeRequest!: (value: unknown) => void;
+      const domainRequest = new Promise((resolve) => {
+        resolveDomainRequest = resolve;
+      });
+      const entityTypeRequest = new Promise((resolve) => {
+        resolveEntityTypeRequest = resolve;
+      });
+
+      mockGetAggregationOptions.mockImplementation(
+        (_index: unknown, key: string) =>
+          key === 'domains.displayName.keyword'
+            ? domainRequest
+            : entityTypeRequest
+      );
+
+      const fields: ExploreQuickFilterField[] = [
+        {
+          label: 'Domain',
+          key: 'domains.displayName.keyword',
+          value: undefined,
+        },
+        {
+          label: 'Data Assets',
+          key: 'entityType.keyword',
+          value: undefined,
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={undefined}
+          fields={fields}
+        />
+      );
+
+      fireEvent.click(
+        screen.getByTestId('onGetInitialOptions-domains.displayName.keyword')
+      );
+      await waitFor(() =>
+        expect(getAggregationOptions).toHaveBeenCalledTimes(1)
+      );
+      expect(mockGetAggregationOptions.mock.calls[0][1]).toBe(
+        'domains.displayName.keyword'
+      );
+
+      fireEvent.click(
+        screen.getByTestId('onGetInitialOptions-entityType.keyword')
+      );
+      await waitFor(() =>
+        expect(getAggregationOptions).toHaveBeenCalledTimes(2)
+      );
+      expect(mockGetAggregationOptions.mock.calls[1][1]).toBe(
+        'entityType.keyword'
+      );
+
+      await act(async () => {
+        resolveEntityTypeRequest({
+          data: {
+            aggregations: {
+              'sterms#entityType.keyword': {
+                buckets: [{ key: 'table', doc_count: 1 }],
+              },
+            },
+          },
+        });
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('option-entityType.keyword-0')
+        ).toHaveTextContent(/table\s*-\s*1/i)
+      );
+
+      await act(async () => {
+        resolveDomainRequest({
+          data: {
+            aggregations: {
+              'sterms#domains.displayName.keyword': {
+                buckets: [{ key: 'stale-domain', doc_count: 1 }],
+              },
+            },
+          },
+        });
+      });
+
+      expect(
+        screen.getByTestId('option-entityType.keyword-0')
+      ).toHaveTextContent(/table\s*-\s*1/i);
+      expect(screen.queryByText('stale-domain - 1')).not.toBeInTheDocument();
+    });
+
     it('should use aggregations when available', async () => {
       render(<ExploreQuickFilters {...mockProps} />);
 

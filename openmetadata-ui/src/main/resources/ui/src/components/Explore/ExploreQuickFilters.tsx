@@ -15,7 +15,7 @@ import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -98,6 +98,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  // Every dropdown shares the options slot because only one can be open. Keep
+  // an ownership token so a slower request from the previous dropdown cannot
+  // overwrite the options (or loading state) of the currently active one.
+  const latestOptionsRequest = useRef(0);
   const { queryFilter } = useAdvanceSearch();
   const { isNLPActive } = useSearchStore();
   const getStaticOptions = useCallback(
@@ -169,13 +173,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string,
+    requestId: number,
     fieldSearchIndex?: SearchIndex,
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      if (latestOptionsRequest.current === requestId) {
+        setOptions(addEntityTypeIcons(key, staticOptions));
+      }
 
       return;
     }
@@ -213,19 +220,21 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
     }
 
-    setOptions(
-      addEntityTypeIcons(
-        key,
-        uniqWith(
-          getOptionsFromAggregationBucket(
-            buckets,
-            getOptionLabelFormatter(key, untitledDropdown),
-            sourceFields
-          ),
-          isEqual
+    if (latestOptionsRequest.current === requestId) {
+      setOptions(
+        addEntityTypeIcons(
+          key,
+          uniqWith(
+            getOptionsFromAggregationBucket(
+              buckets,
+              getOptionLabelFormatter(key, untitledDropdown),
+              sourceFields
+            ),
+            isEqual
+          )
         )
-      )
-    );
+      );
+    }
   };
 
   const getInitialOptions = async (
@@ -234,8 +243,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
+    const requestId = ++latestOptionsRequest.current;
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
+      setIsOptionsLoading(false);
       setOptions(addEntityTypeIcons(key, staticOptions));
 
       return;
@@ -247,14 +258,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       await fetchDefaultOptions(
         index,
         key,
+        requestId,
         fieldSearchIndex,
         fieldSearchKey,
         sourceFields
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (latestOptionsRequest.current === requestId) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (latestOptionsRequest.current === requestId) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
@@ -265,6 +281,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
+    const requestId = ++latestOptionsRequest.current;
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
       const filteredOptions = value
@@ -272,6 +289,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
+      setIsOptionsLoading(false);
       setOptions(addEntityTypeIcons(key, filteredOptions));
 
       return;
@@ -281,7 +299,14 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key, fieldSearchIndex, fieldSearchKey, sourceFields);
+        await fetchDefaultOptions(
+          index,
+          key,
+          requestId,
+          fieldSearchIndex,
+          fieldSearchKey,
+          sourceFields
+        );
 
         return;
       }
@@ -304,23 +329,29 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
       const buckets =
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
-      setOptions(
-        addEntityTypeIcons(
-          key,
-          uniqWith(
-            getOptionsFromAggregationBucket(
-              buckets,
-              getOptionLabelFormatter(key, untitledDropdown),
-              sourceFields
-            ),
-            isEqual
+      if (latestOptionsRequest.current === requestId) {
+        setOptions(
+          addEntityTypeIcons(
+            key,
+            uniqWith(
+              getOptionsFromAggregationBucket(
+                buckets,
+                getOptionLabelFormatter(key, untitledDropdown),
+                sourceFields
+              ),
+              isEqual
+            )
           )
-        )
-      );
+        );
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (latestOptionsRequest.current === requestId) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (latestOptionsRequest.current === requestId) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
