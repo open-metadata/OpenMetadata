@@ -94,6 +94,11 @@ const test = base.extend<{ page: Page }>({
 });
 
 test.describe('Service Version pages', () => {
+  // The describe owns one shared set of services. Running its tests in separate
+  // workers repeats beforeAll while another worker is soft-deleting the same
+  // entities, so keep the shared fixture lifecycle on a single worker.
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
