@@ -56,7 +56,6 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -414,50 +413,75 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
-    const { data } = await getGlossaryTerms({
-      [key]: activeGlossary?.id || '',
-      limit: API_RES_MAX_SIZE,
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.PARENT,
-        TabSpecificField.CHILDREN,
-      ],
-    });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
-    const keys = data.reduce((prev, curr) => {
-      if (curr.children?.length) {
-        prev.push(curr.fullyQualifiedName ?? '');
-      }
 
-      return prev;
-    }, [] as string[]);
+    try {
+      const allTerms: GlossaryTerm[] = [];
+      let after: string | undefined;
 
-    setExpandedRowKeys(keys);
-    setIsTableLoading(false);
-    setIsExpandingAll(false);
+      do {
+        const { data, paging } = await getGlossaryTerms({
+          [key]: activeGlossary?.id || '',
+          limit: PAGE_SIZE_LARGE,
+          after,
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PARENT,
+            TabSpecificField.CHILDREN,
+          ],
+        });
+        allTerms.push(...data);
+        after = paging?.after;
+      } while (after);
+
+      setGlossaryChildTerms(buildTree(allTerms) as ModifiedGlossary[]);
+      const keys = allTerms.reduce((prev, curr) => {
+        if (curr.children?.length) {
+          prev.push(curr.fullyQualifiedName ?? '');
+        }
+
+        return prev;
+      }, [] as string[]);
+
+      setExpandedRowKeys(keys);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTableLoading(false);
+      setIsExpandingAll(false);
+    }
   };
   const fetchAllTasks = useCallback(async () => {
-    if (!activeGlossary?.fullyQualifiedName) {
+    const glossaryFqn = activeGlossary?.fullyQualifiedName;
+    if (!glossaryFqn) {
       return;
     }
 
     try {
-      const { data } = await listTasks({
-        status: TaskEntityStatus.Open,
-        category: TaskCategory.Approval,
-        type: TaskEntityType.RequestApproval,
-        limit: API_RES_MAX_SIZE,
-        fields: 'about,assignees',
-      });
+      const tasks: Task[] = [];
+      let after: string | undefined;
+
+      do {
+        const { data, paging } = await listTasks({
+          status: TaskEntityStatus.Open,
+          category: TaskCategory.Approval,
+          type: TaskEntityType.RequestApproval,
+          aboutEntity: glossaryFqn,
+          limit: PAGE_SIZE_LARGE,
+          after,
+          fields: 'about,assignees',
+        });
+        tasks.push(...data);
+        after = paging?.after;
+      } while (after);
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
-      const tasksByTerm = data.reduce(
+      const tasksByTerm = tasks.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
           const isGlossaryTermTask =
             task.about?.type === EntityType.GLOSSARY_TERM &&
-            termFQN?.startsWith(`${activeGlossary.fullyQualifiedName}.`);
+            termFQN?.startsWith(`${glossaryFqn}.`);
 
           if (isGlossaryTermTask && termFQN) {
             const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${termFQN}>`;
@@ -489,10 +513,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       currentFQN &&
       !isLoadingMore &&
       currentFQN !== previousGlossaryFQN &&
-      !toggleExpandBtn &&
       !searchTerm // Don't fetch if there's an active search
     ) {
-      // Clear existing terms when switching glossaries
+      // Clear existing terms when switching glossaries. Always reset to the
+      // collapsed, paginated view so the new glossary starts scrollable — a
+      // stuck expand-all flag must not carry over from the previous glossary.
+      setToggleExpandBtn(false);
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
@@ -502,7 +528,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     activeGlossary?.fullyQualifiedName,
     isLoadingMore,
     previousGlossaryFQN,
-    toggleExpandBtn,
     searchTerm,
   ]);
 
@@ -1130,8 +1155,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const toggleExpandAll = useCallback(async () => {
-    setToggleExpandBtn((prev) => !prev);
-    if (expandedRowKeys.length === expandableKeys.length) {
+    // `toggleExpandBtn` marks whether the fully-expanded tree is currently
+    // shown; the scroll handlers gate the collapsed-view infinite scroll on
+    // `!toggleExpandBtn`. Reflect the resulting mode rather than blindly
+    // flipping — a blind toggle leaves the flag stuck `true` after an odd
+    // number of clicks, which permanently disables scroll-to-load-more.
+    const isCollapsing = expandedRowKeys.length === expandableKeys.length;
+    setToggleExpandBtn(!isCollapsing);
+    if (isCollapsing) {
       // Collapse all - immediate UI update
       setExpandedRowKeys([]);
       fetchAllTerms();
