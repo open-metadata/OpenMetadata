@@ -2558,9 +2558,10 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             SearchClient.GLOBAL_SEARCH_ALIAS,
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                "domain.id", domain.getId().toString()),
+                "domains.id", domain.getId().toString()),
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT,
+                Map.of("id", domain.getId().toString())));
     verify(searchClient)
         .deleteEntityByFields(
             List.of("cluster_domain_search_index"),

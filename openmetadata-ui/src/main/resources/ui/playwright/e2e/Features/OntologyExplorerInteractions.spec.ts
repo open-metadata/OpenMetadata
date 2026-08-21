@@ -12,14 +12,15 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
-  addTermRelation,
+  OntologyExplorerComboData as ComboData,
+  OntologyExplorerCrossGlossaryData as CrossGlossaryData,
+  OntologyExplorerEmbeddedData as EmbeddedData,
+} from '../../support/entity/OntologyExplorerDataClass';
+import {
   applyGlossaryFilter,
   applyRelationTypeFilter,
   createApiContext,
-  deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readGraphEdges,
@@ -30,43 +31,22 @@ import {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Isolated nodes + relation filter combo', () => {
-  const comboGlossary = new Glossary();
-  const connectedTermA = new GlossaryTerm(comboGlossary);
-  const connectedTermB = new GlossaryTerm(comboGlossary);
-  const isolatedTerm = new GlossaryTerm(comboGlossary);
-
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await comboGlossary.create(apiContext);
-    await connectedTermA.create(apiContext);
-    await connectedTermB.create(apiContext);
-    await isolatedTerm.create(apiContext);
-    await addTermRelation(
-      apiContext,
-      connectedTermA,
-      connectedTermB,
-      'relatedTo'
-    );
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await ComboData.setup(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      connectedTermA,
-      connectedTermB,
-      isolatedTerm,
-      comboGlossary
-    );
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await ComboData.teardown(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, comboGlossary.responseData.id);
+    await applyGlossaryFilter(page, ComboData.comboGlossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -116,38 +96,25 @@ test.describe('Isolated nodes + relation filter combo', () => {
 });
 
 test.describe('Cross-glossary term hydration', () => {
-  const salesGlossary = new Glossary();
-  const financeGlossary = new Glossary();
-  const termRevenue = new GlossaryTerm(salesGlossary);
-  const termExpense = new GlossaryTerm(financeGlossary);
-
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await salesGlossary.create(apiContext);
-    await financeGlossary.create(apiContext);
-    await termRevenue.create(apiContext);
-    await termExpense.create(apiContext);
-    await addTermRelation(apiContext, termRevenue, termExpense, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await CrossGlossaryData.setup(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      termRevenue,
-      termExpense,
-      salesGlossary,
-      financeGlossary
-    );
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await CrossGlossaryData.teardown(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, salesGlossary.responseData.id);
+    await applyGlossaryFilter(
+      page,
+      CrossGlossaryData.salesGlossary.responseData.id
+    );
     await waitForGraphLoaded(page);
   });
 
@@ -157,18 +124,22 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termRevenue.responseData.id]).toBeDefined();
-    expect(positions[termExpense.responseData.id]).toBeDefined();
+    expect(
+      positions[CrossGlossaryData.termRevenue.responseData.id]
+    ).toBeDefined();
+    expect(
+      positions[CrossGlossaryData.termExpense.responseData.id]
+    ).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === termRevenue.responseData.id &&
-          e.to === termExpense.responseData.id) ||
-        (e.from === termExpense.responseData.id &&
-          e.to === termRevenue.responseData.id)
+        (e.from === CrossGlossaryData.termRevenue.responseData.id &&
+          e.to === CrossGlossaryData.termExpense.responseData.id) ||
+        (e.from === CrossGlossaryData.termExpense.responseData.id &&
+          e.to === CrossGlossaryData.termRevenue.responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -182,30 +153,20 @@ test.describe('Cross-glossary term hydration', () => {
 });
 
 test.describe('Embedded scope (Relations Graph tab)', () => {
-  const embeddedGlossary = new Glossary();
-  const termA = new GlossaryTerm(embeddedGlossary);
-  const termB = new GlossaryTerm(embeddedGlossary);
-  const termC = new GlossaryTerm(embeddedGlossary);
-
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await embeddedGlossary.create(apiContext);
-    await termA.create(apiContext);
-    await termB.create(apiContext);
-    await termC.create(apiContext);
-    await addTermRelation(apiContext, termA, termB, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await EmbeddedData.setup(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
-    await disposeApiContext(page, apiContext);
+    const { apiContext, afterAction } = await createApiContext(browser);
+    await EmbeddedData.teardown(apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    test.slow();
-    await termA.visitEntityPage(page);
+    await EmbeddedData.termA.visitEntityPage(page);
     await page.getByTestId('relations_graph').click();
     await waitForGraphLoaded(page);
   });
@@ -234,9 +195,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[termA.responseData.id]).toBeDefined();
-    expect(positions[termB.responseData.id]).toBeDefined();
-    expect(positions[termC.responseData.id]).toBeUndefined();
+    expect(positions[EmbeddedData.termA.responseData.id]).toBeDefined();
+    expect(positions[EmbeddedData.termB.responseData.id]).toBeDefined();
+    expect(positions[EmbeddedData.termC.responseData.id]).toBeUndefined();
   });
 
   test('edge between the term and its neighbour is present', async ({
@@ -245,8 +206,10 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === termA.responseData.id && e.to === termB.responseData.id) ||
-        (e.from === termB.responseData.id && e.to === termA.responseData.id)
+        (e.from === EmbeddedData.termA.responseData.id &&
+          e.to === EmbeddedData.termB.responseData.id) ||
+        (e.from === EmbeddedData.termB.responseData.id &&
+          e.to === EmbeddedData.termA.responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -256,8 +219,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[termB.responseData.id].x,
-      positions[termB.responseData.id].y
+      positions[EmbeddedData.termB.responseData.id].x,
+      positions[EmbeddedData.termB.responseData.id].y
     );
 
     await expect(
