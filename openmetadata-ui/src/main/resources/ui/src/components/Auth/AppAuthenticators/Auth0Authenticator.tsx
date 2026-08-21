@@ -29,15 +29,44 @@ interface Props {
   children: ReactNode;
 }
 
+// Test-only escape hatch. Playwright's `auth0-mock` fixture pre-populates
+// `window.__omTestAuth0` via `page.addInitScript` with a shim exposing the
+// same surface `useAuth0()` returns — `loginWithRedirect`,
+// `getAccessTokenSilently`, `getIdTokenClaims`, and `logout`. When present,
+// we use that instead of the real auth0-react context so the Playwright
+// suite can exercise this component's login / renew branches without a live
+// Auth0 tenant.
+//
+// Gated on `process.env.NODE_ENV !== 'production'` — Vite inlines this at
+// build time, Jest sets it to `'test'`, so the whole branch tree-shakes out
+// of prod bundles while still being reachable from the test runner.
+// `useAuth0()` is still always called to satisfy the Rules of Hooks; only
+// its return value is swapped.
+type Auth0ContextShape = ReturnType<typeof useAuth0>;
+
+const readTestAuth0Override = (): Auth0ContextShape | undefined => {
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return (window as unknown as { __omTestAuth0?: Auth0ContextShape })
+    .__omTestAuth0;
+};
+
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
     const { handleSuccessfulLogout } = useAuthProvider();
+    const realAuth0 = useAuth0();
+    const testAuth0 = readTestAuth0Override();
     const {
       loginWithRedirect,
       getAccessTokenSilently,
       getIdTokenClaims,
       logout,
-    } = useAuth0();
+    } = testAuth0 ?? realAuth0;
 
     // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
     // Task 11). Kept alongside renewIdToken until every authenticator is
