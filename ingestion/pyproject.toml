@@ -13,7 +13,7 @@ authors = [
 ]
 license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.urls]
 Homepage = "https://open-metadata.org/"
@@ -346,4 +346,3 @@ allowedUntypedLibraries = []
 # [[tool.basedpyright.executionEnvironments]]
 # root = "src/metadata/utils"
 # reportMissingParameterType = "error"
-
