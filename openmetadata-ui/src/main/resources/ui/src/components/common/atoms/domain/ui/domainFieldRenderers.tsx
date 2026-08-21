@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
+import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
@@ -74,13 +74,18 @@ export const renderDomainNameCell = (
 ): ReactNode => {
   const entityName = getEntityName(entity);
 
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onClick?.();
+  };
+
   return (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
       direction="row"
       gap={3}
-      onClick={onClick}>
+      onClick={onClick ? handleNameClick : undefined}>
       <Avatar size="md" {...getEntityAvatarProps(entity)} />
       <Typography
         className={CLIPPED_NAME_CLASS}
