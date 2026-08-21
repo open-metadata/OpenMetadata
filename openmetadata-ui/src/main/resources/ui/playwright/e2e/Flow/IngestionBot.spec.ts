@@ -50,7 +50,9 @@ const test = base.extend<{
 
     const page = await browser.newPage();
     await page.goto('/signin');
-    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
+    await page.waitForFunction(() =>
+      Boolean(navigator.serviceWorker?.controller)
+    );
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
