@@ -1,6 +1,8 @@
 package org.openmetadata.mcp.server.transport;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -33,32 +35,45 @@ public final class JsonRpcErrorBody {
 
   private JsonRpcErrorBody() {}
 
-  public static String of(McpError error) {
-    return of(error.getJsonRpcError());
+  public static String of(Object requestId, McpError error) {
+    return of(requestId, error.getJsonRpcError());
   }
 
-  public static String of(int code, String message) {
-    return of(new JSONRPCError(code, message, null));
+  public static String of(Object requestId, int code, String message) {
+    return of(requestId, new JSONRPCError(code, message, null));
   }
 
   /**
-   * The envelope is assembled node by node rather than serialized from a POJO for two reasons.
-   * {@code id} must be present and null — JSON-RPC 2.0 section 5 requires the member on every
-   * response, and these bodies are produced either before the request id is known (authentication,
-   * unparseable body) or after the handler already failed — whereas {@code McpSchema.JSONRPCResponse}
-   * is annotated NON_ABSENT and would drop it. And {@link JSONRPCError#data()} is deliberately not
-   * copied: it is the one member that could carry caller-supplied or exception-derived content, and
-   * this class exists to guarantee that nothing beyond a code and a message reaches an anonymous
-   * caller.
+   * The envelope is assembled node by node rather than serialized from a POJO because {@code id}
+   * must always be present — JSON-RPC 2.0 section 5 requires the member on every response — whereas
+   * {@code McpSchema.JSONRPCResponse} is annotated NON_ABSENT and would drop it whenever the id is
+   * null. {@link JSONRPCError#data()} is deliberately not copied: it is the one member that could
+   * carry caller-supplied or exception-derived content, and this class exists to guarantee that
+   * nothing beyond a code and a message reaches an anonymous caller.
    */
-  static String of(JSONRPCError error) {
+  static String of(Object requestId, JSONRPCError error) {
     ObjectNode envelope = MAPPER.createObjectNode();
     envelope.put("jsonrpc", McpSchema.JSONRPC_VERSION);
-    envelope.putNull("id");
+    envelope.set("id", idNode(requestId));
 
     ObjectNode jsonRpcError = envelope.putObject("error");
     jsonRpcError.put("code", error.code());
     jsonRpcError.put("message", error.message());
     return envelope.toString();
+  }
+
+  /**
+   * Echoes the request id so a client that pipelines requests can correlate the failure, falling
+   * back to null where the id is genuinely unknown — before the body is parsed, or when it could
+   * not be parsed. JSON-RPC 2.0 section 4 restricts the member to a String, a Number or null, so a
+   * client that sent anything else gets null rather than having its own payload reflected back out
+   * of an error path.
+   */
+  private static JsonNode idNode(Object requestId) {
+    JsonNode node = NullNode.getInstance();
+    if (requestId instanceof String || requestId instanceof Number) {
+      node = MAPPER.valueToTree(requestId);
+    }
+    return node;
   }
 }

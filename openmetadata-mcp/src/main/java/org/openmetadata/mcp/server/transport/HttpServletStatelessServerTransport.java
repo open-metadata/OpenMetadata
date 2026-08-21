@@ -157,6 +157,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
               .message("Accept header must include application/json or text/event-stream")
               .build());
@@ -193,6 +194,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
           responseError(
               response,
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              jsonrpcRequest.id(),
               McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
                   .message("Failed to handle request")
                   .build());
@@ -209,6 +211,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
           responseError(
               response,
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              null,
               McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
                   .message("Failed to handle notification")
                   .build());
@@ -217,6 +220,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
         responseError(
             response,
             HttpServletResponse.SC_BAD_REQUEST,
+            null,
             McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
                 .message("The server accepts either requests or notifications")
                 .build());
@@ -226,6 +230,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
               .message("Invalid message format")
               .build());
@@ -234,6 +239,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       responseError(
           response,
           HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
               .message("Internal server error")
               .build());
@@ -248,16 +254,18 @@ public class HttpServletStatelessServerTransport extends HttpServlet
    *
    * @param response The HTTP servlet response
    * @param httpCode The HTTP status code
+   * @param requestId The id of the request being answered, or null where it is not yet known
    * @param mcpError The MCP error to send
    * @throws IOException If an I/O error occurs
    */
-  static void responseError(HttpServletResponse response, int httpCode, McpError mcpError)
+  static void responseError(
+      HttpServletResponse response, int httpCode, Object requestId, McpError mcpError)
       throws IOException {
     response.setContentType(APPLICATION_JSON);
     response.setCharacterEncoding(UTF_8);
     response.setStatus(httpCode);
     PrintWriter writer = response.getWriter();
-    writer.write(JsonRpcErrorBody.of(mcpError));
+    writer.write(JsonRpcErrorBody.of(requestId, mcpError));
     writer.flush();
   }
 

@@ -138,6 +138,7 @@ class HttpServletStatelessServerTransportTest {
     HttpServletStatelessServerTransport.responseError(
         response,
         HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+        null,
         McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
             .message("Internal server error")
             .build());
@@ -154,6 +155,7 @@ class HttpServletStatelessServerTransportTest {
     HttpServletStatelessServerTransport.responseError(
         response,
         HttpServletResponse.SC_BAD_REQUEST,
+        null,
         McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
             .message("Invalid message format")
             .build());
@@ -164,11 +166,29 @@ class HttpServletStatelessServerTransportTest {
                 + "\"error\":{\"code\":-32600,\"message\":\"Invalid message format\"}}");
   }
 
+  /** A failing request whose id we already parsed must still be correlatable by the client. */
+  @Test
+  void responseError_knownRequestId_echoesItIntoTheEnvelope() throws Exception {
+    HttpServletStatelessServerTransport.responseError(
+        response,
+        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+        42,
+        McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+            .message("Failed to handle request")
+            .build());
+
+    assertThat(body.toString())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":42,"
+                + "\"error\":{\"code\":-32603,\"message\":\"Failed to handle request\"}}");
+  }
+
   @Test
   void responseError_setsContentTypeAndStatus() throws Exception {
     HttpServletStatelessServerTransport.responseError(
         response,
         HttpServletResponse.SC_BAD_REQUEST,
+        null,
         McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST).message("nope").build());
 
     verify(response).setContentType(HttpServletStatelessServerTransport.APPLICATION_JSON);

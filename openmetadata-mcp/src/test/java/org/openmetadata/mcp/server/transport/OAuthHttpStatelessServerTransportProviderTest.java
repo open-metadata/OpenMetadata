@@ -180,12 +180,6 @@ class OAuthHttpStatelessServerTransportProviderTest {
     assertThat(challengeOf(AuthFailure.MISSING_CREDENTIALS)).doesNotContain("error=");
   }
 
-  @Test
-  void writeAuthError_insufficientScope_challengeCarriesInsufficientScope() {
-    assertThat(challengeOf(AuthFailure.INSUFFICIENT_SCOPE))
-        .contains("error=\"insufficient_scope\"");
-  }
-
   /** The MCP spec requires resource_metadata so a client can discover where to start OAuth. */
   @Test
   void writeAuthError_challengeKeepsResourceMetadataAndScope() {
@@ -217,8 +211,17 @@ class OAuthHttpStatelessServerTransportProviderTest {
     assertThat(statusOf(AuthFailure.MISSING_CREDENTIALS))
         .isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
     assertThat(statusOf(AuthFailure.INVALID_TOKEN)).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
-    assertThat(statusOf(AuthFailure.INSUFFICIENT_SCOPE))
-        .isEqualTo(HttpServletResponse.SC_FORBIDDEN);
+  }
+
+  /**
+   * Each kind carries its own JSON-RPC code, so a 403 kind added later cannot inherit the 401 one.
+   */
+  @Test
+  void authFailure_jsonRpcCodeMatchesHttpStatus() {
+    for (AuthFailure failure : AuthFailure.values()) {
+      assertThat(failure.statusCode()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
+      assertThat(failure.jsonRpcCode()).isEqualTo(JsonRpcErrorBody.UNAUTHORIZED);
+    }
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────

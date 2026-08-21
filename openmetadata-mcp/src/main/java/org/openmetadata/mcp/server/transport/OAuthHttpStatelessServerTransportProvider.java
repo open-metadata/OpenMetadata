@@ -445,26 +445,40 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * How a bearer credential failed. RFC 6750 section 3 keeps these apart on the wire: the challenge
    * carries {@code error="invalid_token"} only when a token was supplied and rejected, and must
    * carry no {@code error} parameter at all when the request presented no credentials.
+   *
+   * <p>Each kind owns its JSON-RPC code rather than sharing one, so a kind added later for a
+   * different HTTP status cannot silently inherit an authentication code that does not describe it.
    */
   enum AuthFailure {
-    MISSING_CREDENTIALS(HttpServletResponse.SC_UNAUTHORIZED, null, "Missing bearer token"),
+    MISSING_CREDENTIALS(
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        null,
+        "Missing bearer token"),
     INVALID_TOKEN(
-        HttpServletResponse.SC_UNAUTHORIZED, "invalid_token", "Invalid or expired bearer token"),
-    INSUFFICIENT_SCOPE(
-        HttpServletResponse.SC_FORBIDDEN, "insufficient_scope", "Insufficient scope");
+        HttpServletResponse.SC_UNAUTHORIZED,
+        JsonRpcErrorBody.UNAUTHORIZED,
+        "invalid_token",
+        "Invalid or expired bearer token");
 
     private final int statusCode;
+    private final int jsonRpcCode;
     private final String challengeError;
     private final String message;
 
-    AuthFailure(int statusCode, String challengeError, String message) {
+    AuthFailure(int statusCode, int jsonRpcCode, String challengeError, String message) {
       this.statusCode = statusCode;
+      this.jsonRpcCode = jsonRpcCode;
       this.challengeError = challengeError;
       this.message = message;
     }
 
     int statusCode() {
       return statusCode;
+    }
+
+    int jsonRpcCode() {
+      return jsonRpcCode;
     }
 
     String challengeError() {
@@ -503,7 +517,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     response.setStatus(failure.statusCode());
 
     PrintWriter writer = response.getWriter();
-    writer.write(JsonRpcErrorBody.of(JsonRpcErrorBody.UNAUTHORIZED, failure.message()));
+    // The id is null and not echoed: authentication runs before the request body is read.
+    writer.write(JsonRpcErrorBody.of(null, failure.jsonRpcCode(), failure.message()));
     writer.flush();
   }
 
