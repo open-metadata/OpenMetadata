@@ -288,6 +288,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     setIsTableLoading(true);
+    // A fresh first-level fetch supersedes any in-flight expand-all, so clear
+    // its indicator; the superseded expand-all's own cleanup is sequence-gated
+    // and will not touch this loading state.
+    setIsExpandingAll(false);
 
     if (searchTerm) {
       setSearchPaging({ offset: 0, total: undefined, hasMore: true });
@@ -351,6 +355,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (
         !data ||
         !Array.isArray(data) ||
+        requestSeq !== fetchRequestSeqRef.current ||
         fetchSearchTerm !== searchTermRef.current ||
         fetchStatusKey !== selectedStatusRef.current.join(',') ||
         fetchGlossaryFqn !== activeGlossaryFqnRef.current
@@ -419,6 +424,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchExpadedTree = async () => {
+    // Share the same monotonic sequence as fetchAllTerms so whichever term
+    // load starts last owns the shared table + loading state; a superseded
+    // expand-all then applies no rows and clears no loading flags.
+    const requestSeq = ++fetchRequestSeqRef.current;
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
@@ -448,8 +457,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         after = hasProgress ? nextAfter : undefined;
       } while (after);
 
-      // Discard the result if the user switched glossaries while paging.
-      if (requestedGlossaryFqn !== activeGlossaryFqnRef.current) {
+      // Discard the result if the glossary changed under us, or if a newer term
+      // load superseded this one while it was paging.
+      if (
+        requestedGlossaryFqn !== activeGlossaryFqnRef.current ||
+        requestSeq !== fetchRequestSeqRef.current
+      ) {
         return;
       }
 
@@ -464,10 +477,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       setExpandedRowKeys(keys);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestSeq === fetchRequestSeqRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTableLoading(false);
-      setIsExpandingAll(false);
+      // Only the latest term load owns the shared loading flags.
+      if (requestSeq === fetchRequestSeqRef.current) {
+        setIsTableLoading(false);
+        setIsExpandingAll(false);
+      }
     }
   };
   const fetchAllTasks = useCallback(async () => {
