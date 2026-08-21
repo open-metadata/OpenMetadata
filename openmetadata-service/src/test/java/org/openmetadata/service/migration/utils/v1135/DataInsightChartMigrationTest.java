@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.utils.v1134;
+package org.openmetadata.service.migration.utils.v1135;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 
 /**
- * Covers the transform the 1.13.4 migration applies to a stored chart definition. The definitions
+ * Covers the transform the 1.13.5 migration applies to a stored chart definition. The definitions
  * arrive as the maps they deserialize to out of the chart table, so the transform has to work on
  * maps rather than the typed builders (issue #31478).
  */

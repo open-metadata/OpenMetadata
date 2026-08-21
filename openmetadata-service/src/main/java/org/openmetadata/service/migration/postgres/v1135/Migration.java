@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.mysql.v1134;
+package org.openmetadata.service.migration.postgres.v1135;
 
-import static org.openmetadata.service.migration.utils.v1134.DataInsightChartMigration.alignDataAssetChartScope;
+import static org.openmetadata.service.migration.utils.v1135.DataInsightChartMigration.alignDataAssetChartScope;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ public class Migration extends MigrationProcessImpl {
     try {
       alignDataAssetChartScope();
     } catch (Exception e) {
-      LOG.error("v1134: failed to align the data asset scope of the Data Insights charts", e);
+      LOG.error("v1135: failed to align the data asset scope of the Data Insights charts", e);
     }
   }
 }
