@@ -20,8 +20,10 @@ from setuptools import setup
 # Add here versions required for multiple plugins
 VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
-    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
-    "airflow": "apache-airflow==3.3.0",
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
+    # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
+    "airflow": "apache-airflow==3.3.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -236,7 +238,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
-        "croniter<3",
+        # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
+        # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its
+        # floor to croniter>=6.2.2 -- a stale "croniter<3" makes the two uninstallable
+        # together. The airflow images already run croniter 6.2.x via the constraints file.
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
