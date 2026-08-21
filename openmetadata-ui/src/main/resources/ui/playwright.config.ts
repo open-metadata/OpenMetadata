@@ -246,7 +246,7 @@ export default defineConfig({
         '**/SSORenewal.spec.ts',
         '**/SSOSessionLimit.spec.ts',
       ],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
     },
