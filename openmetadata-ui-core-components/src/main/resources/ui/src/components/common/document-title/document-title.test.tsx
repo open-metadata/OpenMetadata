@@ -16,18 +16,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentTitle } from './document-title';
 
 // `mock`-prefixed so vitest allows referencing it inside the hoisted factory.
-let mockBrandValue: string;
+// Whatever the host's `t('label.brand-name')` resolves to for a given test.
+let mockBrand: string;
 
-vi.mock('@/i18n/useCoreTranslation', () => ({
-  useCoreTranslation: () => ({ t: () => mockBrandValue }),
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: () => mockBrand }),
 }));
 
 describe('DocumentTitle', () => {
   beforeEach(() => {
-    mockBrandValue = 'OpenMetadata';
+    mockBrand = 'OpenMetadata';
   });
 
-  it('sets document.title to the given title with the brand suffix', async () => {
+  it('appends the brand suffix when the host resolves it', async () => {
     render(
       <HelmetProvider>
         <DocumentTitle title="Explore" />
@@ -37,8 +38,20 @@ describe('DocumentTitle', () => {
     await waitFor(() => expect(document.title).toBe('Explore | OpenMetadata'));
   });
 
+  it('omits the suffix when the brand key is unresolved', async () => {
+    mockBrand = 'label.brand-name';
+
+    render(
+      <HelmetProvider>
+        <DocumentTitle title="Explore" />
+      </HelmetProvider>
+    );
+
+    await waitFor(() => expect(document.title).toBe('Explore'));
+  });
+
   it('omits the suffix when brandName is not interpolated', async () => {
-    mockBrandValue = '{{brandName}}';
+    mockBrand = '{{brandName}}';
 
     render(
       <HelmetProvider>

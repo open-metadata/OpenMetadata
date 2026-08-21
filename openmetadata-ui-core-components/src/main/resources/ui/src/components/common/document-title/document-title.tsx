@@ -11,29 +11,34 @@
  *  limitations under the License.
  */
 import { Helmet } from 'react-helmet-async';
-import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+import { useTranslation } from 'react-i18next';
 import type { DocumentTitleProps } from './document-title.types';
 
 export type { DocumentTitleProps } from './document-title.types';
+
+// Resolved from the host app's default i18n namespace (not the library's `core`
+// namespace) — the brand name and its `{{brandName}}` interpolation variable are
+// owned by the consuming app, exactly as the app's own DocumentTitle does. Kept
+// in a const so the library's core-key check doesn't treat it as a `core` key.
+const BRAND_NAME_KEY = 'label.brand-name';
 
 /**
  * Sets the browser tab title via react-helmet-async, appending the brand name
  * (` | {brand}`) to match the rest of the app.
  *
  * Prerequisites on the consuming app: a `HelmetProvider` above this component
- * (the OpenMetadata shell wraps its root in one) and a `brandName` i18next
- * interpolation variable supplied globally (e.g. `interpolation.defaultVariables`
- * in the host's `i18next.init`). If `brandName` is absent the suffix is omitted
- * rather than rendering a raw token.
+ * (the OpenMetadata shell wraps its root in one) and a `label.brand-name` key in
+ * the default i18n namespace with a `brandName` interpolation variable (the app
+ * sets both). When the host resolves neither, the suffix is omitted.
  */
 export const DocumentTitle = ({ title }: DocumentTitleProps) => {
-  const { t } = useCoreTranslation();
+  const { t } = useTranslation();
 
-  const brand = t('label.brand-name');
-  // `label.brand-name` is the `{{brandName}}` interpolation token; when the host
-  // app hasn't supplied a `brandName` variable it stays un-interpolated, so drop
-  // the suffix instead of showing a literal token in the tab title.
-  const fullTitle = brand.includes('{{') ? title : `${title} | ${brand}`;
+  const brand = t(BRAND_NAME_KEY);
+  // Append the brand only when the host actually resolved it — otherwise the key
+  // echoes back (namespace missing) or a raw `{{brandName}}` token remains.
+  const hasBrand = brand !== BRAND_NAME_KEY && !brand.includes('{{');
+  const fullTitle = hasBrand ? `${title} | ${brand}` : title;
 
   return (
     <Helmet>

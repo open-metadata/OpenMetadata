@@ -161,7 +161,7 @@ describe('PageLayout', () => {
     expect(panel).not.toHaveClass('tw:overflow-y-auto');
   });
 
-  it('sets the document title with the brand suffix when pageTitle is given', async () => {
+  it('sets the document title from pageTitle', async () => {
     render(
       <HelmetProvider>
         <PageLayout pageTitle="My Page">
@@ -170,7 +170,7 @@ describe('PageLayout', () => {
       </HelmetProvider>
     );
 
-    await waitFor(() => expect(document.title).toContain('My Page | '));
+    await waitFor(() => expect(document.title).toContain('My Page'));
   });
 
   it('leaves the document title untouched when pageTitle is omitted', () => {
