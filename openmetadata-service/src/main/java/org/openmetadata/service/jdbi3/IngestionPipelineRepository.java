@@ -574,7 +574,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static void repairLegacySourceConfig(IngestionPipeline ingestionPipeline) {
     Object config = getRequiredSourceConfig(ingestionPipeline);
     Map<?, ?> configMap = getSourceConfigMap(config);
-    if (ingestionPipeline.getId() == null || configMap.get(SOURCE_CONFIG_TYPE) != null) {
+    if (ingestionPipeline.getId() == null || !isMissingOrBlankSourceConfigType(configMap)) {
       return;
     }
 
@@ -587,6 +587,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     configMap.forEach((key, value) -> repairedConfig.put(String.valueOf(key), value));
     repairedConfig.put(SOURCE_CONFIG_TYPE, sourceConfigType);
     ingestionPipeline.getSourceConfig().setConfig(repairedConfig);
+  }
+
+  private static boolean isMissingOrBlankSourceConfigType(Map<?, ?> configMap) {
+    Object type = configMap.get(SOURCE_CONFIG_TYPE);
+    return type == null || type instanceof String typeValue && typeValue.isBlank();
   }
 
   private static Object getRequiredSourceConfig(IngestionPipeline ingestionPipeline) {
