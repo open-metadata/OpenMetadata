@@ -93,6 +93,59 @@ class GlossaryTermRelationSettingsUtilTest {
                 current, updated));
   }
 
+  @Test
+  void validateSystemDefinedRelationTypesRejectsFieldModification() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(true)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals("Cannot modify system-defined relation types: partOf", exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesAllowsCustomTypeModification() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("dependsOn").withIsSystemDefined(false).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("dependsOn").withIsSystemDefined(false).withIsTransitive(true)));
+
+    // Custom (non system-defined) relation types remain fully editable.
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesAllowsUnchangedSystemType() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(relationType("partOf").withIsSystemDefined(true).withIsTransitive(false)));
+
+    // Re-saving system-defined types unchanged (e.g. alongside a new custom type) must be allowed.
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+  }
+
   private GlossaryTermRelationType relationType(String name) {
     return new GlossaryTermRelationType().withName(name);
   }
