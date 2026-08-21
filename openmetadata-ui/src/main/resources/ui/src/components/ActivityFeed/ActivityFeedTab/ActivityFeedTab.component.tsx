@@ -63,6 +63,7 @@ import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
 import { listConversations } from '../../../rest/conversationsAPI';
 import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
@@ -71,6 +72,7 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -256,7 +258,7 @@ export const ActivityFeedTab = ({
     [setCountData]
   );
 
-  const fetchFeedsCount = async () => {
+  const fetchFeedsCount = useCallback(async () => {
     setCountData((prev) => ({ ...prev, loading: true }));
     try {
       const domain =
@@ -285,27 +287,57 @@ export const ActivityFeedTab = ({
             limit: 1,
           })
         : Promise.resolve(undefined);
-      const [taskCounts, conversations, mentions] = await Promise.all([
-        getTaskCounts(taskCountParams),
-        listConversations(conversationParams),
-        mentionRequest,
-      ]);
+      const activityRequest = isUserEntity
+        ? Promise.resolve(undefined)
+        : getEntityActivityByFqn(entityType, fqn, {
+            days: 30,
+            limit: 0,
+            domain,
+          });
+      const [taskCounts, conversations, mentions, activity] = await Promise.all(
+        [
+          getTaskCounts(taskCountParams),
+          listConversations(conversationParams),
+          mentionRequest,
+          activityRequest,
+        ]
+      );
       const mentionCount = mentions?.paging.total ?? 0;
-      const conversationCount = conversations.paging.total;
+      const conversationCount = conversations.paging.total ?? 0;
+      const activityCount = activity?.paging.total ?? 0;
+      const totalTasksCount = taskCounts.total ?? 0;
+      const openTaskCount = taskCounts.open ?? 0;
 
       handleFeedCount({
         conversationCount,
-        totalTasksCount: taskCounts.total ?? 0,
-        openTaskCount: taskCounts.open ?? 0,
+        activityCount,
+        totalTasksCount,
+        openTaskCount,
         closedTaskCount: taskCounts.completed ?? 0,
-        totalCount: conversationCount + (taskCounts.total ?? 0),
+        totalCount: getFeedTotalCount({
+          conversationCount,
+          activityCount,
+          openTaskCount,
+        }),
         mentionCount,
       });
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
     }
     setCountData((prev) => ({ ...prev, loading: false }));
-  };
+    // Depend on primitive currentUser fields, not the object identity, so an
+    // unstable store reference cannot retrigger this effect every render.
+  }, [
+    activeDomain,
+    fqn,
+    entityType,
+    isUserEntity,
+    currentUser?.name,
+    currentUser?.fullyQualifiedName,
+    currentUser?.id,
+    handleFeedCount,
+    t,
+  ]);
 
   const feedFilter = useMemo(() => {
     const currentFilter =
@@ -361,6 +393,10 @@ export const ActivityFeedTab = ({
   ]);
 
   useEffect(() => {
+    // Activity events only render on the ALL tab; skip the fetch on Tasks/Mentions.
+    if (isTaskActiveTab || isMentionTabSelected) {
+      return;
+    }
     if (fqn && entityType && !isUserEntity) {
       fetchEntityActivity(entityType, fqn, { days: 30, limit: 50 });
     } else if (isUserEntity && userId) {
@@ -371,6 +407,8 @@ export const ActivityFeedTab = ({
     entityType,
     isUserEntity,
     userId,
+    isTaskActiveTab,
+    isMentionTabSelected,
     fetchEntityActivity,
     fetchUserActivity,
   ]);
@@ -406,7 +444,7 @@ export const ActivityFeedTab = ({
     } else {
       fetchFeedsCount();
     }
-  }, [feedCount, activeDomain]);
+  }, [feedCount, fetchFeedsCount]);
 
   const handleFeedClick = useCallback(
     (feed: Conversation) => {
@@ -454,7 +492,7 @@ export const ActivityFeedTab = ({
     if (fqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, fqn]);
+  }, [entityPaging, loading, isInView, fqn, handleFeedFetchFromFeedList]);
 
   const loader = useMemo(
     () => (loading ? <Loader className="aspect-square" /> : null),
@@ -631,10 +669,6 @@ export const ActivityFeedTab = ({
             isOpenInDrawer
             showActivityFeedEditor
             showThread
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: true,
-            }}
             feed={selectedThread}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
@@ -647,17 +681,12 @@ export const ActivityFeedTab = ({
     }
 
     if (selectedActivity) {
+      // Activities are read-only change events — no comment editor / replies.
       return (
         <div id="activity-panel">
           <FeedPanelBodyV1New
             isOpenInDrawer
-            showActivityFeedEditor
-            showThread
             activity={selectedActivity}
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: true,
-            }}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
             isFullWidth={isFullWidth}
@@ -714,10 +743,11 @@ export const ActivityFeedTab = ({
                     <span>{t('label.all')}</span>
                   </Space>
 
-                  <span>
+                  <span data-testid="left-panel-all-count">
                     {!isUserEntity &&
                       getCountBadge(
-                        activityEvents?.length ?? 0,
+                        (countData?.data?.conversationCount ?? 0) +
+                          (countData?.data?.activityCount ?? 0),
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}

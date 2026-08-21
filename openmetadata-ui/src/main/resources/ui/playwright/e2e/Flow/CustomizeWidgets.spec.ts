@@ -17,8 +17,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -46,16 +48,87 @@ import {
 } from '../../utils/widgetFilters';
 
 let adminUser: UserClass;
-let persona: PersonaClass;
 
 // Test domain and data products for comprehensive testing
 let testDomain: Domain;
 let testDataProducts: DataProduct[] = [];
 
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
+// The Activity Feed widget only renders its "View More" link once the feed
+// exceeds PAGE_SIZE_BASE (15), so the footer step seeds one more than that
+// rather than depending on whatever activity the database happens to hold.
+let activitySeedTable: TableClass;
+const FEED_WIDGET_PAGE_SIZE = 15;
+const SEEDED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
+
+type WidgetTestFixtures = {
+  page: Page;
+  testUser: UserClass;
+  persona: PersonaClass;
+};
+
+// Issue #31407. Every test here rewrites the whole `persona.<name>` layout document
+// (remove widget -> save -> add widget -> save). Those saves are last-write-wins,
+// so under `fullyParallel` two tests sharing a persona silently drop each other's
+// widgets and a later test finds its widget missing from the landing page. The
+// user has to be per test as well: the layout is resolved from
+// `currentUser.defaultPersona`, which is a single field on the user.
+const test = base.extend<WidgetTestFixtures>({
+  testUser: async ({ browser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const user = new UserClass();
+    await user.create(apiContext);
+    await user.setAdminRole(apiContext);
+    await afterAction();
+
+    await use(user);
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await user.delete(cleanupContext);
+    await cleanupAfterAction();
+  },
+
+  persona: async ({ browser, testUser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const testPersona = new PersonaClass();
+    await testPersona.create(apiContext, [testUser.responseData.id]);
+
+    const personaReference = {
+      id: testPersona.responseData.id,
+      type: 'persona',
+      name: testPersona.responseData.name,
+      fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
+      description: testPersona.responseData.description,
+      displayName: testPersona.responseData.displayName,
+    };
+
+    await apiContext.patch(`/api/v1/users/${testUser.responseData.id}`, {
+      data: [
+        { op: 'add', path: '/personas/0', value: personaReference },
+        { op: 'add', path: '/defaultPersona', value: personaReference },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
+    await afterAction();
+
+    await use(testPersona);
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await testPersona.delete(cleanupContext);
+    await cleanupAfterAction();
+  },
+
+  page: async ({ browser, testUser, persona }, use) => {
+    // `persona` is depended on for its side effect - the default persona has to
+    // be attached to the user before login, otherwise the session starts with
+    // the stock layout instead of the persona's customizable one.
+    void persona;
+
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await testUser.login(page);
     await use(page);
     await page.close();
   },
@@ -65,7 +138,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
 
   adminUser = new UserClass();
-  persona = new PersonaClass();
   testDomain = new Domain();
   testDataProducts = [
     new DataProduct([testDomain]),
@@ -76,7 +148,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
 
   // Set adminUser as owner for entities created by entityDetails config
   // Only domains and glossaries from entityDetails typically support owners
@@ -135,44 +206,35 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     await dp.create(apiContext);
   }
 
+  activitySeedTable = new TableClass();
+  await activitySeedTable.create(apiContext);
+
+  for (let index = 0; index < SEEDED_ACTIVITY_COUNT; index++) {
+    await insertActivityEventForTest(
+      apiContext,
+      activitySeedTable,
+      `Customize widgets activity ${index}`
+    );
+  }
+
   // Delete all existing KPIs before running the test
   await deleteKpiRequest(apiContext);
 
-  // Set default persona for admin user
-  await apiContext.patch(`/api/v1/users/${adminUser.responseData.id}`, {
-    data: [
-      {
-        op: 'add',
-        path: '/personas/0',
-        value: {
-          id: persona.responseData.id,
-          type: 'persona',
-          name: persona.responseData.name,
-          fullyQualifiedName: persona.responseData.fullyQualifiedName,
-          description: persona.responseData.description,
-          displayName: persona.responseData.displayName,
-        },
-      },
-      {
-        op: 'add',
-        path: '/defaultPersona',
-        value: {
-          id: persona.responseData.id,
-          type: 'persona',
-          name: persona.responseData.name,
-          fullyQualifiedName: persona.responseData.fullyQualifiedName,
-          description: persona.responseData.description,
-          displayName: persona.responseData.displayName,
-        },
-      },
-    ],
-    headers: {
-      'Content-Type': 'application/json-patch+json',
-    },
-  });
-
   await afterAction();
 });
+
+test.afterAll(
+  'Cleanup: delete the activity seed table',
+  async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    try {
+      await activitySeedTable.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  }
+);
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -181,7 +243,7 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 });
 
-test('Activity Feed Widget', async ({ page }) => {
+test('Activity Feed Widget', async ({ page, persona, testUser }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
@@ -196,7 +258,7 @@ test('Activity Feed Widget', async ({ page }) => {
       page,
       widgetKey,
       'Activity Feed',
-      `/users/${adminUser.responseData.name}/activity_feed/all`
+      `/users/${testUser.responseData.name}/activity_feed/all`
     );
   });
 
@@ -211,7 +273,8 @@ test('Activity Feed Widget', async ({ page }) => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await verifyWidgetFooterViewMore(page, {
       widgetKey,
-      link: `/users/${adminUser.responseData.name}/activity_feed/all`,
+      link: `/users/${testUser.responseData.name}/activity_feed/all`,
+      requireViewMore: true,
     });
 
     await redirectToHomePage(page);
@@ -224,7 +287,7 @@ test('Activity Feed Widget', async ({ page }) => {
   });
 });
 
-test('Data Assets Widget', async ({ page }) => {
+test('Data Assets Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
@@ -277,7 +340,7 @@ test('Data Assets Widget', async ({ page }) => {
   });
 });
 
-test('My Data Widget', async ({ page }) => {
+test('My Data Widget', async ({ page, persona, testUser }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
@@ -292,7 +355,7 @@ test('My Data Widget', async ({ page }) => {
       page,
       widgetKey,
       'My Data',
-      `/users/${adminUser.responseData.name}/mydata`
+      `/users/${testUser.responseData.name}/mydata`
     );
   });
 
@@ -333,7 +396,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test('KPI Widget', async ({ page }) => {
+test('KPI Widget', async ({ page, persona }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -435,7 +498,7 @@ test('KPI Widget', async ({ page }) => {
   });
 });
 
-test('Total Data Assets Widget', async ({ page }) => {
+test('Total Data Assets Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
@@ -484,7 +547,7 @@ test('Total Data Assets Widget', async ({ page }) => {
   });
 });
 
-test('Following Assets Widget', async ({ page }) => {
+test('Following Assets Widget', async ({ page, persona, testUser }) => {
   test.slow(true);
 
   await testDomain.visitEntityPage(page);
@@ -509,7 +572,7 @@ test('Following Assets Widget', async ({ page }) => {
       page,
       widgetKey,
       'Following',
-      `/users/${adminUser.responseData.name}/following`
+      `/users/${testUser.responseData.name}/following`
     );
   });
 
@@ -552,7 +615,7 @@ test('Following Assets Widget', async ({ page }) => {
   });
 });
 
-test('Domains Widget', async ({ page }) => {
+test('Domains Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.Domains';
@@ -605,7 +668,7 @@ test('Domains Widget', async ({ page }) => {
   });
 });
 
-test('My Tasks Widget', async ({ page }) => {
+test('My Tasks Widget', async ({ page, persona, testUser }) => {
   test.slow(true);
 
   await test.step('Create a task', async () => {
@@ -619,7 +682,7 @@ test('My Tasks Widget', async ({ page }) => {
         about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
-        assignees: [adminUser.responseData.name],
+        assignees: [testUser.responseData.name],
         payload: {
           suggestedValue: 'Test task description for My Tasks widget test',
           currentValue: '',
@@ -651,7 +714,7 @@ test('My Tasks Widget', async ({ page }) => {
       page,
       widgetKey,
       'My Tasks',
-      `/users/${adminUser.responseData.name}/task`
+      `/users/${testUser.responseData.name}/task`
     );
   });
 
@@ -682,7 +745,7 @@ test('My Tasks Widget', async ({ page }) => {
   });
 });
 
-test('Data Products Widget', async ({ page }) => {
+test('Data Products Widget', async ({ page, persona }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataProducts';

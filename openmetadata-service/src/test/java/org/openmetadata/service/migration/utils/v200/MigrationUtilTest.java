@@ -20,11 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -33,13 +33,12 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -131,72 +130,6 @@ class MigrationUtilTest {
   }
 
   @Test
-  void migrateLegacyActivityThreadsPagesPastUserThreadsToReachLaterSystemThreads() {
-    int batchSize = 500;
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(Optional.of(1));
-    List<Map<String, Object>> fullPageOfUserThreads = new ArrayList<>();
-    for (int index = 0; index < batchSize; index++) {
-      String id = "00000000-0000-0000-0000-%012d".formatted(index);
-      fullPageOfUserThreads.add(Map.of("id", id, "json", legacyUserThreadJson(id)));
-    }
-    String systemThreadId = "00000000-0000-0000-0000-000000009999";
-    stubActivityThreadBatch(batchSize, "", fullPageOfUserThreads);
-    stubActivityThreadBatch(
-        batchSize,
-        "00000000-0000-0000-0000-%012d".formatted(batchSize - 1),
-        List.of(Map.of("id", systemThreadId, "json", legacySystemThreadJson(systemThreadId))));
-    when(handle
-            .createQuery(
-                "SELECT COUNT(*) FROM activity_stream WHERE id = :id AND timestamp = :timestamp")
-            .bind("id", systemThreadId)
-            .bind("timestamp", 1710000000000L)
-            .mapTo(Long.class)
-            .one())
-        .thenReturn(0L);
-
-    MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, MYSQL);
-
-    verify(handle, times(1)).createUpdate(contains("INSERT INTO activity_stream"));
-  }
-
-  private void stubActivityThreadBatch(
-      int batchSize, String afterId, List<Map<String, Object>> rows) {
-    when(handle
-            .createQuery(
-                "SELECT id, json FROM thread_entity"
-                    + " WHERE type = :type AND id > :afterId ORDER BY id LIMIT :limit")
-            .bind("type", "Conversation")
-            .bind("afterId", afterId)
-            .bind("limit", batchSize)
-            .mapToMap()
-            .list())
-        .thenReturn(rows);
-  }
-
-  private String legacyUserThreadJson(String id) {
-    return """
-        {"id": "%s", "type": "Conversation", "generatedBy": "user",
-         "about": "<#E::table::sample.shop.orders>", "message": "a user conversation"}
-        """
-        .formatted(id);
-  }
-
-  private String legacySystemThreadJson(String id) {
-    return """
-        {"id": "%s", "type": "Conversation", "generatedBy": "system",
-         "about": "<#E::table::sample.shop.orders::description>",
-         "entityRef": {"id": "11111111-1111-1111-1111-111111111111", "type": "table",
-                       "fullyQualifiedName": "sample.shop.orders"},
-         "createdBy": "system", "updatedBy": "system", "updatedAt": 1710000000000,
-         "message": "Description updated",
-         "feedInfo": {"fieldName": "description", "headerMessage": "Updated orders description",
-                      "entitySpecificInfo": {"previousDescription": "old", "newDescription": "new"}}}
-        """
-        .formatted(id);
-  }
-
-  @Test
   void insertTaskUsesJsonbCastForPostgres() throws Exception {
     invokePrivateStatic(
         "insertTask",
@@ -230,7 +163,7 @@ class MigrationUtilTest {
     String entityRefId = "5555-6666-7777-8888";
 
     when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(Optional.of(1));
+        .thenReturn(java.util.Optional.of(1));
 
     String threadJson =
         """
@@ -350,6 +283,68 @@ class MigrationUtilTest {
         entityRelationshipInserts >= 2,
         "Expected at least 2 entity_relationship inserts (CREATED + MENTIONED_IN), got "
             + entityRelationshipInserts);
+  }
+
+  @Test
+  void migrateColumnTagSuggestionKeepsColumnInFieldPath() {
+    JsonNode payload =
+        migrateTagSuggestionAndCapturePayload(
+            "dead-beef-0000-0004", "<#E::table::sample.shop.orders::columns::customer_id::tags>");
+    assertEquals("Tag", payload.get("suggestionType").asText());
+    assertEquals("columns.customer_id.tags", payload.get("fieldPath").asText());
+  }
+
+  @Test
+  void migrateTableLevelTagSuggestionUsesEntityLevelFieldPath() {
+    JsonNode payload =
+        migrateTagSuggestionAndCapturePayload(
+            "dead-beef-0000-0005", "<#E::table::sample.shop.orders::tags>");
+    assertEquals("tags", payload.get("fieldPath").asText());
+  }
+
+  private JsonNode migrateTagSuggestionAndCapturePayload(String suggestionId, String entityLink) {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenReturn(List.of(Map.of("1", 1)));
+    String suggestionJson =
+        """
+        {
+          "id": "%s",
+          "type": "SuggestTagLabel",
+          "status": "Open",
+          "entityLink": "%s",
+          "tagLabels": [{"tagFQN": "PII.Sensitive", "source": "Classification", "labelType": "Manual", "state": "Suggested"}],
+          "createdBy": { "id": "cccc-dddd-eeee-ffff", "type": "user" },
+          "createdAt": 1700000000000,
+          "updatedAt": 1700000000000,
+          "updatedBy": "system"
+        }
+        """
+            .formatted(suggestionId, entityLink);
+    when(handle
+            .createQuery("SELECT json FROM suggestions ORDER BY updatedAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(Map.of("json", suggestionJson)));
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM task_entity WHERE id = :id")
+            .bind("id", suggestionId)
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
+        .thenReturn(java.util.Optional.of(0L));
+    when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
+        .thenReturn(Collections.emptyList());
+
+    Update taskInsert = mock(Update.class);
+    when(taskInsert.bind(anyString(), anyString())).thenReturn(taskInsert);
+    when(handle.createUpdate(contains("INSERT INTO task_entity"))).thenReturn(taskInsert);
+
+    MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL);
+
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    verify(taskInsert).bind(eq("json"), jsonCaptor.capture());
+    return JsonUtilsHolder.readTree(jsonCaptor.getValue()).get("payload");
   }
 
   @Test

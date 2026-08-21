@@ -260,7 +260,6 @@ const ActivityFeedCardNew = ({
     if (!showThread) {
       return null;
     }
-
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>

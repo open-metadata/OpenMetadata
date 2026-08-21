@@ -181,6 +181,7 @@ public class CreateMetricTool implements McpTool {
 
     MetricRepository repo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
     repo.prepareInternal(metric, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.METRIC, metric);
 
     String userName = securityContext.getUserPrincipal().getName();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();

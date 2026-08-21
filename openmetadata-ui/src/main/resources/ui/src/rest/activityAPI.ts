@@ -95,6 +95,18 @@ export const getMyActivityFeed = async (params?: {
   return response.data;
 };
 
+export const getFollowingActivityFeed = async (params?: {
+  days?: number;
+  limit?: number;
+}) => {
+  const response = await APIClient.get<PagingResponse<ActivityEvent[]>>(
+    `${BASE_URL}/following`,
+    { params }
+  );
+
+  return response.data;
+};
+
 export const getActivityByEntityLink = async (
   entityLink: string,
   params?: { days?: number; limit?: number; domain?: string }

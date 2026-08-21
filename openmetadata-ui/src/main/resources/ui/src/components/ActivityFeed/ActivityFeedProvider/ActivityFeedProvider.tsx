@@ -49,6 +49,7 @@ import {
   createActivityReply,
   getActivityEvents,
   getEntityActivityByFqn,
+  getFollowingActivityFeed,
   getMyActivityFeed,
   getUserActivity,
   ListActivityParams,
@@ -143,6 +144,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   );
   const activityReplyRequest = useRef(0);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
+  const activityRequestSeq = useRef(0);
   // Conversations have their own API and model. Announcements are not mixed into this state.
   const [entityThread, setEntityThread] = useState<Conversation[]>([]);
   const [selectedThread, setSelectedThread] = useState<Conversation>();
@@ -673,6 +675,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setActivityEvents((prev) =>
           prev.map((a) => (a.id === activityId ? updatedActivity : a))
         );
+        // Keep the right-panel copy in sync, else its reactions go stale when
+        // toggled from either the list card or the panel itself.
+        setSelectedActivity((prev) =>
+          prev?.id === activityId ? updatedActivity : prev
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -750,7 +757,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     []
   );
-
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
@@ -780,37 +786,57 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [setTestCaseResolutionStatus, selectedTask?.id]
   );
 
-  // Activity Events fetch methods
-  const fetchActivityEventsHandler = useCallback(
-    async (params?: ListActivityParams) => {
+  // Activity Events fetch methods.
+  // Every activity fetcher shares this runner so the sequence guard and the
+  // loading flag stay identical across all of them — a request that has been
+  // superseded must not commit its result, toast, or clear a loading flag that
+  // now belongs to a newer request.
+  //
+  // Domain scoping is deliberately absent: the `withDomainFilter` interceptor
+  // registered in AuthProvider appends `domain` to every GET, so resolving it
+  // here would duplicate that.
+  const runActivityRequest = useCallback(
+    async (request: () => Promise<{ data: ActivityEvent[] }>) => {
+      const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
-        const { data } = await getActivityEvents(params);
+        const { data } = await request();
+        if (seq !== activityRequestSeq.current) {
+          return;
+        }
         setActivityEvents(data);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (seq === activityRequestSeq.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsActivityLoading(false);
+        if (seq === activityRequestSeq.current) {
+          setIsActivityLoading(false);
+        }
       }
     },
     []
   );
 
+  const fetchActivityEventsHandler = useCallback(
+    async (params?: ListActivityParams) => {
+      await runActivityRequest(() => getActivityEvents({ ...params }));
+    },
+    [runActivityRequest]
+  );
+
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      setIsActivityLoading(true);
-      try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getMyActivityFeed({ ...params, domain });
-        setActivityEvents(data);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsActivityLoading(false);
-      }
+      await runActivityRequest(() => getMyActivityFeed({ ...params }));
     },
-    [activeDomain]
+    [runActivityRequest]
+  );
+
+  const fetchFollowingActivityHandler = useCallback(
+    async (params?: { days?: number; limit?: number }) => {
+      await runActivityRequest(() => getFollowingActivityFeed({ ...params }));
+    },
+    [runActivityRequest]
   );
 
   const fetchEntityActivityHandler = useCallback(
@@ -869,6 +895,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       refreshActivityFeed,
       deleteFeed,
       postFeed,
+      postActivityComment,
       updateFeed,
       updateReactions,
       getFeedData,
@@ -893,10 +920,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       activityReplies,
       fetchActivityEvents: fetchActivityEventsHandler,
       fetchMyActivityFeed: fetchMyActivityFeedHandler,
+      fetchFollowingActivity: fetchFollowingActivityHandler,
       fetchEntityActivity: fetchEntityActivityHandler,
       fetchUserActivity: fetchUserActivityHandler,
       updateActivityReaction,
-      postActivityComment,
     };
   }, [
     entityThread,
@@ -912,6 +939,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     refreshActivityFeed,
     deleteFeed,
     postFeed,
+    postActivityComment,
     updateFeed,
     updateReactions,
     getFeedData,
@@ -937,10 +965,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     activityReplies,
     fetchActivityEventsHandler,
     fetchMyActivityFeedHandler,
+    fetchFollowingActivityHandler,
     fetchEntityActivityHandler,
     fetchUserActivityHandler,
     updateActivityReaction,
-    postActivityComment,
   ]);
 
   return (

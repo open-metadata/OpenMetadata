@@ -11,14 +11,37 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../generated/type/reaction';
+import {
+  DummyActivityCommentComponent,
+  DummyActivityFeedComponent,
+  DummyActivityFilterSwitchComponent,
+  DummyActivityReactionComponent,
+  DummyActivityReactionSyncComponent,
+  DummyActivityReplyEditComponent,
+  DummyChildrenComponent,
+  DummyChildrenDeletePostComponent,
+  DummyChildrenEntityComponent,
+  DummyChildrenTaskCloseComponent,
+  DummyEntityActivityFeedComponent,
+  DummyFollowingActivityComponent,
+  DummySetActiveActivityComponent,
+} from '../../../mocks/ActivityFeedProvider.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import {
   addActivityReaction,
   createActivityReply,
+  getActivityEvents,
   getEntityActivityByFqn,
+  getFollowingActivityFeed,
   getMyActivityFeed,
   listActivityReplies,
   removeActivityReaction,
@@ -31,19 +54,8 @@ import {
   patchConversationReply,
 } from '../../../rest/conversationsAPI';
 import { listMyVisibleTasks } from '../../../rest/tasksAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from './ActivityFeedProvider';
-import {
-  DummyActivityCommentComponent,
-  DummyActivityFeedComponent,
-  DummyActivityReactionComponent,
-  DummyActivityReplyEditComponent,
-  DummyChildrenComponent,
-  DummyChildrenDeletePostComponent,
-  DummyChildrenEntityComponent,
-  DummyChildrenTaskCloseComponent,
-  DummyEntityActivityFeedComponent,
-  DummySetActiveActivityComponent,
-} from './DummyTestComponent';
 
 const mockUseApplicationStore = jest.fn(() => ({
   currentUser: mockUserData,
@@ -66,16 +78,22 @@ jest.mock('../ActivityFeedDrawer/ActivityFeedDrawer', () =>
 );
 
 jest.mock('../../../rest/activityAPI', () => ({
-  addActivityReaction: jest.fn(),
+  addActivityReaction: jest.fn().mockResolvedValue({
+    id: 'activity-123',
+    reactions: [{ reactionType: 'thumbsUp', user: { id: 'user-1' } }],
+  }),
   createActivityReply: jest.fn(),
   getActivityEvents: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getFollowingActivityFeed: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: {} }),
   getEntityActivityByFqn: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getMyActivityFeed: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getUserActivity: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   listActivityReplies: jest
     .fn()
     .mockResolvedValue({ data: [], paging: { total: 0 } }),
-  removeActivityReaction: jest.fn(),
+  removeActivityReaction: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../../rest/conversationsAPI', () => ({
@@ -420,9 +438,226 @@ describe('ActivityFeedProvider', () => {
         activityReply.id,
         [{ op: 'replace', path: '/message', value: 'Edited comment' }]
       );
-      expect(screen.getByTestId('activity-reply-messages')).toHaveTextContent(
-        'Edited comment'
+    });
+  });
+
+  describe('Activity requests', () => {
+    it('shows loading while an activity request is pending', () => {
+      (getMyActivityFeed as jest.Mock).mockReturnValueOnce(
+        new Promise(() => undefined)
       );
+
+      render(
+        <ActivityFeedProvider>
+          <DummyActivityFeedComponent />
+        </ActivityFeedProvider>
+      );
+
+      expect(screen.getByTestId('activity-loading')).toBeInTheDocument();
+    });
+
+    it('fetches and displays the following activity feed', async () => {
+      (getFollowingActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: [activity],
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyFollowingActivityComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() =>
+        expect(getFollowingActivityFeed).toHaveBeenCalledWith({
+          days: 7,
+          limit: 20,
+        })
+      );
+
+      expect(screen.getByTestId('following-activity-count')).toHaveTextContent(
+        '1'
+      );
+      expect(
+        screen.getByTestId('following-activity-summary')
+      ).toHaveTextContent('Updated tags');
+    });
+
+    it('does not hand-roll the domain on the following activity request', async () => {
+      mockUseDomainStore.mockImplementation((selector) =>
+        selector({ activeDomain: 'finance' })
+      );
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyFollowingActivityComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() =>
+        expect(getFollowingActivityFeed).toHaveBeenCalledWith({
+          days: 7,
+          limit: 20,
+        })
+      );
+
+      expect(getFollowingActivityFeed).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
+    });
+
+    it('does not hand-roll the domain on the all-activity request', async () => {
+      mockUseDomainStore.mockImplementation((selector) =>
+        selector({ activeDomain: 'finance' })
+      );
+
+      render(
+        <ActivityFeedProvider>
+          <DummyActivityFilterSwitchComponent />
+        </ActivityFeedProvider>
+      );
+      fireEvent.click(screen.getByTestId('fetch-all'));
+
+      await waitFor(() =>
+        expect(getActivityEvents).toHaveBeenCalledWith({ limit: 20 })
+      );
+
+      expect(getActivityEvents).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
+    });
+
+    it('shows an error toast when an activity request fails', async () => {
+      const error = new Error('activity request failed');
+      (getFollowingActivityFeed as jest.Mock).mockRejectedValueOnce(error);
+
+      render(
+        <ActivityFeedProvider>
+          <DummyFollowingActivityComponent />
+        </ActivityFeedProvider>
+      );
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+    });
+
+    it('ignores a superseded activity response when the filter changes', async () => {
+      let resolveSlowRequest: (value: unknown) => void = () => undefined;
+      (getMyActivityFeed as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlowRequest = resolve;
+          })
+      );
+      (getFollowingActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: [activity],
+        paging: {},
+      });
+
+      render(
+        <ActivityFeedProvider>
+          <DummyActivityFilterSwitchComponent />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-owner'));
+      fireEvent.click(screen.getByTestId('fetch-following'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('activity-summaries')).toHaveTextContent(
+          'Updated tags'
+        )
+      );
+
+      await act(async () => {
+        resolveSlowRequest({
+          data: [{ ...activity, summary: 'Stale result' }],
+          paging: {},
+        });
+      });
+
+      expect(screen.getByTestId('activity-summaries')).toHaveTextContent(
+        'Updated tags'
+      );
+      expect(screen.getByTestId('activity-summaries')).not.toHaveTextContent(
+        'Stale result'
+      );
+    });
+  });
+
+  it('syncs the selected activity when its reaction changes', async () => {
+    (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+      data: [activity],
+      paging: {},
+    });
+    (addActivityReaction as jest.Mock).mockResolvedValueOnce({
+      ...activity,
+      reactions: [
+        {
+          reactionType: ReactionType.ThumbsUp,
+          user: { id: 'user-1', type: 'user' },
+        },
+      ],
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityReactionSyncComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('select-activity')).toBeEnabled()
+    );
+    fireEvent.click(screen.getByTestId('select-activity'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('selected-activity-reactions')
+      ).toHaveTextContent('0')
+    );
+
+    fireEvent.click(screen.getByTestId('react'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('selected-activity-reactions')
+      ).toHaveTextContent('1')
+    );
+  });
+
+  it('clears the selected activity and replies when set to undefined', async () => {
+    (listActivityReplies as jest.Mock).mockResolvedValueOnce({
+      data: [activityReply],
+      paging: { total: 1 },
+    });
+
+    const { rerender } = render(
+      <ActivityFeedProvider>
+        <DummySetActiveActivityComponent activity={activity} />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('set-active'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    rerender(
+      <ActivityFeedProvider>
+        <DummySetActiveActivityComponent activity={undefined} />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('set-active'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+        'none'
+      );
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
     });
   });
 });

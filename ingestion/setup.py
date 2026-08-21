@@ -19,7 +19,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.2",  # CVE-2026-42252 BashOperator Jinja2 injection
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
+    "airflow": "apache-airflow==3.3.0",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -29,8 +31,9 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs~=2026.3",
-    "great-expectations": "great-expectations~=0.18.0",
-    "great-expectations-1xx": "great-expectations~=1.0",
+    # 1.3 is the floor: GX only gained the validation-action registry there, so on
+    # 1.0-1.2 `Checkpoint.actions` is a closed union that rejects our action outright.
+    "great-expectations": "great-expectations~=1.3",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
@@ -175,14 +178,14 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.4",
+    "collate-sqllineage==2.1.4",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -305,7 +308,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
-    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -411,6 +413,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -533,6 +536,7 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",

@@ -20,6 +20,7 @@ import {
   getActivityEvents,
   getEntityActivityByFqn,
   getEntityActivityById,
+  getFollowingActivityFeed,
   getMyActivityFeed,
   getUserActivity,
   listActivityReplies,
@@ -82,6 +83,24 @@ describe('activityAPI', () => {
     });
     expect(APIClient.get).toHaveBeenNthCalledWith(2, '/activity/my-feed', {
       params: { limit: 20 },
+    });
+  });
+
+  it('lists activity for followed entities', async () => {
+    const params = { days: 7, limit: 10 };
+
+    await getFollowingActivityFeed(params);
+
+    expect(APIClient.get).toHaveBeenCalledWith('/activity/following', {
+      params,
+    });
+  });
+
+  it('lists followed activity without params', async () => {
+    await getFollowingActivityFeed();
+
+    expect(APIClient.get).toHaveBeenCalledWith('/activity/following', {
+      params: undefined,
     });
   });
 

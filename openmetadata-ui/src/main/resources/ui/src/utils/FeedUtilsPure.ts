@@ -17,6 +17,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { ROUTES } from '../constants/constants';
 import {
   EntityField,
   entityLinkRegEx,
@@ -33,9 +34,10 @@ import type { EntityTestResultSummaryObject } from '../generated/entity/feed/tes
 import { TestCaseStatus } from '../generated/entity/feed/testCaseResult';
 import type { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn } from '../rest/activityAPI';
+import { listConversations } from '../rest/conversationsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
@@ -134,9 +136,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
   } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return `${document.location.protocol}//${
-      document.location.host
-    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
+    // Articles live under the Context Center; /knowledge-center/<fqn> is not a registered route.
+    return `${document.location.protocol}//${document.location.host}${
+      ROUTES.CONTEXT_CENTER_ARTICLES
+    }/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
@@ -409,6 +412,20 @@ export const prepareFeedLink = (
   }
 };
 
+/**
+ * The entity tab header has to equal the sum of its two sub-tab badges: All
+ * shows conversations + activity change-events, and Tasks shows the count for
+ * the active filter, which defaults to open. Counting every task here — closed
+ * ones included — made the header exceed the sub-tabs by the number of
+ * non-open tasks on any entity with a resolved task.
+ */
+export const getFeedTotalCount = ({
+  conversationCount,
+  activityCount,
+  openTaskCount,
+}: Pick<FeedCounts, 'conversationCount' | 'activityCount' | 'openTaskCount'>) =>
+  conversationCount + activityCount + openTaskCount;
+
 export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
@@ -427,28 +444,39 @@ export const getFeedCounts = async (
       return;
     }
 
-    const [activityRes, taskCounts] = await Promise.all([
+    const [conversations, activityRes, taskCounts] = await Promise.all([
+      listConversations({
+        entityLink: getEntityFeedLink(entityType, entityFQN),
+        limit: 1,
+      }),
       getEntityActivityByFqn(entityType, entityFQN, {
         days: 30,
-        limit: 100,
+        limit: 0,
         domain,
       }),
       getTaskCounts({ aboutEntity: entityFQN, domain }),
     ]);
 
-    const activityCount = activityRes?.data?.length ?? 0;
+    const conversationCount = conversations.paging.total ?? 0;
+    const mentionCount = 0;
+    const activityCount = activityRes?.paging?.total ?? 0;
 
     const openTaskCount = taskCounts.open ?? 0;
     const closedTaskCount = taskCounts.completed ?? 0;
     const totalTasksCount = taskCounts.total ?? 0;
 
     feedCountCallback({
-      conversationCount: activityCount,
+      conversationCount,
+      activityCount,
       totalTasksCount,
       openTaskCount,
       closedTaskCount,
-      totalCount: activityCount + totalTasksCount,
-      mentionCount: 0,
+      totalCount: getFeedTotalCount({
+        conversationCount,
+        activityCount,
+        openTaskCount,
+      }),
+      mentionCount,
     });
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
@@ -472,7 +500,11 @@ export const fetchEntityTaskCountsInto = async (
         openTaskCount,
         closedTaskCount,
         totalTasksCount,
-        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+        totalCount: getFeedTotalCount({
+          conversationCount: prev.conversationCount ?? 0,
+          activityCount: prev.activityCount ?? 0,
+          openTaskCount,
+        }),
       };
     });
   } catch (err) {
@@ -487,18 +519,33 @@ export const fetchEntityActivityCountInto = async (
   domain?: string
 ) => {
   try {
-    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
-      days: 30,
-      limit: 0,
-      domain,
-    });
+    // Conversations and activity change-events live in separate stores; the
+    // entity feed shows both, so the count must include both.
+    const [activityRes, conversations] = await Promise.all([
+      getEntityActivityByFqn(entityType, entityFqn, {
+        days: 30,
+        limit: 0,
+        domain,
+      }),
+      listConversations({
+        entityLink: getEntityFeedLink(entityType, entityFqn),
+        limit: 1,
+      }),
+    ]);
     setFeedCount((prev) => {
-      const conversationCount = activityRes?.paging?.total ?? 0;
+      const activityCount = activityRes?.paging?.total ?? 0;
+      const conversationCount = conversations.paging.total ?? 0;
 
       return {
         ...prev,
+        activityCount,
         conversationCount,
-        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+        mentionCount: 0,
+        totalCount: getFeedTotalCount({
+          conversationCount,
+          activityCount,
+          openTaskCount: prev.openTaskCount ?? 0,
+        }),
       };
     });
   } catch (err) {

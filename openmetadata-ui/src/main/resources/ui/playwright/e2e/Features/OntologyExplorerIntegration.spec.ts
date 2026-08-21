@@ -22,6 +22,7 @@ import {
   applyRelationTypeFilter,
   clickDataModeAssetBadge,
   createApiContext,
+  defined,
   deleteEntities,
   disposeApiContext,
   navigateAndFilterByGlossary,
@@ -33,28 +34,38 @@ import {
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Relation Sync with OntologyExplorer', () => {
-  const syncGlossary = new Glossary();
-  const syncTerm1 = new GlossaryTerm(syncGlossary);
-  const syncTerm2 = new GlossaryTerm(syncGlossary);
+  let syncGlossary: Glossary | undefined;
+  let syncTerm1: GlossaryTerm | undefined;
+  let syncTerm2: GlossaryTerm | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    syncGlossary = new Glossary();
+    syncTerm1 = new GlossaryTerm(syncGlossary);
+    syncTerm2 = new GlossaryTerm(syncGlossary);
+
     await syncGlossary.create(apiContext);
     await syncTerm1.create(apiContext);
     await syncTerm2.create(apiContext);
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (syncGlossary) {
+      await deleteEntities(apiContext, syncTerm1, syncTerm2, syncGlossary);
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('should reflect relation add and remove in the graph', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, syncGlossary.responseData.id);
+    test.slow();
+    await navigateAndFilterByGlossary(
+      page,
+      defined(syncGlossary, 'syncGlossary').responseData.id
+    );
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
@@ -62,24 +73,31 @@ test.describe('Relation Sync with OntologyExplorer', () => {
 
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
-    await addTermRelation(apiContext, syncTerm1, syncTerm2, 'synonym');
+    await addTermRelation(apiContext, syncTerm1!, syncTerm2!, 'synonym');
     await apiContext.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    // Re-navigate instead of the refresh button: the refresh button
+    // intermittently clears the glossary filter state (race between the WS
+    // auto-update and the manual reload), causing stats to show "0 Terms".
+    await navigateAndFilterByGlossary(
+      page,
+      defined(syncGlossary, 'syncGlossary').responseData.id
+    );
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /1\s*Relations?/i
     );
 
     const apiContext2 = await getAuthContext(await getToken(page));
-    await syncTerm1.patch(apiContext2, [
+    await defined(syncTerm1, 'syncTerm1').patch(apiContext2, [
       { op: 'remove', path: '/relatedTerms/0' },
     ]);
     await apiContext2.dispose();
 
-    await page.getByTestId('refresh').click();
-    await waitForGraphLoaded(page);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(syncGlossary, 'syncGlossary').responseData.id
+    );
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /0\s*Relations?/i
@@ -88,29 +106,43 @@ test.describe('Relation Sync with OntologyExplorer', () => {
 });
 
 test.describe('Ontology Explorer - Hierarchy View', () => {
-  const hierarchyGlossary = new Glossary();
-  const parentTerm = new GlossaryTerm(hierarchyGlossary);
-  const childTerm = new GlossaryTerm(hierarchyGlossary);
+  let hierarchyGlossary: Glossary | undefined;
+  let parentTerm: GlossaryTerm | undefined;
+  let childTerm: GlossaryTerm | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    hierarchyGlossary = new Glossary();
+    parentTerm = new GlossaryTerm(hierarchyGlossary);
+    childTerm = new GlossaryTerm(hierarchyGlossary);
+
     await hierarchyGlossary.create(apiContext);
     await parentTerm.create(apiContext);
     await childTerm.create(apiContext);
     await addTermRelation(apiContext, parentTerm, childTerm, 'narrower');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, childTerm, parentTerm, hierarchyGlossary);
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (hierarchyGlossary) {
+      await deleteEntities(
+        apiContext,
+        childTerm,
+        parentTerm,
+        hierarchyGlossary
+      );
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('should display terms with narrower relation in Hierarchy view', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, hierarchyGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(hierarchyGlossary, 'hierarchyGlossary').responseData.id
+    );
 
     await page.getByTestId('view-mode-select').click();
     await page.getByRole('option', { name: 'Hierarchy' }).click();
@@ -123,32 +155,42 @@ test.describe('Ontology Explorer - Hierarchy View', () => {
 });
 
 test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
-  const filterGlossary = new Glossary();
-  const termA = new GlossaryTerm(filterGlossary);
-  const termB = new GlossaryTerm(filterGlossary);
-  const termC = new GlossaryTerm(filterGlossary);
+  let filterGlossary: Glossary | undefined;
+  let termA: GlossaryTerm | undefined;
+  let termB: GlossaryTerm | undefined;
+  let termC: GlossaryTerm | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    filterGlossary = new Glossary();
+    termA = new GlossaryTerm(filterGlossary);
+    termB = new GlossaryTerm(filterGlossary);
+    termC = new GlossaryTerm(filterGlossary);
+
     await filterGlossary.create(apiContext);
     await termA.create(apiContext);
     await termB.create(apiContext);
     await termC.create(apiContext);
     await addTermRelation(apiContext, termA, termB, 'relatedTo');
     await addTermRelation(apiContext, termB, termC, 'synonym');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (filterGlossary) {
+      await deleteEntities(apiContext, termA, termB, termC, filterGlossary);
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('filtering by relatedTo should show only terms connected by that relation and hide others', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(filterGlossary, 'filterGlossary').responseData.id
+    );
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       '3 Terms'
@@ -164,15 +206,20 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).toHaveProperty(termA.responseData.id);
-    expect(positions).toHaveProperty(termB.responseData.id);
-    expect(positions).not.toHaveProperty(termC.responseData.id);
+    expect(positions).toHaveProperty(defined(termA, 'termA').responseData.id);
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).not.toHaveProperty(
+      defined(termC, 'termC').responseData.id
+    );
   });
 
   test('filtering by synonym should show only terms connected by synonym and hide others', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(filterGlossary, 'filterGlossary').responseData.id
+    );
 
     await applyRelationTypeFilter(page, 'Synonym');
 
@@ -184,15 +231,20 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).not.toHaveProperty(termA.responseData.id);
-    expect(positions).toHaveProperty(termB.responseData.id);
-    expect(positions).toHaveProperty(termC.responseData.id);
+    expect(positions).not.toHaveProperty(
+      defined(termA, 'termA').responseData.id
+    );
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).toHaveProperty(defined(termC, 'termC').responseData.id);
   });
 
   test('clearing relation type filter should restore all connected nodes', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, filterGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(filterGlossary, 'filterGlossary').responseData.id
+    );
 
     await applyRelationTypeFilter(page, 'Synonym');
 
@@ -207,22 +259,28 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
     );
 
     const positions = await readNodePositions(page);
-    expect(positions).toHaveProperty(termA.responseData.id);
-    expect(positions).toHaveProperty(termB.responseData.id);
-    expect(positions).toHaveProperty(termC.responseData.id);
+    expect(positions).toHaveProperty(defined(termA, 'termA').responseData.id);
+    expect(positions).toHaveProperty(defined(termB, 'termB').responseData.id);
+    expect(positions).toHaveProperty(defined(termC, 'termC').responseData.id);
   });
 });
 
 test.describe('Ontology Explorer - Cross Glossary Edges', () => {
-  const crossGlossary1 = new Glossary();
-  const crossTerm1 = new GlossaryTerm(crossGlossary1);
+  let crossGlossary1: Glossary | undefined;
+  let crossTerm1: GlossaryTerm | undefined;
   // crossTerm3 lives in crossGlossary1 but has only a same-glossary relation
-  const crossTerm3 = new GlossaryTerm(crossGlossary1);
-  const crossGlossary2 = new Glossary();
-  const crossTerm2 = new GlossaryTerm(crossGlossary2);
+  let crossTerm3: GlossaryTerm | undefined;
+  let crossGlossary2: Glossary | undefined;
+  let crossTerm2: GlossaryTerm | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    crossGlossary1 = new Glossary();
+    crossTerm1 = new GlossaryTerm(crossGlossary1);
+    crossTerm3 = new GlossaryTerm(crossGlossary1);
+    crossGlossary2 = new Glossary();
+    crossTerm2 = new GlossaryTerm(crossGlossary2);
+
     await crossGlossary1.create(apiContext);
     await crossTerm1.create(apiContext);
     await crossTerm3.create(apiContext);
@@ -232,20 +290,22 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await addTermRelation(apiContext, crossTerm1, crossTerm2, 'relatedTo');
     // crossTerm3 <-> crossTerm1: same-glossary edge — must be hidden in Cross Glossary mode
     await addTermRelation(apiContext, crossTerm3, crossTerm1, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      crossTerm1,
-      crossTerm3,
-      crossTerm2,
-      crossGlossary1,
-      crossGlossary2
-    );
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (crossGlossary1) {
+      await deleteEntities(
+        apiContext,
+        crossTerm1,
+        crossTerm3,
+        crossTerm2,
+        crossGlossary1,
+        crossGlossary2
+      );
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('Cross Glossary view should show edges between terms from different glossaries', async ({
@@ -257,8 +317,8 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     await applyMultiGlossaryFilter(
       page,
-      crossGlossary1.responseData.id,
-      crossGlossary2.responseData.id
+      defined(crossGlossary1, 'crossGlossary1').responseData.id,
+      defined(crossGlossary2, 'crossGlossary2').responseData.id
     );
     await waitForGraphLoaded(page);
 
@@ -280,15 +340,15 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     await applyMultiGlossaryFilter(
       page,
-      crossGlossary1.responseData.id,
-      crossGlossary2.responseData.id
+      defined(crossGlossary1, 'crossGlossary1').responseData.id,
+      defined(crossGlossary2, 'crossGlossary2').responseData.id
     );
     await waitForGraphLoaded(page);
 
     // In overview mode crossTerm3 should be visible (has a same-glossary edge).
     const overviewPositions = await readNodePositions(page);
     expect(
-      overviewPositions[crossTerm3.responseData.id],
+      overviewPositions[defined(crossTerm3, 'crossTerm3').responseData.id],
       'crossTerm3 must be visible in Overview mode'
     ).toBeDefined();
 
@@ -300,17 +360,17 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 
     // crossTerm3 only has a same-glossary edge and must not appear.
     expect(
-      crossPositions[crossTerm3.responseData.id],
+      crossPositions[defined(crossTerm3, 'crossTerm3').responseData.id],
       'crossTerm3 (same-glossary-only) must NOT appear in Cross Glossary view'
     ).toBeUndefined();
 
     // crossTerm1 and crossTerm2 share a cross-glossary edge and must appear.
     expect(
-      crossPositions[crossTerm1.responseData.id],
+      crossPositions[defined(crossTerm1, 'crossTerm1').responseData.id],
       'crossTerm1 (has a cross-glossary edge) must be visible'
     ).toBeDefined();
     expect(
-      crossPositions[crossTerm2.responseData.id],
+      crossPositions[defined(crossTerm2, 'crossTerm2').responseData.id],
       'crossTerm2 (has a cross-glossary edge) must be visible'
     ).toBeDefined();
   });
@@ -337,12 +397,16 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
 });
 
 test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
-  const spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
-  const spiralTerm = new GlossaryTerm(spiralGlossary);
-  const spiralTable = new TableClass();
+  let spiralGlossary: Glossary | undefined;
+  let spiralTerm: GlossaryTerm | undefined;
+  let spiralTable: TableClass | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    spiralGlossary = new Glossary(`PWSpiral${uuid()}`);
+    spiralTerm = new GlossaryTerm(spiralGlossary);
+    spiralTable = new TableClass();
+
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);
     await spiralTable.create(apiContext);
@@ -372,14 +436,18 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
       expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
     }).toPass({ timeout: 60000, intervals: [2000] });
 
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, spiralTerm, spiralGlossary);
-    await spiralTable.delete(apiContext);
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (spiralGlossary) {
+      await deleteEntities(apiContext, spiralTerm, spiralGlossary);
+    }
+    if (spiralTable?.responseData) {
+      await spiralTable.delete(apiContext);
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('clicking asset count badge in data mode triggers asset search query', async ({
@@ -387,7 +455,10 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
   }) => {
     test.slow();
 
-    await navigateAndFilterByGlossary(page, spiralGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(spiralGlossary, 'spiralGlossary').responseData.id
+    );
 
     const assetCountsResponse = page.waitForResponse(
       (res) =>
@@ -414,36 +485,45 @@ test.describe('Ontology Explorer - Data Mode Asset Spiral View', () => {
     );
     await clickDataModeAssetBadge(
       page,
-      spiralTerm.responseData.fullyQualifiedName
+      defined(spiralTerm, 'spiralTerm').responseData.fullyQualifiedName
     );
     await searchResponse;
   });
 });
 
 test.describe('Ontology Explorer - Data Mode Stats', () => {
-  const dataModeGlossary = new Glossary();
-  const dataTerm1 = new GlossaryTerm(dataModeGlossary);
-  const dataTerm2 = new GlossaryTerm(dataModeGlossary);
+  let dataModeGlossary: Glossary | undefined;
+  let dataTerm1: GlossaryTerm | undefined;
+  let dataTerm2: GlossaryTerm | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    dataModeGlossary = new Glossary();
+    dataTerm1 = new GlossaryTerm(dataModeGlossary);
+    dataTerm2 = new GlossaryTerm(dataModeGlossary);
+
     await dataModeGlossary.create(apiContext);
     await dataTerm1.create(apiContext);
     await dataTerm2.create(apiContext);
     await addTermRelation(apiContext, dataTerm1, dataTerm2, 'relatedTo');
-    await disposeApiContext(page, apiContext);
+    await disposeApiContext(afterAction, apiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
-    await disposeApiContext(page, apiContext);
+  test.afterEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await createApiContext(browser);
+    if (dataModeGlossary) {
+      await deleteEntities(apiContext, dataTerm1, dataTerm2, dataModeGlossary);
+    }
+    await disposeApiContext(afterAction, apiContext);
   });
 
   test('Data mode stats do not show Data Assets when no assets are tagged', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, dataModeGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(dataModeGlossary, 'dataModeGlossary').responseData.id
+    );
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);
@@ -456,7 +536,10 @@ test.describe('Ontology Explorer - Data Mode Stats', () => {
   test('switching back from Data to Model mode restores stats', async ({
     page,
   }) => {
-    await navigateAndFilterByGlossary(page, dataModeGlossary.responseData.id);
+    await navigateAndFilterByGlossary(
+      page,
+      defined(dataModeGlossary, 'dataModeGlossary').responseData.id
+    );
 
     await page.getByRole('tab', { name: 'Data' }).click();
     await waitForGraphLoaded(page);

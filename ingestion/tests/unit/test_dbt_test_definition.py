@@ -18,6 +18,7 @@ Regression tests for https://github.com/open-metadata/OpenMetadata/issues/28710
 
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.tests.testDefinition import EntityType
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import get_dbt_test_definition_name
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
@@ -66,10 +67,14 @@ def _make_dbt_source(bound_method_name, existing_test_definition=None):
 
 class TestGetDbtTestDefinitionName:
     def test_generic_test_returns_test_type(self):
-        assert get_dbt_test_definition_name(_make_generic_test_node()) == DBT_TEST_TYPE
+        assert get_dbt_test_definition_name(_make_generic_test_node(), EntityType.COLUMN) == DBT_TEST_TYPE
 
     def test_singular_test_falls_back_to_node_name(self):
-        assert get_dbt_test_definition_name(_make_singular_test_node()) == SINGULAR_TEST_NAME
+        # No column on a singular test -> TABLE-scoped -> suffixed, so it never
+        # shares a TestDefinition with a column-scoped test of the same name.
+        assert (
+            get_dbt_test_definition_name(_make_singular_test_node(), EntityType.TABLE) == f"{SINGULAR_TEST_NAME}_table"
+        )
 
 
 class TestDbtTestDefinitionFromTestType:
@@ -101,7 +106,8 @@ class TestDbtTestDefinitionFromTestType:
         request = results[0].right
 
         assert request.name.root == SINGULAR_TEST_NAME
-        assert request.testDefinition.root == SINGULAR_TEST_NAME
+        # TABLE-scoped (no column) -> suffixed TestDefinition name, see above.
+        assert request.testDefinition.root == f"{SINGULAR_TEST_NAME}_table"
 
     def test_test_definition_entity_is_named_after_dbt_test_type(self):
         source = _make_dbt_source("create_dbt_tests_definition")

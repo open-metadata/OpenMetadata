@@ -160,17 +160,33 @@ export interface TooltipSize {
   width: number;
 }
 
-export interface TooltipBoundary extends TooltipSize {
+export interface TooltipPosition {
   x: number;
   y: number;
 }
 
+export interface TooltipBoundary extends TooltipSize, TooltipPosition {}
+
 interface TooltipPositionOptions {
-  anchor: Pick<TooltipBoundary, 'x' | 'y'>;
+  anchor: TooltipPosition;
   boundary: TooltipBoundary;
   gap: number;
   tooltipSize: TooltipSize;
 }
+
+/**
+ * Browsers report fractional, layout-dependent sizes for the same tooltip, and
+ * the flipped placement derives the position from that size. Comparing exactly
+ * would let sub-pixel noise feed a new position back into state indefinitely.
+ */
+const TOOLTIP_POSITION_EPSILON = 0.5;
+
+export const isSameTooltipPosition = (
+  current: TooltipPosition,
+  next: TooltipPosition
+): boolean =>
+  Math.abs(current.x - next.x) < TOOLTIP_POSITION_EPSILON &&
+  Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
 
 /**
  * Recharts types every view-box coordinate as optional, while overflow-aware
@@ -216,7 +232,7 @@ export const getTestSummaryTooltipPosition = ({
   boundary,
   gap,
   tooltipSize,
-}: TooltipPositionOptions) => ({
+}: TooltipPositionOptions): TooltipPosition => ({
   x: getTooltipAxisPosition(
     anchor.x,
     tooltipSize.width,

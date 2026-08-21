@@ -137,4 +137,39 @@ describe('ActivityFeedListV1New', () => {
     expect(onActivityClick).not.toHaveBeenCalled();
     expect(onFeedClick).not.toHaveBeenCalled();
   });
+
+  it('selects a newer activity after the conversations load first', async () => {
+    const onActivityClick = jest.fn();
+    const onFeedClick = jest.fn();
+    const conversation = createConversation('conversation', 200);
+    const { rerender } = render(
+      <ActivityFeedListV1New
+        activityList={[]}
+        emptyPlaceholderText="No activity"
+        feedList={[conversation]}
+        hidePopover={false}
+        isLoading={false}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
+
+    await waitFor(() => expect(onFeedClick).toHaveBeenCalledWith(conversation));
+
+    const activity = createActivity('activity', 300);
+    rerender(
+      <ActivityFeedListV1New
+        activityList={[activity]}
+        emptyPlaceholderText="No activity"
+        feedList={[conversation]}
+        hidePopover={false}
+        isLoading={false}
+        selectedThread={conversation}
+        onActivityClick={onActivityClick}
+        onFeedClick={onFeedClick}
+      />
+    );
+
+    await waitFor(() => expect(onActivityClick).toHaveBeenCalledWith(activity));
+  });
 });

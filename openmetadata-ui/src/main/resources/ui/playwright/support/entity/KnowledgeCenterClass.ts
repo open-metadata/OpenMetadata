@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { navigateToArticle } from '../../utils/KnowledgeCenter';
 import {
   KnowledgeCenterData,
@@ -82,7 +83,7 @@ export class KnowledgeCenterClass {
         data: apiData,
       });
 
-      const pageData = await response.json();
+      const pageData = await okJson(response, 'KnowledgeCenterClass.create');
       this.knowledgePages.push(pageData);
 
       if (i === 0) {
@@ -103,14 +104,13 @@ export class KnowledgeCenterClass {
       throw new Error('Cannot patch: KnowledgeCenter has not been created');
     }
 
-    const response = await apiContext.patch(
-      `/api/v1/contextCenter/pages/${id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/contextCenter/pages/${id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     if (!response.ok()) {

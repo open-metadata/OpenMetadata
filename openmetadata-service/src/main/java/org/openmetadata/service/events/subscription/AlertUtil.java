@@ -27,6 +27,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -152,7 +154,7 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (event.getEntityType().equals(CONVERSATION)) {
+    if (event.getEntityType().equals(CONVERSATION) || event.getEntityType().equals(Entity.THREAD)) {
       // Observability alerts (those with trigger actions) react to a measurable signal the
       // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
       // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
@@ -160,7 +162,9 @@ public final class AlertUtil {
       if (!nullOrEmpty(config.getActions())) {
         return false;
       }
-      return shouldTriggerAlertForConversation(event, config.getResources().get(0));
+      return event.getEntityType().equals(CONVERSATION)
+          ? shouldTriggerAlertForConversation(event, config.getResources().get(0))
+          : shouldTriggerAlertForThread(event, config.getResources().get(0));
     }
 
     // Test Suite
@@ -188,6 +192,21 @@ public final class AlertUtil {
         && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
   }
 
+  // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
+  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
+
+  private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    if (thread == null) {
+      return false;
+    }
+    if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
+      return resource.equalsIgnoreCase(thread.getType().value());
+    }
+    return thread.getEntityRef() != null
+        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
+  }
+
   public static SubscriptionStatus buildSubscriptionStatus(
       SubscriptionStatus.Status status,
       Long lastSuccessful,
@@ -211,6 +230,14 @@ public final class AlertUtil {
     return new TestDestinationStatus()
         .withStatus(status)
         .withStatusCode(statusCode)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, String reason, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
         .withTimestamp(timestamp);
   }
 

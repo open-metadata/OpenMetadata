@@ -12,7 +12,8 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -20,6 +21,18 @@ import { Conversation } from '../../../generated/entity/feed/conversation';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
+
+type MergedFeedItem =
+  | { type: 'feed'; id: string; timestamp: number; feed: Conversation }
+  | {
+      type: 'activity';
+      id: string;
+      timestamp: number;
+      activity: ActivityEvent;
+    };
+
+const getConversationTimestamp = (feed: Conversation): number =>
+  feed.updatedAt ?? feed.createdAt ?? 0;
 interface ActivityFeedListV1Props {
   feedList?: Conversation[];
   activityList?: ActivityEvent[];
@@ -45,20 +58,6 @@ interface ActivityFeedListV1Props {
   isFullSizeWidget?: boolean;
 }
 
-type ActivityFeedListItem =
-  | {
-      id: string;
-      kind: 'activity';
-      timestamp: number;
-      value: ActivityEvent;
-    }
-  | {
-      id: string;
-      kind: 'conversation';
-      timestamp: number;
-      value: Conversation;
-    };
-
 const ActivityFeedListV1New = ({
   feedList,
   activityList,
@@ -79,108 +78,136 @@ const ActivityFeedListV1New = ({
   isFeedWidget = false,
   isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
-  const feedItems = useMemo<ActivityFeedListItem[]>(() => {
-    const items: ActivityFeedListItem[] = [
-      ...(activityList ?? []).map((activity) => ({
+  const mergedList = useMemo<MergedFeedItem[]>(() => {
+    const feedItems: MergedFeedItem[] = (feedList ?? []).map((feed) => ({
+      type: 'feed',
+      id: feed.id,
+      timestamp: getConversationTimestamp(feed),
+      feed,
+    }));
+    const activityItems: MergedFeedItem[] = (activityList ?? []).map(
+      (activity) => ({
+        type: 'activity',
         id: activity.id,
-        kind: 'activity' as const,
-        timestamp: activity.timestamp,
-        value: activity,
-      })),
-      ...(feedList ?? []).map((conversation) => ({
-        id: conversation.id,
-        kind: 'conversation' as const,
-        timestamp: conversation.updatedAt,
-        value: conversation,
-      })),
-    ];
-
-    return items.sort(
-      (left, right) =>
-        right.timestamp - left.timestamp || left.id.localeCompare(right.id)
+        timestamp: activity.timestamp ?? 0,
+        activity,
+      })
     );
-  }, [activityList, feedList]);
 
-  const selectedId = selectedActivity?.id ?? selectedThread?.id;
+    return [...activityItems, ...feedItems].sort(
+      (a, b) => b.timestamp - a.timestamp || a.id.localeCompare(b.id)
+    );
+  }, [feedList, activityList]);
+
+  // Id of the item WE auto-selected, so we can tell our own selection apart
+  // from a deliberate user click.
+  const autoSelectedIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const selectedItem = feedItems.find((item) => item.id === selectedId);
-
-    if (selectedItem || feedItems.length === 0) {
+    const firstItem = mergedList[0];
+    if (isUndefined(firstItem)) {
       return;
     }
 
-    const firstItem = feedItems[0];
-    if (firstItem.kind === 'activity') {
-      onActivityClick?.(firstItem.value);
-    } else {
-      onFeedClick?.(firstItem.value);
+    const currentSelectedId = selectedThread?.id ?? selectedActivity?.id;
+    const selectionInList =
+      !isUndefined(currentSelectedId) &&
+      mergedList.some((item) => item.id === currentSelectedId);
+
+    // A real, in-list selection that isn't our own auto-pick means the user
+    // deliberately chose it — never override that. (A stale selection no longer
+    // in the list falls through so we can re-select the newest item.)
+    const userHasChosen =
+      selectionInList && currentSelectedId !== autoSelectedIdRef.current;
+    if (userHasChosen) {
+      return;
     }
-  }, [feedItems, onActivityClick, onFeedClick, selectedId]);
+
+    // Already on the newest item — nothing to do.
+    if (firstItem.id === currentSelectedId) {
+      return;
+    }
+
+    // No user choice yet: keep the newest (first) item selected as the two
+    // async sources (activities + conversations) settle. This makes the initial
+    // selection deterministic regardless of which request resolves first —
+    // otherwise the first response to arrive would lock in its own top item.
+    autoSelectedIdRef.current = firstItem.id;
+    if (firstItem.type === 'activity') {
+      onActivityClick?.(firstItem.activity);
+    } else {
+      onFeedClick?.(firstItem.feed);
+    }
+  }, [
+    mergedList,
+    selectedThread,
+    selectedActivity,
+    onFeedClick,
+    onActivityClick,
+  ]);
 
   useEffect(() => {
-    handlePanelResize?.(feedItems.length === 0);
-  }, [feedItems.length, handlePanelResize]);
+    handlePanelResize?.(isEmpty(mergedList));
+  }, [mergedList, handlePanelResize]);
 
-  const feeds = useMemo(
-    () =>
-      feedItems.map((item) =>
-        item.kind === 'activity' ? (
-          <FeedPanelBodyV1New
-            activity={item.value}
-            handlePanelResize={handlePanelResize}
-            hidePopover={hidePopover}
-            isActive={activeFeedId === item.id}
-            isFeedWidget={isFeedWidget}
-            isForFeedTab={isForFeedTab}
-            isFullSizeWidget={isFullSizeWidget}
-            isFullWidth={isFullWidth}
-            key={`activity-${item.id}`}
-            showThread={showThread}
-            onActivityClick={onActivityClick}
-            onAfterClose={onAfterClose}
-            onUpdateEntityDetails={onUpdateEntityDetails}
-          />
-        ) : (
-          <FeedPanelBodyV1New
-            feed={item.value}
-            handlePanelResize={handlePanelResize}
-            hidePopover={hidePopover}
-            isActive={activeFeedId === item.id}
-            isFeedWidget={isFeedWidget}
-            isForFeedTab={isForFeedTab}
-            isFullSizeWidget={isFullSizeWidget}
-            isFullWidth={isFullWidth}
-            key={`conversation-${item.id}`}
-            showThread={showThread}
-            onAfterClose={onAfterClose}
-            onFeedClick={onFeedClick}
-            onUpdateEntityDetails={onUpdateEntityDetails}
-          />
-        )
-      ),
-    [
-      activeFeedId,
-      feedItems,
-      handlePanelResize,
-      hidePopover,
-      isFeedWidget,
-      isForFeedTab,
-      isFullSizeWidget,
-      isFullWidth,
-      onActivityClick,
-      onAfterClose,
-      onFeedClick,
-      onUpdateEntityDetails,
-      showThread,
-    ]
-  );
-
+  const feeds = useMemo(() => {
+    return mergedList.map((item) =>
+      item.type === 'activity' ? (
+        <FeedPanelBodyV1New
+          activity={item.activity}
+          handlePanelResize={handlePanelResize}
+          hidePopover={hidePopover}
+          isActive={activeFeedId === item.id}
+          isFeedWidget={isFeedWidget}
+          isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
+          isFullWidth={isFullWidth}
+          key={item.id}
+          showThread={showThread}
+          onActivityClick={onActivityClick}
+          onAfterClose={onAfterClose}
+          onUpdateEntityDetails={onUpdateEntityDetails}
+        />
+      ) : (
+        <FeedPanelBodyV1New
+          feed={item.feed}
+          handlePanelResize={handlePanelResize}
+          hidePopover={hidePopover}
+          isActive={activeFeedId === item.id}
+          isFeedWidget={isFeedWidget}
+          isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
+          isFullWidth={isFullWidth}
+          key={item.id}
+          showThread={showThread}
+          onAfterClose={onAfterClose}
+          onFeedClick={onFeedClick}
+          onUpdateEntityDetails={onUpdateEntityDetails}
+        />
+      )
+    );
+  }, [
+    mergedList,
+    activeFeedId,
+    hidePopover,
+    isForFeedTab,
+    showThread,
+    isFullWidth,
+    isFullSizeWidget,
+    isFeedWidget,
+    handlePanelResize,
+    onActivityClick,
+    onFeedClick,
+    onAfterClose,
+    onUpdateEntityDetails,
+  ]);
   if (isLoading) {
     return <Loader />;
   }
 
-  if (feedItems.length === 0) {
+  const hasNoData = isEmpty(mergedList);
+
+  if (hasNoData && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container h-full"

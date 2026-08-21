@@ -15,6 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { getEntityActivityByFqn } from '../../../rest/activityAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTab } from './ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -26,6 +28,11 @@ const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockListConversations = jest.fn();
 const mockUseRequiredParams = jest.fn();
+const mockFetchEntityActivity = jest.fn();
+const mockFetchUserActivity = jest.fn();
+let mockActivityEvents: { id: string; timestamp: number }[] = [];
+let mockConversationCount = 0;
+let mockActivityCount = 0;
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -66,10 +73,10 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     tasks: [],
     selectedTask: null,
     setActiveTask: jest.fn(),
-    activityEvents: [],
+    activityEvents: mockActivityEvents,
     isActivityLoading: false,
-    fetchEntityActivity: jest.fn(),
-    fetchUserActivity: jest.fn(),
+    fetchEntityActivity: mockFetchEntityActivity,
+    fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
     setActiveActivity: jest.fn(),
@@ -84,6 +91,10 @@ jest.mock('../../../rest/tasksAPI', () => ({
 
 jest.mock('../../../rest/conversationsAPI', () => ({
   listConversations: (...args: unknown[]) => mockListConversations(...args),
+}));
+
+jest.mock('../../../rest/activityAPI', () => ({
+  getEntityActivityByFqn: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -148,21 +159,104 @@ const renderComponent = (subTab = ActivityFeedTabs.TASKS) => {
   );
 };
 
+const renderUserComponent = (subTab = ActivityFeedTabs.TASKS) => {
+  mockUseRequiredParams.mockReturnValue({ tab: 'activity_feed', subTab });
+
+  return render(
+    <MemoryRouter>
+      <ActivityFeedTab
+        {...defaultProps}
+        columns={undefined}
+        entityType={EntityType.USER}
+      />
+    </MemoryRouter>
+  );
+};
+
 describe('ActivityFeedTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockActivityEvents = [];
+    mockConversationCount = 0;
+    mockActivityCount = 0;
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
       completed: 0,
       total: 0,
     });
-    mockListConversations.mockResolvedValue({
-      data: [],
-      paging: { total: 0 },
-    });
+    mockListConversations.mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: mockConversationCount },
+      })
+    );
+    (getEntityActivityByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: mockActivityCount },
+      })
+    );
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+  });
+
+  describe('Activity fetch is gated by tab', () => {
+    it('does NOT fetch entity activity on the Tasks tab', async () => {
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => {
+        expect(mockGetTaskData).toHaveBeenCalled();
+      });
+
+      expect(mockFetchEntityActivity).not.toHaveBeenCalled();
+    });
+
+    it('fetches entity activity on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        expect(mockFetchEntityActivity).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('All count = conversations + activity events', () => {
+    it('sums the server conversationCount and activityCount (not client-loaded length)', async () => {
+      mockConversationCount = 3;
+      mockActivityCount = 2;
+      // Client-loaded list has fewer items than the server activity total; the
+      // badge must reflect the SERVER total, so it stays correct under pagination.
+      mockActivityEvents = [{ id: 'a1', timestamp: 1 }];
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        const counts = screen
+          .getAllByTestId('filter-count')
+          .map((el) => el.textContent);
+
+        // All badge must be 3 (conversations) + 2 (activity server total) = 5,
+        // NOT 3 + activityEvents.length (1).
+        expect(counts).toContain('5');
+      });
+    });
+  });
+
+  describe('User entity feed counts tolerate an empty conversation response', () => {
+    it('still renders the tab when no conversations exist', async () => {
+      mockListConversations.mockResolvedValue({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      renderUserComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => expect(mockListConversations).toHaveBeenCalled());
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(screen.getByTestId('task-list')).toBeInTheDocument();
+    });
   });
 
   describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {

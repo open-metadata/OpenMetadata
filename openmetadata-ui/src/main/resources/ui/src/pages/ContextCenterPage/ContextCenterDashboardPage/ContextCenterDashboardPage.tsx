@@ -29,6 +29,7 @@ import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg'
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import ContextSimplePillarCard from '../../../components/ContextCenter/ContextSimplePillarCard/ContextSimplePillarCard.component';
@@ -63,6 +64,7 @@ import {
   QuickLink,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { listContextFiles, listFolders } from '../../../rest/assetAPI';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import {
@@ -71,6 +73,10 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -152,12 +158,16 @@ const ContextCenterDashboardPage: FC = () => {
           tags,
         };
         const articleData = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         showSuccessToast(
           t('message.entity-saved-successfully', {
             entity: t('label.quick-link'),
           })
         );
         setArticles((prev) => [articleData, ...prev]);
+        setArticlesCount((prev) => prev + 1);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -272,7 +282,11 @@ const ContextCenterDashboardPage: FC = () => {
   ]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+    });
     setDocuments((prev) => [...newFiles, ...prev]);
+    setDocumentsCount((prev) => prev + newFiles.length);
   }, []);
 
   const handleFolderCreated = useCallback(() => {
@@ -396,6 +410,7 @@ const ContextCenterDashboardPage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
+      <DocumentTitle title={t('label.context-center')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={

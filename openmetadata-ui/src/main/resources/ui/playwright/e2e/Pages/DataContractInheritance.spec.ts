@@ -77,7 +77,9 @@ const fillContractDetailsForm = async (
   await page.fill('.om-block-editor[contenteditable="true"]', description);
 
   await page.getByTestId('select-owners').click();
-  await page.locator('.rc-virtual-list-holder-inner li').first().click();
+  const firstOwner = page.getByTestId('owner-option').first();
+  await expect(firstOwner).toBeVisible();
+  await firstOwner.click();
 
   await expect(page.getByTestId('user-tag')).toBeVisible();
 };
@@ -266,11 +268,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -280,11 +284,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -294,11 +300,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -308,11 +316,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -322,11 +332,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -336,11 +348,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -350,11 +364,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -364,11 +380,13 @@ test.describe('Data Contract Inheritance', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });

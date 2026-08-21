@@ -202,6 +202,21 @@ export const getConfigQueryParamsArrayFromObject = (
       }));
 
 /**
+ * @description Pairs each tested destination with the status returned for it. The API redacts
+ * destination configs from its response, since they carry credentials, so the config has to come
+ * from the destinations that were submitted. Results are matched positionally: the API returns one
+ * entry per requested destination, in request order.
+ */
+export const getDestinationsWithTestStatus = <T extends Destination>(
+  testedDestinations: T[],
+  testResults: Destination[]
+): T[] =>
+  testedDestinations.map((destination, index) => ({
+    ...destination,
+    statusDetails: testResults[index]?.statusDetails,
+  }));
+
+/**
  * @description Normalizes destination config for comparison by converting headers and queryParams to array format
  */
 export const normalizeDestinationConfig = (config?: Destination['config']) =>

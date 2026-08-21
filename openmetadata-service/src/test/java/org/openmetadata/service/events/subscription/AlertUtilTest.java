@@ -17,6 +17,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 
@@ -150,6 +152,18 @@ class AlertUtilTest {
     ChangeEvent event = entityChangeEvent(Entity.ANNOUNCEMENT);
     FilteringRules config = filteringRules("announcement");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_announcementThread_announcementResource_returnsFalse() {
+    Thread thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withType(ThreadType.Announcement)
+            .withEntityRef(new EntityReference().withId(UUID.randomUUID()).withType("table"));
+    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("announcement");
+    assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   // ---- shouldTriggerAlert: entity-type resource for conversation events ----
@@ -392,6 +406,14 @@ class AlertUtilTest {
         .withEventType(eventType)
         .withEntityType(Entity.CONVERSATION)
         .withEntity(conversation);
+  }
+
+  private static ChangeEvent threadChangeEvent(Thread thread, EventType eventType) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(eventType)
+        .withEntityType(Entity.THREAD)
+        .withEntity(thread);
   }
 
   private static ChangeEvent conversationUpdatedEvent(EntityReference parent) {

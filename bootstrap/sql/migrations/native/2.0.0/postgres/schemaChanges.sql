@@ -488,97 +488,61 @@ CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON driv
 CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
 CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
 
--- Conversation V2 stores bounded roots and replies as schema-first JSON. Indexed mentions and
--- domains remain normalized because they participate in filters and authorization. These
--- statements intentionally live in 2.0.0 so RC databases reprocess the current release migration
--- when the migration engine detects the new statement checksums.
-CREATE TABLE IF NOT EXISTS conversation_entity (
-    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
-    source character varying(16) GENERATED ALWAYS AS ((json ->> 'source'::text)) STORED NOT NULL,
-    entityType character varying(64) GENERATED ALWAYS AS
-      ((json #>> '{entityRef,type}'::text[])) STORED NOT NULL,
-    entityId character varying(36) GENERATED ALWAYS AS
-      ((json #>> '{entityRef,id}'::text[])) STORED NOT NULL,
-    entityFqnHash character varying(768),
-    about character varying(2048) GENERATED ALWAYS AS ((json ->> 'about'::text)) STORED NOT NULL,
-    aboutFqnHash character varying(768),
-    activityEventId character varying(36) GENERATED ALWAYS AS
-      ((json ->> 'activityEventId'::text)) STORED,
-    creatorId character varying(36) GENERATED ALWAYS AS
-      ((json #>> '{createdBy,id}'::text[])) STORED,
-    createdAt bigint GENERATED ALWAYS AS
-      (((json ->> 'createdAt'::text))::bigint) STORED NOT NULL,
-    updatedAt bigint GENERATED ALWAYS AS
-      (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
-    resolved boolean GENERATED ALWAYS AS
-      (((json ->> 'resolved'::text))::boolean) STORED NOT NULL,
-    replyCount integer GENERATED ALWAYS AS
-      (((json ->> 'replyCount'::text))::integer) STORED NOT NULL,
-    json jsonb NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_conversation_activity_event UNIQUE (activityEventId)
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    PRIMARY KEY (userId)
 );
 
-CREATE INDEX IF NOT EXISTS idx_conversation_entity
-    ON conversation_entity (entityType, entityId, updatedAt DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_conversation_entity_fqn
-    ON conversation_entity (entityFqnHash, updatedAt DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_conversation_about
-    ON conversation_entity (aboutFqnHash, updatedAt DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_conversation_creator
-    ON conversation_entity (creatorId, updatedAt DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_conversation_source_updated
-    ON conversation_entity (source, updatedAt DESC, id DESC);
-CREATE INDEX IF NOT EXISTS idx_conversation_created
-    ON conversation_entity (createdAt, id);
-
-CREATE TABLE IF NOT EXISTS conversation_reply (
-    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
-    conversationId character varying(36) GENERATED ALWAYS AS
-      ((json ->> 'conversationId'::text)) STORED NOT NULL,
-    authorId character varying(36) GENERATED ALWAYS AS
-      ((json #>> '{author,id}'::text[])) STORED NOT NULL,
-    createdAt bigint GENERATED ALWAYS AS
-      (((json ->> 'createdAt'::text))::bigint) STORED NOT NULL,
-    updatedAt bigint GENERATED ALWAYS AS
-      (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
-    json jsonb NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_conversation_reply_conversation
-      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_conversation_reply_cursor
-    ON conversation_reply (conversationId, createdAt, id);
-CREATE INDEX IF NOT EXISTS idx_conversation_reply_author
-    ON conversation_reply (authorId, createdAt, id);
-
-CREATE TABLE IF NOT EXISTS conversation_mention (
-    conversationId character varying(36) NOT NULL,
-    targetType character varying(16) NOT NULL,
-    targetId character varying(36) NOT NULL,
-    mentionedEntityType character varying(64) NOT NULL,
-    mentionedEntityId character varying(36) NOT NULL,
-    createdAt bigint NOT NULL,
-    PRIMARY KEY (targetType, targetId, mentionedEntityType, mentionedEntityId),
-    CONSTRAINT fk_conversation_mention_conversation
-      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_conversation_mention_lookup
-    ON conversation_mention (mentionedEntityType, mentionedEntityId, createdAt, conversationId);
-CREATE INDEX IF NOT EXISTS idx_conversation_mention_conversation
-    ON conversation_mention (conversationId, targetType, targetId);
-
-CREATE TABLE IF NOT EXISTS conversation_domain (
-    conversationId character varying(36) NOT NULL,
-    domainId character varying(36) NOT NULL,
-    PRIMARY KEY (conversationId, domainId),
-    CONSTRAINT fk_conversation_domain_conversation
-      FOREIGN KEY (conversationId) REFERENCES conversation_entity(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_conversation_domain_lookup
-    ON conversation_domain (domainId, conversationId);
-
-ALTER TABLE conversation_entity DROP COLUMN IF EXISTS activityTimestamp;
+-- Index the FQN-hash prefix scan behind the table hard-delete profiler purge (issue #27041).
+--
+-- TableRepository.entitySpecificCleanup purges a hard-deleted table's column profiles through
+-- ProfilerDataTimeSeriesDAO before the table can be recreated. The purge matches
+--   entityFQNHash LIKE '<table hash>.%'
+-- because column profiles are keyed by the *column* FQN, not the table FQN. The only persistent
+-- index with entityFQNHash leading is the 1.1.5 unique constraint
+-- (entityFQNHash, extension, operation, timestamp); it uses the default operator class and the
+-- column inherits the database default collation (en_US.UTF-8 on managed Postgres / RDS), neither
+-- of which qualifies the planner to use it for LIKE 'prefix%'. The 1.9.9 migration did create
+-- idx_pdts_entityFQNHash_prefix, but that was a migration-time helper and the same script drops it
+-- again, so nothing persistent covers this predicate today.
+--
+-- Without this index every table hard delete costs at least one sequential scan of
+-- profiler_data_time_series, and a recursive service delete costs one per table. Measured on
+-- postgres:15 (lc_collate=en_US.utf8) with 300k rows / 211 MB, using the exact statement the DAO
+-- issues (JDBC binds the prefix as text):
+--   before: Parallel Seq Scan, 24.174 ms, 11112 buffers   (terminal batch, prefix matches nothing)
+--   after : Index Scan,         0.056 ms,     3 buffers
+--   before: Seq Scan,          16.579 ms,  3701 buffers   (first batch, prefix matches 3000 rows)
+--   after : Bitmap Heap Scan,   8.647 ms,  1006 buffers
+-- Index size 2776 kB against a 211 MB table.
+--
+-- Why text_pattern_ops and not varchar_pattern_ops:
+-- entityFQNHash is VARCHAR(768), so varchar_pattern_ops is the type-matched choice on paper. In
+-- practice the planner normalises `varchar LIKE text` — which is what every JDBC setString bind
+-- produces — by casting the column, giving `(entityfqnhash)::text ~~ ...`. text_pattern_ops matches
+-- that cast expression on every version; the 1.13.0 fqnHash pass documents an environment where
+-- varchar_pattern_ops was silently unused and the table seq-scanned. This file follows the same
+-- opclass as the idx_*_fqnhash_pattern family for that reason.
+--
+-- Built CONCURRENTLY so the migration takes no write lock, matching the 1.11.0 idx_tag_usage_* and
+-- 1.13.0 idx_*_fqnhash_pattern pattern. Each statement runs outside an implicit transaction, which
+-- the native migration runner supports.
+--
+-- OPERATOR RUNBOOK — interrupted CONCURRENTLY builds.
+-- An interrupted CREATE INDEX CONCURRENTLY leaves an INVALID index behind, and `IF NOT EXISTS`
+-- would then no-op against it forever. Detect and remediate:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid
+--      AND c.relname = 'idx_profiler_data_time_series_fqnhash_pattern';
+--   DROP INDEX CONCURRENTLY idx_profiler_data_time_series_fqnhash_pattern;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.0.0'
+--      AND sqlstatement LIKE '%idx\_profiler\_data\_time\_series\_fqnhash\_pattern%' ESCAPE '\';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiler_data_time_series_fqnhash_pattern
+    ON profiler_data_time_series (entityFQNHash text_pattern_ops);

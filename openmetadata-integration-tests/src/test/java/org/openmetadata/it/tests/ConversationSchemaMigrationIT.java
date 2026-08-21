@@ -51,7 +51,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.v200.ConversationMigration;
+import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @ExtendWith(TestNamespaceExtension.class)
@@ -333,11 +333,11 @@ class ConversationSchemaMigrationIT {
     String database = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     String sql =
         Files.readString(
-            root.resolve("bootstrap/sql/migrations/native/2.0.0")
+            root.resolve("bootstrap/sql/migrations/native/2.1.0")
                 .resolve(database)
                 .resolve("schemaChanges.sql"));
     int start = sql.indexOf("CREATE TABLE IF NOT EXISTS conversation_entity");
-    assertTrue(start >= 0, "Conversation V2 DDL must remain in the 2.0.0 migration");
+    assertTrue(start >= 0, "Conversation V2 DDL must remain in the 2.1.0 migration");
     int domainStart = sql.indexOf("CREATE TABLE IF NOT EXISTS conversation_domain", start);
     String endMarker =
         connectionType == ConnectionType.MYSQL

@@ -38,7 +38,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
@@ -55,6 +54,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -554,31 +554,33 @@ public class ColumnResource {
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
-                jobId, securityContext);
-            CsvImportResult result =
-                repository.importColumnsCSV(
-                    uriInfo,
-                    securityContext,
-                    csv,
-                    false,
-                    entityTypes,
-                    serviceName,
-                    databaseName,
-                    schemaName,
-                    domainId);
-            WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while importing CSV for columns.", e);
-            WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.CSV_IMPORT,
+            jobId,
+            () -> {
+              try {
+                WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
+                    jobId, securityContext);
+                CsvImportResult result =
+                    repository.importColumnsCSV(
+                        uriInfo,
+                        securityContext,
+                        csv,
+                        false,
+                        entityTypes,
+                        serviceName,
+                        databaseName,
+                        schemaName,
+                        domainId);
+                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while importing CSV for columns.", e);
+                WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage());
+              }
+            });
 
     return response;
   }
@@ -621,32 +623,35 @@ public class ColumnResource {
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
-                jobId, securityContext);
-            BulkOperationResult result =
-                repository.bulkUpdateColumns(
-                    uriInfo,
-                    securityContext,
-                    request,
-                    (processed, total) ->
-                        WebsocketNotificationHandler.sendBulkAssetsOperationProgressNotification(
-                            jobId,
-                            securityContext,
-                            processed,
-                            total,
-                            "Bulk column update is in progress."));
-            WebsocketNotificationHandler.sendBulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            LOG.error("Encountered Exception while bulk updating columns.", e);
-            WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            () -> {
+              try {
+                WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
+                    jobId, securityContext);
+                BulkOperationResult result =
+                    repository.bulkUpdateColumns(
+                        uriInfo,
+                        securityContext,
+                        request,
+                        (processed, total) ->
+                            WebsocketNotificationHandler
+                                .sendBulkAssetsOperationProgressNotification(
+                                    jobId,
+                                    securityContext,
+                                    processed,
+                                    total,
+                                    "Bulk column update is in progress."));
+                WebsocketNotificationHandler.sendBulkAssetsOperationCompleteNotification(
+                    jobId, securityContext, result);
+              } catch (Exception e) {
+                LOG.error("Encountered Exception while bulk updating columns.", e);
+                WebsocketNotificationHandler.sendBulkAssetsOperationFailedNotification(
+                    jobId, securityContext, e.getMessage());
+              }
+            });
 
     return response;
   }

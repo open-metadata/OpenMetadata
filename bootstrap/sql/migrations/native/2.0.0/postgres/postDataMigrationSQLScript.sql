@@ -334,23 +334,33 @@ WHERE json ->> 'fullyQualifiedName' = 'PII.Sensitive'
         AND rec #>> '{recognizerConfig,patterns,0,regex}' = '\b\d{3,4}\b'
   );
 
--- Activity comments are retained indefinitely unless an administrator explicitly configures a
--- positive retention period. Preserve any value already chosen by an administrator.
-UPDATE installed_apps
-SET json = jsonb_set(
-    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
-WHERE name = 'DataRetentionApplication'
-  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+-- Offer Table Diff on Databricks, Unity Catalog and AzureSQL.
+-- tableDiff.json gained these three services in #31356, but test definitions are seed data and
+-- initializeEntity() skips a row that already exists, so an upgraded deployment keeps the old
+-- 10-service list and the Add Test form never offers Table Diff on those connectors.
+-- One statement per service so a customised list keeps its other entries, and each is a no-op
+-- once its service is present. An empty list already means "every service", so leave it alone
+-- rather than narrowing it to three.
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["Databricks"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["Databricks"]'::jsonb;
 
-UPDATE apps_marketplace
-SET json = jsonb_set(
-    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
-WHERE name = 'DataRetentionApplication'
-  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["UnityCatalog"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["UnityCatalog"]'::jsonb;
 
-UPDATE entity_extension
-SET json = jsonb_set(
-    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
-WHERE extension LIKE 'app.version.%'
-  AND json::jsonb ->> 'name' = 'DataRetentionApplication'
-  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+UPDATE test_definition
+SET json = jsonb_set(json, '{supportedServices}',
+                     (json->'supportedServices') || '["AzureSQL"]'::jsonb)
+WHERE name = 'tableDiff'
+  AND jsonb_typeof(json->'supportedServices') = 'array'
+  AND jsonb_array_length(json->'supportedServices') > 0
+  AND NOT (json->'supportedServices') @> '["AzureSQL"]'::jsonb;

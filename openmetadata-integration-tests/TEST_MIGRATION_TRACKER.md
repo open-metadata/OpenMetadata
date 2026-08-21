@@ -164,7 +164,7 @@ The removed `FeedResourceIT` and `FeedTaskAuthzIT` cases are split by their runt
 | Announcement CRUD, validation, activation windows, and entity scoping | `AnnouncementResourceIT` |
 | Chatbot feed cases | Removed with the Chatbot feature; legacy rows remain only in the archived migration source |
 
-`ConversationSchemaMigrationIT` replays the exact `2.0.0` Conversation V2 DDL twice against the
+`ConversationSchemaMigrationIT` replays the exact `2.1.0` Conversation V2 DDL twice against the
 active database profile, verifies generated columns, and proves reply/reaction/mention/domain rows
 cascade with their root. CI runs the same test under the MySQL and PostgreSQL profiles; the existing
 `ContinuousMigrationIT` covers checksum-based current-version reprocessing for both profiles.

@@ -16,6 +16,7 @@ package org.openmetadata.service.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,6 +53,31 @@ public final class TaskWorkflowLifecycleResolver {
       Map<String, Object> defaultStageMappings) {}
 
   private TaskWorkflowLifecycleResolver() {}
+
+  /**
+   * Fallback transitions returned when a {@code userApprovalTask} node's {@code transitionMetadata}
+   * is empty. The values (ids, labels, target stage ids, statuses) mirror the FE default in
+   * {@code UserApprovalForm} and the migration backfill so tasks resolved via this fallback and
+   * tasks resolved via backfilled metadata land on the same workflow stage ids.
+   */
+  private static final List<TaskAvailableTransition> DEFAULT_USER_APPROVAL_TRANSITIONS =
+      List.of(
+          new TaskAvailableTransition()
+              .withId("approve")
+              .withLabel("Approve")
+              .withTargetStageId("approved")
+              .withTargetTaskStatus(TaskEntityStatus.Approved)
+              .withResolutionType(TaskResolutionType.Approved)
+              .withRequiresComment(false),
+          new TaskAvailableTransition()
+              .withId("reject")
+              .withLabel("Reject")
+              .withTargetStageId("rejected")
+              .withTargetTaskStatus(TaskEntityStatus.Rejected)
+              .withResolutionType(TaskResolutionType.Rejected)
+              .withRequiresComment(false));
+
+  private static final String USER_APPROVAL_TASK_SUB_TYPE = "userApprovalTask";
 
   public static Optional<TaskFormSchema> resolveSchema(Task task) {
     if (task == null || task.getType() == null) {
@@ -350,15 +376,16 @@ public final class TaskWorkflowLifecycleResolver {
 
   public static List<TaskAvailableTransition> resolveTransitionsForStage(
       WorkflowDefinition workflowDefinition, String workflowStageId) {
+    List<TaskAvailableTransition> transitions = List.of();
     if (workflowDefinition == null
         || nullOrEmpty(workflowStageId)
         || nullOrEmpty(workflowDefinition.getNodes())) {
-      return List.of();
+      return transitions;
     }
 
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       if (node == null
-          || !"userApprovalTask".equals(node.getSubType())
+          || !USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())
           || node.getConfig() == null) {
         continue;
       }
@@ -373,21 +400,87 @@ public final class TaskWorkflowLifecycleResolver {
         continue;
       }
 
-      return parseTransitions(config.get("transitionMetadata"));
+      transitions = parseTransitions(config.get("transitionMetadata"));
+      if (transitions.isEmpty()) {
+        transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
+      }
+      break;
     }
 
-    return List.of();
+    return transitions;
   }
 
   public static TaskAvailableTransition findTransition(Task task, String transitionId) {
-    if (task == null || nullOrEmpty(transitionId) || nullOrEmpty(task.getAvailableTransitions())) {
-      return null;
+    TaskAvailableTransition match = null;
+    if (task == null || nullOrEmpty(transitionId)) {
+      return match;
     }
 
-    return task.getAvailableTransitions().stream()
-        .filter(transition -> transitionId.equals(transition.getId()))
-        .findFirst()
-        .orElse(null);
+    List<TaskAvailableTransition> transitions = task.getAvailableTransitions();
+    if (nullOrEmpty(transitions) && task.getWorkflowDefinitionId() != null) {
+      transitions = fallbackUserApprovalTransitions(task);
+    }
+    if (!nullOrEmpty(transitions)) {
+      match =
+          transitions.stream()
+              .filter(transition -> transitionId.equals(transition.getId()))
+              .findFirst()
+              .orElse(null);
+    }
+    return match;
+  }
+
+  /**
+   * Resolve fallback transitions for a workflow-managed task whose stored
+   * {@code availableTransitions} is empty. Prefer the stage-specific lookup so a partially
+   * configured workflow can override the defaults; fall back to
+   * {@link #DEFAULT_USER_APPROVAL_TRANSITIONS} when the task carries no {@code workflowStageId}
+   * or when the resolved stage node also declares an empty transition list. Loads the
+   * {@link WorkflowDefinition} once and shares it with both checks — this runs on every resolve
+   * of a legacy task with empty availableTransitions, and the load hits the repository plus JSON
+   * deserialization.
+   */
+  private static List<TaskAvailableTransition> fallbackUserApprovalTransitions(Task task) {
+    List<TaskAvailableTransition> transitions = List.of();
+    WorkflowDefinition workflowDefinition = loadWorkflowDefinition(task.getWorkflowDefinitionId());
+    if (workflowDefinition == null) {
+      return transitions;
+    }
+    if (!nullOrEmpty(task.getWorkflowStageId())) {
+      transitions = resolveTransitionsForStage(workflowDefinition, task.getWorkflowStageId());
+    }
+    if (transitions.isEmpty() && hasUserApprovalTaskNode(workflowDefinition)) {
+      transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
+    }
+    return transitions;
+  }
+
+  private static WorkflowDefinition loadWorkflowDefinition(UUID workflowDefinitionId) {
+    WorkflowDefinition workflowDefinition = null;
+    if (workflowDefinitionId != null) {
+      try {
+        workflowDefinition =
+            Entity.getEntity(
+                Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "nodes", Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.debug(
+            "Failed to load workflow definition '{}': {}", workflowDefinitionId, e.getMessage());
+      }
+    }
+    return workflowDefinition;
+  }
+
+  private static boolean hasUserApprovalTaskNode(WorkflowDefinition workflowDefinition) {
+    boolean present = false;
+    if (workflowDefinition != null && !nullOrEmpty(workflowDefinition.getNodes())) {
+      for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+        if (node != null && USER_APPROVAL_TASK_SUB_TYPE.equals(node.getSubType())) {
+          present = true;
+          break;
+        }
+      }
+    }
+    return present;
   }
 
   public static String defaultTransitionId(Task task, TaskResolutionType resolutionType) {
@@ -449,6 +542,14 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_REVIEWERS = "taskReviewers";
     public static final String TASK_ASSIGNEES = "taskAssignees";
 
+    /**
+     * Top-level workflow variable derived from {@code payload.expirationDate} on start. Exposed
+     * so boundary-timer expressions ({@code ${taskPayloadExpirationDate}}) can arm on nodes that
+     * run BEFORE any domain-specific promote step. Value is the ISO-8601 instant string that
+     * Flowable's {@code timeDate} expects; absent when the payload has no {@code expirationDate}.
+     */
+    public static final String TASK_PAYLOAD_EXPIRATION_DATE = "taskPayloadExpirationDate";
+
     // Trigger-supplied start variables: these need the resolved WorkflowDefinition / form-schema
     // binding, so they aren't derivable from Task and toVariables() doesn't emit them. The names
     // live here so every caller that triggers a workflow shares one contract instead of repeating
@@ -481,7 +582,48 @@ public final class TaskWorkflowLifecycleResolver {
       variables.put(TASK_UPDATED_BY, task.getUpdatedBy());
       variables.put(TASK_REVIEWERS, serializeWorkflowVariable(task.getReviewers()));
       variables.put(TASK_ASSIGNEES, serializeWorkflowVariable(fallbackAssignees));
+      Long expirationDate = extractPayloadExpirationDate(task.getPayload());
+      if (expirationDate != null) {
+        variables.put(
+            TASK_PAYLOAD_EXPIRATION_DATE, Instant.ofEpochMilli(expirationDate).toString());
+      }
       return variables;
+    }
+
+    /**
+     * Look for a top-level {@code expirationDate} on the task payload and return it as epoch
+     * millis. Payload arrives as either an already-typed POJO, a raw Map, or a JSON string
+     * (Flowable stores payload as a serialized variable). Round-trip through Jackson to inspect
+     * uniformly. Returns null on absence, non-numeric values, or any parse failure — this is a
+     * best-effort surfacing for boundary-timer use, not a validator (validation belongs to the
+     * domain-specific TaskFieldValidator).
+     */
+    private static Long extractPayloadExpirationDate(Object payload) {
+      Long result = null;
+      if (payload != null) {
+        try {
+          Map<String, Object> map;
+          // Jackson's convertValue does NOT parse a JSON string — it would try to coerce the
+          // whole string into a Map and blow up. readValue is the parser we want when the
+          // caller handed us the serialized form.
+          if (payload instanceof String payloadJson) {
+            map = JsonUtils.readValue(payloadJson, Map.class);
+          } else {
+            map = JsonUtils.convertValue(payload, Map.class);
+          }
+          if (map != null) {
+            Object raw = map.get("expirationDate");
+            if (raw instanceof Number number) {
+              result = number.longValue();
+            }
+          }
+        } catch (RuntimeException nonMapPayload) {
+          // Payload isn't shaped like a Map (e.g. list, non-JSON string, parse failure) —
+          // nothing to surface. Downstream boundary timers just won't arm.
+          result = null;
+        }
+      }
+      return result;
     }
   }
 

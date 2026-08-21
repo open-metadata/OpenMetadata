@@ -54,6 +54,10 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean
   ) => Promise<void>;
   postFeed: (value: string, id: string, isTask?: boolean) => Promise<void>;
+  postActivityComment: (
+    message: string,
+    activity: ActivityEvent
+  ) => Promise<void>;
   fetchUpdatedThread: (id: string, isTask?: boolean) => Promise<void>;
   updateFeed: (
     threadId: string,
@@ -81,10 +85,6 @@ export interface ActivityFeedProviderContextType {
   showTaskDrawer: (task: Task) => void;
   showActivityDrawer: (activity: ActivityEvent) => void;
   hideDrawer: () => void;
-  postActivityComment: (
-    message: string,
-    activity: ActivityEvent
-  ) => Promise<void>;
   updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (
     post: Conversation | ConversationReply,
@@ -98,6 +98,10 @@ export interface ActivityFeedProviderContextType {
   // Activity events methods
   fetchActivityEvents: (params?: ListActivityParams) => Promise<void>;
   fetchMyActivityFeed: (params?: {
+    days?: number;
+    limit?: number;
+  }) => Promise<void>;
+  fetchFollowingActivity: (params?: {
     days?: number;
     limit?: number;
   }) => Promise<void>;
