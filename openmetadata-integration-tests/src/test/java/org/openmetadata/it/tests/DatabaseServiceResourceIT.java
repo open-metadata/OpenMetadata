@@ -811,6 +811,18 @@ public class DatabaseServiceResourceIT
                     .withName(ns.prefix("schema1"))
                     .withDatabase(database.getFullyQualifiedName()));
 
+    // Referenced table for the FOREIGN_KEY (exercises the table-to-table RELATED_TO edge path).
+    Table refTable =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("ref_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("ref_id").withDataType(ColumnDataType.BIGINT))));
+    String refIdFqn = refTable.getFullyQualifiedName() + ".ref_id";
+
     List<TableConstraint> constraints =
         List.of(
             new TableConstraint()
@@ -818,7 +830,11 @@ public class DatabaseServiceResourceIT
                 .withColumns(List.of("id")),
             new TableConstraint()
                 .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
-                .withColumns(List.of("email")));
+                .withColumns(List.of("email")),
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("ref_fk"))
+                .withReferredColumns(List.of(refIdFqn)));
 
     Table table =
         SdkClients.adminClient()
@@ -833,11 +849,12 @@ public class DatabaseServiceResourceIT
                             new Column()
                                 .withName("email")
                                 .withDataType(ColumnDataType.VARCHAR)
-                                .withDataLength(255)))
+                                .withDataLength(255),
+                            new Column().withName("ref_fk").withDataType(ColumnDataType.BIGINT)))
                     .withTableConstraints(constraints));
 
     assertEquals(
-        2, table.getTableConstraints().size(), "Table should start with 2 table constraints");
+        3, table.getTableConstraints().size(), "Table should start with 3 table constraints");
 
     // Recursive export then re-import unchanged: this is the whole-tree path the UI uses when
     // importing at service/database/schema level. The recursive CSV has no column for table
@@ -857,9 +874,9 @@ public class DatabaseServiceResourceIT
         reloaded.getTableConstraints(),
         "Table constraints must survive a recursive CSV round trip");
     assertEquals(
-        2,
+        3,
         reloaded.getTableConstraints().size(),
-        "Both PRIMARY_KEY and UNIQUE constraints must be preserved after a recursive import");
+        "PRIMARY_KEY, UNIQUE and FOREIGN_KEY constraints must all be preserved after recursive import");
     assertTrue(
         reloaded.getTableConstraints().stream()
             .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY),
@@ -868,6 +885,17 @@ public class DatabaseServiceResourceIT
         reloaded.getTableConstraints().stream()
             .anyMatch(c -> c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE),
         "UNIQUE constraint must be preserved after a recursive import");
+    // FOREIGN_KEY carries the referenced-table linkage (referredColumns); it must survive intact.
+    TableConstraint fk =
+        reloaded.getTableConstraints().stream()
+            .filter(c -> c.getConstraintType() == TableConstraint.ConstraintType.FOREIGN_KEY)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(fk, "FOREIGN_KEY constraint must be preserved after a recursive import");
+    assertEquals(
+        List.of(refIdFqn),
+        fk.getReferredColumns(),
+        "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {
