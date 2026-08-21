@@ -3003,7 +3003,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagAdded", tagLabels);
         script.append(generateAddTagLabelListScript());
       }
@@ -3064,7 +3064,7 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> tagLabels =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        tagLabels.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagDeleted", tagLabels);
         script.append(generateDeleteTagLabelListScript());
       }
@@ -3119,10 +3119,10 @@ public class SearchRepository {
       case TAG_LABEL_LIST -> {
         List<TagLabel> addedTags =
             JsonUtils.readOrConvertValues(field.getNewValue(), TagLabel.class);
-        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        addedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         List<TagLabel> deletedTags =
             JsonUtils.readOrConvertValues(field.getOldValue(), TagLabel.class);
-        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.DERIVED));
+        deletedTags.forEach(t -> t.setLabelType(TagLabel.LabelType.PROPAGATED));
         data.put("tagAdded", addedTags);
         data.put("tagDeleted", deletedTags);
         script.append(generateUpdateTagLabelListScript());
@@ -3238,34 +3238,43 @@ public class SearchRepository {
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
-  private String generateDeleteTagLabelListScript() {
-    return """
+  /**
+   * Removes a parent's tags from a child doc, but only the labels the system itself propagated. A
+   * child that carries the same term MANUAL (a column explicitly tagged with the term the table also
+   * carries) keeps it — matching on tagFQN alone used to strip it. DERIVED is accepted alongside
+   * PROPAGATED so labels written by earlier releases, which stamped DERIVED, are still cleaned up
+   * without requiring a reindex first.
+   */
+  private String deleteTagLabelListBlock() {
+    return String.format(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
+            def existingTag = ctx._source.tags[i];
+            boolean systemApplied = existingTag.labelType == null
+                || existingTag.labelType.equalsIgnoreCase('%s')
+                || existingTag.labelType.equalsIgnoreCase('%s');
+            if (systemApplied) {
+              for (int j = 0; j < params.tagDeleted.size(); j++) {
+                if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                  ctx._source.tags.remove(i);
+                  break;
+                }
               }
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """,
+        TagLabel.LabelType.PROPAGATED.value(), TagLabel.LabelType.DERIVED.value());
+  }
+
+  private String generateDeleteTagLabelListScript() {
+    return deleteTagLabelListBlock() + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
-            }
-          }
-        }
+    return deleteTagLabelListBlock()
+        + """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }
