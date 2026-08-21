@@ -563,27 +563,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   useEffect(() => {
     const currentFQN = activeGlossary?.fullyQualifiedName;
 
-    if (
-      currentFQN &&
-      !isLoadingMore &&
-      currentFQN !== previousGlossaryFQN &&
-      !searchTerm // Don't fetch if there's an active search
-    ) {
-      // Clear existing terms when switching glossaries. Always reset to the
-      // collapsed, paginated view so the new glossary starts scrollable — a
-      // stuck expand-all flag must not carry over from the previous glossary.
+    if (currentFQN && !isLoadingMore && currentFQN !== previousGlossaryFQN) {
+      // Reload whenever the glossary changes — including while a search is
+      // active, in which case fetchAllTerms re-runs the search scoped to the
+      // new glossary. Reset to the collapsed, paginated view so the new
+      // glossary starts scrollable and no stuck expand-all flag carries over.
       setToggleExpandBtn(false);
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
-  }, [
-    activeGlossary?.fullyQualifiedName,
-    isLoadingMore,
-    previousGlossaryFQN,
-    searchTerm,
-  ]);
+  }, [activeGlossary?.fullyQualifiedName, isLoadingMore, previousGlossaryFQN]);
 
   // Clear terms when component unmounts
   useEffect(() => {
