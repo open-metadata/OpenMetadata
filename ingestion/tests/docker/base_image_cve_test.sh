@@ -114,7 +114,7 @@ if [ "$os" = "13" ]; then pass "debian 13 (trixie)"; else fail "expected debian 
 echo "== driver stack =="
 # A successful build does not prove these load; each is a native extension or
 # needs a registered ODBC driver.
-for mod in MySQLdb psycopg2 cx_Oracle confluent_kafka; do
+for mod in MySQLdb psycopg2 oracledb confluent_kafka; do
   r="$(in_image "python -c 'import ${mod}' >/dev/null 2>&1 && echo ok || echo broken")"
   [ "$r" = "ok" ] && pass "import ${mod}" || fail "import ${mod} (${r:-no output})"
 done
@@ -125,11 +125,11 @@ r="$(in_image 'odbcinst -j >/dev/null 2>&1 && echo ok || echo broken')"
 r="$(in_image 'odbcinst -q -d 2>/dev/null | grep -c "ODBC Driver 18 for SQL Server"')"
 [ "${r:-0}" -ge 1 ] && pass "msodbcsql18 registered" || fail "msodbcsql18 not registered"
 
-# `import cx_Oracle` succeeds without the Instant Client present -- only actually
-# using it loads the .so. clientversion() forces that load and raises DPI-1047 if
+# `import oracledb` succeeds without the Instant Client present -- only thick-mode
+# initialization loads the .so. clientversion() then raises DPI-1047 if
 # the library cannot be loaded against this OS's glibc, so it tests the thing the
 # OS rebase could plausibly break, with no nested quoting to get wrong.
-r="$(in_image 'python -c "import cx_Oracle; print(cx_Oracle.clientversion())" >/dev/null 2>&1 && echo ok || echo broken')"
+r="$(in_image 'python -c "import oracledb; oracledb.init_oracle_client(); print(oracledb.clientversion())" >/dev/null 2>&1 && echo ok || echo broken')"
 [ "$r" = "ok" ] && pass "oracle instantclient loads" || fail "oracle instantclient did not load (${r:-no output})"
 
 # Required at runtime by the Looker connector (GitPython shells out to git).

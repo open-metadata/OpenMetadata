@@ -231,6 +231,7 @@ export interface AwsCredentials {
  */
 export enum OracleScheme {
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
 }
 
 /**
