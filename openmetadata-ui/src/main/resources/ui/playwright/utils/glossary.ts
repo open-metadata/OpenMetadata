@@ -1189,16 +1189,29 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
+  // that never satisfies toBeVisible even while the dialog is on screen — the
+  // dialog itself is the element with a box. Scoping still matters: the bare
+  // `Select Parent` label also matches the control of a hierarchy modal left in
+  // the DOM by an earlier step, and clicking that waits out the whole test on a
+  // hidden element.
+  const hierarchyModal = page
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('dialog');
+  await expect(hierarchyModal).toBeVisible();
 
-  await page.getByLabel('Select Parent').click();
+  const parentSelect = hierarchyModal.getByLabel('Select Parent');
+  await expect(parentSelect).toBeVisible();
+  await expect(parentSelect).toBeEnabled();
+  await parentSelect.click();
+
   await page.locator('.async-tree-select-list-dropdown').waitFor({
     state: 'visible',
   });
 
   if (isGlossaryTerm) {
     const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await parentSelect.fill(entityDisplayName);
     await searchRes;
   }
 
