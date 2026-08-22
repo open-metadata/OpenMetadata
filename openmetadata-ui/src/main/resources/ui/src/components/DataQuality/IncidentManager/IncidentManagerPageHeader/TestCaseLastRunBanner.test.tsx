@@ -116,11 +116,18 @@ describe('TestCaseLastRunBanner', () => {
         'tw:rounded-lg',
         TOP_ALIGNED_CLASS
       );
+      expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).not.toHaveClass(
+        'tw:bg-white'
+      );
+      expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveAttribute(
+        'aria-hidden',
+        'true'
+      );
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
         'tw:py-3.5',
         {
-          [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-          [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          [TestCaseStatus.Aborted]: 'tw:bg-warning-primary',
+          [TestCaseStatus.Failed]: 'tw:bg-error-primary',
           [TestCaseStatus.Queued]: 'tw:bg-brand-primary',
           [TestCaseStatus.Success]: 'tw:bg-success-primary',
         }[testCaseStatus]
@@ -167,8 +174,8 @@ describe('TestCaseLastRunBanner', () => {
 
         expect(incidentRow).toHaveClass(
           {
-            [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-            [TestCaseStatus.Failed]: 'tw:bg-error-50',
+            [TestCaseStatus.Aborted]: 'tw:bg-warning-primary',
+            [TestCaseStatus.Failed]: 'tw:bg-error-primary',
           }[testCaseStatus]
         );
         expect(incidentRow).toHaveTextContent('INC–9');
@@ -206,7 +213,7 @@ describe('TestCaseLastRunBanner', () => {
         );
         expect(
           screen.getByTestId(INCIDENT_STATUS_TEST_ID).firstElementChild
-        ).toHaveClass('tw:bg-white');
+        ).toHaveClass('tw:bg-primary');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 

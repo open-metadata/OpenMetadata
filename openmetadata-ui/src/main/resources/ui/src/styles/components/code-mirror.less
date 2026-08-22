@@ -16,7 +16,7 @@
   height: auto !important;
 }
 .custom-query-editor {
-  border: @global-border;
+  border: 1px solid var(--om-color-border-primary);
   border-radius: @border-rad-base;
   .CodeMirror {
     border-radius: @border-rad-base;
@@ -45,31 +45,94 @@
 
 .custom-code-mirror-theme {
   .CodeMirror {
-    background: var(--om-legacy-color-f4f7f9);
+    color: var(--om-color-text-primary);
+    background: var(--om-color-bg-secondary);
   }
   .CodeMirror-gutters {
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-primary);
   }
   .CodeMirror-linenumber {
-    color: @text-color;
+    color: var(--om-color-text-secondary);
   }
 }
 
 .code-editor-new-style {
+  color: var(--om-color-text-primary);
+  background-color: var(--om-color-bg-primary);
+  border: 1px solid var(--om-color-border-primary);
   border-radius: @border-rad-sm;
+
+  .ant-card-body,
+  .CodeMirror {
+    color: var(--om-color-text-primary);
+    background-color: var(--om-color-bg-primary);
+  }
+
+  .CodeMirror-cursor {
+    border-left-color: var(--om-color-text-primary);
+  }
+
+  .CodeMirror-selected,
+  .CodeMirror-focused .CodeMirror-selected {
+    background-color: var(--om-color-interactive-selected);
+  }
+
+  .CodeMirror-activeline-background {
+    background-color: var(--om-color-interactive-hover);
+  }
+
+  .cm-s-default {
+    .cm-comment {
+      color: var(--om-color-text-tertiary);
+    }
+
+    .cm-keyword,
+    .cm-builtin,
+    .cm-tag,
+    .cm-attribute,
+    .cm-def,
+    .cm-variable-2,
+    .cm-variable-3 {
+      color: var(--om-color-fg-brand);
+    }
+
+    .cm-string,
+    .cm-string-2,
+    .cm-number,
+    .cm-atom {
+      color: var(--om-color-text-success);
+    }
+
+    .cm-error {
+      color: var(--om-color-text-error);
+    }
+  }
+
   .CodeMirror-gutters {
     display: none;
   }
 
   .ant-card-head {
     min-height: 28px;
-    background-color: @grey-50;
+    color: var(--om-color-text-primary);
+    background-color: var(--om-color-bg-secondary);
+    border-color: var(--om-color-border-secondary);
   }
 
   .ant-card-head-title {
     padding: 0;
     .ant-form-item-label {
       padding: 0;
+    }
+  }
+
+  .ant-card-extra .ant-btn {
+    color: var(--om-color-text-secondary);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--om-color-fg-brand);
+      background-color: var(--om-color-interactive-hover);
     }
   }
 }

@@ -41,11 +41,12 @@
 
   .selection-card {
     flex: 1;
-    border: 1px solid @grey-300;
+    border: 1px solid var(--om-color-border-primary);
     border-radius: @border-rad-xs;
     cursor: pointer;
-    transition: all var(--om-duration-300) ease;
-    background: var(--tw-color-bg-primary);
+    transition: border-color var(--om-duration-300) ease,
+      background-color var(--om-duration-300) ease;
+    background: var(--om-color-bg-primary);
     position: relative;
 
     .beta-badge {
@@ -79,15 +80,16 @@
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          background-color: @grey-100;
-          border: 6px solid @grey-50;
-          transition: all var(--om-duration-300) ease;
+          background-color: var(--om-color-bg-tertiary);
+          border: 6px solid var(--om-color-bg-secondary);
+          transition: background-color var(--om-duration-300) ease,
+            border-color var(--om-duration-300) ease;
           flex-shrink: 0;
 
           svg {
             width: @size-md;
             height: @size-md;
-            color: @grey-600;
+            color: var(--om-color-text-secondary);
           }
         }
 
@@ -96,14 +98,14 @@
         }
 
         .selection-title {
-          color: @grey-700;
+          color: var(--om-color-text-primary);
           font-weight: @font-semibold;
           line-height: 1.4;
           margin-bottom: @size-xxs;
         }
 
         .selection-description {
-          color: @grey-600;
+          color: var(--om-color-text-secondary);
           line-height: 1.4;
         }
 
@@ -116,17 +118,19 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all var(--om-duration-300) ease;
+          transition: color var(--om-duration-300) ease,
+            background-color var(--om-duration-300) ease,
+            border-color var(--om-duration-300) ease;
 
           &.unchecked {
-            border: 1px solid @grey-300;
-            background-color: var(--tw-color-bg-primary);
+            border: 1px solid var(--om-color-border-primary);
+            background-color: var(--om-color-bg-primary);
           }
 
           &.checked {
-            background-color: @primary-color;
+            background-color: var(--om-color-bg-brand-solid);
             border: none;
-            color: var(--tw-color-text-white);
+            color: var(--om-color-text-inverse);
 
             svg {
               width: 10px;
@@ -140,29 +144,29 @@
     // Selected state styles
     &.selected,
     &:hover {
-      border-color: @primary-3;
-      background-color: @primary-50;
+      border-color: var(--om-color-border-brand);
+      background-color: var(--om-color-interactive-selected);
 
       .selection-content {
         .selection-icon {
-          background-color: @primary-1;
-          border: 6px solid @primary-50;
+          background-color: var(--om-color-bg-primary);
+          border: 6px solid var(--om-color-interactive-selected);
 
           svg {
-            color: @primary-6;
+            color: var(--om-color-fg-brand);
           }
         }
 
         .selection-title {
-          color: @primary-8;
+          color: var(--om-color-text-brand);
         }
 
         .selection-description {
-          color: @primary-6;
+          color: var(--om-color-text-secondary);
         }
 
         .custom-radio.unchecked {
-          border-color: @primary-color;
+          border-color: var(--om-color-border-brand);
         }
       }
     }
@@ -174,28 +178,28 @@
       pointer-events: none;
 
       &:hover {
-        border-color: @grey-300;
-        background-color: @grey-50;
+        border-color: var(--om-color-border-disabled);
+        background-color: var(--om-color-bg-disabled);
 
         .selection-content {
           .selection-icon {
-            background-color: @grey-100;
+            background-color: var(--om-color-bg-disabled);
 
             svg {
-              color: @grey-500;
+              color: var(--om-color-text-disabled);
             }
           }
 
           .selection-title {
-            color: @grey-800;
+            color: var(--om-color-text-disabled);
           }
 
           .selection-description {
-            color: @grey-400;
+            color: var(--om-color-text-disabled);
           }
 
           .custom-radio.unchecked {
-            border-color: @grey-300;
+            border-color: var(--om-color-border-disabled);
           }
         }
       }
