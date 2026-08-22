@@ -166,6 +166,7 @@ jobs:
             && github.event.inputs.sso_provider != matrix.provider.name)
           || ((github.event_name == 'pull_request' || github.event_name == 'push')
               && matrix.provider.name == 'okta')
+          || matrix.provider.name == 'keycloak-azure-saml-crosssite'
         }}
     steps:
       - name: Skip leg early

@@ -114,6 +114,11 @@ for (const fixture of FIXTURES) {
         | import('@playwright/test').APIRequestContext
         | undefined;
       let sharedAfterAction: (() => Promise<void>) | undefined;
+      // PAT minted BEFORE the provider swap; usable across the swap by
+      // scenarios 8/9 to authenticate the broken-config PUT after the
+      // session-bound sharedApiContext has been 401'd. See
+      // `mintAdminRestoreToken` in ssoAuth.ts.
+      let sharedRestoreToken: string | undefined;
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -126,10 +131,9 @@ for (const fixture of FIXTURES) {
           // stays verifiable across the swap — see `mintAdminRestoreToken`
           // in ssoAuth.ts. Without this, afterAll's restore hits 401 on
           // every non-Basic leg and fails the whole describe.
-          let restoreToken: string | undefined;
           let snapshot: SecurityConfigSnapshot | undefined;
           try {
-            restoreToken = await mintAdminRestoreToken(apiContext);
+            sharedRestoreToken = await mintAdminRestoreToken(apiContext);
             snapshot = await fetchSecurityConfig(apiContext);
           } catch {
             // Non-fatal: fall back to the fixture-owned restore below. Some
@@ -140,8 +144,8 @@ for (const fixture of FIXTURES) {
 
           const configured = await fixture.configureBackend(apiContext);
           restoreConfig = async () => {
-            if (restoreToken && snapshot) {
-              const patContext = await getAuthContext(restoreToken);
+            if (sharedRestoreToken && snapshot) {
+              const patContext = await getAuthContext(sharedRestoreToken);
               try {
                 await restoreSecurityConfig(patContext, snapshot);
 
@@ -423,17 +427,17 @@ for (const fixture of FIXTURES) {
       test('broken config renders ConfigErrorPage before IdP redirect', async ({
         page,
       }) => {
-        // Reuse the describe-scoped apiContext. Once configureBackend
-        // swapped the backend to a non-Basic provider,
-        // POST /api/v1/auth/login no longer accepts the seeded admin
-        // creds, so a fresh performAdminLogin call inside this test
-        // would 400/405. See admin.ts:61.
-        if (!sharedApiContext) {
-          test.skip(true, 'shared admin apiContext not initialized');
+        // `sharedApiContext` is session-bound and 401s once the provider
+        // was swapped in beforeAll (JwtFilter.validateSessionProviderIsCurrent).
+        // Build a fresh PAT-based context from the token minted before the
+        // swap — see `mintAdminRestoreToken` in ssoAuth.ts.
+        if (!sharedRestoreToken) {
+          test.skip(true, 'PAT-based admin context not initialized');
 
           return;
         }
-        const broken = await fixture.configureBrokenBackend(sharedApiContext);
+        const cfgContext = await getAuthContext(sharedRestoreToken);
+        const broken = await fixture.configureBrokenBackend(cfgContext);
         const restoreBroken = broken.restore;
 
         try {
@@ -462,8 +466,9 @@ for (const fixture of FIXTURES) {
           // Restore the valid config so subsequent scenarios keep passing.
           // Chain its restore into the outer `restoreConfig` closure so the
           // `afterAll` teardown still works.
-          const good = await fixture.configureBackend(sharedApiContext);
+          const good = await fixture.configureBackend(cfgContext);
           restoreConfig = good.restore;
+          await cfgContext.dispose();
         }
       });
 
@@ -474,14 +479,16 @@ for (const fixture of FIXTURES) {
       test('broken config surfaces the specific field in a console.warn', async ({
         page,
       }) => {
-        // Same rationale as scenario 8 — the seeded admin login no
-        // longer works once the backend is on a non-Basic provider.
-        if (!sharedApiContext) {
-          test.skip(true, 'shared admin apiContext not initialized');
+        // Same rationale as scenario 8 — `sharedApiContext` is
+        // session-bound and 401s after the provider swap. Use the
+        // pre-swap PAT to authenticate config writes.
+        if (!sharedRestoreToken) {
+          test.skip(true, 'PAT-based admin context not initialized');
 
           return;
         }
-        const broken = await fixture.configureBrokenBackend(sharedApiContext);
+        const cfgContext = await getAuthContext(sharedRestoreToken);
+        const broken = await fixture.configureBrokenBackend(cfgContext);
         const restoreBroken = broken.restore;
         const expectedPattern = broken.expectedWarningPattern;
 
@@ -509,8 +516,9 @@ for (const fixture of FIXTURES) {
           );
         } finally {
           await restoreBroken();
-          const good = await fixture.configureBackend(sharedApiContext);
+          const good = await fixture.configureBackend(cfgContext);
           restoreConfig = good.restore;
+          await cfgContext.dispose();
         }
       });
     }
