@@ -124,8 +124,8 @@ export type AppModuleId = string;
  * The app-mode sidebar derives its top-level items from the merged list of
  * modules (`useAllAppModules`), and the route table is the flat union of
  * every module's `routes` plus a contributed fallback — so adding a module
- * is one new module object contributed to `app-mode.modules`, or one entry
- * in `sharedAppModules`.
+ * is one new module object returned from a plugin's
+ * `AppPlugin.getModeModules(mode)`, or one entry in `sharedAppModules`.
  */
 export interface AppModule {
   /** Stable identifier. Must be unique across all contributed modules. */

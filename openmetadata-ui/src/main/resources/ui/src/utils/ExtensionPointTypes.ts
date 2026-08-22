@@ -12,7 +12,6 @@
  */
 
 import { ComponentType, ReactElement, ReactNode } from 'react';
-import { AppModule } from '../components/platform/ai-shell/AppModule.types';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
 import { User } from '../generated/entity/teams/user';
@@ -53,10 +52,11 @@ export const EXTENSION_POINTS = {
   GLOBAL_FLOATING_BUTTONS: 'global.floating-buttons',
 
   // App Mode Shell (platform / ai-shell)
-  // A plugin contributes AI-exclusive nav + routes through these points so
-  // OSS core never imports plugin code. Read via the typed helpers in
-  // `components/platform/ai-shell/appModeExtensions.ts`.
-  APP_MODE_MODULES: 'app-mode.modules',
+  // A plugin contributes AI-exclusive chrome through these points so OSS
+  // core never imports plugin code. Read via the typed helpers in
+  // `components/platform/ai-shell/appModeExtensions.ts`. Modules (nav +
+  // owned routes) are contributed via `AppPlugin.getModeModules(mode)`
+  // instead of a registry point — see `sharedAppModules.ts`.
   APP_MODE_ROUTES_FALLBACK: 'app-mode.routes.fallback',
   APP_MODE_LAYOUT_BANNERS: 'app-mode.layout.banners',
   APP_MODE_LAYOUT_OVERLAYS: 'app-mode.layout.overlays',
@@ -175,13 +175,6 @@ export interface ActionContribution {
 // ============================================================================
 // App Mode Shell Contribution Types
 // ============================================================================
-
-/**
- * Contribution to `app-mode.modules`. A plugin contributes a whole module
- * (its nav entry, owned routes and optional sub-nav). Merged with the OSS
- * `sharedAppModules` and sorted by `navOrder`.
- */
-export type AppModeModuleContribution = AppModule;
 
 /**
  * Contribution to `app-mode.routes.fallback`. The `element` becomes the

@@ -12,17 +12,18 @@
  */
 
 import { useMemo } from 'react';
+import { CLASSIC_V1_APP_MODE } from '../../../constants/appMode.constants';
+import { contextCenterModule } from '../../discovery/context-center/contextCenter.module';
 import { entityModule } from '../../discovery/entity/entity.module';
 import { personalSpaceModule } from '../../discovery/personal-space/personalSpace.module';
-import { contextCenterModule } from '../../discovery/context-center/contextCenter.module';
 import { marketplaceModule } from '../../governance/marketplace/marketplace.module';
 import { observabilityModule } from '../../observability/ObservabilityModule/observability.module';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { AppModule } from './AppModule.types';
-import { useAppModeModuleContributions } from './appModeExtensions';
 
 /**
- * OSS shared app-mode modules — surfaces owned by OpenMetadata core that
- * appear in the app-mode shell for every consumer.
+ * OSS shared modules for the app-mode shell — surfaces owned by
+ * OpenMetadata core that appear in the shell for every consumer.
  *
  * Ordered by `navOrder` for readability; `useAllAppModules` sorts the union
  * with plugin contributions regardless.
@@ -38,15 +39,19 @@ export const sharedAppModules: AppModule[] = [
 /**
  * The full, ordered module list backing the app-mode shell.
  *
- * Merges the OSS `sharedAppModules` with every module contributed to
- * `app-mode.modules` (e.g. a plugin's AI-exclusive modules) and sorts the
- * union by `navOrder` (ascending). Ties keep insertion order — shared
- * modules before contributed ones at the same `navOrder`.
+ * Merges the OSS `sharedAppModules` with every module an installed
+ * `AppPlugin` contributes via `getModeModules(CLASSIC_V1_APP_MODE)` — the
+ * plugin-native mechanism mirroring `getRoutes()` for Classic mode — and
+ * sorts the union by `navOrder` (ascending). Ties keep insertion order:
+ * shared modules before plugin-contributed ones at the same `navOrder`.
  */
 export const useAllAppModules = (): AppModule[] => {
-  const contributed = useAppModeModuleContributions();
+  const { plugins = [] } = useApplicationsProvider() ?? {};
 
   return useMemo(() => {
+    const contributed = plugins.flatMap(
+      (plugin) => plugin.getModeModules?.(CLASSIC_V1_APP_MODE) ?? []
+    );
     const merged = [...sharedAppModules, ...contributed];
 
     return merged
@@ -57,5 +62,5 @@ export const useAllAppModules = (): AppModule[] => {
           : a.module.navOrder - b.module.navOrder
       )
       .map(({ module }) => module);
-  }, [contributed]);
+  }, [plugins]);
 };

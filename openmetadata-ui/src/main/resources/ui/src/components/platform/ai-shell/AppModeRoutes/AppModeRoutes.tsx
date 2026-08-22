@@ -13,8 +13,8 @@
 
 import { useMemo } from 'react';
 import { Route } from 'react-router-dom';
-import { AppShell } from '../AppShell';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
+import { AppShell } from '../AppShell';
 import KeepAliveRoutes, {
   KeepAliveRoute,
 } from '../KeepAliveRoutes/KeepAliveRoutes';
@@ -31,11 +31,14 @@ import { useSyncActiveModule } from '../state/useActiveModule';
  * all supplied above by `AuthenticatedApp`/`AppRoot`.
  *
  * The route table is the flat union of every module's `routes` (from
- * `useAllAppModules()` — OSS's `sharedAppModules` merged with modules a
- * plugin contributes via `getModeModules`) followed by the
- * `app-mode.routes.fallback` contribution mounted last as the catch-all.
- * This component imports NO plugin code — every AI-exclusive route arrives via
- * a module or the fallback contribution.
+ * `useAllAppModules()` — OSS's `sharedAppModules` merged with the modules
+ * every installed `AppPlugin` returns from `getModeModules('classicV1')`)
+ * followed by the `app-mode.routes.fallback` contribution mounted last as
+ * the catch-all. Modules arrive via the plugin-native `getModeModules`
+ * method; fallback and other chrome (banners, overlays, sidebar slots)
+ * still arrive via the `app-mode.*` extension registry — see
+ * `appModeExtensions.ts`. This component imports NO plugin code — every
+ * AI-exclusive route arrives via a module or the fallback contribution.
  *
  * Sticky active-module state is kept in sync with the URL via
  * `useSyncActiveModule` at the top of the render.
@@ -60,9 +63,7 @@ export const AppModeRoutes = () => {
   return (
     <AppShell>
       <KeepAliveRoutes routes={routes}>
-        {fallback ? (
-          <Route element={fallback.element} path="/*" />
-        ) : null}
+        {fallback ? <Route element={fallback.element} path="/*" /> : null}
       </KeepAliveRoutes>
     </AppShell>
   );

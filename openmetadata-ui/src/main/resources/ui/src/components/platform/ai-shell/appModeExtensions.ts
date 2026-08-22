@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import {
-  AppModeModuleContribution,
   AppModeRoutesFallbackContribution,
   AppModeSlotContribution,
   EXTENSION_POINTS,
 } from '../../../utils/ExtensionPointTypes';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 
 /**
  * Typed read helpers over the app-mode extension points.
@@ -25,18 +24,11 @@ import {
  * The shell consumes these; a plugin (e.g. Collate) contributes to the
  * same points via `extensionRegistry.contribute(...)` at boot. OSS core
  * never imports plugin code — every AI-exclusive surface arrives through
- * these named channels.
+ * these named channels. Modules are the one exception: they arrive via
+ * `AppPlugin.getModeModules(mode)` (see `sharedAppModules.ts`), not a
+ * registry extension point — chrome (fallback/banners/overlays/sidebar
+ * slots) still goes through the registry below.
  */
-
-/** Modules contributed to `app-mode.modules`. */
-export const useAppModeModuleContributions =
-  (): AppModeModuleContribution[] => {
-    const { extensionRegistry } = useApplicationsProvider();
-
-    return extensionRegistry.getContributions<AppModeModuleContribution>(
-      EXTENSION_POINTS.APP_MODE_MODULES
-    );
-  };
 
 /**
  * Catch-all route contributions for `app-mode.routes.fallback`. The last
