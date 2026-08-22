@@ -14,13 +14,17 @@
 package org.openmetadata.service.util;
 
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SystemSettingsException;
 
 public final class GlossaryTermRelationSettingsUtil {
@@ -113,6 +117,72 @@ public final class GlossaryTermRelationSettingsUtil {
           "Cannot delete system-defined relation types: "
               + String.join(", ", missingSystemDefinedNames));
     }
+
+    // system-defined is a seeded classification: a settings update must not create a new
+    // system-defined type or promote a custom type to system-defined. Only names already seeded
+    // as system-defined may carry isSystemDefined=true.
+    Set<String> currentSystemDefinedNames = new HashSet<>();
+    for (GlossaryTermRelationType relationType : current.getRelationTypes()) {
+      if (Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
+        currentSystemDefinedNames.add(relationType.getName());
+      }
+    }
+    List<String> illegallySystemDefinedNames = new ArrayList<>();
+    if (updated != null && updated.getRelationTypes() != null) {
+      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
+        if (relationType != null
+            && Boolean.TRUE.equals(relationType.getIsSystemDefined())
+            && !currentSystemDefinedNames.contains(relationType.getName())) {
+          illegallySystemDefinedNames.add(relationType.getName());
+        }
+      }
+    }
+    if (!illegallySystemDefinedNames.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot create or promote system-defined relation types: "
+              + String.join(", ", illegallySystemDefinedNames));
+    }
+
+    // System-defined relation types are immutable: their fields (e.g. isTransitive, color,
+    // category) must not be edited. The dedicated relationTypes endpoint and the UI already
+    // enforce this; the generic settings PUT is the remaining path that must too.
+    Map<String, GlossaryTermRelationType> updatedByName = new HashMap<>();
+    if (updated != null && updated.getRelationTypes() != null) {
+      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
+        if (relationType != null && relationType.getName() != null) {
+          updatedByName.put(relationType.getName(), relationType);
+        }
+      }
+    }
+
+    List<String> modifiedSystemDefinedNames = new ArrayList<>();
+    for (GlossaryTermRelationType currentType : current.getRelationTypes()) {
+      if (!Boolean.TRUE.equals(currentType.getIsSystemDefined())) {
+        continue;
+      }
+      GlossaryTermRelationType updatedType = updatedByName.get(currentType.getName());
+      if (updatedType != null && isRelationTypeModified(currentType, updatedType)) {
+        modifiedSystemDefinedNames.add(currentType.getName());
+      }
+    }
+    if (!modifiedSystemDefinedNames.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot modify system-defined relation types: "
+              + String.join(", ", modifiedSystemDefinedNames));
+    }
+  }
+
+  private static boolean isRelationTypeModified(
+      GlossaryTermRelationType current, GlossaryTermRelationType updated) {
+    // Compare normalized copies so derived cardinality fields (sourceMax/targetMax) don't
+    // register as spurious edits when the stored value predates normalization.
+    GlossaryTermRelationType currentCopy =
+        JsonUtils.deepCopy(current, GlossaryTermRelationType.class);
+    GlossaryTermRelationType updatedCopy =
+        JsonUtils.deepCopy(updated, GlossaryTermRelationType.class);
+    normalize(currentCopy);
+    normalize(updatedCopy);
+    return !JsonUtils.valueToTree(currentCopy).equals(JsonUtils.valueToTree(updatedCopy));
   }
 
   private static RelationCardinality deriveCardinality(Integer sourceMax, Integer targetMax) {
