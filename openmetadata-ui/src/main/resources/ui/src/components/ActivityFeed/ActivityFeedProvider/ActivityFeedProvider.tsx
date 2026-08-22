@@ -105,6 +105,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // overwrite newer results, so each request claims a sequence number and only the
   // latest one is allowed to commit.
   const activityRequestSeq = useRef(0);
+  // getTaskData and getFeedData write the same `loading` and `entityPaging`, so a
+  // single sequence guards both: an older request must not commit its rows, its
+  // paging cursor, or clear the loader after a newer one has started.
+  const listRequestSeq = useRef(0);
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -221,8 +225,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
+      const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        if (!after) {
+          // A first-page fetch replaces the result set. Dropping the rows and the
+          // paging cursor now is what stops the previous query's list staying on
+          // screen, and stops the infinite-scroll effect appending this query's
+          // next page onto it using the old cursor.
+          setTasks([]);
+          setEntityPaging({} as Paging);
+        }
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
@@ -323,11 +336,19 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           });
         }
 
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         const sortedTasks = orderBy(taskResponse.data, ['createdAt'], ['desc']);
 
         setTasks((prev) => (after ? [...prev, ...sortedTasks] : sortedTasks));
         setEntityPaging(taskResponse.paging);
       } catch (err) {
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -335,7 +356,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       } finally {
-        setLoading(false);
+        if (listRequestSeq.current === requestId) {
+          setLoading(false);
+        }
       }
     },
     [currentUser, activeDomain]
@@ -351,8 +374,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
+      const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        if (!after) {
+          setEntityThread([]);
+          setEntityPaging({} as Paging);
+        }
         const feedFilterType = filterType ?? FeedFilter.ALL;
         let userId = undefined;
 
@@ -373,9 +401,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId,
           limit
         );
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
       } catch (err) {
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -383,10 +419,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       } finally {
-        setLoading(false);
+        if (listRequestSeq.current === requestId) {
+          setLoading(false);
+        }
       }
     },
-    [currentUser, user, getTaskData]
+    [currentUser, user]
   );
 
   // Here value is the post message and id can be thread id or post id.

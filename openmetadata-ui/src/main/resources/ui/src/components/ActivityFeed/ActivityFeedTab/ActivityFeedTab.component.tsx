@@ -181,25 +181,33 @@ export const ActivityFeedTab = ({
     () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
   );
-  useEffect(() => {
-    setIsFirstLoad(true);
-  }, [subTab]);
 
-  const handleTabChange = (subTab: string) => {
-    setIsFirstLoad(true);
-    navigate(
-      entityUtilClassBase.getEntityLink(
-        entityType,
-        fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      ),
-      { replace: true }
-    );
-    setActiveThread();
-    setActiveTask();
-    setIsFullWidth(false);
-  };
+  // Both sub-tabs of the Tasks pane render TaskListV1 off `tasks`, so both have
+  // to fetch through getTaskData. Keeping the render branch and the fetch branch
+  // on a single predicate is what stops them drifting apart again.
+  const isTaskListTab = useMemo(
+    () => isTaskActiveTab || isMentionTabSelected,
+    [isTaskActiveTab, isMentionTabSelected]
+  );
+
+  const handleTabChange = useCallback(
+    (subTab: string) => {
+      setIsFirstLoad(true);
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          fqn,
+          EntityTabs.ACTIVITY_FEED,
+          subTab
+        ),
+        { replace: true }
+      );
+      setActiveThread();
+      setActiveTask();
+      setIsFullWidth(false);
+    },
+    [entityType, fqn, navigate, setActiveThread, setActiveTask]
+  );
 
   const placeholderText = useMemo(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
@@ -352,8 +360,12 @@ export const ActivityFeedTab = ({
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      setIsFirstLoad(false);
-      if (isTaskActiveTab) {
+      // Only a "load more" page keeps the current list on screen. A first-page
+      // refetch replaces it, so the in-list loader has to be switched back ON —
+      // once pagination has cleared this flag, `isFirstLoad && loading` is false
+      // and the cleared list renders the empty placeholder next to the spinner.
+      setIsFirstLoad(!after);
+      if (isTaskListTab) {
         getTaskData(feedFilter, after, entityType, fqn, taskFilter);
       } else {
         getFeedData(
@@ -367,7 +379,7 @@ export const ActivityFeedTab = ({
       }
     },
     [
-      isTaskActiveTab,
+      isTaskListTab,
       feedFilter,
       entityType,
       fqn,
@@ -380,7 +392,12 @@ export const ActivityFeedTab = ({
 
   useEffect(() => {
     if (fqn) {
-      if (isTaskActiveTab) {
+      // Every dep here identifies a different query, so this is always a
+      // first-page fetch that replaces the list — sub-tab (via feedFilter), task
+      // filter, entity or domain. The loader has to be on for the window where
+      // the provider has cleared the rows but the response has not landed.
+      setIsFirstLoad(true);
+      if (isTaskListTab) {
         getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
       } else {
         getFeedData(
@@ -402,12 +419,12 @@ export const ActivityFeedTab = ({
     taskFilter,
     getFeedData,
     getTaskData,
-    isTaskActiveTab,
+    isTaskListTab,
   ]);
 
   useEffect(() => {
     // Activity events only render on the ALL tab; skip the fetch on Tasks/Mentions.
-    if (isTaskActiveTab || isMentionTabSelected) {
+    if (isTaskListTab) {
       return;
     }
     if (fqn && entityType && !isUserEntity) {
@@ -420,8 +437,7 @@ export const ActivityFeedTab = ({
     entityType,
     isUserEntity,
     userId,
-    isTaskActiveTab,
-    isMentionTabSelected,
+    isTaskListTab,
     fetchEntityActivity,
     fetchUserActivity,
   ]);
@@ -461,7 +477,7 @@ export const ActivityFeedTab = ({
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
-      if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
+      if (!feed && isTaskListTab) {
         setIsFullWidth(false);
       }
       if (selectedThread?.id !== feed?.id) {
@@ -471,25 +487,19 @@ export const ActivityFeedTab = ({
         setActiveActivity(undefined);
       }
     },
-    [
-      setActiveThread,
-      setActiveActivity,
-      isTaskActiveTab,
-      isMentionTabSelected,
-      selectedThread,
-    ]
+    [setActiveThread, setActiveActivity, isTaskListTab, selectedThread]
   );
 
   const handleTaskClick = useCallback(
     (task: Task) => {
-      if (!task && isTaskActiveTab) {
+      if (!task && isTaskListTab) {
         setIsFullWidth(false);
       }
       if (selectedTask?.id !== task?.id) {
         setActiveTask(task);
       }
     },
-    [setActiveTask, isTaskActiveTab, selectedTask]
+    [setActiveTask, isTaskListTab, selectedTask]
   );
 
   const handleActivityClick = useCallback(
@@ -513,15 +523,16 @@ export const ActivityFeedTab = ({
     [loading]
   );
 
-  const handleUpdateTaskFilter = (filter: TaskStatusGroup) => {
+  // The fetch effect above already refires on `taskFilter`; calling getTaskData
+  // here as well fired two identical requests per filter click.
+  const handleUpdateTaskFilter = useCallback((filter: TaskStatusGroup) => {
     setTaskFilter(filter);
-    getTaskData(feedFilter, undefined, entityType, fqn, filter);
-  };
+  }, []);
 
-  const handleAfterTaskClose = () => {
+  const handleAfterTaskClose = useCallback(() => {
     handleFeedFetchFromFeedList();
     fetchFeedsCount();
-  };
+  }, [handleFeedFetchFromFeedList, fetchFeedsCount]);
   const taskFilterOptions = useMemo(
     () => [
       {
@@ -618,7 +629,7 @@ export const ActivityFeedTab = ({
         options={[
           {
             label: (
-              <span className="toggle-item">
+              <span className="toggle-item" data-testid="my-tasks-toggle">
                 <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
                 {t('label.my-task-plural')}
               </span>
@@ -627,7 +638,7 @@ export const ActivityFeedTab = ({
           },
           {
             label: (
-              <span className="toggle-item">
+              <span className="toggle-item" data-testid="mentions-toggle">
                 <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
                 {t('label.mention-plural')}
               </span>
@@ -641,12 +652,12 @@ export const ActivityFeedTab = ({
     );
   }, [t, handleTabChange]);
 
-  const handlePanelResize = (isFullWidth: boolean) => {
+  const handlePanelResize = useCallback((isFullWidth: boolean) => {
     setIsFullWidth(isFullWidth);
-  };
+  }, []);
 
   const getRightPanelContent = () => {
-    if ((isTaskActiveTab || isMentionTabSelected) && selectedTask) {
+    if (isTaskListTab && selectedTask) {
       return (
         <div id="task-panel">
           {entityType === EntityType.TABLE ? (
@@ -811,7 +822,7 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
         id="center-container">
-        {(isTaskActiveTab || isMentionTabSelected) && (
+        {isTaskListTab && (
           <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
             <Dropdown
               disabled={isMentionTabSelected}
@@ -846,7 +857,7 @@ export const ActivityFeedTab = ({
             {TaskToggle()}
           </div>
         )}
-        {isTaskActiveTab || isMentionTabSelected ? (
+        {isTaskListTab ? (
           <TaskListV1
             activeFeedId={selectedTask?.id}
             emptyPlaceholderText={placeholderText}
@@ -878,18 +889,15 @@ export const ActivityFeedTab = ({
           />
         )}
         {!isFirstLoad && loader}
-        {!isEmpty(
-          isTaskActiveTab || isMentionTabSelected ? tasks : entityThread
-        ) &&
-          !loading && (
-            <div
-              className="w-full"
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}
-              style={{ height: '2px' }}
-            />
-          )}
+        {!isEmpty(isTaskListTab ? tasks : entityThread) && !loading && (
+          <div
+            className="w-full"
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+            style={{ height: '2px' }}
+          />
+        )}
       </div>
 
       {layoutType === ActivityFeedLayoutType.THREE_PANEL && (

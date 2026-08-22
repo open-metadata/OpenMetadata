@@ -124,6 +124,41 @@ export const DummyChildrenMentionsComponent = () => {
   return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
+/**
+ * Exposes the task list and the paging cursor so a test can observe what the
+ * provider holds *between* a filter switch and the response landing.
+ */
+export const DummyTaskListStateComponent = () => {
+  const { getTaskData, tasks, entityPaging } = useActivityFeedProvider();
+
+  const fetchTasks = (statusGroup: TaskStatusGroup) => {
+    getTaskData(
+      FeedFilter.OWNER_OR_FOLLOWS,
+      undefined,
+      EntityType.TABLE,
+      'db.schema.tbl',
+      statusGroup
+    );
+  };
+
+  return (
+    <div>
+      <button
+        data-testid="fetch-open"
+        onClick={() => fetchTasks(TaskStatusGroup.Open)}
+      />
+      <button
+        data-testid="fetch-closed"
+        onClick={() => fetchTasks(TaskStatusGroup.Closed)}
+      />
+      <span data-testid="task-ids">
+        {tasks.map((task) => task.id).join(',')}
+      </span>
+      <span data-testid="paging-after">{entityPaging.after ?? 'none'}</span>
+    </div>
+  );
+};
+
 export const DummyChildrenDeletePostComponent = () => {
   const { t } = useTranslation();
   const { deleteFeed } = useActivityFeedProvider();
