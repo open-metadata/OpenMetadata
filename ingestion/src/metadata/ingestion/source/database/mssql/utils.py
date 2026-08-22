@@ -489,14 +489,41 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
+# sys.database_query_store_options.readonly_reason value that means the database is
+# a readable Availability Group secondary (SQL Server < 2025).  On such a replica the
+# Query Store contains the *primary*'s captured workload, not this node's, so we must
+# fall back to the plan-cache DMVs to see the secondary's actual query traffic.
+_QS_READONLY_REASON_AG_SECONDARY = 8
+
+
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
-    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    """Return True if Query Store holds this database's own workload history.
+
+    Returns False when:
+    - Query Store is OFF or in ERROR state.
+    - The connected database is a readable AG secondary (readonly_reason has the AG-secondary bit set).
+      On SQL Server < 2025 the replica's Query Store contains only the primary's
+      captured workload; ingesting it would silently replace the secondary's usage
+      and lineage with the primary's.
+    """
     enabled = False
     if engine is not None:
         try:
             with engine.connect() as conn:
-                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
-            enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
+            if row is not None:
+                actual_state, readonly_reason = row[0], row[1]
+                is_ag_secondary = bool((readonly_reason or 0) & _QS_READONLY_REASON_AG_SECONDARY)
+                enabled = (
+                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                    and not is_ag_secondary
+                )
+                if is_ag_secondary:
+                    logger.info(
+                        "MSSQL query history: Query Store is READ-ONLY because this database "
+                        "is a readable AG secondary (readonly_reason AG-secondary bit set). The replica's Query "
+                        "Store contains the primary's workload. Falling back to plan-cache DMVs."
+                    )
         except Exception as exc:
             logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc, exc_info=True)
     return enabled
