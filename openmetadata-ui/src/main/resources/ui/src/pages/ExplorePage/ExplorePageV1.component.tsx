@@ -15,7 +15,14 @@ import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -43,7 +50,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useIsAiMode } from '../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -646,14 +653,17 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 };
 
-const ExplorePageV1WithLayout = withPageLayout(withAdvanceSearch(ExplorePageV1));
+const ExplorePageV1WithLayout = withPageLayout(
+  withAdvanceSearch(ExplorePageV1)
+);
 
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
   'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
 
-const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME = 'tw:mx-2 tw:mt-2 tw:shrink-0';
+const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
+  'tw:mx-2 tw:mt-2 tw:shrink-0';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
   'tw:flex tw:h-full tw:flex-col tw:bg-primary',
@@ -677,9 +687,9 @@ const ExploreSearchCard = withSuspenseFallback(
 const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
   pageTitle = '',
 }) => {
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
 
-  if (!isAiMode) {
+  if (!isClassicV1Mode) {
     return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
   }
 

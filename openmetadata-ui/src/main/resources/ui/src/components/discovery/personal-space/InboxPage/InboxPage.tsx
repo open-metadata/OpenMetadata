@@ -16,8 +16,8 @@ import { Inbox01 } from '@untitledui/icons';
 import React, { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useIsClassicV1Mode } from '../../../../hooks/useAppMode';
 import HeaderShell from '../../../common/HeaderShell/HeaderShell.component';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 
 type InboxPageTab = 'triage' | 'my-data';
@@ -41,7 +41,7 @@ export interface InboxPageProps {
  * The routed personal-space shell shared by `/inbox` (Triage) and `/my-data`
  * (My Data). Two top-level tabs whose active state is derived from the path so
  * each surface has its own URL. The brand-tinted "gradient" header is app-mode
- * chrome — gated on {@link useIsAiMode} so a classic mount renders the flat
+ * chrome — gated on {@link useIsClassicV1Mode} so a classic mount renders the flat
  * header. The tab bodies are provided by the consumer; when absent the shell
  * renders a neutral placeholder.
  */
@@ -52,7 +52,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
   const tab: InboxPageTab =
     pathname === PERSONAL_SPACE_ROUTES.MY_DATA ? 'my-data' : 'triage';
 
@@ -90,7 +90,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
         padding="comfortable"
         subtitle={t('message.inbox-desc')}
         title={t('label.inbox')}
-        variant={isAiMode ? 'gradient' : 'flat'}
+        variant={isClassicV1Mode ? 'gradient' : 'flat'}
       />
 
       <Box

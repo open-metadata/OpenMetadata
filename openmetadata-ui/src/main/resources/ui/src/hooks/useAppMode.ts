@@ -14,10 +14,10 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
-  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
+  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
@@ -380,12 +380,13 @@ export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
   isHintFresh(hint);
 
 /**
- * True when a non-default app mode is active (e.g. Collate's AI mode).
- * OM core stays mode-agnostic, so this is a generic "a custom mode is on"
- * check rather than naming a specific mode. Defaults to false whenever the
- * active mode is the default.
+ * True when the active app mode is `CLASSIC_V1_APP_MODE`. OM core stays
+ * mode-agnostic elsewhere, but this hook names the one specific mode a
+ * plugin registers under `'classicV1'` so ClassicV1-only layouts can gate
+ * on it directly. False for every other mode, including the default.
  */
-export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
+export const useIsClassicV1Mode = (): boolean =>
+  useAppMode() === CLASSIC_V1_APP_MODE;
 
 /**
  * Synchronously resolve the app mode a freshly-authenticated user should
@@ -435,14 +436,14 @@ export const resolveInitialAppMode = (userName?: string): string => {
  * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
  * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
  * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
- * for Classic, while the Collate plugin registers its routes under
- * `AI_APP_MODE` ("ai"). The wire value stays the readable "ai"/"classic"
- * pair for admins; this map is the only place that needs to know the
- * runtime strings differ.
+ * for Classic, while the plugin registers its routes under
+ * `CLASSIC_V1_APP_MODE` ("classicV1"). The wire value stays the readable
+ * "ai"/"classic" pair for admins; this map is the only place that needs to
+ * know the runtime strings differ.
  */
 export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
   [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
-  [DefaultAppMode.AI]: AI_APP_MODE,
+  [DefaultAppMode.AI]: CLASSIC_V1_APP_MODE,
 };
 
 /**

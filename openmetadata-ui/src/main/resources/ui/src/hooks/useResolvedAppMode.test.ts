@@ -15,10 +15,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, ReactNode } from 'react';
 import {
-  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
+  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { AppMode } from '../generated/type/personaPreferences';
@@ -82,7 +82,7 @@ const seedUser = (opts?: {
 
 const seedRegistry = (hasAi: boolean) => {
   useAppRoutesRegistry.setState({
-    routes: hasAi ? { [AI_APP_MODE]: (() => null) as never } : {},
+    routes: hasAi ? { [CLASSIC_V1_APP_MODE]: (() => null) as never } : {},
   });
 };
 
@@ -200,10 +200,10 @@ describe('useResolvedAppMode', () => {
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
-        personaAppMode: AI_APP_MODE,
-        mode: AI_APP_MODE,
+        personaAppMode: CLASSIC_V1_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -222,7 +222,7 @@ describe('useResolvedAppMode', () => {
     await waitFor(() => {
       expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
       expect(readAppModeSession()).toEqual({
-        personaAppMode: AI_APP_MODE,
+        personaAppMode: CLASSIC_V1_APP_MODE,
         mode: DEFAULT_APP_MODE,
         source: 'resolver',
       });
@@ -238,10 +238,10 @@ describe('useResolvedAppMode', () => {
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
-        personaAppMode: AI_APP_MODE,
-        mode: AI_APP_MODE,
+        personaAppMode: CLASSIC_V1_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -250,15 +250,15 @@ describe('useResolvedAppMode', () => {
   it('rung 6 (tenant default) beats rung 7 (DEFAULT_APP_MODE) — no user pref, no persona, tenant AI', async () => {
     seedUser({});
     seedRegistry(true);
-    setAppDefaultMode(AI_APP_MODE);
+    setAppDefaultMode(CLASSIC_V1_APP_MODE);
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -293,15 +293,15 @@ describe('useResolvedAppMode', () => {
       omitPersonaFqn: true,
     });
     seedRegistry(true);
-    seedUserPref(AI_APP_MODE);
+    seedUserPref(CLASSIC_V1_APP_MODE);
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -312,16 +312,16 @@ describe('useResolvedAppMode', () => {
   it('falls back to user preference when persona has no appMode', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
-    seedUserPref(AI_APP_MODE);
+    seedUserPref(CLASSIC_V1_APP_MODE);
     getDocumentByFQN.mockResolvedValue(personaDoc(undefined));
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -331,7 +331,10 @@ describe('useResolvedAppMode', () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
     // User manually switched to Classic during this tab.
-    seedSessionTuple({ personaAppMode: AI_APP_MODE, mode: DEFAULT_APP_MODE });
+    seedSessionTuple({
+      personaAppMode: CLASSIC_V1_APP_MODE,
+      mode: DEFAULT_APP_MODE,
+    });
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
     getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
 
@@ -344,7 +347,7 @@ describe('useResolvedAppMode', () => {
     // Session wins even though persona (AI) disagrees with the tuple's mode.
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     expect(readAppModeSession()).toEqual({
-      personaAppMode: AI_APP_MODE,
+      personaAppMode: CLASSIC_V1_APP_MODE,
       mode: DEFAULT_APP_MODE,
     });
   });
@@ -370,10 +373,10 @@ describe('useResolvedAppMode', () => {
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
-        personaAppMode: AI_APP_MODE,
-        mode: AI_APP_MODE,
+        personaAppMode: CLASSIC_V1_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -387,8 +390,8 @@ describe('useResolvedAppMode', () => {
     // the tuple in this asymmetric case — new behaviour keeps it, so
     // the user's manual `ai` switch survives an admin persona edit
     // made after the click.
-    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
-    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    seedSessionTuple({ personaAppMode: null, mode: CLASSIC_V1_APP_MODE });
+    useAppModeStore.setState({ currentMode: CLASSIC_V1_APP_MODE });
     getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.Classic));
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
@@ -397,10 +400,10 @@ describe('useResolvedAppMode', () => {
       expect(getDocumentByFQN).toHaveBeenCalled();
     });
 
-    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
     expect(readAppModeSession()).toEqual({
       personaAppMode: null,
-      mode: AI_APP_MODE,
+      mode: CLASSIC_V1_APP_MODE,
     });
   });
 
@@ -415,18 +418,18 @@ describe('useResolvedAppMode', () => {
     // for the next re-run when the AI route registers.
     seedUser({ applicationsLoaded: false });
     seedRegistry(false);
-    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
-    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    seedSessionTuple({ personaAppMode: null, mode: CLASSIC_V1_APP_MODE });
+    useAppModeStore.setState({ currentMode: CLASSIC_V1_APP_MODE });
 
     const { rerender } = renderHook(() => useResolvedAppMode(), {
       wrapper: makeWrapper(),
     });
     rerender();
 
-    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
     expect(readAppModeSession()).toEqual({
       personaAppMode: null,
-      mode: AI_APP_MODE,
+      mode: CLASSIC_V1_APP_MODE,
     });
   });
 
@@ -439,8 +442,8 @@ describe('useResolvedAppMode', () => {
     // and is genuinely stale now.
     seedUser({ applicationsLoaded: true });
     seedRegistry(false);
-    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
-    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    seedSessionTuple({ personaAppMode: null, mode: CLASSIC_V1_APP_MODE });
+    useAppModeStore.setState({ currentMode: CLASSIC_V1_APP_MODE });
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
@@ -465,8 +468,8 @@ describe('useResolvedAppMode', () => {
     // With `registrySettled` gating cleanup, the session survives.
     seedUser({ applicationsLoaded: true });
     seedRegistry(false);
-    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
-    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    seedSessionTuple({ personaAppMode: null, mode: CLASSIC_V1_APP_MODE });
+    useAppModeStore.setState({ currentMode: CLASSIC_V1_APP_MODE });
 
     const { rerender } = renderHook(() => useResolvedAppMode(), {
       wrapper: makeWrapper(),
@@ -476,10 +479,10 @@ describe('useResolvedAppMode', () => {
     // registrySettled=false → WAIT (do not clear).
     rerender();
 
-    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
     expect(readAppModeSession()).toEqual({
       personaAppMode: null,
-      mode: AI_APP_MODE,
+      mode: CLASSIC_V1_APP_MODE,
     });
 
     // Simulate the parent's registerRoutes call from the follow-up
@@ -490,10 +493,10 @@ describe('useResolvedAppMode', () => {
       // Session is still AI (never cleared). validSession is now
       // truthy and personaAppMode matches (null on both sides) →
       // resolver is a no-op.
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
       });
     });
   });
@@ -501,16 +504,16 @@ describe('useResolvedAppMode', () => {
   it('swallows persona fetch errors and falls back to user pref / default', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
-    seedUserPref(AI_APP_MODE);
+    seedUserPref(CLASSIC_V1_APP_MODE);
     getDocumentByFQN.mockRejectedValue(new Error('boom'));
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -521,15 +524,15 @@ describe('useResolvedAppMode', () => {
     seedRegistry(true);
     // No persona, no user pref → default would win normally. A fresh
     // hint from a sibling tab should override that.
-    seedHint({ mode: AI_APP_MODE });
+    seedHint({ mode: CLASSIC_V1_APP_MODE });
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -542,16 +545,16 @@ describe('useResolvedAppMode', () => {
     // and 404 on AI-only URLs.
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
-    seedHint({ mode: AI_APP_MODE });
+    seedHint({ mode: CLASSIC_V1_APP_MODE });
     getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.Classic));
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(useAppModeStore.getState().currentMode).toBe(CLASSIC_V1_APP_MODE);
       expect(readAppModeSession()).toEqual({
         personaAppMode: DEFAULT_APP_MODE,
-        mode: AI_APP_MODE,
+        mode: CLASSIC_V1_APP_MODE,
         source: 'resolver',
       });
     });
@@ -560,7 +563,10 @@ describe('useResolvedAppMode', () => {
   it('ignores a stale (TTL-expired) hint and falls through to normal precedence', async () => {
     seedUser({});
     seedRegistry(true);
-    seedHint({ mode: AI_APP_MODE, ts: Date.now() - APP_MODE_HINT_TTL_MS - 1 });
+    seedHint({
+      mode: CLASSIC_V1_APP_MODE,
+      ts: Date.now() - APP_MODE_HINT_TTL_MS - 1,
+    });
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 
@@ -577,7 +583,7 @@ describe('useResolvedAppMode', () => {
   it('waits (no write) when the hint mode is not yet registered and applications is still loading', async () => {
     seedUser({ applicationsLoaded: false });
     seedRegistry(false);
-    seedHint({ mode: AI_APP_MODE });
+    seedHint({ mode: CLASSIC_V1_APP_MODE });
 
     const { rerender } = renderHook(() => useResolvedAppMode(), {
       wrapper: makeWrapper(),
@@ -595,7 +601,7 @@ describe('useResolvedAppMode', () => {
       APP_MODE_HINT_STORAGE_KEY
     );
 
-    expect(JSON.parse(rawHint ?? '{}').mode).toBe(AI_APP_MODE);
+    expect(JSON.parse(rawHint ?? '{}').mode).toBe(CLASSIC_V1_APP_MODE);
   });
 
   it('falls through when the hint mode is unregistered AND applications has loaded (plugin uninstalled)', async () => {
@@ -605,7 +611,7 @@ describe('useResolvedAppMode', () => {
     // correctly reflecting reality).
     seedUser({ applicationsLoaded: true });
     seedRegistry(false);
-    seedHint({ mode: AI_APP_MODE });
+    seedHint({ mode: CLASSIC_V1_APP_MODE });
 
     renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
 

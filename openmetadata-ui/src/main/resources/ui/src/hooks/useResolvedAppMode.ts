@@ -13,7 +13,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import {
+  CLASSIC_V1_APP_MODE,
+  DEFAULT_APP_MODE,
+} from '../constants/appMode.constants';
 import { Document } from '../generated/entity/docStore/document';
 import {
   PersonaPreferences,
@@ -50,7 +53,7 @@ import { useAppRoutesRegistry } from './useAppRoutesRegistry';
  */
 const APP_MODE_ENUM_TO_RUNTIME: Record<AppMode, string> = {
   [AppMode.Classic]: DEFAULT_APP_MODE,
-  [AppMode.AI]: AI_APP_MODE,
+  [AppMode.AI]: CLASSIC_V1_APP_MODE,
 };
 
 const resolvePersonaAppMode = (
@@ -77,7 +80,7 @@ const resolvePersonaAppMode = (
  * bootstrap) so the two entry points can never disagree:
  *
  *   1. Desktop app — handled outside this hook; the desktop shell calls
- *      `writeAppMode(AI_APP_MODE)` directly and the resolver bails on the
+ *      `writeAppMode(CLASSIC_V1_APP_MODE)` directly and the resolver bails on the
  *      relevant state (no persona to fetch, sessionStorage tuple always
  *      present after that write).
  *   2. Current session tuple, if valid (mode is registered). This is
@@ -129,7 +132,7 @@ export const useResolvedAppMode = (): boolean => {
   // downstream Collate plugin's `App.tsx`) lives on a parent
   // component. React flushes effects child-first, so on the commit
   // where `applicationsLoaded` flips true the resolver's effect fires
-  // BEFORE the parent's `registerRoutes(AI_APP_MODE, ...)` call. In
+  // BEFORE the parent's `registerRoutes(CLASSIC_V1_APP_MODE, ...)` call. In
   // that window a genuinely-installed AI mode looks unregistered, and
   // clearing here would strand a manually-switched AI tab in Classic
   // on refresh.

@@ -13,7 +13,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataProductsIcon } from '../../../../assets/svg/data-products-default.svg';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../../../hooks/useAppMode';
 import { createListPageHeaderRenderer } from '../../../common/ListPageHeader/ListPageHeader';
 import DataProductListPage from '../../../DataProduct/DataProductListPage';
 
@@ -31,12 +31,14 @@ const renderDataProductsListHeader = createListPageHeaderRenderer({
  */
 const MarketplaceDataProductsPage = () => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
 
   return (
     <DataProductListPage
       pageTitle={t('label.data-product')}
-      renderPageHeader={isAiMode ? renderDataProductsListHeader : undefined}
+      renderPageHeader={
+        isClassicV1Mode ? renderDataProductsListHeader : undefined
+      }
     />
   );
 };

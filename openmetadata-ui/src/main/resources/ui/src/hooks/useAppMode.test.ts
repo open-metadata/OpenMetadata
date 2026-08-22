@@ -14,10 +14,10 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
-  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
+  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
@@ -34,6 +34,7 @@ import {
   translateWireMode,
   useAppMode,
   useAppModeStore,
+  useIsClassicV1Mode,
   writeAppMode,
 } from './useAppMode';
 
@@ -90,6 +91,20 @@ describe('useAppMode hook', () => {
     });
 
     expect(result.current).toBe(DEFAULT_APP_MODE);
+  });
+});
+
+describe('useIsClassicV1Mode', () => {
+  beforeEach(resetStore);
+
+  it('is true only in classicV1 mode', () => {
+    writeAppMode(CLASSIC_V1_APP_MODE);
+
+    expect(renderHook(() => useIsClassicV1Mode()).result.current).toBe(true);
+
+    writeAppMode(DEFAULT_APP_MODE);
+
+    expect(renderHook(() => useIsClassicV1Mode()).result.current).toBe(false);
   });
 });
 
@@ -560,9 +575,9 @@ describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
     expect(translateWireMode('classic')).toBe(DEFAULT_APP_MODE);
   });
 
-  it('maps the wire "ai" value to AI_APP_MODE', () => {
-    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
-    expect(translateWireMode('ai')).toBe(AI_APP_MODE);
+  it('maps the wire "ai" value to CLASSIC_V1_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(CLASSIC_V1_APP_MODE);
+    expect(translateWireMode('ai')).toBe(CLASSIC_V1_APP_MODE);
   });
 
   it('returns null for a null/undefined wire value', () => {
@@ -585,8 +600,8 @@ describe('setAppDefaultMode / getAppDefaultMode', () => {
   });
 
   it('stores and returns whatever was set', () => {
-    setAppDefaultMode(AI_APP_MODE);
+    setAppDefaultMode(CLASSIC_V1_APP_MODE);
 
-    expect(getAppDefaultMode()).toBe(AI_APP_MODE);
+    expect(getAppDefaultMode()).toBe(CLASSIC_V1_APP_MODE);
   });
 });

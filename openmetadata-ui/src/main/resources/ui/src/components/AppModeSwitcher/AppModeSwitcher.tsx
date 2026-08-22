@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import appModeAiIcon from '../../assets/svg/app-mode-ai.svg';
 import { ReactComponent as AppModeClassicIcon } from '../../assets/svg/app-mode-classic.svg';
 import {
-  AI_APP_MODE,
+  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
@@ -49,10 +49,10 @@ const AppModeSwitcher: React.FC<{
 
   const currentMode = useAppMode();
   const isAiInstalled = useAppRoutesRegistry(
-    (state) => AI_APP_MODE in state.routes
+    (state) => CLASSIC_V1_APP_MODE in state.routes
   );
   const { preferences, setPreference } = useCurrentUserPreferences();
-  const isAiMode = currentMode === AI_APP_MODE;
+  const isAiMode = currentMode === CLASSIC_V1_APP_MODE;
 
   const modeLabel = isAiMode ? t('label.ai') : t('label.classic');
 
@@ -63,7 +63,7 @@ const AppModeSwitcher: React.FC<{
   };
 
   const handleAiClick = () => {
-    writeAppMode(AI_APP_MODE);
+    writeAppMode(CLASSIC_V1_APP_MODE);
     navigate(aiHref);
     setIsOpen(false);
   };

@@ -103,7 +103,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 }));
 
 jest.mock('../../constants/appMode.constants', () => ({
-  AI_APP_MODE: 'ai',
+  CLASSIC_V1_APP_MODE: 'ai',
   DEFAULT_APP_MODE: 'default',
 }));
 
@@ -159,7 +159,7 @@ describe('AppModeSwitcher', () => {
     expect(getCard()).not.toBeInTheDocument();
   });
 
-  it('clicking AI writes AI_APP_MODE and navigates to / (default aiHref)', () => {
+  it('clicking AI writes CLASSIC_V1_APP_MODE and navigates to / (default aiHref)', () => {
     currentMode = 'default';
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());

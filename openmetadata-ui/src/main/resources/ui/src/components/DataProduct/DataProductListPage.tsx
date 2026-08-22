@@ -36,7 +36,7 @@ import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { useIsAiMode } from '../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
@@ -77,7 +77,7 @@ const DataProductListPage = ({
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -121,7 +121,7 @@ const DataProductListPage = ({
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode;
+  const showHeaderSearch = isClassicV1Mode;
 
   const { searchInputProps } = useListSearchInput({
     searchQuery: dataProductListing.urlState.searchQuery,
@@ -139,7 +139,7 @@ const DataProductListPage = ({
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
-    variant: isAiMode ? 'search' : undefined,
+    variant: isClassicV1Mode ? 'search' : undefined,
     search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
@@ -393,7 +393,7 @@ const DataProductListPage = ({
 
   return (
     <>
-      {!renderPageHeader && !isAiMode && (
+      {!renderPageHeader && !isClassicV1Mode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
       )}
       {renderPageHeader
@@ -408,9 +408,9 @@ const DataProductListPage = ({
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
-          'tw:mb-5': !isAiMode,
+          'tw:mb-5': !isClassicV1Mode,
         })}
-        variant={isAiMode ? 'default' : 'elevated'}>
+        variant={isClassicV1Mode ? 'default' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -436,14 +436,14 @@ const DataProductListPage = ({
 };
 
 const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
 
   return (
     <PageLayoutV1
-      className={isAiMode ? 'tw:h-auto!' : undefined}
-      fullHeight={isAiMode}
+      className={isClassicV1Mode ? 'tw:h-auto!' : undefined}
+      fullHeight={isClassicV1Mode}
       pageTitle={props.pageTitle}
-      variant={isAiMode ? 'compact' : 'default'}>
+      variant={isClassicV1Mode ? 'compact' : 'default'}>
       <DataProductListPage {...props} />
     </PageLayoutV1>
   );

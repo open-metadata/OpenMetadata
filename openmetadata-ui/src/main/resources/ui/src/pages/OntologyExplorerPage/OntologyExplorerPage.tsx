@@ -29,11 +29,11 @@ import {
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { useIsAiMode } from '../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../hooks/useAppMode';
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
   const [stats, setStats] = useState<string[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 
@@ -52,7 +52,7 @@ const OntologyExplorerPage: React.FC = () => {
     <HeaderBreadcrumb
       noMargin
       items={[
-        isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+        isClassicV1Mode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
         { label: t('label.ontology-explorer') },
       ]}
       showHome={false}
@@ -115,17 +115,19 @@ const OntologyExplorerPage: React.FC = () => {
   return (
     <PageLayoutV1
       className="ontology-explorer-page"
-      fullHeight={isAiMode}
+      fullHeight={isClassicV1Mode}
       mainContainerClassName="ontology-explorer-page-layout"
       pageTitle={t('label.ontology-explorer')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      variant={isClassicV1Mode ? 'compact' : 'default'}>
       <Box
         className={
-          isAiMode ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col' : undefined
+          isClassicV1Mode
+            ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col'
+            : undefined
         }
         direction="col"
         gap={4}>
-        {isAiMode ? (
+        {isClassicV1Mode ? (
           <HeaderShell
             hasStats
             badge={betaBadge}
@@ -149,7 +151,7 @@ const OntologyExplorerPage: React.FC = () => {
           </>
         )}
 
-        {isAiMode ? (
+        {isClassicV1Mode ? (
           <div className="tw:min-h-0 tw:flex-1">
             <OntologyExplorer
               height="100%"

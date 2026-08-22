@@ -58,11 +58,12 @@ export const APP_MODE_HINT_TTL_MS = 60_000;
 export const DEFAULT_APP_MODE = 'default';
 
 /**
- * Runtime mode key registered by the Collate plugin via
- * `useAppRoutesRegistry.registerRoutes('ai', ...)`. Core does not itself
- * know how to render AI routes — this identifier only exists here so the
- * persona-scoped App Mode preference can translate the admin-facing enum
- * value into what plugins listen for. If no plugin registers this key,
- * `AppRouter` falls back to the default mode's routes automatically.
+ * Runtime mode key registered by a plugin via
+ * `useAppRoutesRegistry.registerRoutes('classicV1', ...)`. Core does not
+ * itself know how to render ClassicV1 routes — this identifier only exists
+ * here so the persona-scoped App Mode preference can translate the
+ * admin-facing enum value into what plugins listen for. If no plugin
+ * registers this key, `AppRouter` falls back to the default mode's routes
+ * automatically.
  */
-export const AI_APP_MODE = 'ai';
+export const CLASSIC_V1_APP_MODE = 'classicV1';

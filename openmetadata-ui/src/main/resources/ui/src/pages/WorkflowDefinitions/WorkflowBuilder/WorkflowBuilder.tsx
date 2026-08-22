@@ -50,7 +50,7 @@ import {
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
-import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
 import { useWorkflowHistory } from '../../../hooks/useWorkflowHistory';
@@ -77,7 +77,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
 }) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
   const {
     canAccessSidebar,
     canDragNodes,
@@ -466,7 +466,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         getEntityName(workflowDefinition ?? undefined) ||
         t('label.workflow-plural')
       }
-      variant={isAiMode ? 'compact' : 'default'}>
+      variant={isClassicV1Mode ? 'compact' : 'default'}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
       )}
@@ -474,22 +474,22 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       <div
         className={classNames(
           'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
-          { 'tw:bg-gray-50': !isAiMode }
+          { 'tw:bg-gray-50': !isClassicV1Mode }
         )}>
-        {!isAiMode && (
+        {!isClassicV1Mode && (
           <div className="tw:mb-4 tw:shrink-0">
             <TitleBreadcrumb titleLinks={breadcrumbs} />
           </div>
         )}
         <div className="tw:shrink-0">
           <WorkflowHeader
-            breadcrumb={isAiMode ? breadcrumb : undefined}
+            breadcrumb={isClassicV1Mode ? breadcrumb : undefined}
             handleDeleteWorkflow={handleShowDeleteModal}
             handleRevertAndCancel={handleRevertAndCancel}
             handleRunWorkflow={handleRunWorkflow}
             handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
             handleTestWorkflow={handleTestWorkflow}
-            isAiMode={isAiMode}
+            isAiMode={isClassicV1Mode}
             isRunLoading={isRunLoading}
             title={workflowDisplayName}
             workflowName={workflowName}
