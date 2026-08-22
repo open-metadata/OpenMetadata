@@ -17,7 +17,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { fillDomainForm } from '../../utils/domain';
+import { clickDrawerSave, fillDomainForm } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openAddGlossaryTermModal } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
@@ -210,7 +210,16 @@ const selectExtensionReference = async ({
     .first();
 
   await expect(input).toBeVisible({ timeout: 15000 });
-  await input.click();
+  // Use force:true to bypass Playwright's element-stability check. The
+  // reference-picker input lives inside a drawer whose body re-renders while
+  // the form settles, causing the input's bounding box to shift. A plain
+  // click() would spin until the test times out ("element is not stable");
+  // force:true skips that check while still dispatching the pointer events
+  // that activate the ComboBox popup. Do NOT use focus() here — opening the
+  // popup without pointer activation leaves the ComboBox in a state where the
+  // subsequent option.click() triggers unexpected re-renders that continuously
+  // detach the option element, causing a 3-minute hang.
+  await input.click({ force: true });
   await input.fill(query);
   await searchResponse;
 
@@ -629,7 +638,7 @@ test.describe(
           }
         };
         page.on('response', postListener);
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
 
         // Poll for up to 3s and confirm no POST ever fires. We intentionally
         // avoid `page.waitForTimeout` (linted as flaky) and instead use
@@ -1073,7 +1082,7 @@ test.describe(
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
         const response = await createResponse;
         expect(response.status()).toBe(201);
 
@@ -1414,7 +1423,7 @@ test.describe(
         }
       };
       page.on('request', trackCreateRequest);
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
       await expect(
         page.getByText('URL must use http or https protocol')
       ).toBeVisible();
@@ -1433,7 +1442,7 @@ test.describe(
           response.url().endsWith('/api/v1/dataProducts') &&
           response.request().method() === 'POST'
       );
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
 
       const request = await createRequest;
       const response = await createResponse;
@@ -1563,7 +1572,7 @@ test.describe(
           response.url().endsWith('/api/v1/domains') &&
           response.request().method() === 'POST'
       );
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
 
       const request = await createRequest;
       const response = await createResponse;

@@ -37,7 +37,7 @@ jest.mock(
   })
 );
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
+jest.mock('@react-awesome-query-builder/ui', () => ({
   Builder: jest
     .fn()
     .mockImplementation(() => (

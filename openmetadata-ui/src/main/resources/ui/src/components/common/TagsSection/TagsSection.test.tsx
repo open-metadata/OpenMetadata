@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,9 +22,9 @@ import {
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import TagsSection from './TagsSection';
 
-// Mock @react-awesome-query-builder/antd
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  ...jest.requireActual('@react-awesome-query-builder/antd'),
+// Mock @react-awesome-query-builder/ui
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Config: {},
   Utils: {
     loadFromJsonLogic: jest.fn(),

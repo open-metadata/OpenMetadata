@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OldJsonTree } from '@react-awesome-query-builder/antd';
+import type { OldJsonTree } from '@react-awesome-query-builder/ui';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';

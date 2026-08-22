@@ -58,26 +58,16 @@ test.describe('Advanced Search Suggestions', () => {
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         field.label,
         true
       );
 
-      await selectOption(
-        page,
-        ruleLocator.locator('.rule--operator .ant-select'),
-        '=='
-      );
+      await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
 
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget > .ant-select > .ant-select-selector input'
+        '.widget--widget input[role="combobox"]'
       );
-
-      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-
-      await dropdownInput.click();
-
-      await aggregateRes1;
 
       const searchText = toLower(
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
@@ -95,7 +85,10 @@ test.describe('Advanced Search Suggestions', () => {
 
       await test
         .expect(
-          page.locator(`.ant-select-dropdown:visible [title="${searchText}"]`)
+          page
+            .locator('[role="listbox"]:visible [role="option"]')
+            .filter({ hasText: searchText })
+            .first()
         )
         .toBeVisible();
     });
