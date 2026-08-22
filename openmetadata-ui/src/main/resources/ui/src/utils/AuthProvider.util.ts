@@ -21,6 +21,10 @@ import {
   OidcUser,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../constants/Auth.constants';
 import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
@@ -35,6 +39,16 @@ import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
+
+export interface AuthFieldError {
+  field: string;
+  reason: string;
+}
+
+export interface AuthFieldValidationResult {
+  valid: boolean;
+  errors: AuthFieldError[];
+}
 
 const cookieStorage = new CookieStorage();
 
@@ -549,15 +563,172 @@ export const requiredAuthFields = [
   'provider',
 ];
 
-export const validateAuthFields = (
+/**
+ * Per-provider required-field map used by `validateAuthFieldsDetailed`. Keys
+ * are top-level `configJson` properties OR dotted paths into nested config
+ * objects (`samlConfiguration.idp.entityId`, `ldapConfiguration.host`, ...).
+ * Order within each list matches the diagnostic order the config-error page
+ * renders, so put the most-visible/most-actionable field first.
+ */
+const REQUIRED_FIELDS_BY_PROVIDER: Record<string, string[]> = {
+  // Basic + LDAP don't render an IdP sign-in button — `providerName` is a
+  // display-only field for those, and `getAuthConfig` strips it out of the
+  // returned shape. Keep the validator focused on runtime-blocking fields
+  // only, so a Basic install with a missing providerName isn't blocked
+  // from starting up.
+  [AuthProvider.Basic]: ['provider'],
+  [AuthProvider.CustomOidc]: [
+    'provider',
+    'providerName',
+    'clientId',
+    'callbackUrl',
+    'authority',
+    'oidcConfiguration.discoveryUri',
+  ],
+  [AuthProvider.Google]: [
+    'provider',
+    'providerName',
+    'clientId',
+    'callbackUrl',
+    'authority',
+    'oidcConfiguration.discoveryUri',
+  ],
+  [AuthProvider.Auth0]: [
+    'provider',
+    'providerName',
+    'clientId',
+    'callbackUrl',
+    'authority',
+    'oidcConfiguration.discoveryUri',
+  ],
+  [AuthProvider.Azure]: [
+    'provider',
+    'providerName',
+    'clientId',
+    'callbackUrl',
+    'authority',
+    'oidcConfiguration.discoveryUri',
+  ],
+  [AuthProvider.Okta]: [
+    'provider',
+    'providerName',
+    'clientId',
+    'callbackUrl',
+    'authority',
+    'oidcConfiguration.discoveryUri',
+  ],
+  [AuthProvider.Saml]: [
+    'provider',
+    'providerName',
+    'samlConfiguration.idp.entityId',
+    'samlConfiguration.sp.entityId',
+  ],
+  // Same reasoning as Basic — `providerName` is display-only and dropped
+  // by `getAuthConfig`, so keep the validator on the runtime-blocking
+  // fields that actually stop the LDAP bind from working.
+  [AuthProvider.LDAP]: [
+    'provider',
+    'ldapConfiguration.host',
+    'ldapConfiguration.port',
+    'ldapConfiguration.userBaseDN',
+  ],
+};
+
+/**
+ * `isEmpty` from lodash treats `0` and `false` as empty, which is wrong for
+ * numeric ports and boolean flags. We only want to flag `null`/`undefined`/
+ * empty-string/empty-object/empty-array as missing.
+ */
+const isFieldMissing = (value: unknown): boolean => {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (typeof value === 'string') {
+    return value.trim() === '';
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return false;
+  }
+
+  return isEmpty(value);
+};
+
+/**
+ * Rich validator used by the AuthProvider mount effect. Returns the list of
+ * fields whose values are missing/empty for the current provider so the
+ * config-error page can render actionable diagnostics. Errors are logged via
+ * `console.warn` (matching the pre-existing style in this file — the codebase
+ * has no shared logger utility) with an `[AuthConfig]` prefix so tests can
+ * intercept the console cleanly.
+ */
+export const validateAuthFieldsDetailed = (
   configJson: AuthenticationConfigurationWithScope
-) => {
-  requiredAuthFields.forEach((field) => {
-    const value =
-      configJson[field as keyof AuthenticationConfigurationWithScope];
-    if (isEmpty(value)) {
+): AuthFieldValidationResult => {
+  const provider = configJson?.provider as string | undefined;
+  const required =
+    (provider && REQUIRED_FIELDS_BY_PROVIDER[provider]) ??
+    // Fall back to the legacy required-field list when the provider is
+    // unknown — the caller (AuthProvider) also independently short-circuits
+    // on an unsupported provider, but this keeps the validator's contract
+    // useful in isolation.
+    requiredAuthFields;
+
+  const errors: AuthFieldError[] = [];
+
+  required.forEach((field) => {
+    const value = get(configJson, field);
+    if (isFieldMissing(value)) {
+      const reason = t('message.missing-config-value', { field });
+      errors.push({ field, reason });
       // eslint-disable-next-line no-console
-      console.warn(t('message.missing-config-value', { field }));
+      console.warn(`[AuthConfig] ${reason}`);
     }
   });
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+};
+
+/**
+ * Boolean-returning validator kept for backwards compatibility — anything
+ * still calling `validateAuthFields` gets the same warn-on-missing behavior,
+ * with the richer diagnostics flowing through `validateAuthFieldsDetailed`.
+ */
+export const validateAuthFields = (
+  configJson: AuthenticationConfigurationWithScope
+): boolean => {
+  return validateAuthFieldsDetailed(configJson).valid;
+};
+
+/**
+ * Decides whether a 401 response is one the AuthCoordinator should try to
+ * silently refresh, versus one that should propagate straight to the caller
+ * (login/refresh endpoints themselves, or a `/users/loggedInUser` 401 whose
+ * message doesn't match a known refreshable cause). Mirrors the allow-list
+ * the legacy in-provider interceptor used to apply inline.
+ */
+export const isRefreshableAuthError = (
+  status: number,
+  url: string,
+  body: unknown
+): boolean => {
+  if (status !== 401) {
+    return false;
+  }
+
+  if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(url)) {
+    return false;
+  }
+
+  if (url === '/users/loggedInUser') {
+    const message = (body as { message?: string } | undefined)?.message ?? '';
+
+    return REFRESHABLE_AUTH_ERRORS.some((authError) =>
+      message.includes(authError)
+    );
+  }
+
+  return true;
 };

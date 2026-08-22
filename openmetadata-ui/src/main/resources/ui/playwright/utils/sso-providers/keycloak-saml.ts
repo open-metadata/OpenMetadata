@@ -10,9 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride, ProviderCredentials } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  ProviderCredentials,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import {
+  SsoBrokenConfigureResult,
+  SsoProviderFixture,
+  SsoProviderSlug,
+} from './fixture';
 import type { ProviderHelper } from './index';
 import { fetchIdpX509Certificate } from './saml-metadata';
 
@@ -137,3 +148,114 @@ export const keycloakAzureSamlProviderHelper = createKeycloakSamlProviderHelper(
     providerName: 'Azure AD',
   }
 );
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+//
+// The scenario suite consumes SsoProviderFixture. The legacy ProviderHelper
+// above stays exported for backwards compatibility (index.ts still consumes
+// it) — commit 7 removes it after all call-sites migrate.
+
+const SAML_PROFILE: KeycloakSamlProfile = {
+  realm: KEYCLOAK_SAML.azureRealm,
+  providerName: 'Azure AD',
+};
+
+// The crosssite variant swaps the IdP host to 127.0.0.1 (a different site
+// from localhost) via KEYCLOAK_SAML_BASE_URL; the callback POST is then
+// cross-site and the SameSite=Lax OM_SESSION cookie is dropped. That means
+// the browser can't observe the storage broadcast across tabs, so this
+// fixture opts out of the cross-tab scenario.
+const IS_CROSSSITE =
+  process.env[SSO_ENV.PROVIDER_TYPE] === 'keycloak-azure-saml-crosssite';
+
+export const keycloakSamlProviderFixture: SsoProviderFixture = {
+  name: IS_CROSSSITE ? 'Keycloak SAML (cross-site)' : 'Keycloak SAML',
+  slug: (IS_CROSSSITE
+    ? 'keycloak-saml-crosssite'
+    : 'keycloak-saml') as SsoProviderSlug,
+  clientType: 'public',
+  loginKind: 'redirect',
+
+  supportsCrossTab: !IS_CROSSSITE,
+  supportsSelfSignup: true,
+  supportsSilentCallback: false,
+
+  signInButtonPattern: /(sign in|log in) with SAML SSO/i,
+
+  isAvailable: () => Boolean(process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL]),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.KEYCLOAK_SAML_BASE_URL} to run the Keycloak SAML fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    const payload = await buildConfigPayload(SAML_PROFILE);
+    await applyProviderConfig(apiContext, snapshot, payload);
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async configureBrokenBackend(
+    apiContext: APIRequestContext
+  ): Promise<SsoBrokenConfigureResult> {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    const payload = await buildConfigPayload(SAML_PROFILE);
+    // Drop samlConfiguration.idp.entityId — the client-side validator must
+    // name this specific field before any redirect to the IdP.
+    const authConfig = payload.authenticationConfiguration as Record<
+      string,
+      unknown
+    >;
+    const samlConfig = authConfig.samlConfiguration as Record<string, unknown>;
+    const idpConfig = samlConfig.idp as Record<string, unknown>;
+    delete idpConfig.entityId;
+
+    await applyProviderConfig(apiContext, snapshot, payload);
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+      expectedWarningPattern: /samlConfiguration\.idp\.entityId|entityId/,
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
+    await performProviderLogin(page, {
+      username: process.env[SSO_ENV.USERNAME] ?? '',
+      password: process.env[SSO_ENV.PASSWORD] ?? '',
+    });
+    await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+      timeout: 60_000,
+    });
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('dropdown-profile').click();
+    await page.getByTestId('menu-item-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  async forceTokenExpiry(page: Page) {
+    // Clobber `exp` claim in the stored JWT so the coordinator's next
+    // decode sees it as expired. Same technique the SilentRefresh spec
+    // uses — kept per-fixture so each provider stays self-contained.
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('oidcIdToken');
+      if (!raw) return;
+      const [header, , sig] = raw.split('.');
+      const payload = { exp: Math.floor(Date.now() / 1000) - 60 };
+      const b64 = (obj: unknown) =>
+        btoa(JSON.stringify(obj))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      localStorage.setItem('oidcIdToken', `${header}.${b64(payload)}.${sig}`);
+    });
+  },
+};

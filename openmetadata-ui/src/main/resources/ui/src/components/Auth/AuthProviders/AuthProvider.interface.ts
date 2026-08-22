@@ -33,6 +33,10 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => Promise<void>;
+  // Legacy renewer method — kept on the ref for existing callers that
+  // still fire it manually. Silent-refresh no longer goes through this;
+  // it flows via AuthCoordinator, which each authenticator registers with
+  // from its own mount effect.
   renewIdToken: () =>
     | Promise<string>
     | Promise<AccessTokenResponse>

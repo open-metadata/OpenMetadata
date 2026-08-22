@@ -22,7 +22,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isNil, isNumber } from 'lodash';
+import { isNil } from 'lodash';
 import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
@@ -39,14 +39,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
-  REFRESHABLE_AUTH_ERRORS,
-  UN_AUTHORIZED_EXCLUDED_PATHS,
-} from '../../../constants/Auth.constants';
-import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
 } from '../../../constants/router.constants';
-import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
   AuthenticationConfiguration,
@@ -86,19 +81,19 @@ import {
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
 import {
-  extractDetailsFromToken,
+  AuthFieldError,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
+  isRefreshableAuthError,
   prepareUserProfileFromClaims,
-  validateAuthFields,
+  validateAuthFieldsDetailed,
 } from '../../../utils/AuthProvider.util';
 import {
   clearOidcToken,
   getOidcToken,
-  getRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -112,6 +107,7 @@ import {
   LazyOidcAuthenticator,
   LazyOktaAuthenticator,
 } from '../AppAuthenticators/LazyAuthenticators';
+import ConfigErrorPage from '../ConfigErrorPage';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import {
   LazyAuth0ProviderWrapper,
@@ -210,19 +206,6 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 };
 
 let requestInterceptor: number | null = null;
-let responseInterceptor: number | null = null;
-
-let pendingRequests: {
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-  config: InternalAxiosRequestConfig<unknown>;
-}[] = [];
-
-// True while THIS tab is driving a token refresh and draining `pendingRequests`.
-// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
-// refresh can never leave this tab's queued 401s without a driver to settle
-// them — the bug that hung the UI on a spinner.
-let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -256,14 +239,19 @@ export const AuthProvider = ({
     setApplicationLoading,
     isAuthenticating,
   } = useApplicationStore();
-  const tokenService = useRef<TokenService>(TokenService.getInstance());
-
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [timeoutId, setTimeoutId] = useState<number>();
   const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
+
+  // Set to a non-empty array when `validateAuthFieldsDetailed` finds one or
+  // more required fields missing during `fetchAuthConfig`. Rendering short-
+  // circuits to <ConfigErrorPage /> in that case — we never spin up an
+  // authenticator against a known-bad config, since that would silently
+  // redirect the user to the IdP with obviously-broken parameters (e.g. an
+  // empty `client_id`) and surface as an opaque provider-side error.
+  const [configErrors, setConfigErrors] = useState<AuthFieldError[]>([]);
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
@@ -305,8 +293,6 @@ export const AuthProvider = ({
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(async () => {
-    clearTimeout(timeoutId);
-
     // Let SSO complete the logout process
     await authenticatorRef.current?.invokeLogout();
 
@@ -349,12 +335,9 @@ export const AuthProvider = ({
 
     setApplicationLoading(false);
 
-    // Clear the refresh flag (used after refresh is complete)
-    tokenService.current.clearRefreshInProgress();
-
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
-  }, [timeoutId]);
+  }, []);
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
@@ -412,13 +395,37 @@ export const AuthProvider = ({
     });
   }, []);
 
+  // Tracks the CURRENT pathname for `handleStoreProtectedRedirectPath` below.
+  // That callback is captured once by `authCoordinator.install` in the
+  // mount-only effect further down, so it must read the pathname via a ref
+  // rather than closing over `location.pathname` directly — otherwise a 401
+  // firing after any client-side navigation would store the pathname from
+  // the FIRST render instead of the page the user is actually on (see the
+  // install effect's comment for why the callback identity itself must stay
+  // stable). `window.location.pathname` isn't a substitute here: unlike
+  // `location` (from `useCustomLocation`), it isn't stripped of the
+  // deploy-time base path, so it would mismatch what `isProtectedRoute` and
+  // the post-login `navigate(urlPathname)` call both expect.
+  const pathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
+
+  /**
+   * Stores redirect URL for successful login
+   */
+  const handleStoreProtectedRedirectPath = useCallback(() => {
+    if (applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
+      storeRedirectPath(pathnameRef.current);
+    }
+  }, [storeRedirectPath]);
+
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     clearOidcToken();
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    clearTimeout(timeoutId);
-    TokenService.getInstance().clearRefreshInProgress();
     if (forceLogout) {
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
@@ -431,12 +438,12 @@ export const AuthProvider = ({
     setApplicationLoading(true);
     try {
       // Bug 1: on cold-load with an expired token, /loggedInUser 401s and
-      // the axios response interceptor drives a refresh via TokenService.
-      // The real fix for the race between that refresh and the lazy
-      // authenticator's renewer registration lives in
-      // TokenService.fetchNewToken (it now awaits `awaitRenewerReady`),
-      // so this catch just needs to make sure we don't swallow the
-      // recovered response — the interceptor drains the queued request
+      // the AuthCoordinator's axios response interceptor drives a refresh.
+      // Each authenticator registers its renewer from its own mount effect
+      // (see the corresponding *Authenticator.tsx), so the coordinator has
+      // a renewer as soon as the lazy authenticator mounts — no race with
+      // the first 401. This catch just needs to make sure we don't swallow
+      // the recovered response — the interceptor drains the queued request
       // itself and getLoggedInUser resolves normally on success.
       const res = await getLoggedInUser({ fields: userAPIQueryFields });
       if (res) {
@@ -448,8 +455,22 @@ export const AuthProvider = ({
       }
     } catch (error) {
       const err = error as AxiosError;
+      const status = err.response?.status ?? 0;
+      const url = err.config?.url ?? '';
+
+      // A 401 the AuthCoordinator can silently refresh must propagate to its
+      // axios response interceptor instead of being swallowed here — the old
+      // unconditional `resetUserDetails()` bounced the user straight to
+      // /signin on a cold-load expired token instead of ever attempting a
+      // silent refresh (Bug 1). `resetUserDetails` still runs, but only via
+      // the coordinator's `refresh-failed` event if `ensureFreshToken` itself
+      // rejects (see the mount effect above).
+      if (isRefreshableAuthError(status, url, err.response?.data)) {
+        throw error;
+      }
+
       resetUserDetails();
-      if (err.response?.status !== 404) {
+      if (status !== 404) {
         showErrorToast(
           err,
           t('server.entity-fetch-error', {
@@ -462,127 +483,53 @@ export const AuthProvider = ({
     }
   };
 
-  /**
-   * It will set an timer for 5 mins before Token will expire
-   * If time if less then 5 mins then it will try to SilentSignIn
-   * It will also ensure that we have time left for token expiry
-   * This method will be call upon successful signIn
-   */
-  const startTokenExpiryTimer = async () => {
-    const oidcToken = await getOidcToken();
-    // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oidcToken);
-    const refreshToken = await getRefreshToken();
-
-    // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
-    const shouldStartExpiry =
-      refreshToken ||
-      ![AuthProviderEnum.Basic, AuthProviderEnum.LDAP].includes(
-        authConfig?.provider as AuthProviderEnum
-      );
-
-    if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
-      // Have 5m buffer before start trying for silent signIn
-      // If token is about to expire then start silentSignIn
-      // else just set timer to try for silentSignIn before token expires
-      clearTimeout(timeoutId);
-
-      const timerId = setTimeout(() => {
-        tokenService.current?.refreshToken();
-      }, timeoutExpiry);
-      setTimeoutId(Number(timerId));
-    }
-  };
-
-  // Renewer registration for TokenService moved into each authenticator's
+  // Renewer registration for the AuthCoordinator lives in each authenticator's
   // own mount effect (BasicAuthAuthenticator, GenericAuthenticator,
   // OidcAuthenticator, MsalAuthenticator, OktaAuthenticator,
-  // Auth0Authenticator). The previous ref-deps effect here
-  // (`[authenticatorRef.current?.renewIdToken]`) never re-ran after the
-  // lazy authenticator finished loading because ref changes don't
-  // schedule re-renders — so on cold-load the first 401 raced ahead of
-  // the registration and TokenService.refreshToken() returned null
-  // without ever firing the `/api/v1/auth/refresh` HTTP call.
-  // `updateRefreshSuccessCallback(startTokenExpiryTimer)` is registered
-  // from the main mount effect below because that timer callback lives
-  // in this component's closure.
+  // Auth0Authenticator). Doing it there — instead of via a parent-side effect
+  // that reads authenticatorRef.current?.getRenewer — avoids a race: ref
+  // changes don't schedule a re-render, so a parent-side effect keyed on the
+  // ref can register late (or never, on some render paths). Each authenticator
+  // knows exactly when its useImperativeHandle has run and owns the register/
+  // unregister lifecycle for its own renewer.
 
-  // When the tab becomes visible after being backgrounded, browsers may have
-  // throttled or suspended the proactive renewal timer. Check token freshness
-  // immediately and refresh only when the token is actually stale; otherwise
-  // just reschedule the timer with the correct remaining time.
+  // Installs the coordinator's axios response interceptor and mirrors its
+  // outcome into React state (auth-coordinator-refactor Task 12 — Bug 2 fix).
+  // The coordinator owns 401 detection, the refresh call, cross-tab
+  // coordination, and the same-tab proactive timer (previously duplicated
+  // here via `pendingRequests`/`isRefreshDriverActive`/`startTokenExpiryTimer`/
+  // a local `visibilitychange` listener — all deleted, including the hotfix
+  // v2 visibility guard from #31819 which the coordinator's VisibilityWatcher
+  // now handles more thoroughly). Without the `refreshed` subscription, a
+  // silent refresh would update storage but never tell the router the user
+  // was authenticated again, so a route guard reading stale `isAuthenticated`
+  // kept bouncing to /signin even though the retried request had already
+  // succeeded.
+  //
+  // `handleStoreProtectedRedirectPath` is passed as the third argument so it
+  // fires the moment a 401 kicks off a refresh cycle — matching the timing
+  // of the old inline interceptor. Without it, a user bounced to /signin
+  // after a failed refresh loses their current URL and lands on the default
+  // page after re-login instead of back where they were.
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-      try {
-        const token = await getOidcToken();
-        // No token in storage (user is on /signin, or just logged out).
-        // Firing tokenService.refreshToken() here would still invoke the
-        // renewer (e.g. OIDC signinSilent → hidden iframe to the IdP) on
-        // every tab focus — pure IdP-side noise for a signed-out session.
-        if (!token) {
-          return;
-        }
-        const { exp, isExpired, timeoutExpiry } =
-          extractDetailsFromToken(token);
-        // A missing / non-positive `exp` means the token is opaque, not a
-        // JWT at all, or spec-violating. extractDetailsFromToken returns
-        // `isExpired: true` for the jwt-decode-throws branch AND
-        // `isExpired: false, timeoutExpiry: 0` for the isNil(exp) branch —
-        // neither is signal we can act on, so leave the token in place and
-        // let the next real 401 drive a refresh via the axios interceptor.
-        // MUST come before the isExpired branch — otherwise opaque tokens
-        // would fire refresh() on every tab focus.
-        if (typeof exp !== 'number' || exp <= 0) {
-          return;
-        }
-        if (isExpired) {
-          const newToken = await tokenService.current?.refreshToken();
-          // Post-refresh reauth: if the user was bounced to signin by an
-          // earlier failed call, a successful refresh must re-run the
-          // loggedInUser flow to flip isAuthenticated back to true.
-          // Reading via getState() avoids the stale closure of the
-          // mount-only useEffect.
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
-
-          return;
-        }
-        // Only near-expiry (within the pre-expiry buffer) should proactively
-        // refresh here. `timeoutExpiry === 0` exactly captures that case
-        // once we've ruled out invalid exp above.
-        if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
-          const newToken = await tokenService.current?.refreshToken();
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
-
-          return;
-        }
-        startTokenExpiryTimer();
-      } catch {
-        // Storage read errors fall through: the next real 401 will drive
-        // the refresh via the axios interceptor.
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const disposeInterceptor = authCoordinator.install(
+      axiosClient,
+      isRefreshableAuthError,
+      handleStoreProtectedRedirectPath
+    );
+    const offRefreshed = authCoordinator.on('refreshed', () => {
+      setIsAuthenticated(true);
+    });
+    const offFailed = authCoordinator.on('refresh-failed', () => {
+      resetUserDetails(true);
+    });
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      disposeInterceptor();
+      offRefreshed();
+      offFailed();
     };
   }, []);
-
-  /**
-   * Performs cleanup around timers
-   * Clean silentSignIn activities if going on
-   */
-  const cleanup = useCallback(() => {
-    clearTimeout(timeoutId);
-  }, [timeoutId]);
 
   const handleFailedLogin = () => {
     setIsSigningUp(false);
@@ -615,8 +562,6 @@ export const AuthProvider = ({
           await hydrateAndResolveAppMode(userDetails);
 
           handledVerifiedUser();
-          // Start expiry timer on successful login
-          startTokenExpiryTimer();
         }
       } catch (error) {
         const err = error as AxiosError;
@@ -656,15 +601,6 @@ export const AuthProvider = ({
     ]
   );
 
-  /**
-   * Stores redirect URL for successful login
-   */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      storeRedirectPath(location.pathname);
-    }
-  }, [location.pathname, storeRedirectPath]);
-
   const updateAuthInstance = async (
     configJson: AuthenticationConfiguration
   ) => {
@@ -684,17 +620,19 @@ export const AuthProvider = ({
   };
 
   /**
-   * Initialize Axios interceptors to intercept every request and response
-   * to handle appropriately. This should be called only when security is enabled.
+   * Initialize the Axios request interceptor to attach Bearer tokens (and
+   * the language/persona/domain headers) to every outgoing request. This
+   * should be called only when security is enabled.
+   *
+   * The response side (401 detection + silent refresh) is no longer owned
+   * here — it's installed once by the AuthCoordinator (see the mount effect
+   * below), which also handles cross-tab coordination and the proactive
+   * refresh timer.
    */
   const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
       axiosClient.interceptors.request.eject(requestInterceptor);
-    }
-
-    if (responseInterceptor != null) {
-      axiosClient.interceptors.response.eject(responseInterceptor);
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
@@ -720,83 +658,13 @@ export const AuthProvider = ({
         withActivePersonaHeader(withDomainFilter(config))
       );
     });
-
-    // Axios response interceptor for statusCode 401,403
-    responseInterceptor = axiosClient.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response) {
-          const { status } = error.response;
-          if (status === ClientErrors.UNAUTHORIZED) {
-            // For login or refresh we don't want to fire another refresh req
-            // Hence rejecting it
-            if (
-              UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
-              (error.config.url === '/users/loggedInUser' &&
-                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
-                  (error.response.data?.message ?? '').includes(authError)
-                ))
-            ) {
-              throw error;
-            }
-            handleStoreProtectedRedirectPath();
-
-            // Queue the failed request, then ensure exactly one refresh drives
-            // the queue in THIS tab. Every 401 lands in pendingRequests; the
-            // first arrival starts the refresh and, once it settles, ALWAYS
-            // drains the queue — retry with the new token, or reject + log out.
-            // Nothing is left parked. The previous code queued behind a
-            // cross-tab localStorage flag that no in-tab driver would clear,
-            // hanging the request (and the UI spinner) indefinitely.
-            return new Promise((resolve, reject) => {
-              pendingRequests.push({ resolve, reject, config: error.config });
-              if (isRefreshDriverActive) {
-                return;
-              }
-              isRefreshDriverActive = true;
-
-              const drainPendingRequests = (hasNewToken: boolean) => {
-                const queued = pendingRequests;
-                pendingRequests = [];
-                isRefreshDriverActive = false;
-                if (hasNewToken) {
-                  queued.forEach(
-                    ({ resolve: onResolve, reject: onReject, config }) =>
-                      axiosClient
-                        .request(config)
-                        .then(onResolve)
-                        .catch(onReject)
-                  );
-                } else {
-                  queued.forEach(({ reject: onReject }) => onReject(error));
-                }
-              };
-
-              tokenService.current
-                .refreshToken()
-                .then(async (token) => {
-                  if (token) {
-                    await initializeAxiosInterceptors();
-                    drainPendingRequests(true);
-                  } else {
-                    drainPendingRequests(false);
-                    resetUserDetails(true);
-                  }
-                })
-                .catch(() => {
-                  drainPendingRequests(false);
-                  resetUserDetails(true);
-                });
-            });
-          }
-        }
-
-        throw error;
-      }
-    );
   };
 
   const fetchAuthConfig = async () => {
+    // Clear any errors from a previous attempt so the Retry button on
+    // <ConfigErrorPage /> can transition back to the normal render path if
+    // the admin has fixed the config in between.
+    setConfigErrors([]);
     try {
       const [authConfig, authorizerConfig] = await Promise.all([
         fetchAuthenticationConfig(),
@@ -807,7 +675,17 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
-          validateAuthFields(configJson);
+          const validation = validateAuthFieldsDetailed(configJson);
+          if (!validation.valid) {
+            // Short-circuit: never proceed to create an authenticator, never
+            // redirect to the IdP with a broken config. The user sees
+            // <ConfigErrorPage /> instead and can retry after the admin
+            // fixes the config on the server.
+            setConfigErrors(validation.errors);
+            setApplicationLoading(false);
+
+            return;
+          }
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
@@ -825,7 +703,16 @@ export const AuthProvider = ({
                 location.pathname
               )
             ) {
-              getLoggedInUserDetails();
+              // Fire-and-forget: `getLoggedInUserDetails` now re-throws a
+              // refreshable 401 (Task 13 — Bug 1 fix) so the AuthCoordinator's
+              // axios response interceptor can retry it. Before that change
+              // this call could never reject; now that it can, the rejection
+              // needs a handler here or it surfaces as an uncaught promise.
+              // If the interceptor's own refresh attempt ultimately fails, the
+              // coordinator's `refresh-failed` subscription (mount effect
+              // above) already drives `resetUserDetails(true)` — this catch
+              // only silences the otherwise-unhandled rejection.
+              getLoggedInUserDetails().catch(() => undefined);
             }
           }
         } else {
@@ -937,14 +824,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
-    startTokenExpiryTimer();
     initializeAxiosInterceptors();
-    // Timer restart after a successful cross-tab refresh — the callback
-    // itself lives in this component's closure, so we register it here
-    // rather than from each authenticator.
-    tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-
-    return cleanup;
   }, []);
 
   const contextValues = useMemo(() => {
@@ -968,6 +848,18 @@ export const AuthProvider = ({
   const isConfigLoading =
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
+
+  // Config-error gate takes precedence over the loader and the authenticator
+  // tree: if the server sent us a config that's missing required fields, we
+  // never mount an authenticator, and the Retry button re-runs
+  // `fetchAuthConfig` to pick up any admin-side fixes.
+  if (configErrors.length > 0) {
+    return (
+      <AuthContext.Provider value={contextValues}>
+        <ConfigErrorPage errors={configErrors} onRetry={fetchAuthConfig} />
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <AuthContext.Provider value={contextValues}>

@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "Kimlik doğrula",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "Kimlik Doğrulama Türü",
     "authentication-uri": "Kimlik Doğrulama URI'si",
     "author": "Yazar",

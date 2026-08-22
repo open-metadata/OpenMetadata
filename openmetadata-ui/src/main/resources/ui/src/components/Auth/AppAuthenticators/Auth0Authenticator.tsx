@@ -20,7 +20,7 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -29,30 +29,67 @@ interface Props {
   children: ReactNode;
 }
 
+// Test-only escape hatch. Playwright's `auth0-mock` fixture pre-populates
+// `window.__omTestAuth0` via `page.addInitScript` with a shim exposing the
+// same surface `useAuth0()` returns — `loginWithRedirect`,
+// `getAccessTokenSilently`, `getIdTokenClaims`, and `logout`. When present,
+// we use that instead of the real auth0-react context so the Playwright
+// suite can exercise this component's login / renew branches without a live
+// Auth0 tenant.
+//
+// Gated on `process.env.NODE_ENV !== 'production'` — Vite inlines this at
+// build time, Jest sets it to `'test'`, so the whole branch tree-shakes out
+// of prod bundles while still being reachable from the test runner.
+// `useAuth0()` is still always called to satisfy the Rules of Hooks; only
+// its return value is swapped.
+type Auth0ContextShape = ReturnType<typeof useAuth0>;
+
+const readTestAuth0Override = (): Auth0ContextShape | undefined => {
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return (window as unknown as { __omTestAuth0?: Auth0ContextShape })
+    .__omTestAuth0;
+};
+
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
     const { handleSuccessfulLogout } = useAuthProvider();
+    const realAuth0 = useAuth0();
+    const testAuth0 = readTestAuth0Override();
     const {
       loginWithRedirect,
       getAccessTokenSilently,
       getIdTokenClaims,
       logout,
-    } = useAuth0();
+    } = testAuth0 ?? realAuth0;
 
-    const renewIdToken = useCallback(async (): Promise<string> => {
-      let idToken = '';
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 11). Kept alongside renewIdToken until every authenticator is
+    // migrated and the old TokenService path is deleted. Reads the raw
+    // IdToken claims directly instead of going through the setOidcToken side
+    // effect renewIdToken performs — the AuthCoordinator owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        await getAccessTokenSilently();
 
-      // Need to emmit error if this fails
-      await getAccessTokenSilently();
+        const claims = await getIdTokenClaims();
 
-      const claims = await getIdTokenClaims();
-      if (claims) {
-        idToken = claims.__raw;
-        await setOidcToken(idToken);
-      }
+        if (!claims?.__raw) {
+          throw new Error('Auth0 renewal returned no idToken');
+        }
 
-      return idToken;
-    }, [getAccessTokenSilently, getIdTokenClaims]);
+        return {
+          idToken: claims.__raw,
+          expiresAt: (claims.exp ?? 0) * 1000,
+        };
+      },
+      [getAccessTokenSilently, getIdTokenClaims]
+    );
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -71,18 +108,29 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           handleSuccessfulLogout();
         }
       },
-      renewIdToken,
+      async renewIdToken(): Promise<string> {
+        let idToken = '';
+
+        // Need to emmit error if this fails
+        await getAccessTokenSilently();
+
+        const claims = await getIdTokenClaims();
+        if (claims) {
+          idToken = claims.__raw;
+          await setOidcToken(idToken);
+        }
+
+        return idToken;
+      },
     }));
 
-    // Register the renewer with TokenService from this authenticator's own
-    // mount effect (see BasicAuthAuthenticator for the full rationale) —
-    // avoids the ref-deps race in the parent that hangs cold-load 401s on
-    // Auth0.
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
     useEffect(() => {
-      TokenService.getInstance().updateRenewToken(renewIdToken);
+      authCoordinator.registerRenewer(getRenewer());
 
-      return () => TokenService.getInstance().updateRenewToken(null);
-    }, [renewIdToken]);
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

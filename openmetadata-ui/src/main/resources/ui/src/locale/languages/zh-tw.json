@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "身份驗證",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "驗證類型",
     "authentication-uri": "驗證 URI",
     "author": "作者",

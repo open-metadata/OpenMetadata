@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import TokenService from './Auth/TokenService/TokenServiceUtil';
+import { authCoordinator } from './Auth/AuthCoordinator';
 
 /**
  * Shared plumbing for the fetch-based SSE clients (service progress, ingestion
@@ -94,7 +94,7 @@ export const createStreamOpenHandler =
         throw new FatalStreamError('down');
       }
 
-      await TokenService.getInstance().refreshToken();
+      await authCoordinator.ensureFreshToken();
     }
 
     throw new RetriableStreamError();

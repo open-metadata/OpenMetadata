@@ -35,12 +35,15 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn().mockResolvedValue('test-jwt-token'),
 }));
 
-const mockRefreshToken = jest.fn().mockResolvedValue(undefined);
+const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({ refreshToken: mockRefreshToken }),
+// `ensureFreshToken` is wrapped in an arrow function rather than referenced
+// directly so the read of `mockEnsureFreshToken` is deferred until the real
+// call site invokes it — jest hoists this factory above the `const`
+// declaration above, so an eager read would throw a TDZ ReferenceError.
+jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    ensureFreshToken: (...args: unknown[]) => mockEnsureFreshToken(...args),
   },
 }));
 
@@ -308,7 +311,7 @@ describe('useLogStream', () => {
 
     await flushAsync();
 
-    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       jest.runOnlyPendingTimers();

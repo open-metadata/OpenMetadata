@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import { SsoBrokenConfigureResult, SsoProviderFixture } from './fixture';
 import { ProviderHelper } from './index';
 import {
   assertSupportedBaseUrl,
@@ -58,6 +65,24 @@ const buildConfigPayload = (): ProviderConfigOverride => {
       callbackUrl: `${OM_BASE_URL}/callback`,
       jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
       enableSelfSignup: true,
+      oidcConfiguration: {
+        // Mirror the top-level fields into oidcConfiguration so the broken
+        // variant has a nested handle to mangle; the server tolerates the
+        // extra block on public clients.
+        id: CLIENT_ID,
+        type: 'custom-oidc',
+        // Server-side schema (oidcClientConfig.json) makes `secret` and
+        // `tenant` non-null even for public clients — the browser flow ignores
+        // them but the PUT is rejected without them.
+        secret: 'public-client-no-secret',
+        tenant: realm,
+        scope: 'openid email profile',
+        discoveryUri: `${internal}/.well-known/openid-configuration`,
+        callbackUrl: `${OM_BASE_URL}/callback`,
+        serverUrl: OM_BASE_URL,
+        responseType: 'code',
+        preferredJwsAlgorithm: 'RS256',
+      },
     },
     authorizerConfiguration: {
       principalDomain: KEYCLOAK_SAML.principalDomain,
@@ -73,4 +98,94 @@ export const keycloakOidcPublicProviderHelper: ProviderHelper = {
   expectedResponseType: 'code',
   buildConfigPayload,
   performProviderLogin,
+};
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+
+export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
+  name: 'Keycloak OIDC (public)',
+  slug: 'keycloak-oidc-public',
+  clientType: 'public',
+  loginKind: 'redirect',
+
+  supportsCrossTab: true,
+  supportsSelfSignup: true,
+  // Public OIDC is the only one that drives the /silent-callback iframe
+  // via oidc-client's signinSilent — same-origin refresh with no popup.
+  supportsSilentCallback: true,
+
+  expectedResponseType: 'code',
+  signInButtonPattern: /(sign in|log in) with Keycloak/i,
+
+  isAvailable: () => Boolean(process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL]),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.KEYCLOAK_SAML_BASE_URL} to run the Keycloak OIDC public fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    await applyProviderConfig(apiContext, snapshot, buildConfigPayload());
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async configureBrokenBackend(
+    apiContext: APIRequestContext
+  ): Promise<SsoBrokenConfigureResult> {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    const payload = buildConfigPayload();
+    // Force oidcConfiguration.responseType to an invalid value so the
+    // client-side validator refuses to boot the UserManager.
+    const authConfig = payload.authenticationConfiguration as Record<
+      string,
+      unknown
+    >;
+    const oidcConfig = authConfig.oidcConfiguration as Record<string, unknown>;
+    oidcConfig.responseType = 'invalid';
+
+    await applyProviderConfig(apiContext, snapshot, payload);
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+      expectedWarningPattern: /oidcConfiguration\.responseType|responseType/,
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
+    await performProviderLogin(page, {
+      username: process.env[SSO_ENV.USERNAME] ?? '',
+      password: process.env[SSO_ENV.PASSWORD] ?? '',
+    });
+    await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+      timeout: 60_000,
+    });
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('dropdown-profile').click();
+    await page.getByTestId('menu-item-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  async forceTokenExpiry(page: Page) {
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('oidcIdToken');
+      if (!raw) return;
+      const [header, , sig] = raw.split('.');
+      const payload = { exp: Math.floor(Date.now() / 1000) - 60 };
+      const b64 = (obj: unknown) =>
+        btoa(JSON.stringify(obj))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      localStorage.setItem('oidcIdToken', `${header}.${b64(payload)}.${sig}`);
+    });
+  },
 };

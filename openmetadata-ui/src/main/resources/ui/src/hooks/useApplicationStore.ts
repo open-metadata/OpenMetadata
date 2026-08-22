@@ -14,12 +14,18 @@ import { create } from 'zustand';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import { APP_ROUTER_ROUTES } from '../constants/router.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
+import { authCoordinator } from '../utils/Auth/AuthCoordinator';
+import {
+  EXPIRY_THRESHOLD_MILLES,
+  extractDetailsFromToken,
+} from '../utils/AuthProvider.util';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
@@ -70,6 +76,23 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
   initializeAuthState: async () => {
     try {
+      // OAuth-callback races: on a fresh redirect back into the app the
+      // authenticator's own handler (OidcAuthenticator's <Callback>,
+      // MsalAuthenticator's handleRedirectPromise, GenericAuthenticator's
+      // SAML callback) hasn't stored the token yet when AppRoot fires
+      // initializeAuthState. Flipping isAuthenticating=false here would
+      // reveal /signin for a frame until handleSuccessfulLogin flips
+      // isAuthenticated back true — the "sign-in blink". Bail early on
+      // callback routes and let the authenticator drive the state.
+      const path = window.location.pathname;
+      if (
+        path === APP_ROUTER_ROUTES.CALLBACK ||
+        path === APP_ROUTER_ROUTES.AUTH_CALLBACK ||
+        path === APP_ROUTER_ROUTES.SILENT_CALLBACK
+      ) {
+        return;
+      }
+
       let token = '';
 
       if ('serviceWorker' in navigator && 'indexedDB' in window) {
@@ -91,10 +114,34 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
         token = '';
       }
 
-      set({
-        isAuthenticated: Boolean(token),
-        isAuthenticating: false,
-      });
+      if (!token) {
+        set({ isAuthenticated: false, isAuthenticating: false });
+
+        return;
+      }
+
+      // A cold-load token can be present but already past (or within a
+      // buffer of) its expiry — treating it as authenticated let the app
+      // render with a dead token and fail the first API call with a 401
+      // that never triggered silent refresh (Bug 1). Refresh it up front
+      // via the coordinator so `isAuthenticated` only flips true once a
+      // usable token is guaranteed.
+      const { exp } = extractDetailsFromToken(token);
+      const isExpired =
+        !exp || exp * 1000 - Date.now() < EXPIRY_THRESHOLD_MILLES;
+
+      if (!isExpired) {
+        set({ isAuthenticated: true, isAuthenticating: false });
+
+        return;
+      }
+
+      try {
+        await authCoordinator.ensureFreshToken();
+        set({ isAuthenticated: true, isAuthenticating: false });
+      } catch {
+        set({ isAuthenticated: false, isAuthenticating: false });
+      }
     } catch {
       set({
         isAuthenticated: false,

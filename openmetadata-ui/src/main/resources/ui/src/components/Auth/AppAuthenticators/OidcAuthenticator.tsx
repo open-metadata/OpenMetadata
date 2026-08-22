@@ -28,7 +28,7 @@ import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -52,6 +52,16 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
     },
   })(type);
 };
+
+// Safari ITP blocks third-party cookies inside the silent-renew iframe, so the
+// postMessage callback never reaches the parent window and oidc-client's
+// IFrameWindow rejects with a plain Error naming the frame itself (e.g.
+// "Frame window timed out", "Invalid response from frame") rather than an
+// ErrorResponse carrying an IdP authorization decision (login_required,
+// consent_required, ...). Only that class of failure should fall back to a
+// visible signinPopup — any other rejection is rethrown untouched.
+const isFrameError = (error: unknown): boolean =>
+  error instanceof Error && /frame/i.test(error.message);
 
 const OidcCallbackWrapper = ({
   userManager,
@@ -139,7 +149,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     // Performs silent signIn and returns with IDToken
-    const signInSilently = useCallback(async () => {
+    const signInSilently = async () => {
       try {
         // Token will be coming as silent-callback via an iframe
         await userManager.signinSilent();
@@ -149,17 +159,19 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         const user = await userManager.signinPopup();
         await setOidcToken(user.id_token);
         updateAxiosInterceptors();
-        TokenService.getInstance().clearRefreshInProgress();
       }
-    }, [userManager, updateAxiosInterceptors]);
+    };
 
-    const handleSilentSignInSuccess = async (user: User) => {
-      // On success update token in store and update axios interceptors
-      await setOidcToken(user.id_token);
-      updateAxiosInterceptors();
-      // Clear the refresh token in progress flag
-      // Since refresh token request completes with a callback
-      TokenService.getInstance().clearRefreshInProgress();
+    // Silent-callback iframe onSuccess handler. Intentionally does NOT
+    // write the id_token to storage — the parent-tab AuthCoordinator owns
+    // that mirror (via its Renewer contract) after `userManager.signinSilent()`
+    // resolves on the parent side. Writing here would double-write the
+    // same id_token, run inside the iframe's React tree, and re-register
+    // an axios interceptor inside a hidden iframe context. oidc-client
+    // still requires an onSuccess callback to be passed to <Callback>, so
+    // we keep this handler as a no-op placeholder.
+    const handleSilentSignInSuccess = async (_user: User) => {
+      void _user;
     };
 
     const handleSilentSignInFailure = (error: unknown) => {
@@ -174,21 +186,49 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 9). Kept alongside signInSilently/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted
+    // (Task 14). Unlike signInSilently, this does not write to storage itself
+    // — the coordinator mirrors the returned {idToken, expiresAt} via
+    // setOidcToken once it has driven the refresh.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        let user: User | undefined;
+        try {
+          user = await userManager.signinSilent();
+        } catch (error) {
+          if (!isFrameError(error)) {
+            throw error;
+          }
+          user = await userManager.signinPopup();
+        }
+
+        if (!user?.id_token) {
+          throw new Error('signinSilent returned no id_token');
+        }
+
+        return {
+          idToken: user.id_token,
+          expiresAt: (user.expires_at ?? 0) * 1000,
+        };
+      },
+      [userManager]
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: signInSilently,
     }));
 
-    // Register the renewer with TokenService from this authenticator's own
-    // mount effect (see BasicAuthAuthenticator for the full rationale) —
-    // avoids the ref-deps race in the parent that hangs cold-load 401s on
-    // Google / CustomOidc / AwsCognito public-client flows.
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
     useEffect(() => {
-      TokenService.getInstance().updateRenewToken(signInSilently);
+      authCoordinator.registerRenewer(getRenewer());
 
-      return () => TokenService.getInstance().updateRenewToken(null);
-    }, [signInSilently]);
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     const AppWithAuth = getAuthenticator(
       childComponentType,
