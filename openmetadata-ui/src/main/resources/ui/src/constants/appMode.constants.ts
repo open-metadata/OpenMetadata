@@ -28,7 +28,8 @@
  * `personaAppMode` snapshots what the resolver saw from the persona doc
  * at write time, so the resolver can tell whether the persona has
  * something new to say (invalidate the session) or not (keep the tab's
- * chosen mode). See `useResolvedAppMode` for the precedence logic.
+ * chosen mode). See `resolveEffectiveAppMode` in `useAppMode.ts` for the
+ * precedence logic.
  */
 
 export const APP_MODE_SESSION_KEY = 'omAppMode';

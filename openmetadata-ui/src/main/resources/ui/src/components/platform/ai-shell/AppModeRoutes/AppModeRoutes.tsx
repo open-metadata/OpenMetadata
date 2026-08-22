@@ -24,13 +24,15 @@ import { useSyncActiveModule } from '../state/useActiveModule';
 /**
  * Top-level routes component for app mode.
  *
- * Registered by a plugin with OM's `useAppRoutesRegistry` so that when the
- * active `useAppMode()` matches the plugin's mode, `AppRouter` mounts this in
- * place of OM's default `AuthenticatedRoutes`. Auth, permissions, applications
- * and `BrowserRouter` are all supplied above by `AuthenticatedApp`/`AppRoot`.
+ * OSS `AppRouter` renders this shell directly whenever the active
+ * `useAppMode()` is the ClassicV1 mode, in place of OM's default
+ * `AuthenticatedRoutes` — there is no runtime registry/plugin-registration
+ * step in between. Auth, permissions, applications and `BrowserRouter` are
+ * all supplied above by `AuthenticatedApp`/`AppRoot`.
  *
  * The route table is the flat union of every module's `routes` (from
- * `useAllAppModules()` — shared ⊕ contributed) followed by the
+ * `useAllAppModules()` — OSS's `sharedAppModules` merged with modules a
+ * plugin contributes via `getModeModules`) followed by the
  * `app-mode.routes.fallback` contribution mounted last as the catch-all.
  * This component imports NO plugin code — every AI-exclusive route arrives via
  * a module or the fallback contribution.
