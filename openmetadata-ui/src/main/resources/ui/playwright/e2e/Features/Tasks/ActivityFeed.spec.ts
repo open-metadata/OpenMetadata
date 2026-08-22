@@ -501,7 +501,7 @@ test.describe('Activity Feed - Entity Page', () => {
     const mentionsResponse = page.waitForResponse((response) => {
       if (
         response.request().method() !== 'GET' ||
-        !response.url().includes('/api/v1/feed')
+        !response.url().includes('/api/v1/conversations')
       ) {
         return false;
       }

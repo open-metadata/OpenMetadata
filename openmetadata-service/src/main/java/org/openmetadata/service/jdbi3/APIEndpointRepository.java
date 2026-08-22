@@ -42,7 +42,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.EntityReference;
@@ -50,15 +49,9 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -550,106 +543,6 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
     return allTags;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("responseSchema")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ResponseSchemaDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ResponseSchemaTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class ResponseSchemaDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Field schemaField;
-
-    ResponseSchemaDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getResponseSchemaField(
-              (APIEndpoint) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      schemaField.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ResponseSchemaTagWorkflow extends TagTaskWorkflow {
-    private final Field schemaField;
-
-    ResponseSchemaTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      schemaField =
-          getResponseSchemaField(
-              (APIEndpoint) threadContext.getAboutEntity(),
-              threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      schemaField.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  private static Field getResponseSchemaField(APIEndpoint apiEndpoint, String schemaName) {
-    String childrenSchemaName = "";
-    if (schemaName.contains(".")) {
-      String fieldNameWithoutQuotes = schemaName.substring(1, schemaName.length() - 1);
-      schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
-      childrenSchemaName =
-          fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
-    }
-    Field schemaField = null;
-    for (Field field : apiEndpoint.getResponseSchema().getSchemaFields()) {
-      if (field.getName().equals(schemaName)) {
-        schemaField = field;
-        break;
-      }
-    }
-    if (childrenSchemaName.isEmpty() && schemaField != null) {
-      schemaField = getChildSchemaField(schemaField.getChildren(), childrenSchemaName);
-    }
-    if (schemaField == null) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldName("responseSchema", schemaName));
-    }
-    return schemaField;
-  }
-
-  private static Field getChildSchemaField(List<Field> fields, String childrenSchemaName) {
-    Field childrenSchemaField = null;
-    for (Field field : fields) {
-      if (field.getName().equals(childrenSchemaName)) {
-        childrenSchemaField = field;
-        break;
-      }
-    }
-    if (childrenSchemaField == null) {
-      for (Field field : fields) {
-        if (field.getChildren() != null) {
-          childrenSchemaField = getChildSchemaField(field.getChildren(), childrenSchemaName);
-          if (childrenSchemaField != null) {
-            break;
-          }
-        }
-      }
-    }
-    return childrenSchemaField;
   }
 
   public class APIEndpointUpdater extends EntityUpdater {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,95 +10,105 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationSource,
+} from '../../../generated/entity/feed/conversation';
 import ActivityFeedCardNew from './ActivityFeedcardNew.component';
 
-jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
-  useActivityFeedProvider: () => ({
-    selectedThread: undefined,
-    postFeed: jest.fn(),
-    updateFeed: jest.fn(),
-    isPostsLoading: false,
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({
+    currentUser: { id: 'author-id', name: 'alice' },
   }),
 }));
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { name: 'admin' } }),
-}));
-
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: () => [undefined, false, undefined],
+  useUserProfile: () => [false, undefined, { id: 'author-id', name: 'alice' }],
 }));
 
-// Render-heavy children are irrelevant to the read-only gate under test.
-jest.mock('../ActivityFeedCard/FeedCardBody/FeedCardBodyNew', () => () => (
-  <div data-testid="feed-body" />
-));
-jest.mock(
-  '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew',
-  () => () => <div data-testid="feed-footer" />
+jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
+  useActivityFeedProvider: () => ({
+    activityReplies: [],
+    isPostsLoading: false,
+    postActivityComment: jest.fn(),
+    postFeed: jest.fn(),
+    selectedThread: undefined,
+    updateFeed: jest.fn(),
+  }),
+}));
+
+jest.mock('../ActivityFeedCard/FeedCardBody/FeedCardBodyNew', () =>
+  jest.fn(({ message }) => <div data-testid="feed-body">{message}</div>)
 );
-jest.mock(
-  '../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter',
-  () => () => <div data-testid="activity-footer" />
+
+jest.mock('../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew', () =>
+  jest.fn(() => <div data-testid="conversation-reaction-footer" />)
 );
-jest.mock('./CommentCard.component', () => () => <div data-testid="comment" />);
-jest.mock('../../common/PopOverCard/EntityPopOverCard', () => ({
+
+jest.mock('../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter', () =>
+  jest.fn(() => <div data-testid="activity-footer" />)
+);
+
+jest.mock('../Shared/ActivityFeedActions', () =>
+  jest.fn(() => <div data-testid="conversation-root-actions" />)
+);
+
+jest.mock('../../common/PopOverCard/EntityPopOverCard', () =>
+  jest.fn(({ children }) => <>{children}</>)
+);
+
+jest.mock('../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(({ children }) => <>{children}</>)
+);
+
+jest.mock('../../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn(() => <div data-testid="profile-picture" />)
+);
+
+jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  default: { getEntityIcon: jest.fn() },
 }));
-jest.mock('../../common/PopOverCard/UserPopOverCard', () => ({
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  default: { getEntityLink: () => '/table/service.table' },
 }));
-jest.mock('../../common/ProfilePicture/ProfilePicture', () => () => (
-  <div data-testid="pfp" />
-));
 
-const feed = {
-  id: 'thread-1',
-  message: 'hello convo',
-  about: '<#E::table::db.s.t>',
-  threadTs: 100,
-  posts: [],
-  createdBy: 'admin',
-} as Thread;
+const conversation: Conversation = {
+  id: 'conversation-1',
+  about: '<#E::table::service.table>',
+  createdAt: 1,
+  createdBy: { id: 'author-id', type: 'user', name: 'alice' },
+  entityRef: {
+    id: 'table-id',
+    type: 'table',
+    name: 'table',
+    fullyQualifiedName: 'service.table',
+  },
+  message: 'Root message',
+  replyCount: 0,
+  resolved: false,
+  source: ConversationSource.User,
+  updatedAt: 1,
+};
 
-const activity = {
-  id: 'activity-1',
-  about: '<#E::table::db.s.t>',
-  timestamp: 100,
-  eventType: 'entityCreated' as ActivityEvent['eventType'],
-  entity: { id: 'e1', type: 'table', name: 't' },
-  actor: { id: 'u1', type: 'user', name: 'admin' },
-  summary: 'Created table',
-} as ActivityEvent;
+describe('ActivityFeedCardNew', () => {
+  it('keeps root reactions and management actions available in the drawer', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
+      </MemoryRouter>
+    );
 
-const renderCard = (props: Record<string, unknown>) =>
-  render(
-    <MemoryRouter>
-      <ActivityFeedCardNew showThread {...props} />
-    </MemoryRouter>
-  );
+    expect(screen.getByTestId('conversation-reaction-footer')).toBeVisible();
+    expect(screen.queryByTestId('conversation-root-actions')).toBeNull();
 
-describe('ActivityFeedCardNew — activities are read-only', () => {
-  it('renders the comment editor for a conversation feed', () => {
-    renderCard({ feed });
+    fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
 
-    expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
-  });
-
-  it('does NOT render the comment editor for a change-event activity', () => {
-    renderCard({ activity });
-
-    expect(
-      screen.queryByTestId('comments-input-field')
-    ).not.toBeInTheDocument();
-    // The activity change-detail footer still renders.
-    expect(screen.getByTestId('activity-footer')).toBeInTheDocument();
+    expect(screen.getByTestId('conversation-root-actions')).toBeVisible();
   });
 });

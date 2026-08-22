@@ -395,7 +395,13 @@ export const createMentionInConversation = async (
 
   // Click on Conversations tab
   await page.getByRole('tab', { name: 'Conversations' }).click();
-  await page.waitForSelector('[data-testid="editor-wrapper"]');
+  const editor = page.locator(
+    '[data-testid="editor-wrapper"] [contenteditable="true"]'
+  );
+  if (!(await editor.isVisible())) {
+    await page.getByTestId('add-new-conversation').click();
+  }
+  await expect(editor).toBeVisible();
 
   // Create message with mention
   const messageWithMention = `${message} @${userName}`;
@@ -406,12 +412,8 @@ export const createMentionInConversation = async (
   );
 
   // Type the message with mention
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .click();
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .fill(messageWithMention);
+  await editor.click();
+  await editor.fill(messageWithMention);
 
   await userSuggestionsResponse;
 
@@ -419,7 +421,7 @@ export const createMentionInConversation = async (
   await page.locator(`[data-value="@${userName}"]`).first().click();
 
   // Send the message
-  const feedResponse = page.waitForResponse('/api/v1/feed');
+  const feedResponse = page.waitForResponse('/api/v1/conversations');
   await page.locator('[data-testid="send-button"]').click();
   await feedResponse;
 
@@ -444,7 +446,9 @@ export const verifyNotificationAndClick = async (
 
   // Click on Mentions tab
   const mentionsTabResponse = page.waitForResponse(
-    '/api/v1/feed?userId=*&filterType=MENTIONS'
+    (response) =>
+      response.url().includes('/api/v1/conversations') &&
+      response.url().includes('filterType=MENTIONS')
   );
 
   await page.getByRole('tab', { name: 'Mentions' }).click();

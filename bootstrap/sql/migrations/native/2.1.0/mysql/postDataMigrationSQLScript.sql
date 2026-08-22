@@ -26,3 +26,18 @@ ON DUPLICATE KEY UPDATE
   test_case_incident.createdAt = LEAST(test_case_incident.createdAt, VALUES(createdAt)),
   updatedAt = VALUES(updatedAt),
   latestRecordId = VALUES(latestRecordId);
+
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE entity_extension
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataRetentionApplication';

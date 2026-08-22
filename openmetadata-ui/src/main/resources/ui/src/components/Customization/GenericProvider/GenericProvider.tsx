@@ -13,19 +13,15 @@
 import { AxiosError } from 'axios';
 import { isEmpty, omit } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column, Table } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
 import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
@@ -40,7 +36,6 @@ import {
 } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
@@ -57,6 +52,14 @@ const ColumnDetailPanel = withSuspenseFallback(
     )
   )
 );
+
+const getWidgetLayout = (
+  ...args: Parameters<typeof getLayoutFromCustomizedPage>
+): WidgetConfig[] => {
+  const layout = getLayoutFromCustomizedPage(...args);
+
+  return Array.isArray(layout) ? (layout as WidgetConfig[]) : [];
+};
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   children,
@@ -75,11 +78,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
-  const { t } = useTranslation();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const location = useLocation();
   const navigate = useNavigate();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
@@ -90,12 +88,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const currentTab = activeTab ?? routeTab;
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(
-      pageType,
-      currentTab,
-      customizedPage,
-      isVersionView
-    )
+    getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
@@ -211,12 +204,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   useEffect(() => {
     setLayout(
-      getLayoutFromCustomizedPage(
-        pageType,
-        currentTab,
-        customizedPage,
-        isVersionView
-      )
+      getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
     );
   }, [customizedPage, currentTab, pageType, isVersionView]);
 
@@ -224,29 +212,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setThreadLink('');
   }, [setThreadLink]);
 
-  const onThreadLinkSelect = useCallback(
-    (link: string, threadType?: ThreadType) => {
-      setThreadLink(link);
-      if (threadType) {
-        setThreadType(threadType);
-      }
-    },
-    [setThreadLink, setThreadType]
-  );
-
-  // Create a thread
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
+  const onThreadLinkSelect = useCallback((link: string) => {
+    setThreadLink(link);
+  }, []);
 
   // Filter the widgets we need to hide widgets which doesn't render anything
   const filterWidgets = useCallback(
@@ -503,13 +471,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       {children}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}

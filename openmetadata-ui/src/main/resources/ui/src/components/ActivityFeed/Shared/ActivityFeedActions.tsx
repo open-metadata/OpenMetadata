@@ -12,16 +12,16 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
-import { lazy, useMemo, useState } from 'react';
+import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as ResolveIcon } from '../../../assets/svg/ic-check-circle.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,61 +36,69 @@ const ConfirmationModal = withSuspenseFallback(
 );
 
 interface ActivityFeedActionsProps {
-  post: Post;
-  feed: Thread;
-  isPost: boolean;
+  conversation?: Conversation;
+  conversationId: string;
+  reply?: ConversationReply;
+  isReply: boolean;
   onEditPost?: () => void;
 }
 
 const ActivityFeedActions = ({
-  post,
-  feed,
-  isPost,
+  conversation,
+  conversationId,
+  reply,
+  isReply,
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t, i18n } = useTranslation();
   const dir = i18n.dir();
   const { currentUser } = useApplicationStore();
-  const isAuthor = post.from === currentUser?.name;
+  const author = isReply
+    ? reply?.author.name ?? reply?.author.fullyQualifiedName
+    : conversation?.createdBy?.name ??
+      conversation?.createdBy?.fullyQualifiedName;
+  const authorId = isReply ? reply?.author.id : conversation?.createdBy?.id;
+  const isAuthor = authorId
+    ? authorId === currentUser?.id
+    : author === currentUser?.name;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus } =
+  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
     useActivityFeedProvider();
 
   const onReply = () => {
-    showDrawer(feed);
+    if (!conversation) {
+      return;
+    }
+    showDrawer(conversation);
 
     updateEditorFocus(true);
   };
 
   const handleDelete = () => {
-    deleteFeed(feed.id, post.id, !isPost).catch(() => {
+    const targetId = reply?.id ?? conversationId;
+    deleteFeed(conversationId, targetId, !isReply).catch(() => {
       // ignore since error is displayed in toast in the parent promise.
     });
     setShowDeleteDialog(false);
-    if (!isPost) {
+    if (!isReply) {
       hideDrawer();
     }
   };
 
-  const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Task && !isPost) {
-      return false;
-    } else if (isAuthor) {
-      return true;
+  const canManage = isAuthor || Boolean(currentUser?.isAdmin);
+
+  const handleResolvedChange = () => {
+    if (!conversation || isReply) {
+      return;
     }
-
-    return false;
-  }, [post, feed, currentUser]);
-
-  const deleteCheck = useMemo(() => {
-    if (feed.type === ThreadType.Task && !isPost) {
-      return false;
-    } else if (isAuthor || currentUser?.isAdmin) {
-      return true;
-    }
-
-    return false;
-  }, [post, feed, isAuthor, currentUser]);
+    updateFeed(conversationId, conversationId, true, [
+      {
+        op: 'replace',
+        path: '/resolved',
+        value: !conversation.resolved,
+      },
+    ]);
+  };
 
   return (
     <>
@@ -99,7 +107,7 @@ const ActivityFeedActions = ({
         data-testid="feed-actions"
         dir={dir}
         size={12}>
-        {!isPost && (
+        {!isReply && conversation && (
           <Icon
             className="toolbar-button"
             component={IconReply}
@@ -109,7 +117,20 @@ const ActivityFeedActions = ({
           />
         )}
 
-        {editCheck && (
+        {!isReply && conversation && canManage && (
+          <Icon
+            aria-label={
+              conversation.resolved ? t('label.open') : t('label.resolve')
+            }
+            className="toolbar-button"
+            component={ResolveIcon}
+            data-testid="toggle-resolved"
+            style={{ fontSize: '16px' }}
+            onClick={handleResolvedChange}
+          />
+        )}
+
+        {canManage && (
           <Icon
             className="toolbar-button"
             component={IconEdit}
@@ -119,7 +140,7 @@ const ActivityFeedActions = ({
           />
         )}
 
-        {deleteCheck && (
+        {canManage && (
           <Icon
             className="toolbar-button"
             component={DeleteIcon}

@@ -71,17 +71,6 @@ jest.mock('../../rest/userAPI', () => ({
     ),
 }));
 
-jest.mock('../../rest/feedsAPI', () => ({
-  getFeedsWithFilter: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        data: [],
-      },
-    })
-  ),
-  postFeedById: jest.fn(),
-}));
-
 describe.skip('Test the User Page', () => {
   it('Should call getUserByName  API on load', async () => {
     render(<UserPage />, { wrapper: MemoryRouter });

@@ -8,19 +8,19 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.feed.TagFeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 class TagFormatterTest {
 
   @Test
   void formatTagChangesForEntityLevelUpdates() {
-    Thread thread = baseThread("<#E::table::service.sales.orders>");
+    FormattedMessage thread = baseMessage("<#E::table::service.sales.orders>");
     TagFormatter formatter =
         new TagFormatter(
             new TestMessageDecorator(),
@@ -38,8 +38,8 @@ class TagFormatterTest {
     assertTrue(updated.contains("<ins>Tier.Gold</ins>"));
 
     assertEquals("Deleted <b>tags</b>: <del>PII.Sensitive</del>", formatter.formatDeletedField());
-    assertEquals(Thread.CardStyle.TAGS, thread.getCardStyle());
-    assertEquals(Thread.FieldOperation.DELETED, thread.getFieldOperation());
+    assertEquals(FormattedMessage.CardStyle.TAGS, thread.getCardStyle());
+    assertEquals(FormattedMessage.FieldOperation.DELETED, thread.getFieldOperation());
     assertEquals("tags", thread.getFeedInfo().getFieldName());
     assertTrue(
         thread.getFeedInfo().getHeaderMessage().contains("alice deleted the tags for table"));
@@ -48,7 +48,8 @@ class TagFormatterTest {
 
   @Test
   void formatTagChangesForNestedFieldLinksUsesColumnLabel() {
-    Thread thread = baseThread("<#E::table::service.sales.orders::columns::order_id::description>");
+    FormattedMessage thread =
+        baseMessage("<#E::table::service.sales.orders::columns::order_id::description>");
     TagFormatter formatter =
         new TagFormatter(
             new TestMessageDecorator(),
@@ -61,12 +62,13 @@ class TagFormatterTest {
     assertTrue(message.contains("<b>description</b>"));
     assertTrue(message.contains("<b>order_id</b>"));
     assertTrue(message.contains("<ins>Glossary.Important</ins>"));
-    assertEquals(Thread.FieldOperation.ADDED, thread.getFieldOperation());
+    assertEquals(FormattedMessage.FieldOperation.ADDED, thread.getFieldOperation());
   }
 
   @Test
   void formatNestedTagUpdatesAndDeletesUseResolvedFieldLabels() {
-    Thread thread = baseThread("<#E::table::service.sales.orders::columns::order_id::description>");
+    FormattedMessage thread =
+        baseMessage("<#E::table::service.sales.orders::columns::order_id::description>");
     TagFormatter formatter =
         new TagFormatter(
             new TestMessageDecorator(),
@@ -84,12 +86,13 @@ class TagFormatterTest {
     String deleted = formatter.formatDeletedField();
     assertTrue(deleted.contains("Deleted <b>description</b> from column <b>order_id</b>:"));
     assertTrue(deleted.contains("<del>PII.Sensitive</del>"));
-    assertEquals(Thread.FieldOperation.DELETED, thread.getFieldOperation());
+    assertEquals(FormattedMessage.FieldOperation.DELETED, thread.getFieldOperation());
   }
 
   @Test
   void formatNestedTagChangesPreserveNonColumnFieldNames() {
-    Thread thread = baseThread("<#E::table::service.sales.orders::owners::alice::displayName>");
+    FormattedMessage thread =
+        baseMessage("<#E::table::service.sales.orders::owners::alice::displayName>");
     TagFormatter formatter =
         new TagFormatter(
             new TestMessageDecorator(),
@@ -107,8 +110,8 @@ class TagFormatterTest {
     return JsonUtils.pojoToJson(List.of(new TagLabel().withTagFQN(tagFqn)));
   }
 
-  private static Thread baseThread(String about) {
-    return new Thread()
+  private static FormattedMessage baseMessage(String about) {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withAbout(about)
         .withUpdatedBy("alice")

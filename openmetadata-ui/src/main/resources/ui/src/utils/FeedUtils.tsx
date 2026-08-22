@@ -12,19 +12,15 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
-import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
-import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
 import { ActivityEventType } from '../generated/entity/activity/activityEvent';
-import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
@@ -191,125 +187,6 @@ export const getEntityFieldDisplay = (entityField: string) => {
   }
 
   return null;
-};
-
-export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
-  let icon;
-
-  switch (fieldOperation) {
-    case FieldOperation.Added:
-      icon = AddIcon;
-
-      break;
-    case FieldOperation.Deleted:
-      icon = UpdatedIcon;
-
-      break;
-  }
-
-  return (
-    icon && (
-      <Icon component={icon} height={16} name={fieldOperation} width={16} />
-    )
-  );
-};
-
-const getActionLabelFromCardStyle = (
-  cardStyle?: CardStyle,
-  isApplication?: boolean
-) => {
-  let action: ReactNode = isApplication
-    ? t('label.installed-lowercase')
-    : t('label.added-lowercase');
-
-  if (cardStyle === CardStyle.EntityDeleted) {
-    action = (
-      <Typography.Text className="text-danger">
-        {isApplication
-          ? t('label.uninstalled-lowercase')
-          : t('label.deleted-lowercase')}
-      </Typography.Text>
-    );
-  } else if (cardStyle === CardStyle.EntitySoftDeleted) {
-    action = t('label.soft-deleted-lowercase');
-  }
-
-  return action;
-};
-
-export const getFeedHeaderTextFromCardStyle = (
-  fieldOperation?: FieldOperation,
-  cardStyle?: CardStyle,
-  fieldName?: string,
-  entityType?: EntityType
-) => {
-  if (fieldName === 'assets') {
-    return (
-      <Transi18next
-        i18nKey="message.feed-asset-action-header"
-        renderElement={<Typography.Text className="font-bold" />}
-        values={{
-          action: getActionLabelFromCardStyle(cardStyle),
-        }}
-      />
-    );
-  }
-  switch (cardStyle) {
-    case CardStyle.CustomProperties:
-      return (
-        <Transi18next
-          i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case CardStyle.TestCaseResult:
-      return (
-        <Transi18next
-          i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
-        />
-      );
-    case CardStyle.Description:
-    case CardStyle.Tags:
-    case CardStyle.Owner:
-      return (
-        <Transi18next
-          i18nKey="message.feed-field-action-entity-header"
-          renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
-          }
-          values={{
-            field: t(
-              `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
-            ),
-            action: t(
-              `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
-            ),
-          }}
-        />
-      );
-
-    case CardStyle.EntityCreated:
-    case CardStyle.EntityDeleted:
-    case CardStyle.EntitySoftDeleted:
-      if (entityType === EntityType.APPLICATION) {
-        return (
-          <Typography.Text>
-            {getActionLabelFromCardStyle(cardStyle, true)}{' '}
-            {t('label.app-lowercase')}
-          </Typography.Text>
-        );
-      }
-
-      return getActionLabelFromCardStyle(cardStyle);
-
-    case CardStyle.Default:
-    default:
-      return t('label.posted-on-lowercase');
-  }
 };
 
 export const getActivityEventHeaderText = (

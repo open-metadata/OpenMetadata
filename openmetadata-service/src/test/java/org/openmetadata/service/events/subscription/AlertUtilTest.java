@@ -16,6 +16,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -122,41 +123,34 @@ class AlertUtilTest {
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
-  // ---- shouldTriggerAlert: thread-type resource ("conversation" etc.) ------
+  // ---- shouldTriggerAlert: conversations and dedicated resources -----------
 
   @Test
-  void shouldTriggerAlert_conversationThread_conversationResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+  void shouldTriggerAlert_conversation_conversationResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(conversation(glossaryTermRef()), EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("conversation");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_taskThread_conversationResource_returnsFalse() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Task)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_CREATED);
+  void shouldTriggerAlert_taskEvent_conversationResource_returnsFalse() {
+    ChangeEvent event = entityChangeEvent(Entity.TASK);
     FilteringRules config = filteringRules("conversation");
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_taskThread_taskResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Task)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.TASK_CREATED);
+  void shouldTriggerAlert_taskEvent_taskResource_returnsTrue() {
+    ChangeEvent event = entityChangeEvent(Entity.TASK);
     FilteringRules config = filteringRules("task");
+    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_announcementEvent_announcementResource_returnsTrue() {
+    ChangeEvent event = entityChangeEvent(Entity.ANNOUNCEMENT);
+    FilteringRules config = filteringRules("announcement");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
@@ -172,89 +166,57 @@ class AlertUtilTest {
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
-  @Test
-  void shouldTriggerAlert_announcementEntityEvent_announcementResource_returnsTrue() {
-    ChangeEvent event =
-        new ChangeEvent()
-            .withId(UUID.randomUUID())
-            .withEventType(EventType.ENTITY_CREATED)
-            .withEntityType("announcement");
-    FilteringRules config = filteringRules("announcement");
-    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
-  }
-
-  // ---- shouldTriggerAlert: entity-type resource for thread events ----------
-  // These are the bug cases: thread events on a GlossaryTerm should fire
+  // ---- shouldTriggerAlert: entity-type resource for conversation events ----
+  // These are the bug cases: conversations on a GlossaryTerm should fire
   // when the subscription resource is "glossaryTerm", not just "conversation".
 
   @Test
   void shouldTriggerAlert_conversationOnGlossaryTerm_glossaryTermResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+    ChangeEvent event =
+        conversationChangeEvent(conversation(glossaryTermRef()), EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("glossaryTerm");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_threadUpdateOnGlossaryTerm_glossaryTermResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_UPDATED);
+  void shouldTriggerAlert_conversationUpdateOnGlossaryTerm_glossaryTermResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(conversation(glossaryTermRef()), EventType.THREAD_UPDATED);
     FilteringRules config = filteringRules("glossaryTerm");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
   void shouldTriggerAlert_postCreatedOnGlossaryTerm_glossaryTermResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(glossaryTermRef());
-    ChangeEvent event = threadChangeEvent(thread, EventType.POST_CREATED);
+    ChangeEvent event =
+        conversationChangeEvent(conversation(glossaryTermRef()), EventType.POST_CREATED);
     FilteringRules config = filteringRules("glossaryTerm");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_threadOnTable_glossaryTermResource_returnsFalse() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(new EntityReference().withId(UUID.randomUUID()).withType("table"));
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+  void shouldTriggerAlert_conversationOnTable_glossaryTermResource_returnsFalse() {
+    ChangeEvent event =
+        conversationChangeEvent(
+            conversation(new EntityReference().withId(UUID.randomUUID()).withType("table")),
+            EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("glossaryTerm");
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_threadOnTable_tableResource_returnsTrue() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(new EntityReference().withId(UUID.randomUUID()).withType("table"));
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+  void shouldTriggerAlert_conversationOnTable_tableResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(
+            conversation(new EntityReference().withId(UUID.randomUUID()).withType("table")),
+            EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("table");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
 
   @Test
-  void shouldTriggerAlert_threadWithNullEntityRef_entityTypeResource_returnsFalse() {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(null);
-    ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+  void shouldTriggerAlert_conversationWithNullEntityRef_entityTypeResource_returnsFalse() {
+    ChangeEvent event = conversationChangeEvent(conversation(null), EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("glossaryTerm");
     assertFalse(AlertUtil.shouldTriggerAlert(event, config));
   }
@@ -267,19 +229,19 @@ class AlertUtilTest {
 
   @Test
   void matchTestResult_threadEventAboutTestCase_returnsFalse() {
-    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    ChangeEvent event = conversationUpdatedEvent(testCaseRef());
     assertFalse(new AlertsRuleEvaluator(event).matchTestResult(List.of("Failed")));
   }
 
   @Test
   void matchPipelineState_threadEvent_returnsFalse() {
-    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    ChangeEvent event = conversationUpdatedEvent(testCaseRef());
     assertFalse(new AlertsRuleEvaluator(event).matchPipelineState(List.of("Failed")));
   }
 
   @Test
   void matchIngestionPipelineState_threadEvent_returnsFalse() {
-    ChangeEvent event = threadUpdatedEvent(testCaseRef());
+    ChangeEvent event = conversationUpdatedEvent(testCaseRef());
     assertFalse(new AlertsRuleEvaluator(event).matchIngestionPipelineState(List.of("failed")));
   }
 
@@ -310,7 +272,7 @@ class AlertUtilTest {
   void allowed_testCase_includeTrigger_thread_notDelivered() {
     assertFalse(
         AlertUtil.checkIfChangeEventIsAllowed(
-            threadUpdatedEvent(ref(Entity.TEST_CASE)),
+            conversationUpdatedEvent(ref(Entity.TEST_CASE)),
             observabilityRules(
                 "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
   }
@@ -319,7 +281,7 @@ class AlertUtilTest {
   void allowed_testCase_excludeTrigger_thread_notDelivered() {
     assertFalse(
         AlertUtil.checkIfChangeEventIsAllowed(
-            threadUpdatedEvent(ref(Entity.TEST_CASE)),
+            conversationUpdatedEvent(ref(Entity.TEST_CASE)),
             observabilityRules(
                 "testCase", ArgumentsInput.Effect.EXCLUDE, "matchTestResult({'Failed'})")));
   }
@@ -328,7 +290,7 @@ class AlertUtilTest {
   void allowed_pipeline_excludeTrigger_thread_notDelivered() {
     assertFalse(
         AlertUtil.checkIfChangeEventIsAllowed(
-            threadUpdatedEvent(ref(Entity.PIPELINE)),
+            conversationUpdatedEvent(ref(Entity.PIPELINE)),
             observabilityRules(
                 "pipeline", ArgumentsInput.Effect.EXCLUDE, "matchPipelineState({'Failed'})")));
   }
@@ -337,7 +299,7 @@ class AlertUtilTest {
   void allowed_ingestionPipeline_excludeTrigger_thread_notDelivered() {
     assertFalse(
         AlertUtil.checkIfChangeEventIsAllowed(
-            threadUpdatedEvent(ref(Entity.INGESTION_PIPELINE)),
+            conversationUpdatedEvent(ref(Entity.INGESTION_PIPELINE)),
             observabilityRules(
                 "ingestionPipeline",
                 ArgumentsInput.Effect.EXCLUDE,
@@ -380,7 +342,8 @@ class AlertUtilTest {
             .withRules(Collections.emptyList())
             .withActions(Collections.emptyList());
     assertTrue(
-        AlertUtil.checkIfChangeEventIsAllowed(threadUpdatedEvent(ref("glossaryTerm")), notif));
+        AlertUtil.checkIfChangeEventIsAllowed(
+            conversationUpdatedEvent(ref("glossaryTerm")), notif));
   }
 
   // ---- evaluateAlertConditions: compile-once cache --------------------------
@@ -432,6 +395,19 @@ class AlertUtilTest {
         .withEntityType(entityType);
   }
 
+  private static Conversation conversation(EntityReference entityReference) {
+    return new Conversation().withId(UUID.randomUUID()).withEntityRef(entityReference);
+  }
+
+  private static ChangeEvent conversationChangeEvent(
+      Conversation conversation, EventType eventType) {
+    return new ChangeEvent()
+        .withId(UUID.randomUUID())
+        .withEventType(eventType)
+        .withEntityType(Entity.CONVERSATION)
+        .withEntity(conversation);
+  }
+
   private static ChangeEvent threadChangeEvent(Thread thread, EventType eventType) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -440,17 +416,12 @@ class AlertUtilTest {
         .withEntity(thread);
   }
 
-  private static ChangeEvent threadUpdatedEvent(EntityReference parent) {
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withType(ThreadType.Conversation)
-            .withEntityRef(parent);
+  private static ChangeEvent conversationUpdatedEvent(EntityReference parent) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEventType(EventType.THREAD_UPDATED)
-        .withEntityType(Entity.THREAD)
-        .withEntity(thread)
+        .withEntityType(Entity.CONVERSATION)
+        .withEntity(conversation(parent))
         .withChangeDescription(new ChangeDescription());
   }
 

@@ -265,16 +265,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const taskFilterMatcher =
-    (filterType: string): ResponseMatcher =>
+    (predicate: (url: URL) => boolean): ResponseMatcher =>
     (response) => {
-      const url = response.url();
+      const url = new URL(response.url());
 
-      return (
-        url.includes('/api/v1/tasks') ||
-        (url.includes('/api/v1/feed') &&
-          url.includes('type=Task') &&
-          url.includes(`filterType=${filterType}`))
-      );
+      return response.request().method() === 'GET' && predicate(url);
     };
 
   const widget = await getWidgetForFilters(page, widgetKey);
@@ -285,21 +280,25 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     page,
     widget,
     'Mentions',
-    taskFilterMatcher('MENTIONS')
+    taskFilterMatcher(
+      (url) =>
+        url.pathname === '/api/v1/tasks' &&
+        url.searchParams.has('mentionedUser')
+    )
   );
 
   await selectWidgetSortOption(
     page,
     widget,
     'Assigned',
-    taskFilterMatcher('ASSIGNED_TO')
+    taskFilterMatcher((url) => url.pathname === '/api/v1/tasks/assigned')
   );
 
   await selectWidgetSortOption(
     page,
     widget,
     'All',
-    taskFilterMatcher('OWNER_OR_FOLLOWS')
+    taskFilterMatcher((url) => url.pathname === '/api/v1/tasks/visible')
   );
 };
 

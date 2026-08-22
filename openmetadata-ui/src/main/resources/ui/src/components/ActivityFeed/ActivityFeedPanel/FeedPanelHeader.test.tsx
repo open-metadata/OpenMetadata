@@ -13,7 +13,6 @@
 
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelHeader from './FeedPanelHeader';
 
 const mockFeedPanelHeaderProp = {
@@ -98,13 +97,9 @@ describe('Test FeedPanelHeader Component', () => {
     expect(entityAttribute).toHaveTextContent('unique_column_test');
   });
 
-  it('Should render noun according to the thread type', async () => {
+  it('defaults the noun to conversation', async () => {
     const { container } = render(
-      <FeedPanelHeader
-        {...mockFeedPanelHeaderProp}
-        noun={undefined}
-        threadType={ThreadType.Announcement}
-      />,
+      <FeedPanelHeader {...mockFeedPanelHeaderProp} noun={undefined} />,
       {
         wrapper: MemoryRouter,
       }
@@ -112,6 +107,6 @@ describe('Test FeedPanelHeader Component', () => {
 
     const noun = await findByTestId(container, 'header-noun');
 
-    expect(noun).toHaveTextContent(/Announcement label.on-lowercase/i);
+    expect(noun).toHaveTextContent(/Conversation label.on-lowercase/i);
   });
 });

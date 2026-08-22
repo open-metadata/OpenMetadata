@@ -20,7 +20,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -31,6 +30,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class IngestionPipelineFormatter implements EntityFormatter {
@@ -39,7 +39,7 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
@@ -49,7 +49,7 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   }
 
   private String transformIngestionPipelineStatus(
-      MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
     EntityInterface entity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);

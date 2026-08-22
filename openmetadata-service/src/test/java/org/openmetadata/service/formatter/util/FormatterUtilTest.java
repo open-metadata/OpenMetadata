@@ -26,7 +26,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +35,6 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -57,10 +55,10 @@ class FormatterUtilTest {
 
   @Test
   void getEntityLinkForFieldNameParsesNestedAndExtensionPaths() {
-    Thread thread = baseThread();
+    FormattedMessage message = baseMessage();
 
     MessageParser.EntityLink nestedLink =
-        FormatterUtil.getEntityLinkForFieldName("columns.comment.description", thread);
+        FormatterUtil.getEntityLinkForFieldName("columns.comment.description", message);
     assertEquals(Entity.TABLE, nestedLink.getEntityType());
     assertEquals("service.sales.orders", nestedLink.getEntityFQN());
     assertEquals("columns", nestedLink.getFieldName());
@@ -68,7 +66,7 @@ class FormatterUtilTest {
     assertEquals("description", nestedLink.getArrayFieldValue());
 
     MessageParser.EntityLink extensionLink =
-        FormatterUtil.getEntityLinkForFieldName("extension.customProperty", thread);
+        FormatterUtil.getEntityLinkForFieldName("extension.customProperty", message);
     assertEquals("extension", extensionLink.getFieldName());
     assertEquals("extension", extensionLink.getArrayFieldName());
     assertNull(extensionLink.getArrayFieldValue());
@@ -90,7 +88,7 @@ class FormatterUtilTest {
 
   @Test
   void transformMessageChoosesParserKeyFromArrayFieldValueOrResolvedFieldName() {
-    Thread thread = baseThread();
+    FormattedMessage message = baseMessage();
 
     DefaultFieldFormatter nestedFormatter = mock(DefaultFieldFormatter.class);
     when(nestedFormatter.getFormattedMessage(FormatterUtil.CHANGE_TYPE.UPDATE))
@@ -106,26 +104,27 @@ class FormatterUtilTest {
       parserFactory
           .when(
               () ->
-                  ParserFactory.getFieldParserObject(decorator, thread, nestedField, "description"))
+                  ParserFactory.getFieldParserObject(
+                      decorator, message, nestedField, "description"))
           .thenReturn(nestedFormatter);
       parserFactory
-          .when(() -> ParserFactory.getFieldParserObject(decorator, thread, simpleField, "owners"))
+          .when(() -> ParserFactory.getFieldParserObject(decorator, message, simpleField, "owners"))
           .thenReturn(simpleFormatter);
 
       assertEquals(
           "nested",
           FormatterUtil.transformMessage(
-              decorator, thread, nestedField, FormatterUtil.CHANGE_TYPE.UPDATE));
+              decorator, message, nestedField, FormatterUtil.CHANGE_TYPE.UPDATE));
       assertEquals(
           "simple",
           FormatterUtil.transformMessage(
-              decorator, thread, simpleField, FormatterUtil.CHANGE_TYPE.ADD));
+              decorator, message, simpleField, FormatterUtil.CHANGE_TYPE.ADD));
     }
   }
 
   @Test
   void getFormattedMessagesHandlesUpdatesAdditionsDeletesAndMergedFieldChanges() {
-    Thread thread = baseThread();
+    FormattedMessage message = baseMessage();
     EntityFormatter entityFormatter = mock(EntityFormatter.class);
     when(entityFormatter.format(any(), any(), any(), any()))
         .thenAnswer(
@@ -155,15 +154,15 @@ class FormatterUtilTest {
           .when(() -> ParserFactory.getEntityParser(Entity.TABLE))
           .thenReturn(entityFormatter);
 
-      List<Thread> mixedMessages =
-          FormatterUtil.getFormattedMessages(decorator, thread, mixedChanges);
+      List<FormattedMessage> mixedMessages =
+          FormatterUtil.getFormattedMessages(decorator, message, mixedChanges);
       assertEquals(2, mixedMessages.size());
       assertEquals("UPDATE:owners", mixedMessages.get(0).getMessage());
       assertEquals("ADD:tags", mixedMessages.get(1).getMessage());
       assertNotNull(mixedMessages.get(0).getId());
 
-      List<Thread> mergedMessages =
-          FormatterUtil.getFormattedMessages(decorator, thread, mergedChanges);
+      List<FormattedMessage> mergedMessages =
+          FormatterUtil.getFormattedMessages(decorator, message, mergedChanges);
       assertEquals(2, mergedMessages.size());
       assertEquals("UPDATE:description", mergedMessages.get(0).getMessage());
       assertEquals("ADD:displayName", mergedMessages.get(1).getMessage());
@@ -188,7 +187,7 @@ class FormatterUtilTest {
   }
 
   @Test
-  void getChangeEventFromResponseContextBuildsEntityAndThreadEvents() {
+  void getChangeEventFromResponseContextBuildsEntityEvents() {
     UUID entityId = UUID.randomUUID();
     EntityReference entityRef =
         new EntityReference()
@@ -217,26 +216,6 @@ class FormatterUtilTest {
     assertEquals(Entity.TABLE, entityEvent.get().getEntityType());
     assertEquals("service.sales.orders", entityEvent.get().getEntityFullyQualifiedName());
     assertEquals("alice", entityEvent.get().getUserName());
-
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withUpdatedAt(456L)
-            .withDomains(List.of(UUID.randomUUID()))
-            .withChangeDescription(new ChangeDescription().withPreviousVersion(1.0));
-    ContainerResponseContext threadResponse = mock(ContainerResponseContext.class);
-    when(threadResponse.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER)).thenReturn(null);
-    when(threadResponse.getStatus()).thenReturn(Response.Status.CREATED.getStatusCode());
-    when(threadResponse.hasEntity()).thenReturn(true);
-    when(threadResponse.getEntity()).thenReturn(thread);
-
-    Optional<ChangeEvent> threadEvent =
-        FormatterUtil.getChangeEventFromResponseContext(threadResponse, "bob");
-    assertTrue(threadEvent.isPresent());
-    assertEquals(EventType.ENTITY_CREATED, threadEvent.get().getEventType());
-    assertEquals(Entity.THREAD, threadEvent.get().getEntityType());
-    assertEquals("bob", threadEvent.get().getUserName());
-    assertEquals(thread.getDomains(), threadEvent.get().getDomains());
   }
 
   @Test
@@ -307,8 +286,8 @@ class FormatterUtilTest {
     }
   }
 
-  private static Thread baseThread() {
-    return new Thread()
+  private static FormattedMessage baseMessage() {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withAbout("<#E::table::service.sales.orders>")
         .withEntityRef(

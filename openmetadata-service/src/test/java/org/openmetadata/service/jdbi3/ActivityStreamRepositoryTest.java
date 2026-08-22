@@ -19,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
@@ -135,6 +137,26 @@ class ActivityStreamRepositoryTest {
             ActivityEventType.TAGS_UPDATED,
             ActivityEventType.OWNER_UPDATED),
         deliveredTypes);
+  }
+
+  @Test
+  void listCountAndRetentionDoNotQueryConversationStorage() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    when(dao.list(0L, 25)).thenReturn(List.of());
+    when(dao.count(0L)).thenReturn(0);
+    when(dao.deleteOlderThan(100L)).thenReturn(3);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      assertEquals(List.of(), repository.list(0L, 25));
+      assertEquals(0, repository.count(0L));
+      assertEquals(3, repository.deleteOlderThan(100L));
+
+      verify(dao).list(0L, 25);
+      verify(dao).count(0L);
+      verify(dao).deleteOlderThan(100L);
+      entityMock.verify(Entity::getConversationRepository, never());
+    }
   }
 
   private static ChangeEvent changeEventWith(String userName) {
