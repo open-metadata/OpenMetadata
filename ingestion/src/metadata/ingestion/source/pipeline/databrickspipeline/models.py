@@ -13,6 +13,7 @@
 Databricks pipeline Source Model module
 """
 
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
@@ -86,3 +87,79 @@ class DBRun(BaseModel):
     start_time: Optional[int] = 0  # noqa: UP045
     end_time: Optional[int] = 0  # noqa: UP045
     run_page_url: Optional[str] = None  # noqa: UP045
+
+
+@dataclass
+class KafkaSourceConfig:
+    """Kafka source configuration read out of a DLT pipeline's source code"""
+
+    bootstrap_servers: Optional[str] = None  # noqa: UP045
+    topics: List[str] = field(default_factory=list)  # noqa: UP006
+    group_id_prefix: Optional[str] = None  # noqa: UP045
+
+
+@dataclass
+class DLTLibrarySource:
+    """
+    One source location a DLT pipeline declares in `spec.libraries`.
+
+    A notebook or file entry is a concrete path. A glob entry is the directory to
+    expand plus the pattern its contents must match, so a selective include such
+    as `/transformations/*.sql` does not pull in everything under the directory.
+    """
+
+    path: str
+    pattern: Optional[str] = None  # noqa: UP045
+    # True and False come from the spec. None means it did not say, which happens
+    # for a glob include carrying neither a wildcard nor a trailing slash, and is
+    # settled by listing the path rather than by guessing from its shape.
+    is_directory: Optional[bool] = False  # noqa: UP045
+
+    @property
+    def is_recursive(self) -> bool:
+        """
+        Whether selecting the sources means descending below `path`.
+
+        With no pattern the whole tree is in scope, which is what a `source_path`
+        points at. Otherwise only the part of the pattern below the base directory
+        matters: `**` spans directories, and a `/` means the pattern names a child
+        directory, as in `/tx/2024_?/file.sql`. A pattern such as `/tx/*.sql`
+        selects within one directory and stops there.
+        """
+        if self.pattern is None:
+            return True
+        remainder = self.pattern[len(self.path) :] if self.pattern.startswith(self.path) else self.pattern
+        return "**" in remainder or "/" in remainder
+
+
+@dataclass
+class DLTTableReference:
+    """
+    Where a DLT dataset reference points, once resolved.
+
+    A reference is written either bare (`orders`, a sibling dataset in the same
+    pipeline) or qualified (`catalog.schema.orders`). Both forms resolve into
+    these three named parts, so callers never index into a positional tuple.
+    """
+
+    catalog: Optional[str]  # noqa: UP045
+    schema: Optional[str]  # noqa: UP045
+    table: str
+
+
+@dataclass
+class DLTTableDependency:
+    """
+    One dataset declared by a DLT pipeline, plus what it reads from.
+
+    `depends_on` entries are returned exactly as the pipeline source spells them.
+    A bare name is a sibling dataset in the same pipeline and gets resolved against
+    the pipeline's target catalog and schema. A qualified name already says where
+    the table lives and is resolved as written.
+    """
+
+    table_name: str
+    depends_on: List[str] = field(default_factory=list)  # noqa: UP006
+    reads_from_kafka: bool = False
+    reads_from_s3: bool = False
+    s3_locations: List[str] = field(default_factory=list)  # noqa: UP006
