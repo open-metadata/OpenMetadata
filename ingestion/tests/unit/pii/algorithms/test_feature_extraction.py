@@ -232,7 +232,12 @@ def test_aadhaar_extraction(analyzer):
         "0249-3285-1294",
     ]
     context = ["aadhaar", "govt id", "uidai"]
-    extracted = extract_pii_tags(analyzer, samples, context=context)
+    extracted = extract_pii_tags(
+        analyzer,
+        samples,
+        context=context,
+        recognizer_result_patcher=date_time_patcher,
+    )
     assert get_top_pii_tag(extracted) == PIITag.IN_AADHAAR, (
         PIITag.IN_AADHAAR,
         samples,
