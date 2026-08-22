@@ -13,12 +13,13 @@
 
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
+import { OntologyStudioDataGraph } from '../../../generated/api/data/ontologyStudioDataGraph';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { TermRelation } from '../../../generated/type/termRelation';
+import { Provenance, TermRelation } from '../../../generated/type/termRelation';
 import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
   OntologyEdge,
@@ -44,6 +45,10 @@ export const METRIC_NODE_TYPE = 'metric';
 export const METRIC_RELATION_TYPE = 'metricFor';
 export const ASSET_NODE_TYPE = 'dataAsset';
 export const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
+export const ASSET_BINDING_EDGE_KIND = 'assetBinding';
+export const SEMANTIC_PROJECTION_EDGE_KIND = 'semanticProjection';
+export const OBSERVED_LINEAGE_EDGE_KIND = 'observedLineage';
+export const DATA_MODE_MAX_PROJECTED_EDGES = 1000;
 
 export function isValidUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -57,6 +62,94 @@ export function isTermNode(node: OntologyNode): boolean {
 
 export function isDataAssetLikeNode(node: OntologyNode): boolean {
   return node.type === ASSET_NODE_TYPE || node.type === METRIC_NODE_TYPE;
+}
+
+export function projectOntologyRelationsToAssets(
+  graphData: OntologyGraphData,
+  maxProjectedEdges = DATA_MODE_MAX_PROJECTED_EDGES
+): OntologyGraphData {
+  const nodeById = new Map(graphData.nodes.map((node) => [node.id, node]));
+  const termToAssetIds = new Map<string, Set<string>>();
+
+  graphData.edges.forEach((edge) => {
+    if (
+      edge.relationType !== ASSET_RELATION_TYPE &&
+      edge.relationType !== METRIC_RELATION_TYPE
+    ) {
+      return;
+    }
+    const fromNode = nodeById.get(edge.from);
+    const toNode = nodeById.get(edge.to);
+    const assetNode =
+      fromNode && isDataAssetLikeNode(fromNode) ? fromNode : toNode;
+    const termNode = fromNode && isTermNode(fromNode) ? fromNode : toNode;
+    if (
+      !assetNode ||
+      !termNode ||
+      !isDataAssetLikeNode(assetNode) ||
+      !isTermNode(termNode)
+    ) {
+      return;
+    }
+    const assetIds = termToAssetIds.get(termNode.id) ?? new Set<string>();
+    assetIds.add(assetNode.id);
+    termToAssetIds.set(termNode.id, assetIds);
+  });
+
+  const existingEdgeKeys = new Set(
+    graphData.edges.map(
+      (edge) =>
+        `${edge.from}::${edge.to}::${edge.relationType}::${edge.edgeKind ?? ''}`
+    )
+  );
+  const projectedEdges: OntologyEdge[] = [];
+
+  relationLoop: for (const edge of graphData.edges) {
+    if (projectedEdges.length >= maxProjectedEdges) {
+      break;
+    }
+    const fromNode = nodeById.get(edge.from);
+    const toNode = nodeById.get(edge.to);
+    if (
+      !fromNode ||
+      !toNode ||
+      !isTermNode(fromNode) ||
+      !isTermNode(toNode) ||
+      edge.relationType.toLowerCase() === 'parentof'
+    ) {
+      continue;
+    }
+    const fromAssetIds = termToAssetIds.get(edge.from) ?? [];
+    const toAssetIds = termToAssetIds.get(edge.to) ?? [];
+    for (const fromAssetId of fromAssetIds) {
+      for (const toAssetId of toAssetIds) {
+        if (projectedEdges.length >= maxProjectedEdges) {
+          break relationLoop;
+        }
+        if (fromAssetId === toAssetId) {
+          continue;
+        }
+        const projectedEdge: OntologyEdge = {
+          from: fromAssetId,
+          to: toAssetId,
+          label: edge.label,
+          relationType: edge.relationType,
+          edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
+          provenance: Provenance.Inferred,
+        };
+        const edgeKey = `${projectedEdge.from}::${projectedEdge.to}::${projectedEdge.relationType}::${projectedEdge.edgeKind}`;
+        if (!existingEdgeKeys.has(edgeKey)) {
+          existingEdgeKeys.add(edgeKey);
+          projectedEdges.push(projectedEdge);
+        }
+      }
+    }
+  }
+
+  return {
+    nodes: graphData.nodes,
+    edges: [...graphData.edges, ...projectedEdges],
+  };
 }
 
 export function getScopedTermNodes(
@@ -240,10 +333,16 @@ export function buildGraphFromAllTerms(
           if (!edgeSet.has(edgeKey)) {
             edgeSet.add(edgeKey);
             edges.push({
+              id: relation.id,
               from: term.id,
               to: relatedTermRef.id,
               label: relationType,
               relationType,
+              createdAt: relation.createdAt,
+              createdBy: relation.createdBy,
+              provenance: relation.provenance,
+              relationshipType: relation.relationshipType,
+              status: relation.status,
             });
           }
         }
@@ -317,6 +416,84 @@ export function buildGraphFromCounts(
   });
 
   return { nodes, edges };
+}
+
+function glossaryForTerm(
+  fullyQualifiedName: string,
+  glossaries: Glossary[]
+): Glossary | undefined {
+  return glossaries.find((glossary) => {
+    const glossaryFqn = glossary.fullyQualifiedName ?? glossary.name;
+
+    return (
+      fullyQualifiedName === glossaryFqn ||
+      fullyQualifiedName.startsWith(`${glossaryFqn}.`)
+    );
+  });
+}
+
+export function buildGraphFromStudioData(
+  data: OntologyStudioDataGraph,
+  glossaries: Glossary[],
+  t: TFunction
+): OntologyGraphData {
+  const nodes = new Map<string, OntologyNode>();
+  const edges: OntologyEdge[] = data.edges.map((edge) => ({
+    id: edge.id,
+    from: edge.from,
+    to: edge.to,
+    label: edge.relationType,
+    relationType: edge.relationType,
+    relationshipType: edge.relationshipType,
+  }));
+
+  data.clusters.forEach((cluster) => {
+    const glossary = glossaryForTerm(
+      cluster.term.fullyQualifiedName,
+      glossaries
+    );
+    nodes.set(cluster.term.id, {
+      id: cluster.term.id,
+      assetCount: cluster.assetCount,
+      loadedAssetCount: cluster.assets.length,
+      fullyQualifiedName: cluster.term.fullyQualifiedName,
+      glossaryId: glossary?.id,
+      group: glossary?.displayName ?? glossary?.name,
+      label: cluster.term.displayName ?? cluster.term.name,
+      originalLabel: cluster.term.displayName ?? cluster.term.name,
+      type: 'glossaryTerm',
+    });
+
+    cluster.assets.forEach((asset) => {
+      const label =
+        asset.entity.displayName ??
+        asset.entity.name ??
+        asset.entity.fullyQualifiedName ??
+        asset.entity.id;
+      nodes.set(asset.entity.id, {
+        id: asset.entity.id,
+        columnCount: asset.columnCount,
+        entityRef: asset.entity,
+        fullyQualifiedName: asset.entity.fullyQualifiedName,
+        label,
+        originalLabel: label,
+        serviceLabel:
+          asset.serviceType ??
+          asset.service?.displayName ??
+          asset.service?.name,
+        type: ASSET_NODE_TYPE,
+      });
+      edges.push({
+        edgeKind: ASSET_BINDING_EDGE_KIND,
+        from: asset.entity.id,
+        label: t('label.tagged-with'),
+        relationType: ASSET_RELATION_TYPE,
+        to: cluster.term.id,
+      });
+    });
+  });
+
+  return { nodes: [...nodes.values()], edges };
 }
 
 export function mergeMetricsIntoGraph(

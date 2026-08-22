@@ -12,10 +12,15 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerCardinalityData as CardinalityData } from '../../support/entity/OntologyExplorerDataClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
+  addRelationTypesWithCardinality,
+  addTermRelation,
   applyGlossaryFilter,
   createApiContext,
+  deleteEntities,
+  deleteRelationTypeByName,
   disposeApiContext,
   navigateToOntologyExplorer,
   readCardinalityMap,
@@ -24,24 +29,158 @@ import {
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'serial' });
+
+// Unique suffix per worker/repeat so parallel runs don't share relation type names.
+const RUN_ID = Math.random().toString(36).slice(2, 8);
+const CUSTOM_RELATION_NAMES = {
+  ONE_TO_ONE: `pw-c-oto-${RUN_ID}`,
+  ONE_TO_MANY: `pw-c-otm-${RUN_ID}`,
+  MANY_TO_ONE: `pw-c-mto-${RUN_ID}`,
+  MANY_TO_MANY: `pw-c-mtm-${RUN_ID}`,
+  CUSTOM_1_M: `pw-c-cus-${RUN_ID}`,
+} as const;
+
+// Each relation type gets its own isolated source-target pair so no single
+// term accumulates multiple cardinality-constrained relations, which would
+// trigger backend re-validation failures on the second PATCH.
+const glossary = new Glossary();
+const otoSrc = new GlossaryTerm(glossary);
+const otoDst = new GlossaryTerm(glossary);
+const otmSrc = new GlossaryTerm(glossary);
+const otmDst = new GlossaryTerm(glossary);
+const mtoSrc = new GlossaryTerm(glossary);
+const mtoDst = new GlossaryTerm(glossary);
+const mtmSrc = new GlossaryTerm(glossary);
+const mtmDst = new GlossaryTerm(glossary);
+const cusSrc = new GlossaryTerm(glossary);
+const cusDst = new GlossaryTerm(glossary);
+const relSrc = new GlossaryTerm(glossary);
+const relDst = new GlossaryTerm(glossary);
 
 test.describe('Ontology Explorer - Cardinality Labels', () => {
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await CardinalityData.setup(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+
+    await glossary.create(apiContext);
+    await otoSrc.create(apiContext);
+    await otoDst.create(apiContext);
+    await otmSrc.create(apiContext);
+    await otmDst.create(apiContext);
+    await mtoSrc.create(apiContext);
+    await mtoDst.create(apiContext);
+    await mtmSrc.create(apiContext);
+    await mtmDst.create(apiContext);
+    await cusSrc.create(apiContext);
+    await cusDst.create(apiContext);
+    await relSrc.create(apiContext);
+    await relDst.create(apiContext);
+
+    // Keep setup idempotent because CI retries can encounter relationship types
+    // retained by an interrupted prior attempt.
+    const ALL_CUSTOM_TYPES = [
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_ONE,
+        displayName: 'PW One To One',
+        cardinality: 'ONE_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.ONE_TO_MANY,
+        displayName: 'PW One To Many',
+        cardinality: 'ONE_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_ONE,
+        displayName: 'PW Many To One',
+        cardinality: 'MANY_TO_ONE',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.MANY_TO_MANY,
+        displayName: 'PW Many To Many',
+        cardinality: 'MANY_TO_MANY',
+      },
+      {
+        name: CUSTOM_RELATION_NAMES.CUSTOM_1_M,
+        displayName: 'PW Custom 1:M',
+        cardinality: 'CUSTOM',
+        sourceMax: 1,
+        targetMax: null,
+      },
+    ];
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
+
+    // Reconfirm the first-class entities before patching terms so a concurrent
+    // cleanup cannot turn the following failures into misleading graph errors.
+    await addRelationTypesWithCardinality(apiContext, ALL_CUSTOM_TYPES);
+
+    await addTermRelation(
+      apiContext,
+      otoSrc,
+      otoDst,
+      CUSTOM_RELATION_NAMES.ONE_TO_ONE
+    );
+    await addTermRelation(
+      apiContext,
+      otmSrc,
+      otmDst,
+      CUSTOM_RELATION_NAMES.ONE_TO_MANY
+    );
+    await addTermRelation(
+      apiContext,
+      mtoSrc,
+      mtoDst,
+      CUSTOM_RELATION_NAMES.MANY_TO_ONE
+    );
+    await addTermRelation(
+      apiContext,
+      mtmSrc,
+      mtmDst,
+      CUSTOM_RELATION_NAMES.MANY_TO_MANY
+    );
+    await addTermRelation(
+      apiContext,
+      cusSrc,
+      cusDst,
+      CUSTOM_RELATION_NAMES.CUSTOM_1_M
+    );
+    await addTermRelation(apiContext, relSrc, relDst, 'relatedTo');
+
+    await disposeApiContext(page, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await CardinalityData.teardown(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+
+    await deleteEntities(
+      apiContext,
+      otoSrc,
+      otoDst,
+      otmSrc,
+      otmDst,
+      mtoSrc,
+      mtoDst,
+      mtmSrc,
+      mtmDst,
+      cusSrc,
+      cusDst,
+      relSrc,
+      relDst,
+      glossary
+    );
+    await Promise.all(
+      Object.values(CUSTOM_RELATION_NAMES).map((name) =>
+        deleteRelationTypeByName(apiContext, name)
+      )
+    );
+
+    await disposeApiContext(page, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
+    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, CardinalityData.glossary.responseData.id);
+    await applyGlossaryFilter(page, glossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -51,12 +190,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE
+        CUSTOM_RELATION_NAMES.ONE_TO_ONE
       );
 
-      expect(
-        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE]
-      ).toEqual({
+      expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_ONE]).toEqual({
         startLabelText: '1',
         endLabelText: '1',
       });
@@ -67,12 +204,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY
+        CUSTOM_RELATION_NAMES.ONE_TO_MANY
       );
 
-      expect(
-        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY]
-      ).toEqual({
+      expect(cardinalityMap[CUSTOM_RELATION_NAMES.ONE_TO_MANY]).toEqual({
         startLabelText: '1',
         endLabelText: 'M',
       });
@@ -83,58 +218,45 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE
+        CUSTOM_RELATION_NAMES.MANY_TO_ONE
       );
 
-      expect(
-        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE]
-      ).toEqual({
+      expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_ONE]).toEqual({
         startLabelText: 'M',
         endLabelText: '1',
       });
     });
 
-    test('MANY_TO_MANY relation type should have label "M" on both ends', async ({
+    test('unconstrained MANY_TO_MANY relation type should omit endpoint labels', async ({
+      page,
+    }) => {
+      const cardinalityMap = await readCardinalityMap(page);
+
+      expect(
+        cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_MANY]
+      ).toBeUndefined();
+    });
+
+    test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "M" → "1"', async ({
       page,
     }) => {
       const cardinalityMap = await readCardinalityMap(
         page,
-        CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY
+        CUSTOM_RELATION_NAMES.CUSTOM_1_M
       );
 
-      expect(
-        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY]
-      ).toEqual({
+      expect(cardinalityMap[CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
         startLabelText: 'M',
-        endLabelText: 'M',
+        endLabelText: '1',
       });
     });
 
-    test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "1" → "M"', async ({
+    test('unconstrained built-in relation type omits endpoint labels', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(
-        page,
-        CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M
-      );
+      const cardinalityMap = await readCardinalityMap(page);
 
-      expect(
-        cardinalityMap[CardinalityData.CUSTOM_RELATION_NAMES.CUSTOM_1_M]
-      ).toEqual({
-        startLabelText: '1',
-        endLabelText: 'M',
-      });
-    });
-
-    test('built-in relation type shows M:M cardinality in the cardinality map', async ({
-      page,
-    }) => {
-      const cardinalityMap = await readCardinalityMap(page, 'relatedTo');
-
-      expect(cardinalityMap['relatedTo']).toEqual({
-        startLabelText: 'M',
-        endLabelText: 'M',
-      });
+      expect(cardinalityMap.relatedTo).toBeUndefined();
     });
   });
 
@@ -147,14 +269,10 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       const relationTypes = new Set(edges.map((e) => e.relationType));
 
       expect(
-        relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_ONE) ||
-          relationTypes.has(
-            CardinalityData.CUSTOM_RELATION_NAMES.ONE_TO_MANY
-          ) ||
-          relationTypes.has(
-            CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_ONE
-          ) ||
-          relationTypes.has(CardinalityData.CUSTOM_RELATION_NAMES.MANY_TO_MANY)
+        relationTypes.has(CUSTOM_RELATION_NAMES.ONE_TO_ONE) ||
+          relationTypes.has(CUSTOM_RELATION_NAMES.ONE_TO_MANY) ||
+          relationTypes.has(CUSTOM_RELATION_NAMES.MANY_TO_ONE) ||
+          relationTypes.has(CUSTOM_RELATION_NAMES.MANY_TO_MANY)
       ).toBe(true);
     });
 
@@ -171,37 +289,18 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       const stats = page.getByTestId('ontology-explorer-stats');
       await expect(stats).toBeVisible();
       const text = await stats.textContent();
-      const match = text?.match(/(\d+)\s+Relations?/);
+      const match = text?.match(/(\d+)\s+relations?/i);
       const relationCount = match ? Number(match[1]) : 0;
 
       expect(relationCount).toBeGreaterThan(0);
     });
   });
 
-  test.describe('Edge labels toggle with cardinality edges', () => {
-    test('cardinality map is populated when edge labels are on (default)', async ({
-      page,
-    }) => {
+  test.describe('Cardinality labels in Studio graph', () => {
+    test('cardinality map is populated by default', async ({ page }) => {
       const cardinalityMap = await readCardinalityMap(page);
 
       expect(Object.keys(cardinalityMap).length).toBeGreaterThan(0);
-    });
-
-    test('graph remains stable after toggling edge labels off and back on', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-
-      const toggle = page.getByTestId('graph-settings-edge-labels-toggle');
-      await toggle.click();
-      await expect(toggle).not.toHaveAttribute('data-selected', 'true');
-
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('data-selected', 'true');
-
-      await page.getByTestId('graph-settings-close').click();
-      await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     });
   });
 });

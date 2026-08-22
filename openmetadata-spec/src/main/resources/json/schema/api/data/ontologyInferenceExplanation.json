@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyInferenceExplanation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyInferenceExplanation",
+  "description": "Typed explanation of the materialized inference rules that produced an RDF statement.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyInferenceExplanation",
+  "definitions": {
+    "ruleExplanation": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyInferenceRuleExplanation",
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "../configuration/rdf/inferenceRule.json"
+        },
+        "graphUri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "lastMaterializedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tripleCount": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        }
+      },
+      "required": ["rule", "graphUri", "tripleCount"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "glossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "statement": {
+      "$ref": "../../type/rdfStatement.json"
+    },
+    "asserted": {
+      "type": "boolean"
+    },
+    "inferred": {
+      "type": "boolean"
+    },
+    "explanations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ruleExplanation"
+      },
+      "default": []
+    }
+  },
+  "required": ["glossary", "statement", "asserted", "inferred", "explanations"],
+  "additionalProperties": false
+}

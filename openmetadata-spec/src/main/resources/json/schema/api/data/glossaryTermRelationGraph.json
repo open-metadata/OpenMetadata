@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/glossaryTermRelationGraph.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTermRelationGraph",
+  "description": "A bounded graph of glossary terms and their typed relations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GlossaryTermRelationGraph",
+  "properties": {
+    "nodes": {
+      "description": "Glossary terms included in the graph.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphNode.json"
+      }
+    },
+    "edges": {
+      "description": "Directed relations included in the graph.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphEdge.json"
+      }
+    },
+    "truncated": {
+      "description": "Whether additional authorized nodes or edges were omitted by the requested slice limits.",
+      "type": "boolean",
+      "default": false
+    },
+    "truncationReason": {
+      "description": "Limit that bounded the returned graph slice.",
+      "javaType": "org.openmetadata.schema.api.data.OntologyGraphTruncationReason",
+      "type": "string",
+      "enum": ["NONE", "NODE_LIMIT", "EDGE_LIMIT"],
+      "default": "NONE"
+    },
+    "nodeLimit": {
+      "description": "Maximum number of nodes requested for this slice.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "edgeLimit": {
+      "description": "Maximum number of edges requested for this slice.",
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "nodes",
+    "edges",
+    "truncated",
+    "truncationReason",
+    "nodeLimit",
+    "edgeLimit"
+  ],
+  "additionalProperties": false
+}

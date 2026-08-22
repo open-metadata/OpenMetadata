@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyChangeApplicationResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyChangeApplicationResult",
+  "description": "Typed outcome of applying an ontology change set.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyChangeApplicationResult",
+  "definitions": {
+    "operationStatus": {
+      "javaType": "org.openmetadata.schema.type.OntologyChangeOperationResultStatus",
+      "type": "string",
+      "enum": ["IN_PROGRESS", "APPLIED", "ROLLED_BACK", "SKIPPED", "FAILED"]
+    },
+    "operationResult": {
+      "javaType": "org.openmetadata.schema.type.OntologyChangeOperationResult",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "status": {
+          "$ref": "#/definitions/operationStatus"
+        },
+        "entity": {
+          "$ref": "entityReference.json"
+        },
+        "entityVersion": {
+          "$ref": "entityHistory.json#/definitions/entityVersion"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": ["operationId", "status"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "appliedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "appliedBy": {
+      "type": "string"
+    },
+    "operationsProcessed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "operationsApplied": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "operationsFailed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operationResult"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "appliedAt",
+    "appliedBy",
+    "operationsProcessed",
+    "operationsApplied",
+    "operationsFailed",
+    "results"
+  ],
+  "additionalProperties": false
+}

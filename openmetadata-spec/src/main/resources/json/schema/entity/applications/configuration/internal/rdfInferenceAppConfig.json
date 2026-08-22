@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/rdfInferenceApp.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RdfInferenceAppConfig",
+  "description": "Scheduled RDF inference materialization configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.applications.configuration.internal.RdfInferenceAppConfig",
+  "properties": {
+    "force": {
+      "description": "Materialize every enabled rule even when its durable dirty flag is clear.",
+      "type": "boolean",
+      "default": false
+    },
+    "ruleName": {
+      "description": "Optional rule name for an on-demand single-rule run.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+    }
+  },
+  "additionalProperties": false
+}

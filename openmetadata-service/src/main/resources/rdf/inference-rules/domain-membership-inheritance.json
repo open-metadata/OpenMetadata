@@ -1,0 +1,10 @@
+{
+  "name": "domain-membership-inheritance",
+  "displayName": "Domain membership inheritance",
+  "description": "If a Table belongs to a Domain via om:belongsToDomain, every Column of that Table inherits the same domain membership. Lets SPARQL queries against om:belongsToDomain return both table-level and column-level results without separate lookups.",
+  "ruleType": "CONSTRUCT",
+  "priority": 400,
+  "enabled": true,
+  "tags": ["governance"],
+  "ruleBody": "PREFIX om: <https://open-metadata.org/ontology/>\nCONSTRUCT { ?column om:belongsToDomain ?domain }\nWHERE {\n  ?table a om:Table ;\n         om:belongsToDomain ?domain ;\n         om:hasColumn ?column .\n}"
+}

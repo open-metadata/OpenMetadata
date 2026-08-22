@@ -176,6 +176,22 @@ public interface JobDAO {
   BackgroundJob findCsvJobById(@Bind("id") long id);
 
   @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE createdBy = :createdBy "
+          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  List<BackgroundJob> listOntologyBulkJobsByUser(
+      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_BULK'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
+
+  @SqlQuery(
       "SELECT result FROM background_jobs WHERE id = :id "
           + "AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT')")
   String findCsvJobResultById(@Bind("id") long id);
@@ -288,6 +304,14 @@ public interface JobDAO {
 
   @SqlUpdate("DELETE FROM background_jobs WHERE id IN (<ids>)")
   int deleteJobsByIds(@BindList("ids") List<Long> ids);
+
+  @SqlUpdate(
+      "UPDATE background_jobs SET status = 'FAILED', "
+          + "error = 'Server restarted before the ontology bulk job completed.', "
+          + "message = 'Server restarted before the ontology bulk job completed.', "
+          + "updatedAt = :updatedAt, completedAt = :updatedAt "
+          + "WHERE jobType = 'ONTOLOGY_BULK' AND status = 'RUNNING'")
+  int markStaleRunningOntologyBulkJobsFailed(@Bind("updatedAt") long updatedAt);
 
   @SqlUpdate(
       "INSERT INTO background_job_logs (logId, jobId, createdAt, level, message) "

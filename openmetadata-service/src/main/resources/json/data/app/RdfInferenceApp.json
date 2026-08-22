@@ -1,0 +1,12 @@
+{
+  "appConfiguration": {
+    "force": false
+  },
+  "appSchedule": {
+    "cronExpression": "*/5 * * * *",
+    "scheduleTimeline": "Custom"
+  },
+  "displayName": "RDF Inference Materialization",
+  "name": "RdfInferenceApp",
+  "supportsInterrupt": false
+}

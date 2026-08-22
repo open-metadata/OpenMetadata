@@ -1,0 +1,204 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/relationshipType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RelationshipType",
+  "description": "An admin-governed semantic relationship definition used by Ontology Studio.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.RelationshipType",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "category": {
+      "javaType": "org.openmetadata.schema.type.RelationshipTypeCategory",
+      "type": "string",
+      "enum": ["CORE", "OWL_SKOS", "CUSTOM"]
+    },
+    "characteristic": {
+      "javaType": "org.openmetadata.schema.type.RelationshipCharacteristic",
+      "type": "string",
+      "enum": [
+        "SYMMETRIC",
+        "TRANSITIVE",
+        "FUNCTIONAL",
+        "INVERSE_FUNCTIONAL",
+        "REFLEXIVE",
+        "IRREFLEXIVE",
+        "ASYMMETRIC"
+      ]
+    },
+    "cardinality": {
+      "javaType": "org.openmetadata.schema.type.RelationshipCardinality",
+      "type": "object",
+      "properties": {
+        "sourceMax": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetMax": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "paletteKey": {
+      "javaType": "org.openmetadata.schema.type.RelationshipPaletteKey",
+      "type": "string",
+      "enum": [
+        "BLUE",
+        "INDIGO",
+        "VIOLET",
+        "GREEN",
+        "AMBER",
+        "GRAY",
+        "PINK",
+        "PURPLE",
+        "TEAL",
+        "ROSE"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Immutable API key for this relationship type.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "iri": {
+      "description": "IRI identifying the OWL object property.",
+      "type": "string",
+      "format": "uri"
+    },
+    "rdfPredicate": {
+      "description": "Predicate emitted for authored relationship edges.",
+      "type": "string",
+      "format": "uri"
+    },
+    "category": {
+      "$ref": "#/definitions/category"
+    },
+    "inverse": {
+      "description": "Inverse relationship type. Symmetric types reference themselves.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "domain": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/semanticReference.json"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "range": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/semanticReference.json"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "characteristics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/characteristic"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "cardinality": {
+      "$ref": "#/definitions/cardinality"
+    },
+    "propertyChain": {
+      "description": "Ordered property chain whose composition implies this relationship type.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "disjointWith": {
+      "description": "Relationship types declared property-disjoint with this type.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "crossGlossaryAllowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "paletteKey": {
+      "$ref": "#/definitions/paletteKey"
+    },
+    "systemDefined": {
+      "description": "System types can be updated but cannot be deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "replacedBy": {
+      "description": "Replacement relationship type when this type is deprecated.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "entityStatus": {
+      "$ref": "../../type/status.json"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "fullyQualifiedName",
+    "displayName",
+    "description",
+    "rdfPredicate",
+    "category",
+    "characteristics",
+    "crossGlossaryAllowed",
+    "paletteKey",
+    "systemDefined"
+  ],
+  "additionalProperties": false
+}

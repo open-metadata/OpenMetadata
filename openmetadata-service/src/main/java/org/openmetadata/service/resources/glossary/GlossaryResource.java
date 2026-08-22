@@ -26,9 +26,11 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -37,18 +39,22 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -58,12 +64,17 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.GlossaryOntologyExporter;
 import org.openmetadata.service.rdf.GlossaryRdfImporter;
-import org.openmetadata.service.rdf.OntologyImportResult;
+import org.openmetadata.service.rdf.OntologySparqlQueryService;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -82,6 +93,12 @@ import org.openmetadata.service.util.CSVExportResponse;
     order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "/v1/glossaries/";
+  private static final String SPARQL_JSON = "application/sparql-results+json";
+  private static final String SPARQL_XML = "application/sparql-results+xml";
+  private static final String SPARQL_CSV = "text/csv";
+  private static final String SPARQL_TSV = "text/tab-separated-values";
+  private static final SparqlQueryExecutionGuard SPARQL_EXECUTION_GUARD =
+      SparqlQueryExecutionGuard.shared();
   static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domains,extension";
   private final GlossaryMapper mapper = new GlossaryMapper();
 
@@ -654,7 +671,13 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Path("/name/{name}/importRdf")
-  @Consumes({MediaType.TEXT_PLAIN, "text/turtle", "application/rdf+xml", "application/n-triples"})
+  @Consumes({
+    MediaType.TEXT_PLAIN,
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json"
+  })
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "importGlossaryRdf",
@@ -663,9 +686,11 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           "Materialize an external OWL/SKOS ontology (Turtle, RDF/XML or N-Triples) as "
               + "glossary terms and typed relations through the glossary repository. SKOS concepts / "
               + "OWL classes become GlossaryTerms, skos:broader / rdfs:subClassOf become the parent "
-              + "hierarchy, skos:*Match become concept mappings, and owl:ObjectProperty edges become "
-              + "typed relatedTerms. The RDF triplestore is optional; when enabled the created terms "
-              + "are mirrored automatically.",
+              + "hierarchy, skos:*Match become concept mappings, owl:DatatypeProperty definitions "
+              + "become per-concept attributes, and owl:ObjectProperty edges become governed typed "
+              + "relationships. JSON-LD may use inline contexts or bundled OpenMetadata contexts. "
+              + "The RDF triplestore is optional; when enabled the created terms are mirrored "
+              + "automatically.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -681,7 +706,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Parameter(description = "Name of the target glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
-      @Parameter(description = "RDF syntax of the payload (turtle, rdfxml, ntriples)")
+      @Parameter(description = "RDF syntax of the payload (turtle, rdfxml, ntriples, jsonld)")
           @QueryParam("format")
           @DefaultValue("turtle")
           String format,
@@ -700,5 +725,88 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
     return new GlossaryRdfImporter(uriInfo, updatedBy, allowGlobalSchemaChanges)
         .importRdf(rdf, format, name, dryRun);
+  }
+
+  @GET
+  @Path("/{id}/exportOntology")
+  @Produces({"text/turtle", "application/rdf+xml", "application/n-triples", "application/ld+json"})
+  @Operation(
+      operationId = "exportGlossaryOntology",
+      summary = "Export a glossary as an ontology",
+      description =
+          "Export the database-primary glossary model, governed relationship types, OWL axioms, "
+              + "and its lossless annex. This endpoint remains available when RDF storage is off.")
+  public Response exportOntology(
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("format") @DefaultValue("turtle") final String requestedFormat,
+      @QueryParam("includeRelations") @DefaultValue("true") final boolean includeRelations) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    final RdfSerializationFormat format = RdfSerializationFormat.parse(requestedFormat);
+    final String ontology = ontologyExporter().export(id, format.externalName(), includeRelations);
+    return Response.ok(ontology, format.mediaType())
+        .header(
+            "Content-Disposition",
+            "attachment; filename=\"ontology-" + id + "." + format.extension() + "\"")
+        .build();
+  }
+
+  @POST
+  @Path("/{id}/sparql")
+  @Produces({
+    SPARQL_JSON,
+    SPARQL_XML,
+    SPARQL_CSV,
+    SPARQL_TSV,
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json"
+  })
+  @Operation(
+      operationId = "queryGlossaryOntology",
+      summary = "Query one glossary ontology",
+      description =
+          "Execute read-only SPARQL against the authorized database-primary glossary model. "
+              + "The query cannot access other metadata assets, external datasets, or SERVICE "
+              + "endpoints, and remains available when RDF storage is off.")
+  public Response queryOntology(
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final SparqlQuery request) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    try {
+      final OntologySparqlQueryService.QueryResult result =
+          SPARQL_EXECUTION_GUARD.execute(
+              securityContext.getUserPrincipal().getName(),
+              () -> ontologySparqlQueryService().query(id, request));
+      return Response.ok(result.body(), result.mediaType()).build();
+    } catch (SparqlFederationGuard.FederationDisallowedException exception) {
+      throw new ForbiddenException(exception.getMessage(), exception);
+    } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
+      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+    } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
+      throw new ServiceUnavailableException(
+          Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(exception.getMessage())
+              .build(),
+          exception);
+    }
+  }
+
+  private static GlossaryOntologyExporter ontologyExporter() {
+    final URI baseUri =
+        OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration().getBaseUri();
+    return new GlossaryOntologyExporter(baseUri, Entity.getCollectionDAO().ontologyAnnexDAO());
+  }
+
+  private static OntologySparqlQueryService ontologySparqlQueryService() {
+    return new OntologySparqlQueryService(ontologyExporter());
   }
 }

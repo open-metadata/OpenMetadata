@@ -22,7 +22,7 @@ export const deriveCardinality = (
       return RelationCardinality.ManyToMany;
     }
     if (targetMax === 1) {
-      return RelationCardinality.ManyToOne;
+      return RelationCardinality.OneToMany;
     }
   }
 
@@ -31,7 +31,7 @@ export const deriveCardinality = (
       return RelationCardinality.OneToOne;
     }
     if (targetMax === null || targetMax === undefined) {
-      return RelationCardinality.OneToMany;
+      return RelationCardinality.ManyToOne;
     }
   }
 

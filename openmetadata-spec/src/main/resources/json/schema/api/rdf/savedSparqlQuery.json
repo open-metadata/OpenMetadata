@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/savedSparqlQuery.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SavedSparqlQuery",
+  "description": "A SPARQL query saved by a user or curated as an installation query template.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.SavedSparqlQuery",
+  "properties": {
+    "id": {
+      "description": "Stable identifier for the saved query.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Display name for the saved query.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "query": {
+      "description": "SPARQL query body.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000
+    },
+    "format": {
+      "description": "Preferred result serialization.",
+      "type": "string",
+      "enum": ["json", "xml", "csv", "tsv", "turtle", "rdfxml", "ntriples", "jsonld"],
+      "default": "json"
+    },
+    "inference": {
+      "description": "Preferred inference level.",
+      "type": "string",
+      "enum": ["none", "rdfs", "owl", "custom"],
+      "default": "none"
+    },
+    "savedAt": {
+      "description": "Time the query was last saved, in Unix epoch milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["id", "name", "query", "format", "inference", "savedAt"],
+  "additionalProperties": false
+}

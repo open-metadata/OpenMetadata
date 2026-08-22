@@ -12,12 +12,9 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
-import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { createAdminApiContext } from '../utils/admin';
-import { redirectToHomePage } from '../utils/common';
-import { sidebarClick } from '../utils/sidebar';
+import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 
 export interface GraphTermRef {
   id: string;
@@ -27,7 +24,22 @@ export interface GraphTermRef {
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
-  await page.getByTestId('search-dropdown-Glossary').click();
+  const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
+  if (await studioGlossaryMenu.isVisible()) {
+    await studioGlossaryMenu.click();
+    const glossaryOption = page.getByTestId(glossaryId);
+    await glossaryOption.scrollIntoViewIfNeeded();
+    await glossaryOption.click();
+    await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
+    await expect(studioGlossaryMenu).toHaveAttribute(
+      'data-selected-glossary-id',
+      glossaryId
+    );
+
+    return;
+  }
+
+  await page.getByTestId('search-dropdown-glossaryIds').click();
   await page.getByTestId(glossaryId).click();
   const termsResponse = page
     .waitForResponse(
@@ -42,16 +54,50 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
-  await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries*');
-  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
-  await glossaryResponse;
+  const glossaryResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaries') &&
+      response.status() === 200,
+    { timeout: 30000 }
+  );
+
+  await Promise.all([page.goto('/governance/ontology'), glossaryResponse]);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
 }
 
 export async function waitForGraphLoaded(page: Page) {
   await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
     timeout: 30000,
   });
+}
+
+export async function releaseOntologyEditLease(
+  page: Page,
+  glossaryId: string
+): Promise<void> {
+  const releaseResponse = page
+    .waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/ontologyEditLocks/glossary/${glossaryId}`) &&
+        response.request().method() === 'DELETE',
+      { timeout: 10_000 }
+    )
+    .catch(() => undefined);
+  await page.getByTestId('mode-tab-view').click();
+  await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(
+    page.getByTestId('ontology-edit-lease-status')
+  ).not.toBeVisible();
+
+  const response = await releaseResponse;
+  if (response) {
+    expect(response.ok(), await response.text()).toBe(true);
+  }
 }
 
 export async function readNodePositions(
@@ -70,6 +116,7 @@ export async function readNodePositions(
         return false;
       }
     },
+    undefined,
     { timeout: 20000 }
   );
 
@@ -90,8 +137,22 @@ export async function clickFirstGraphNode(page: Page): Promise<void> {
   await page.mouse.click(firstPos.x, firstPos.y);
 }
 
+export async function clickGraphNode(
+  page: Page,
+  nodeId: string
+): Promise<void> {
+  const positions = await readNodePositions(page);
+  const position = positions[nodeId];
+  if (!position) {
+    throw new Error(`Graph node ${nodeId} was not rendered`);
+  }
+  await page.mouse.click(position.x, position.y);
+}
+
 export interface RenderedEdge {
+  edgeKind?: string;
   from: string;
+  provenance?: string;
   to: string;
   relationType: string;
   inverseRelationType?: string;
@@ -128,6 +189,27 @@ export async function readGraphEdges(
     );
 }
 
+export async function readSearchHighlightIds(page: Page): Promise<string[]> {
+  await page.waitForFunction(
+    () => {
+      const element = document.querySelector<HTMLElement>(
+        '.ontology-g6-container'
+      );
+      const value = element?.dataset.searchHighlightIds;
+
+      return typeof value === 'string' && value !== '[]';
+    },
+    { timeout: 20000 }
+  );
+
+  return page
+    .locator('.ontology-g6-container')
+    .evaluate(
+      (element: HTMLElement) =>
+        JSON.parse(element.dataset.searchHighlightIds ?? '[]') as string[]
+    );
+}
+
 export function buildRdfGraphJson(
   glossaryId: string,
   term1: GraphTermRef,
@@ -160,16 +242,19 @@ export function buildMalformedRdfGraphJson(
   };
 }
 
-// Creates a fresh admin API context for suite-level setup and teardown.
-// Using createAdminApiContext (instead of a full browser page) avoids opening
-// an extra WebSocket-connected admin session, which would cause the backend's
-// entity-deleted broadcasts to appear as toasts on every other parallel worker's
-// admin page. Each suite gets its own owned context; afterAction disposes it —
-// the worker-shared context is never touched.
-export async function createApiContext(_browser: Browser) {
-  const { apiContext, afterAction } = await createAdminApiContext();
+export async function createApiContext(browser: Browser) {
+  const page = await browser.newPage({
+    storageState: 'playwright/.auth/admin.json',
+  });
+  await redirectToHomePage(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
 
-  return { apiContext, afterAction };
+  return { page, apiContext, afterAction };
 }
 
 export async function disposeApiContext(
@@ -177,29 +262,21 @@ export async function disposeApiContext(
   apiContext: APIRequestContext
 ) {
   if (typeof afterActionOrPage === 'function') {
-    // afterAction from createAdminApiContext already disposes apiContext and the
-    // login context — do not call apiContext.dispose() separately here.
     await afterActionOrPage();
-  } else {
-    await apiContext.dispose();
-    await afterActionOrPage.close();
-  }
-}
 
-export function defined<T>(val: T | undefined, name: string): T {
-  if (val === undefined) {
-    throw new Error(`${name} is undefined — beforeEach may not have completed`);
+    return;
   }
 
-  return val;
+  await apiContext.dispose();
+  await afterActionOrPage.close();
 }
 
 export async function deleteEntities(
   apiContext: APIRequestContext,
-  ...entities: Array<Glossary | GlossaryTerm | undefined>
+  ...entities: Array<Glossary | GlossaryTerm>
 ) {
   for (const entity of entities) {
-    if (entity?.responseData?.id) {
+    if (entity.responseData?.id) {
       await entity.delete(apiContext);
     }
   }
@@ -250,7 +327,7 @@ export async function navigateAndFilterByGlossary(
 }
 
 export async function applyRelationTypeFilter(page: Page, typeName: string) {
-  await page.getByTestId('search-dropdown-Relationship Type').click();
+  await page.getByTestId('search-dropdown-relationTypes').click();
   await page.getByTestId('drop-down-menu').getByText(typeName).click();
   await page.getByTestId('update-btn').click();
   await waitForGraphLoaded(page);
@@ -262,24 +339,6 @@ export async function readGraphZoom(page: Page): Promise<number> {
 
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   });
-}
-
-// Badge is at DATA_MODE_TERM_NODE_SIZE/2 + NODE_BADGE_OFFSET_X = 15+8 = 23 px
-// to the right and 15+8 = 23 px above the node center (in canvas pixels).
-const DATA_MODE_BADGE_CANVAS_OFFSET_PX = 23;
-
-export async function clickDataModeAssetBadge(
-  page: Page,
-  termId: string
-): Promise<void> {
-  const positions = await readNodePositions(page);
-  const termPos = positions[termId];
-  if (!termPos) {
-    throw new Error(`Term node ${termId} not found in node positions`);
-  }
-  const zoom = await readGraphZoom(page);
-  const offset = DATA_MODE_BADGE_CANVAS_OFFSET_PX * zoom;
-  await page.mouse.click(termPos.x + offset, termPos.y - offset);
 }
 
 export type CardinalityLabels = {
@@ -325,148 +384,128 @@ export async function readCardinalityMap(
     );
 }
 
-// The relation types live in a single global `glossaryTermRelationSettings`
-// document that only supports a full-document PUT. Parallel Playwright workers
-// each read-modify-write that document, so a stale snapshot can drop a peer's
-// concurrent change or be rejected by the backend's "relation type in use"
-// validation. Every mutation below therefore reads fresh, applies only its own
-// delta, writes, and verifies the result — retrying on conflict until it lands.
-const RELATION_SETTINGS_KEY = 'glossaryTermRelationSettings';
-const MAX_RELATION_SETTINGS_ATTEMPTS = 10;
+const RELATIONSHIP_TYPES_API = '/api/v1/relationshipTypes';
 
-interface RelationTypeConfig {
-  name: string;
-  [key: string]: unknown;
-}
-
-async function getRelationTypes(
-  apiContext: APIRequestContext
-): Promise<RelationTypeConfig[]> {
-  const res = await apiContext.get(
-    `/api/v1/system/settings/${RELATION_SETTINGS_KEY}`
-  );
-  const settings = await res.json();
-
-  return settings.config_value?.relationTypes ?? [];
-}
-
-async function putRelationTypes(
-  apiContext: APIRequestContext,
-  relationTypes: RelationTypeConfig[]
-) {
-  return apiContext.put('/api/v1/system/settings', {
-    data: {
-      config_type: RELATION_SETTINGS_KEY,
-      config_value: { relationTypes },
-    },
-  });
-}
-
-async function backoffBeforeRetry(attempt: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 100 + attempt * 100));
-}
-
-function buildRelationTypeEntry(relationType: {
+interface TestRelationType {
   name: string;
   displayName: string;
   cardinality: string;
   sourceMax?: number | null;
   targetMax?: number | null;
-}): RelationTypeConfig {
-  return {
-    name: relationType.name,
-    displayName: relationType.displayName,
-    category: 'associative',
-    cardinality: relationType.cardinality,
-    ...(relationType.sourceMax === undefined
-      ? {}
-      : { sourceMax: relationType.sourceMax }),
-    ...(relationType.targetMax === undefined
-      ? {}
-      : { targetMax: relationType.targetMax }),
-  };
+}
+
+function buildCardinality(relationType: TestRelationType) {
+  switch (relationType.cardinality) {
+    case 'ONE_TO_ONE':
+      return { sourceMax: 1, targetMax: 1 };
+    case 'ONE_TO_MANY':
+      return { targetMax: 1 };
+    case 'MANY_TO_ONE':
+      return { sourceMax: 1 };
+    case 'CUSTOM': {
+      const cardinality: { sourceMax?: number; targetMax?: number } = {};
+      if (relationType.sourceMax != null) {
+        cardinality.sourceMax = relationType.sourceMax;
+      }
+      if (relationType.targetMax != null) {
+        cardinality.targetMax = relationType.targetMax;
+      }
+
+      return cardinality;
+    }
+    default:
+      return undefined;
+  }
 }
 
 export async function addRelationTypeWithCardinality(
   apiContext: APIRequestContext,
-  relationType: {
-    name: string;
-    displayName: string;
-    cardinality: string;
-    sourceMax?: number | null;
-    targetMax?: number | null;
-  }
+  relationType: TestRelationType
 ): Promise<void> {
-  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
-    const existing = await getRelationTypes(apiContext);
-    if (existing.some((rt) => rt.name === relationType.name)) {
-      return;
-    }
-
-    const res = await putRelationTypes(apiContext, [
-      ...existing,
-      buildRelationTypeEntry(relationType),
-    ]);
-
-    if (res.ok()) {
-      const updated = await getRelationTypes(apiContext);
-      if (updated.some((rt) => rt.name === relationType.name)) {
+  const cardinality = buildCardinality(relationType);
+  const response = await apiContext.post(RELATIONSHIP_TYPES_API, {
+    data: {
+      name: relationType.name,
+      displayName: relationType.displayName,
+      description: '',
+      rdfPredicate: `https://example.org/relations/${relationType.name}`,
+      category: 'CUSTOM',
+      paletteKey: 'BLUE',
+      ...(cardinality ? { cardinality } : {}),
+    },
+  });
+  if (!response.ok()) {
+    if (response.status() === 409) {
+      const concurrentCreate = await apiContext.get(
+        `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(
+          relationType.name
+        )}`
+      );
+      if (concurrentCreate.ok()) {
         return;
       }
     }
-
-    await backoffBeforeRetry(attempt);
+    throw new Error(
+      `Failed to create relationship type "${
+        relationType.name
+      }": ${response.status()} ${await response.text()}`
+    );
   }
-
-  throw new Error(
-    `addRelationTypeWithCardinality: failed to add "${relationType.name}" after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
-  );
 }
 
-// Batch variant: adds ALL supplied relation types in a single read-modify-write.
-// Use this instead of multiple sequential addRelationTypeWithCardinality calls so
-// that parallel workers only have ONE conflict window to race on rather than N.
-// The retry loop re-reads fresh each time, so a concurrent writer that removes
-// one of our types will cause the verification to fail and the loop to re-add it.
-export async function addRelationTypesWithCardinality(
+export async function deleteRelationTypeByName(
   apiContext: APIRequestContext,
-  relationTypes: Array<{
-    name: string;
-    displayName: string;
-    cardinality: string;
-    sourceMax?: number | null;
-    targetMax?: number | null;
-  }>
+  name: string
 ): Promise<void> {
-  const names = relationTypes.map((rt) => rt.name);
-
-  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
-    const existing = await getRelationTypes(apiContext);
-    const existingNames = new Set(existing.map((rt) => rt.name));
-    const toAdd = relationTypes.filter((rt) => !existingNames.has(rt.name));
-
-    if (toAdd.length === 0) {
-      return;
-    }
-
-    const res = await putRelationTypes(apiContext, [
-      ...existing,
-      ...toAdd.map(buildRelationTypeEntry),
-    ]);
-
-    if (res.ok()) {
-      const updated = await getRelationTypes(apiContext);
-      const updatedNames = new Set(updated.map((rt) => rt.name));
-      if (names.every((n) => updatedNames.has(n))) {
-        return;
-      }
-    }
-
-    await backoffBeforeRetry(attempt);
+  const lookup = await apiContext.get(
+    `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(name)}`
+  );
+  if (lookup.status() === 404) {
+    return;
+  }
+  if (!lookup.ok()) {
+    throw new Error(
+      `Failed to look up relationship type "${name}": ${lookup.status()} ${await lookup.text()}`
+    );
   }
 
-  throw new Error(
-    `addRelationTypesWithCardinality: failed to confirm all types after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
+  const relationType = (await lookup.json()) as { id: string };
+  const response = await apiContext.delete(
+    `${RELATIONSHIP_TYPES_API}/${relationType.id}`
+  );
+  if (!response.ok() && response.status() !== 404) {
+    throw new Error(
+      `Failed to delete relationship type "${name}": ${response.status()} ${await response.text()}`
+    );
+  }
+}
+
+// Relationship types are first-class entities, so parallel workers can create
+// independent types without replacing a shared settings document.
+export async function addRelationTypesWithCardinality(
+  apiContext: APIRequestContext,
+  relationTypes: TestRelationType[]
+): Promise<void> {
+  await Promise.all(
+    relationTypes.map(async (relationType) => {
+      const lookup = await apiContext.get(
+        `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(
+          relationType.name
+        )}`
+      );
+      if (lookup.ok()) {
+        return;
+      }
+      if (lookup.status() !== 404) {
+        throw new Error(
+          `Failed to look up relationship type "${
+            relationType.name
+          }": ${lookup.status()} ${await lookup.text()}`
+        );
+      }
+
+      await addRelationTypeWithCardinality(apiContext, relationType);
+    })
   );
 }
 
@@ -495,7 +534,7 @@ export async function applyMultiGlossaryFilter(
   page: Page,
   ...glossaryIds: string[]
 ): Promise<void> {
-  await page.getByTestId('search-dropdown-Glossary').click();
+  await page.getByTestId('search-dropdown-glossaryIds').click();
   for (const id of glossaryIds) {
     await page.getByTestId(id).click();
   }

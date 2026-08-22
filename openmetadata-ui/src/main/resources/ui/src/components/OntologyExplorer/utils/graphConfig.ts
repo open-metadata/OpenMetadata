@@ -30,7 +30,7 @@ export { NODE_PADDING_H } from '../OntologyExplorer.constants';
 export const NODE_LABEL_EXTRA_PAD_H = 10;
 export const CHAR_WIDTH_ESTIMATE = 9;
 export const MODEL_NODE_MAX_LABEL_CHARS = 60;
-export const MODEL_NODE_MAX_WIDTH = 560;
+export const MODEL_NODE_MAX_WIDTH = 150;
 
 const NODE_LABEL_MEASURE_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px sans-serif`;
 
@@ -69,6 +69,20 @@ export interface GetOntologyLayoutConfigOptions {
   isDataMode: boolean;
   isModelView: boolean;
   isHierarchyMode: boolean;
+}
+
+export function shouldUseComboGridLayout(
+  layoutType: LayoutEngineType,
+  options: Pick<
+    GetOntologyLayoutConfigOptions,
+    'hasCombos' | 'isModelView' | 'isHierarchyMode'
+  >
+): boolean {
+  return (
+    layoutType === LayoutEngine.Dagre &&
+    options.hasCombos &&
+    (options.isModelView || options.isHierarchyMode)
+  );
 }
 
 export function getNodeSize(d?: LayoutNodeLike): [number, number] {

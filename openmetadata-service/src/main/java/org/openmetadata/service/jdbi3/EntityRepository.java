@@ -148,6 +148,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -276,6 +277,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -955,12 +957,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    if (requiresParentForInheritance(entity, fields)) {
-      EntityInterface parent = resolveInheritanceParentLeniently(entity, getInheritableFields());
-      if (parent != null) {
-        // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
-        applyInheritance(entity, fields, parent);
-      }
+    if (!requiresParentForInheritance(entity, fields)) {
+      return;
+    }
+    EntityReference parentRef = getParentReference(entity);
+    String inheritableFields =
+        parentRef == null ? getInheritableFields() : getInheritableFields(parentRef.getType());
+    EntityInterface parent = resolveInheritanceParentLeniently(entity, inheritableFields);
+    if (parent != null) {
+      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+      applyInheritance(entity, fields, parent);
     }
   }
 
@@ -998,6 +1004,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /**
+   * Fields to load on a parent of the given type. Entities whose parent may be one of several types
+   * override this when a field is only valid on some of them; requesting a field a parent type does
+   * not declare is rejected as an unknown field.
+   */
+  protected String getInheritableFields(String parentEntityType) {
+    return getInheritableFields();
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1215,7 +1230,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void setInheritedFields(
       List<T> entities, Fields fields, Map<UUID, EntityReference> unhydratedParentRefs) {
     if (entities.isEmpty()) return;
-    String inheritableFields = getInheritableFields();
 
     var parentRefsById = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
@@ -1245,8 +1259,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // thread-local parent cache was really buying on this path.
     var parentsById = new HashMap<UUID, EntityInterface>();
     for (var entry : parentRefsByType.entrySet()) {
+      String parentFields = getInheritableFields(entry.getKey());
       List<? extends EntityInterface> parents =
-          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
+          Entity.getEntitiesForInheritance(entry.getValue(), parentFields, ALL);
       for (var parent : parents) {
         parentsById.put(parent.getId(), parent);
       }
@@ -3900,7 +3915,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     RdfUpdater.updateEntity(entity);
     ListCountCache.invalidate(entityType);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
+    // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
+    // prior failed lookup poisoned the negative cache. Iterates the Invalidatable registry
+    // so future cache layers also get the create signal automatically.
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -4033,6 +4052,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void writeJsonToRedis(
       CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
+    PostCommitActionQueue.runOrDefer(
+        () -> writeJsonToRedisAfterCommit(cachedEntityDao, entityId, fqn, entityJson));
+  }
+
+  private void writeJsonToRedisAfterCommit(
+      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
     if (entityJson == null || entityJson.isEmpty()) return;
     try {
       cachedEntityDao.putBase(entityType, entityId, entityJson);
@@ -4042,6 +4067,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } catch (Exception e) {
       LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
     }
+  }
+
+  private static void deferCacheBundleInvalidation(
+      final String entityType, final UUID id, final String fqn) {
+    PostCommitActionQueue.runOrDefer(() -> CacheBundle.invalidateEntity(entityType, id, fqn));
   }
 
   protected void postCreate(List<T> entities) {
@@ -4946,7 +4976,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityCacheRepair.scheduleRepair(
         entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
-    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+    deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -5081,6 +5111,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public final <R> R executeInTransaction(final Supplier<R> work) {
+    final AtomicReference<R> result = new AtomicReference<>();
+    flushInOneTransaction(() -> result.set(work.get()));
+    return result.get();
+  }
+
   /**
    * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
    * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
@@ -5096,9 +5132,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean ownsLineageEs;
     private boolean ownsSearchWrite;
     private boolean ownsCache;
+    private boolean ownsPostCommitActions;
     private int rdfCheckpoint;
     private int lineageEsCheckpoint;
     private int searchWriteCheckpoint;
+    private int postCommitActionCheckpoint;
 
     private void reopenForAttempt() {
       if (opened) {
@@ -5114,10 +5152,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       rdfCheckpoint = RdfTagUpdater.checkpoint();
       lineageEsCheckpoint = LineageUtil.checkpoint();
       searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
+      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
       ownsRdf = RdfTagUpdater.beginDeferral();
       ownsLineageEs = LineageUtil.beginLineageDeferral();
       ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
       ownsCache = beginCacheInvalidationDeferral();
+      ownsPostCommitActions = PostCommitActionQueue.begin();
     }
 
     /**
@@ -5150,6 +5190,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         clearCacheInvalidations();
         beginCacheInvalidationDeferral();
       }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
+        PostCommitActionQueue.begin();
+      } else {
+        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
+      }
     }
 
     private void finish(boolean committed) {
@@ -5175,12 +5221,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
       List<SearchRepository.DeferredSearchWrite> searchClosures =
           ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
+      List<Runnable> postCommitActions =
+          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
       if (ownsCache) {
         runGuarded(EntityRepository::drainCacheInvalidations);
       }
       runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
       runGuarded(() -> runLineageEsClosures(lineageClosures));
       runGuarded(() -> runSearchWriteClosures(searchClosures));
+      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
     }
 
     private void clear() {
@@ -5195,6 +5244,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (ownsCache) {
         clearCacheInvalidations();
+      }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
       }
     }
   }
@@ -10488,7 +10540,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
-      CacheBundle.invalidateEntity(entityType, id, fqn);
+      deferCacheBundleInvalidation(entityType, id, fqn);
 
       EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 

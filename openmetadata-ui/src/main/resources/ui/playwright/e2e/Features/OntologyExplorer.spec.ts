@@ -12,12 +12,14 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { OntologyExplorerPageData as PageData } from '../../support/entity/OntologyExplorerDataClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
+  addTermRelation,
   applyGlossaryFilter,
-  applyRelationTypeFilter,
   clickFirstGraphNode,
   createApiContext,
+  deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readGraphEdges,
@@ -27,27 +29,58 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const glossary = new Glossary();
+const term1 = new GlossaryTerm(glossary);
+const term2 = new GlossaryTerm(glossary);
+
+const multiRelGlossary = new Glossary();
+const multiRelTermA = new GlossaryTerm(multiRelGlossary);
+const multiRelTermB = new GlossaryTerm(multiRelGlossary);
+
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await PageData.setup(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+
+    await glossary.create(apiContext);
+    await term1.create(apiContext);
+    await term2.create(apiContext);
+    await multiRelGlossary.create(apiContext);
+    await multiRelTermA.create(apiContext);
+    await multiRelTermB.create(apiContext);
+
+    await addTermRelation(apiContext, term1, term2, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      multiRelTermA,
+      multiRelTermB,
+      'relatedTo'
+    );
+    await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
+
+    await disposeApiContext(page, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await PageData.teardown(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+    await deleteEntities(
+      apiContext,
+      term1,
+      term2,
+      glossary,
+      multiRelTermA,
+      multiRelTermB,
+      multiRelGlossary
+    );
+    await disposeApiContext(page, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
+    test.slow();
     await navigateToOntologyExplorer(page);
   });
 
   test.describe('Navigation', () => {
-    test('should navigate to ontology explorer via sidebar and load page', async ({
-      page,
-    }) => {
+    test('should load the ontology studio page', async ({ page }) => {
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
       await expect(page).toHaveURL(/.*ontology.*/);
     });
@@ -55,16 +88,18 @@ test.describe('Ontology Explorer', () => {
 
   test.describe('Page Layout', () => {
     test('should display the header section with title', async ({ page }) => {
-      await expect(page.getByTestId('ontology-explorer-header')).toBeVisible();
+      await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
       await expect(page.getByTestId('heading')).toContainText(
-        'Ontology Explorer'
+        'Ontology Studio'
       );
     });
 
-    test('should display filter toolbar with View Mode label', async ({
+    test('should display View mode with Graph and Tree surfaces', async ({
       page,
     }) => {
-      await expect(page.getByText('View Mode:')).toBeVisible();
+      await expect(page.getByTestId('mode-tab-view')).toBeVisible();
+      await expect(page.getByTestId('submode-tab-graph')).toBeVisible();
+      await expect(page.getByTestId('submode-tab-tree')).toBeVisible();
     });
 
     test('should display all graph control buttons', async ({ page }) => {
@@ -78,12 +113,19 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByTestId('ontology-graph-search')).toBeVisible();
     });
 
-    test('should display isolated nodes toggle', async ({ page }) => {
-      await expect(page.getByTestId('ontology-isolated-toggle')).toBeVisible();
+    test('should display isolated concept count', async ({ page }) => {
+      await expect(
+        page.getByTestId('ontology-header-isolated-count')
+      ).toBeVisible();
     });
 
-    test('should display settings button', async ({ page }) => {
-      await expect(page.getByTestId('ontology-graph-settings')).toBeVisible();
+    test('should display library and import/export actions', async ({
+      page,
+    }) => {
+      await expect(page.getByTestId('ontology-library-trigger')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-import-export-trigger')
+      ).toBeVisible();
     });
 
     test('should display exploration mode tabs (Model and Data)', async ({
@@ -93,21 +135,15 @@ test.describe('Ontology Explorer', () => {
       await expect(page.getByRole('tab', { name: 'Data' })).toBeVisible();
     });
 
-    test('should display view mode select with Overview, Hierarchy and Cross Glossary options', async ({
+    test('should select Graph surface by default and switch to Tree', async ({
       page,
     }) => {
-      const viewModeSelect = page.getByTestId('view-mode-select');
-      await expect(viewModeSelect).toBeVisible();
-      await viewModeSelect.click();
-      await expect(
-        page.getByRole('option', { name: 'Overview' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('option', { name: 'Hierarchy' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('option', { name: 'Cross Glossary' })
-      ).toBeVisible();
+      await expect(page.getByTestId('submode-tab-graph')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      await page.getByTestId('submode-tab-tree').click();
+      await expect(page.getByTestId('ontology-tree-view')).toBeVisible();
     });
 
     test('should display canvas element as graph container', async ({
@@ -138,9 +174,6 @@ test.describe('Ontology Explorer', () => {
     }) => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-explorer-stats')).toBeVisible();
-      await expect(
-        page.getByTestId('ontology-explorer-stats-item')
-      ).toBeVisible({ timeout: 10000 });
     });
 
     test('should not show empty state when glossary terms exist', async ({
@@ -148,30 +181,6 @@ test.describe('Ontology Explorer', () => {
     }) => {
       await waitForGraphLoaded(page);
       await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-    });
-
-    test('should show empty state when active filter yields no visible nodes', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary2.responseData.id);
-      await waitForGraphLoaded(page);
-      await page.getByTestId('ontology-isolated-toggle').click();
-
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
-    });
-
-    test('should show empty state when relation type filter removes all edges and no isolated nodes remain', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
-      await waitForGraphLoaded(page);
-      await applyRelationTypeFilter(page, 'Synonym');
-
-      await expect(
-        page.getByTestId('ontology-graph-no-relations')
-      ).toBeVisible();
     });
   });
 
@@ -219,29 +228,11 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
     });
 
-    test('should fire glossaryTerms/assets/counts API when refresh is clicked in Data mode', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await page.getByRole('tab', { name: 'Data' }).click();
-      await waitForGraphLoaded(page);
-
-      const assetCountsRequest = page.waitForResponse(
-        (res) =>
-          res.url().includes('/api/v1/glossaryTerms/assets/counts') &&
-          res.request().method() === 'GET',
-        { timeout: 30000 }
-      );
-      await page.getByTestId('refresh').click();
-      await assetCountsRequest;
-      await waitForGraphLoaded(page);
-    });
-
     test('should repopulate data-node-positions after fit-view', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
 
       await page.getByTestId('zoom-in').click();
@@ -259,19 +250,15 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(PageData.term1.data.name);
-      await expect(searchInput).toHaveValue(PageData.term1.data.name);
+      const searchInput = page.getByTestId('ontology-graph-search');
+      await searchInput.fill(term1.data.name);
+      await expect(searchInput).toHaveValue(term1.data.name);
     });
 
     test('should clear the search query', async ({ page }) => {
       await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(PageData.term1.data.name);
+      const searchInput = page.getByTestId('ontology-graph-search');
+      await searchInput.fill(term1.data.name);
       await searchInput.clear();
       await expect(searchInput).toHaveValue('');
     });
@@ -280,104 +267,26 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
+      const searchInput = page.getByTestId('ontology-graph-search');
       await searchInput.fill('test-search');
       await searchInput.clear();
       await expect(searchInput).toHaveValue('');
     });
   });
 
-  test.describe('Settings Panel', () => {
-    test('should open settings panel when settings button is clicked', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-      await expect(page.getByText('Graph Settings')).toBeVisible();
-    });
-
-    test('should close settings panel via close button', async ({ page }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-      await page.getByTestId('graph-settings-close').click();
-      await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
-    });
-
-    test('should close settings panel when clicking outside', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.getByTestId('graph-settings-close')).not.toBeVisible();
-    });
-
-    test('should display layout options in settings panel', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByText('Layout')).toBeVisible();
-    });
-
-    test('should display edge labels toggle in settings panel', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByText('Edge Labels')).toBeVisible();
-    });
-
-    test('should toggle edge labels off and back on', async ({ page }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-
-      const toggle = page.getByTestId('graph-settings-edge-labels-toggle');
-      await expect(toggle).toBeVisible();
-      await expect(toggle).toHaveAttribute('data-selected', 'true');
-
-      await toggle.click();
-      await expect(toggle).not.toHaveAttribute('data-selected', 'true');
-
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('data-selected', 'true');
-    });
-
-    test('should change layout to Circular and back to Hierarchical', async ({
+  test.describe('Term Click - Concept Inspector', () => {
+    test('clicking a term node opens the concept inspector without a permission error', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-
-      const layoutSelect = page.getByTestId('graph-settings-layout-select');
-      await layoutSelect.click();
-      await expect(
-        page.getByRole('option', { name: 'Circular' })
-      ).toBeVisible();
-      await page.getByRole('option', { name: 'Circular' }).click();
-      await expect(layoutSelect).toContainText('Circular');
-      await waitForGraphLoaded(page);
-
-      await layoutSelect.click();
-      await page.getByRole('option', { name: 'Hierarchical' }).click();
-      await expect(layoutSelect).toContainText('Hierarchical');
-    });
-  });
-
-  test.describe('Term Click - Entity Summary Panel', () => {
-    test('clicking a term node opens the entity summary panel without a permission error', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
       await clickFirstGraphNode(page);
 
       await expect(
-        page.getByTestId('entity-summary-panel-container')
+        page.getByTestId('ontology-authoring-inspector')
       ).toBeVisible();
 
       await expect(
@@ -385,41 +294,29 @@ test.describe('Ontology Explorer', () => {
       ).not.toBeVisible();
     });
 
-    test('entity panel should display outgoing or incoming relations section for a connected term', async ({
+    test('concept inspector displays relationships for a connected term', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
       await clickFirstGraphNode(page);
 
-      await expect(
-        page.getByTestId('entity-summary-panel-container')
-      ).toBeVisible();
-
-      await page.getByTestId('ontology-relations-tab').click();
-
-      const outgoing = page.getByTestId('outgoing-relation-label');
-      const incoming = page.getByTestId('incoming-relation-label');
-
-      await expect(
-        outgoing.or(incoming),
-        'Expected the selected term to have at least one outgoing or incoming relation'
-      ).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('authoring-relationships')).toBeVisible();
     });
 
-    test('entity panel Relations tab should show the related term by name', async ({
+    test('concept inspector shows the related term by name', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
       const positions = await readNodePositions(page);
-      const term1Pos = positions[PageData.term1.responseData.id];
+      const term1Pos = positions[term1.responseData.id];
 
       expect(
         term1Pos,
@@ -427,39 +324,21 @@ test.describe('Ontology Explorer', () => {
       ).toBeDefined();
       await page.mouse.click(term1Pos.x, term1Pos.y);
 
-      await expect(
-        page.getByTestId('entity-summary-panel-container')
-      ).toBeVisible();
-
-      await page.getByTestId('ontology-relations-tab').click();
-
-      const outgoing = page.getByTestId('outgoing-relation-label');
-      const incoming = page.getByTestId('incoming-relation-label');
-      await expect(outgoing.or(incoming)).toBeVisible({ timeout: 5000 });
-
       const relatedName =
-        PageData.term2.responseData.displayName ??
-        PageData.term2.responseData.name;
+        term2.responseData.displayName ?? term2.responseData.name;
       await expect(
-        page
-          .getByTestId('entity-summary-panel-container')
-          .getByText(relatedName)
+        page.getByTestId('ontology-authoring-inspector').getByText(relatedName)
       ).toBeVisible();
     });
   });
 
-  test.describe('Hierarchy View', () => {
-    test('should show hierarchy empty state when no hierarchical relations', async ({
-      page,
-    }) => {
+  test.describe('Tree View', () => {
+    test('should render the selected glossary as a tree', async ({ page }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
-      await page.getByTestId('view-mode-select').click();
-      await page.getByRole('option', { name: 'Hierarchy' }).click();
-      await expect(
-        page.getByTestId('ontology-graph-hierarchy-empty')
-      ).toBeVisible();
+      await page.getByTestId('submode-tab-tree').click();
+      await expect(page.getByTestId('ontology-tree-view')).toBeVisible();
     });
   });
 
@@ -468,36 +347,32 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
 
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(PageData.term1.data.name);
+      const searchInput = page.getByTestId('ontology-graph-search');
+      await searchInput.fill(term1.data.name);
 
       const positions = await readNodePositions(page);
       expect(
         positions,
         'term1 must be visible — it matches the search query'
-      ).toHaveProperty(PageData.term1.responseData.id);
+      ).toHaveProperty(term1.responseData.id);
       expect(
         positions,
         'term2 must be visible — it is a direct neighbour of term1'
-      ).toHaveProperty(PageData.term2.responseData.id);
+      ).toHaveProperty(term2.responseData.id);
     });
 
     test('should restore all nodes when the search query is cleared', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
+      await applyGlossaryFilter(page, glossary.responseData.id);
       await waitForGraphLoaded(page);
 
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
-      await searchInput.fill(PageData.term1.data.name);
+      const searchInput = page.getByTestId('ontology-graph-search');
+      await searchInput.fill(term1.data.name);
       // Search does not re-run layout, so read existing positions without clearing.
       const filteredCount = Object.keys(await readNodePositions(page)).length;
 
@@ -510,9 +385,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
+      const searchInput = page.getByTestId('ontology-graph-search');
       await searchInput.fill('__nonexistent_term_xyz__');
 
       await expect(
@@ -527,9 +400,7 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      const searchInput = page
-        .getByTestId('ontology-graph-search')
-        .locator('input');
+      const searchInput = page.getByTestId('ontology-graph-search');
       await searchInput.fill('__nonexistent_term_xyz__');
       await expect(
         page.getByTestId('ontology-graph-search-empty')
@@ -542,60 +413,18 @@ test.describe('Ontology Explorer', () => {
     });
   });
 
-  test.describe('Export Downloads', () => {
-    test('should trigger PNG download when PNG option is clicked', async ({
+  test.describe('Import and Export', () => {
+    test('should open and dismiss the ontology transfer modal', async ({
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await page.getByTestId('ontology-export-graph').click();
-
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.getByText('PNG', { exact: true }).click(),
-      ]);
-
-      expect(download.suggestedFilename()).toMatch(/\.png$/i);
-    });
-
-    test('should trigger SVG download when SVG option is clicked', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await page.getByTestId('ontology-export-graph').click();
-
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.getByText('SVG', { exact: true }).click(),
-      ]);
-
-      expect(download.suggestedFilename()).toMatch(/\.svg$/i);
-    });
-  });
-
-  test.describe('Entity Panel Close', () => {
-    test('should close entity summary panel when close button is clicked', async ({
-      page,
-    }) => {
-      await waitForGraphLoaded(page);
-      await applyGlossaryFilter(page, PageData.glossary.responseData.id);
-      await waitForGraphLoaded(page);
-      await page.getByTestId('fit-view').click();
-
-      const positions = await readNodePositions(page);
-      const term1Pos = positions[PageData.term1.responseData.id];
-
-      expect(
-        term1Pos,
-        'term1 node must be present in graph positions after glossary filter'
-      ).toBeDefined();
-      await page.mouse.click(term1Pos.x, term1Pos.y);
-
+      await page.getByTestId('ontology-import-export-trigger').click();
       await expect(
-        page.getByTestId('entity-summary-panel-container')
+        page.getByTestId('ontology-import-export-modal')
       ).toBeVisible();
-      await page.getByTestId('drawer-close-icon').click();
+      await page.keyboard.press('Escape');
       await expect(
-        page.getByTestId('entity-summary-panel-container')
+        page.getByTestId('ontology-import-export-modal')
       ).not.toBeVisible();
     });
   });
@@ -605,15 +434,12 @@ test.describe('Ontology Explorer', () => {
       page,
     }) => {
       await waitForGraphLoaded(page);
-      await applyGlossaryFilter(
-        page,
-        PageData.multiRelGlossary.responseData.id
-      );
+      await applyGlossaryFilter(page, multiRelGlossary.responseData.id);
       await waitForGraphLoaded(page);
 
       const edges = await readGraphEdges(page);
-      const fromId = PageData.multiRelTermA.responseData.id;
-      const toId = PageData.multiRelTermB.responseData.id;
+      const fromId = multiRelTermA.responseData.id;
+      const toId = multiRelTermB.responseData.id;
 
       const edgesForPair = edges.filter(
         (e) =>

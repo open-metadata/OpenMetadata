@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RdfStatus",
+  "description": "Authenticated RDF and Ontology Studio capability status.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfStatus",
+  "definitions": {
+    "projectionState": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfProjectionState",
+      "type": "string",
+      "enum": ["DISABLED", "READY", "REBUILDING", "DEGRADED"]
+    }
+  },
+  "properties": {
+    "baseUri": {
+      "description": "Configured base URI used for canonical RDF entity identifiers.",
+      "type": "string",
+      "format": "uri"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "storageType": {
+      "type": "string"
+    },
+    "inference": {
+      "$ref": "rdfInferenceStatus.json"
+    },
+    "projectionState": {
+      "$ref": "#/definitions/projectionState"
+    },
+    "askCollateEnabled": {
+      "description": "Whether optional AI-assisted Ontology Studio routes may be rendered.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "baseUri",
+    "enabled",
+    "storageType",
+    "inference",
+    "projectionState",
+    "askCollateEnabled"
+  ],
+  "additionalProperties": false
+}

@@ -76,6 +76,7 @@ export enum RelationshipType {
     InputPort = "inputPort",
     IsAbout = "isAbout",
     JoinedWith = "joinedWith",
+    MappedTo = "mappedTo",
     MentionedIn = "mentionedIn",
     OutputPort = "outputPort",
     Owns = "owns",

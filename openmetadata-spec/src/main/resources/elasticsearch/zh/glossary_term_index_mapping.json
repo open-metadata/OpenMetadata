@@ -558,6 +558,49 @@
       "mutuallyExclusive": {
         "type": "boolean"
       },
+      "realizedIn": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "asset": {
+            "properties": {
+              "id": { "type": "keyword" },
+              "type": { "type": "keyword" },
+              "name": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              },
+              "fullyQualifiedName": { "type": "keyword" },
+              "displayName": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              }
+            }
+          },
+          "role": { "type": "keyword" },
+          "description": { "type": "text" },
+          "provenance": { "type": "keyword" }
+        }
+      },
+      "attributes": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "name": {
+            "type": "text",
+            "fields": { "keyword": { "type": "keyword" } }
+          },
+          "iri": { "type": "keyword" },
+          "description": { "type": "text" },
+          "dataType": { "type": "keyword" },
+          "datatypeIri": { "type": "keyword" },
+          "unit": { "type": "keyword" },
+          "enumValues": { "type": "keyword" },
+          "isIdentifier": { "type": "boolean" }
+        }
+      },
       "fingerprint": {
         "type": "keyword"
       },

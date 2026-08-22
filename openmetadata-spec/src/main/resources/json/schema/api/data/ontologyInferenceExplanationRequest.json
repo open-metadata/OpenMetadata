@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyInferenceExplanationRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyInferenceExplanationRequest",
+  "description": "Request an RDF-safe explanation for one asserted or materialized ontology statement.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyInferenceExplanationRequest",
+  "properties": {
+    "glossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "statement": {
+      "$ref": "../../type/rdfStatement.json"
+    }
+  },
+  "required": ["glossaryId", "statement"],
+  "additionalProperties": false
+}

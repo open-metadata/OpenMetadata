@@ -31,7 +31,10 @@
     "userLogout",
     "entityLineageAdded",
     "entityLineageDeleted",
-    "entityLineageUpdated"
+    "entityLineageUpdated",
+    "ontologyImported",
+    "ontologyRelationshipTypeUpdated",
+    "ontologyChangeSetApplied"
   ],
   "javaEnums": [
     {"name": "ENTITY_CREATED"},
@@ -59,6 +62,9 @@
     {"name": "USER_LOGOUT"},
     {"name": "ENTITY_LINEAGE_ADDED"},
     {"name": "ENTITY_LINEAGE_DELETED"},
-    {"name": "ENTITY_LINEAGE_UPDATED"}
+    {"name": "ENTITY_LINEAGE_UPDATED"},
+    {"name": "ONTOLOGY_IMPORTED"},
+    {"name": "ONTOLOGY_RELATIONSHIP_TYPE_UPDATED"},
+    {"name": "ONTOLOGY_CHANGE_SET_APPLIED"}
   ]
 }

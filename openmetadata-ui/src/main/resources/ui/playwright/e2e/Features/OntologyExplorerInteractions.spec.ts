@@ -12,15 +12,13 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
-  OntologyExplorerComboData as ComboData,
-  OntologyExplorerCrossGlossaryData as CrossGlossaryData,
-  OntologyExplorerEmbeddedData as EmbeddedData,
-} from '../../support/entity/OntologyExplorerDataClass';
-import {
+  addTermRelation,
   applyGlossaryFilter,
-  applyRelationTypeFilter,
   createApiContext,
+  deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
   readGraphEdges,
@@ -30,91 +28,39 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Isolated nodes + relation filter combo', () => {
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await ComboData.setup(apiContext);
-    await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await ComboData.teardown(apiContext);
-    await disposeApiContext(afterAction, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, ComboData.comboGlossary.responseData.id);
-    await waitForGraphLoaded(page);
-  });
-
-  test('relation filter with no matching edges shows no-relations state', async ({
-    page,
-  }) => {
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-  });
-
-  test('isolated nodes OFF + unmatched relation filter shows no-relations, not empty state', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-    await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-  });
-
-  test('removing the relation filter restores connected nodes', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(
-      page.getByTestId('ontology-graph-no-relations')
-    ).not.toBeVisible();
-    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '2 Terms'
-    );
-  });
-
-  test('re-enabling isolated nodes while relation filter is active keeps no-relations state', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await page.getByTestId('ontology-isolated-toggle').click();
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-  });
-});
-
 test.describe('Cross-glossary term hydration', () => {
+  const salesGlossary = new Glossary();
+  const financeGlossary = new Glossary();
+  const termRevenue = new GlossaryTerm(salesGlossary);
+  const termExpense = new GlossaryTerm(financeGlossary);
+
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await CrossGlossaryData.setup(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+    await salesGlossary.create(apiContext);
+    await financeGlossary.create(apiContext);
+    await termRevenue.create(apiContext);
+    await termExpense.create(apiContext);
+    await addTermRelation(apiContext, termRevenue, termExpense, 'relatedTo');
+    await disposeApiContext(page, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await CrossGlossaryData.teardown(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+    await deleteEntities(
+      apiContext,
+      termRevenue,
+      termExpense,
+      salesGlossary,
+      financeGlossary
+    );
+    await disposeApiContext(page, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
+    test.slow();
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
-    await applyGlossaryFilter(
-      page,
-      CrossGlossaryData.salesGlossary.responseData.id
-    );
+    await applyGlossaryFilter(page, salesGlossary.responseData.id);
     await waitForGraphLoaded(page);
   });
 
@@ -124,49 +70,57 @@ test.describe('Cross-glossary term hydration', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(
-      positions[CrossGlossaryData.termRevenue.responseData.id]
-    ).toBeDefined();
-    expect(
-      positions[CrossGlossaryData.termExpense.responseData.id]
-    ).toBeDefined();
+    expect(positions[termRevenue.responseData.id]).toBeDefined();
+    expect(positions[termExpense.responseData.id]).toBeDefined();
   });
 
   test('cross-glossary edge is present in graph data', async ({ page }) => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === CrossGlossaryData.termRevenue.responseData.id &&
-          e.to === CrossGlossaryData.termExpense.responseData.id) ||
-        (e.from === CrossGlossaryData.termExpense.responseData.id &&
-          e.to === CrossGlossaryData.termRevenue.responseData.id)
+        (e.from === termRevenue.responseData.id &&
+          e.to === termExpense.responseData.id) ||
+        (e.from === termExpense.responseData.id &&
+          e.to === termRevenue.responseData.id)
     );
 
     expect(edge).toBeDefined();
   });
 
-  test('stats include the cross-glossary relation', async ({ page }) => {
-    await expect(page.getByTestId('ontology-explorer-stats')).not.toContainText(
-      '0 Relations'
+  test('header stats remain scoped to the selected glossary', async ({
+    page,
+  }) => {
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /1\s+terms?/i
     );
   });
 });
 
 test.describe('Embedded scope (Relations Graph tab)', () => {
+  const embeddedGlossary = new Glossary();
+  const termA = new GlossaryTerm(embeddedGlossary);
+  const termB = new GlossaryTerm(embeddedGlossary);
+  const termC = new GlossaryTerm(embeddedGlossary);
+
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await EmbeddedData.setup(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+    await embeddedGlossary.create(apiContext);
+    await termA.create(apiContext);
+    await termB.create(apiContext);
+    await termC.create(apiContext);
+    await addTermRelation(apiContext, termA, termB, 'relatedTo');
+    await disposeApiContext(page, apiContext);
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createApiContext(browser);
-    await EmbeddedData.teardown(apiContext);
-    await disposeApiContext(afterAction, apiContext);
+    const { page, apiContext } = await createApiContext(browser);
+    await deleteEntities(apiContext, termA, termB, termC, embeddedGlossary);
+    await disposeApiContext(page, apiContext);
   });
 
   test.beforeEach(async ({ page }) => {
-    await EmbeddedData.termA.visitEntityPage(page);
+    test.slow();
+    await termA.visitEntityPage(page);
     await page.getByTestId('relations_graph').click();
     await waitForGraphLoaded(page);
   });
@@ -177,10 +131,11 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
   });
 
-  test('global filter toolbar is hidden in term scope', async ({ page }) => {
+  test('global Studio controls are hidden in term scope', async ({ page }) => {
     await expect(
-      page.getByTestId('ontology-explorer-header')
+      page.getByTestId('ontology-glossary-menu-trigger')
     ).not.toBeVisible();
+    await expect(page.getByTestId('mode-tab-view')).not.toBeVisible();
   });
 
   test('zoom and fit-view controls are visible', async ({ page }) => {
@@ -195,9 +150,9 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
 
-    expect(positions[EmbeddedData.termA.responseData.id]).toBeDefined();
-    expect(positions[EmbeddedData.termB.responseData.id]).toBeDefined();
-    expect(positions[EmbeddedData.termC.responseData.id]).toBeUndefined();
+    expect(positions[termA.responseData.id]).toBeDefined();
+    expect(positions[termB.responseData.id]).toBeDefined();
+    expect(positions[termC.responseData.id]).toBeUndefined();
   });
 
   test('edge between the term and its neighbour is present', async ({
@@ -206,10 +161,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     const edges = await readGraphEdges(page);
     const edge = edges.find(
       (e) =>
-        (e.from === EmbeddedData.termA.responseData.id &&
-          e.to === EmbeddedData.termB.responseData.id) ||
-        (e.from === EmbeddedData.termB.responseData.id &&
-          e.to === EmbeddedData.termA.responseData.id)
+        (e.from === termA.responseData.id && e.to === termB.responseData.id) ||
+        (e.from === termB.responseData.id && e.to === termA.responseData.id)
     );
 
     expect(edge).toBeDefined();
@@ -219,8 +172,8 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await page.getByTestId('fit-view').click();
     const positions = await readNodePositions(page);
     await page.mouse.click(
-      positions[EmbeddedData.termB.responseData.id].x,
-      positions[EmbeddedData.termB.responseData.id].y
+      positions[termB.responseData.id].x,
+      positions[termB.responseData.id].y
     );
 
     await expect(

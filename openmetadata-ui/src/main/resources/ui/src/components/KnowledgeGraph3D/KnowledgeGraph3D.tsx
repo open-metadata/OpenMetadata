@@ -43,7 +43,12 @@ import {
   KnowledgeGraph3DSceneProps,
 } from './KnowledgeGraph3D.interface';
 import './KnowledgeGraph3D.less';
-import { idOf, linkKey, viewGraph } from './KnowledgeGraph3D.utils';
+import {
+  idOf,
+  linkKey,
+  resolveGraphNodeId,
+  viewGraph,
+} from './KnowledgeGraph3D.utils';
 import KnowledgeGraph3DControls from './KnowledgeGraph3DControls';
 import KnowledgeGraph3DEdgePanel from './KnowledgeGraph3DEdgePanel';
 import KnowledgeGraph3DLegend from './KnowledgeGraph3DLegend';
@@ -60,6 +65,7 @@ const KnowledgeGraph3DScene = lazy(() => import('./KnowledgeGraph3DScene'));
 
 /** Asset types whose child fields are called "fields" rather than "columns". */
 const FIELD_ASSET_TYPES = new Set<string>(['topic', 'searchIndex']);
+const MIN_ONTOLOGY_DEPTH = 2;
 
 const downloadDataUrl = (dataUrl: string): void => {
   const link = document.createElement('a');
@@ -108,6 +114,11 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         ? ontologyView(adapted, level)
         : viewGraph(adapted, level, lens),
     [adapted, level, lens]
+  );
+  const focusNodeId = useMemo(
+    () =>
+      entity?.id ? resolveGraphNodeId(adapted.nodes, entity.id) : undefined,
+    [adapted.nodes, entity?.id]
   );
   const nodesById = useMemo(
     () => new Map(adapted.nodes.map((node) => [node.id, node])),
@@ -257,6 +268,9 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     (next: Lens) => {
       clearSelection();
       setLens(next);
+      if (next === 'ontology') {
+        setSelectedDepth((current) => Math.max(current, MIN_ONTOLOGY_DEPTH));
+      }
     },
     [clearSelection]
   );
@@ -395,7 +409,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene
                 data={view}
-                focusNodeId={entity.id}
+                focusNodeId={focusNodeId}
                 gaps={gaps}
                 getLinkTooltip={getLinkTooltip}
                 getNodeTooltip={getNodeTooltip}

@@ -11,6 +11,13 @@
       "type": "string",
       "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
       "default": "NONE"
+    },
+    "shaclValidationMode": {
+      "description": "SHACL validation behavior for RDF import and asynchronous projections.",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode",
+      "type": "string",
+      "enum": ["OFF", "REPORT", "ENFORCE_IMPORTS"],
+      "default": "REPORT"
     }
   },
   "properties": {
@@ -108,9 +115,61 @@
       "default": "CUSTOM"
     },
     "cacheInferredTriples": {
-      "description": "Cache inferred triples for better query performance (requires more storage)",
+      "description": "Cache bounded in-memory inference models for better query performance. Cached models expire after 60 seconds.",
       "type": "boolean",
       "default": false
+    },
+    "maxInMemoryInferenceTriples": {
+      "description": "Maximum RDF store size for in-process inference. Queries requesting inference fall back to direct SPARQL execution when the store exceeds this limit.",
+      "type": "integer",
+      "default": 100000,
+      "minimum": 1
+    },
+    "materializedInferenceEnabled": {
+      "description": "Use durable per-rule inferred named graphs produced inside the RDF store instead of building an in-memory Jena inference model for CUSTOM inference queries.",
+      "type": "boolean",
+      "default": false
+    },
+    "shaclValidationMode": {
+      "$ref": "#/definitions/shaclValidationMode"
+    },
+    "dereferenceableIris": {
+      "description": "Expose authenticated content-negotiated redirects for OpenMetadata-minted IRIs.",
+      "type": "boolean",
+      "default": false
+    },
+    "strictOwlProfile": {
+      "description": "Reject authored axioms that violate the supported OWL 2 DL profile guardrails.",
+      "type": "boolean",
+      "default": true
+    },
+    "askCollateEnabled": {
+      "description": "Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available when disabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "federation": {
+      "description": "Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is disabled by default; SERVICE clauses are rejected unless the target URI is in the allowlist.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig",
+      "properties": {
+        "enabled": {
+          "description": "Master switch for federated SPARQL. When false, every SERVICE clause is rejected regardless of allowlist contents.",
+          "type": "boolean",
+          "default": false
+        },
+        "allowedEndpoints": {
+          "description": "External SPARQL endpoint URIs that may appear in SERVICE clauses. Compared verbatim against the URI in the SERVICE clause; trailing slashes matter.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false,
+      "default": null
     }
   },
   "required": ["enabled", "storageType"],
