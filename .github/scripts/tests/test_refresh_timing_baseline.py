@@ -203,6 +203,117 @@ def test_main_refuses_when_drift_exceeds_cap(tmp_path):
     assert not output.exists()
 
 
+def test_main_skips_immaterial_change_with_exit_three(tmp_path):
+    # 1 of 20 entries shifts by 600 ms — pure run-to-run jitter. With a 10%
+    # materiality threshold the script must exit 3 and write nothing, so the
+    # workflow skips the main commit (every push to main resets the merge
+    # queue; jitter must not).
+    refresh_script = SCRIPTS / "refresh_timing_baseline.py"
+    history = tmp_path / "history.json"
+    current = tmp_path / "current.json"
+    output = tmp_path / "new.json"
+    summary = tmp_path / "summary.md"
+
+    _write(history, {
+        "mode": "full",
+        "sourceSha": "sha-fresh",
+        "tests": [_fresh_test(f"t{i}", "Pages/A.spec.ts", f"case {i}",
+                              1000 + (600 if i == 0 else 0))
+                  for i in range(20)],
+    })
+    _write(current, {
+        "version": 1, "mode": "full", "sourceRunId": 111,
+        "retainedUnstableTestIds": [],
+        "tests": [_current_test(f"t{i}", "Pages/A.spec.ts", f"case {i}", 1000)
+                  for i in range(20)],
+    })
+
+    result = subprocess.run(
+        [sys.executable, str(refresh_script),
+         "--history", str(history), "--current", str(current),
+         "--output", str(output), "--source-run-id", "42",
+         "--min-materiality-percent", "10",
+         "--summary", str(summary)],
+        capture_output=True, text=True,
+    )
+
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert "materiality" in (result.stdout + result.stderr)
+    assert not output.exists()
+    # The summary still records why the refresh was skipped.
+    assert "materiality" in summary.read_text()
+
+
+def test_main_treats_recovered_zero_duration_as_material(tmp_path):
+    # A single zero→real recovery is below any percentage threshold but MUST
+    # refresh: all-zero entries are the planner-starving bug class that
+    # SIGTERM'd chromium-12 (PR #30812).
+    refresh_script = SCRIPTS / "refresh_timing_baseline.py"
+    history = tmp_path / "history.json"
+    current = tmp_path / "current.json"
+    output = tmp_path / "new.json"
+
+    _write(history, {
+        "mode": "full",
+        "sourceSha": "sha-fresh",
+        "tests": [_fresh_test(f"t{i}", "Pages/A.spec.ts", f"case {i}",
+                              1000 if i else 30000)
+                  for i in range(20)],
+    })
+    _write(current, {
+        "version": 1, "mode": "full", "sourceRunId": 111,
+        "retainedUnstableTestIds": [],
+        "tests": [_current_test(f"t{i}", "Pages/A.spec.ts", f"case {i}",
+                                1000 if i else 0)
+                  for i in range(20)],
+    })
+
+    result = subprocess.run(
+        [sys.executable, str(refresh_script),
+         "--history", str(history), "--current", str(current),
+         "--output", str(output), "--source-run-id", "42",
+         "--min-materiality-percent", "10"],
+        capture_output=True, text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert output.exists()
+
+
+def test_main_treats_significant_shift_share_as_material(tmp_path):
+    # 3 of 20 entries (15%) shift by 20 s (>30% and >5 s) — over a 10%
+    # materiality threshold, so the refresh proceeds.
+    refresh_script = SCRIPTS / "refresh_timing_baseline.py"
+    history = tmp_path / "history.json"
+    current = tmp_path / "current.json"
+    output = tmp_path / "new.json"
+
+    _write(history, {
+        "mode": "full",
+        "sourceSha": "sha-fresh",
+        "tests": [_fresh_test(f"t{i}", "Pages/A.spec.ts", f"case {i}",
+                              30000 if i < 3 else 10000)
+                  for i in range(20)],
+    })
+    _write(current, {
+        "version": 1, "mode": "full", "sourceRunId": 111,
+        "retainedUnstableTestIds": [],
+        "tests": [_current_test(f"t{i}", "Pages/A.spec.ts", f"case {i}", 10000)
+                  for i in range(20)],
+    })
+
+    result = subprocess.run(
+        [sys.executable, str(refresh_script),
+         "--history", str(history), "--current", str(current),
+         "--output", str(output), "--source-run-id", "42",
+         "--min-materiality-percent", "10"],
+        capture_output=True, text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert output.exists()
+
+
 def test_main_rejects_non_full_history(tmp_path):
     refresh_script = SCRIPTS / "refresh_timing_baseline.py"
     history = tmp_path / "history.json"
