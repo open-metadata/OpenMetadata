@@ -15,7 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps, FormEvent } from 'react';
 import { useRef, useState } from 'react';
-import { AIExploreSearchInput } from './AIExploreSearchInput';
+import { ExploreSearchInput } from './ExploreSearchInput';
 
 let mockIsAppleDevice = true;
 const ARIA_KEY_SHORTCUTS = 'aria-keyshortcuts';
@@ -57,7 +57,7 @@ const SearchInputHarness = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState(false);
 
   return (
-    <AIExploreSearchInput
+    <ExploreSearchInput
       isNLPEnabled
       isNLPActive={false}
       isSearchBoxOpen={isSearchBoxOpen}
@@ -77,7 +77,7 @@ const SearchInputHarness = () => {
   );
 };
 
-describe('AIExploreSearchInput', () => {
+describe('ExploreSearchInput', () => {
   beforeEach(() => {
     mockIsAppleDevice = true;
   });
@@ -86,19 +86,19 @@ describe('AIExploreSearchInput', () => {
     render(<SearchInputHarness />);
 
     expect(
-      screen.queryByTestId('ai-explore-ask-collate-button')
+      screen.queryByTestId('explore-ask-collate-button')
     ).not.toBeInTheDocument();
   });
 
   it('renders the global Ask Collate shortcut hint', () => {
     render(<SearchInputHarness />);
 
-    const shortcut = screen.getByTestId('ai-explore-search-shortcut');
+    const shortcut = screen.getByTestId('explore-search-shortcut');
     const searchInput = screen.getByRole('textbox');
 
     expect(shortcut).toHaveTextContent('⌘K');
     expect(shortcut).toHaveAccessibleName(
-      'message.ai-explore-search-placeholder (⌘K)'
+      'message.explore-search-placeholder (⌘K)'
     );
     expect(shortcut).not.toHaveAttribute(ARIA_KEY_SHORTCUTS);
     expect(searchInput).not.toHaveAttribute(ARIA_KEY_SHORTCUTS);
@@ -109,12 +109,12 @@ describe('AIExploreSearchInput', () => {
 
     render(<SearchInputHarness />);
 
-    const shortcut = screen.getByTestId('ai-explore-search-shortcut');
+    const shortcut = screen.getByTestId('explore-search-shortcut');
     const searchInput = screen.getByRole('textbox');
 
     expect(shortcut).toHaveTextContent('Ctrl+K');
     expect(shortcut).toHaveAccessibleName(
-      'message.ai-explore-search-placeholder (Ctrl+K)'
+      'message.explore-search-placeholder (Ctrl+K)'
     );
     expect(searchInput).not.toHaveAttribute(ARIA_KEY_SHORTCUTS);
   });
@@ -139,7 +139,7 @@ describe('AIExploreSearchInput', () => {
     await user.type(screen.getByRole('textbox'), 'orders');
 
     const clearIcon = screen
-      .getByTestId('ai-explore-clear-search-button')
+      .getByTestId('explore-clear-search-button')
       .querySelector('svg-mock');
 
     expect(clearIcon).toHaveAttribute(
@@ -171,7 +171,7 @@ describe('AIExploreSearchInput', () => {
 
     expect(searchInput).toBeInTheDocument();
     expect(
-      await screen.findByTestId('ai-explore-search-popover')
+      await screen.findByTestId('explore-search-popover')
     ).toBeInTheDocument();
     expect(searchInput).toHaveFocus();
     expect(searchInput).toHaveValue('orders');
@@ -184,7 +184,7 @@ describe('AIExploreSearchInput', () => {
     const searchInput = screen.getByRole('textbox');
     await user.type(searchInput, 'orders');
 
-    const popover = await screen.findByTestId('ai-explore-search-popover');
+    const popover = await screen.findByTestId('explore-search-popover');
 
     expect(popover).toHaveAttribute('data-classname-type', 'string');
   });
@@ -198,13 +198,13 @@ describe('AIExploreSearchInput', () => {
     await user.type(searchInput, 'orders');
 
     expect(
-      await screen.findByTestId('ai-explore-search-popover')
+      await screen.findByTestId('explore-search-popover')
     ).toBeInTheDocument();
 
     await user.click(document.body);
 
     expect(
-      screen.queryByTestId('ai-explore-search-popover')
+      screen.queryByTestId('explore-search-popover')
     ).not.toBeInTheDocument();
   });
 });

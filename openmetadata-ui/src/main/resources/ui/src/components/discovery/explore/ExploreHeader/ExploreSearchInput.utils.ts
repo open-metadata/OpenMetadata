@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-const SEARCH_POPOVER_SELECTOR = '[data-testid="ai-explore-search-popover"]';
+const SEARCH_POPOVER_SELECTOR = '[data-testid="explore-search-popover"]';
 
 /**
  * Treats the search form and its portalled suggestions as one focus boundary.

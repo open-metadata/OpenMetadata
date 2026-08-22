@@ -25,12 +25,12 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AIExploreQuickFilters } from './AIExploreQuickFilters';
-import type { QuickFilter } from './AIExploreQuickFilters.interface';
-import { AIExploreSearchCardInfo } from './AIExploreSearchCardInfo';
-import { AIExploreSearchInput } from './AIExploreSearchInput';
+import { ExploreQuickFilters } from './ExploreQuickFilters';
+import type { QuickFilter } from './ExploreQuickFilters.interface';
+import { ExploreSearchCardInfo } from './ExploreSearchCardInfo';
+import { ExploreSearchInput } from './ExploreSearchInput';
 
-export const AIExploreSearchCard = () => {
+export const ExploreSearchCard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchCriteria = useApplicationStore((state) => state.searchCriteria);
@@ -218,9 +218,9 @@ export const AIExploreSearchCard = () => {
   const searchActions = (
     <Box
       className="tw:mx-auto tw:flex tw:w-full tw:max-w-5xl tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-3 tw:px-8"
-      data-testid="ai-explore-search-actions"
+      data-testid="explore-search-actions"
       direction="col">
-      <AIExploreSearchInput
+      <ExploreSearchInput
         isNLPActive={isNLPActive}
         isNLPEnabled={isNLPEnabled}
         isSearchBoxOpen={isSearchBoxOpen}
@@ -236,7 +236,7 @@ export const AIExploreSearchCard = () => {
         onSuggestionSelect={handleSuggestionSelect}
       />
       <div className="tw:w-full">
-        <AIExploreQuickFilters onFilterClick={handleQuickFilterClick} />
+        <ExploreQuickFilters onFilterClick={handleQuickFilterClick} />
       </div>
     </Box>
   );
@@ -245,10 +245,10 @@ export const AIExploreSearchCard = () => {
     <Box
       align="start"
       className="tw:w-full tw:min-w-0 tw:flex-1"
-      data-testid="ai-explore-header-layout"
+      data-testid="explore-header-layout"
       direction="row"
       gap={4}>
-      <AIExploreSearchCardInfo assetCount={assetCount} />
+      <ExploreSearchCardInfo assetCount={assetCount} />
       {searchActions}
     </Box>
   );
@@ -256,7 +256,7 @@ export const AIExploreSearchCard = () => {
   return (
     <HeaderShell
       className="tw:min-h-[108px] tw:w-full tw:overflow-hidden tw:rounded-xl"
-      data-testid="ai-explore-search-card"
+      data-testid="explore-search-card"
       padding="comfortable"
       title={headerLayout}
       variant="gradient"

@@ -14,8 +14,8 @@
 import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { QUICK_FILTERS } from './AIExploreQuickFilters.constants';
-import type { QuickFilter } from './AIExploreQuickFilters.interface';
+import { QUICK_FILTERS } from './ExploreQuickFilters.constants';
+import type { QuickFilter } from './ExploreQuickFilters.interface';
 
 const QUICK_FILTER_BUTTON_CLASS = classNames(
   'tw:flex tw:h-[30px] tw:shrink-0 tw:cursor-pointer tw:items-center',
@@ -26,26 +26,26 @@ const QUICK_FILTER_BUTTON_CLASS = classNames(
   'tw:hover:border-[#B2CCFF] tw:hover:bg-white tw:hover:text-brand-800'
 );
 
-export interface AIExploreQuickFiltersProps {
+export interface ExploreQuickFiltersProps {
   onFilterClick: (filter: QuickFilter) => void;
 }
 
-export const AIExploreQuickFilters = ({
+export const ExploreQuickFilters = ({
   onFilterClick,
-}: AIExploreQuickFiltersProps) => {
+}: ExploreQuickFiltersProps) => {
   const { t } = useTranslation();
 
   return (
     <Box className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
       <span
         className="tw:mr-0.5 tw:text-xs tw:font-medium tw:text-tertiary"
-        data-testid="ai-explore-quick-filter-label">
+        data-testid="explore-quick-filter-label">
         {t('label.quick-filter-plural')}
       </span>
       {QUICK_FILTERS.map((filter) => (
         <button
           className={QUICK_FILTER_BUTTON_CLASS}
-          data-testid={`ai-explore-quick-filter-${filter.testId}`}
+          data-testid={`explore-quick-filter-${filter.testId}`}
           key={filter.labelKey}
           type="button"
           onClick={() => onFilterClick(filter)}>

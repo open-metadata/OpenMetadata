@@ -28,13 +28,13 @@ import type { SearchIndex } from '../../../../enums/search.enum';
 import type { FormEvent, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isFocusWithinSearchControl } from './AIExploreSearchInput.utils';
+import { isFocusWithinSearchControl } from './ExploreSearchInput.utils';
 
 const Suggestions = lazy(
   () => import('../../../../components/AppBar/Suggestions')
 );
 
-export interface AIExploreSearchInputProps {
+export interface ExploreSearchInputProps {
   searchValue: string;
   suggestionSearch: string;
   isSearchBoxOpen: boolean;
@@ -112,11 +112,11 @@ const SEARCH_SHORTCUT_CLASS = classNames(
   'tw:text-xs tw:font-medium tw:leading-none tw:text-tertiary'
 );
 
-const SEARCH_PLACEHOLDER_KEY = 'message.ai-explore-search-placeholder';
+const SEARCH_PLACEHOLDER_KEY = 'message.explore-search-placeholder';
 
 const getSearchShortcutLabel = () => (isAppleDevice() ? '⌘K' : 'Ctrl+K');
 
-export const AIExploreSearchInput = ({
+export const ExploreSearchInput = ({
   searchValue,
   suggestionSearch,
   isSearchBoxOpen,
@@ -130,7 +130,7 @@ export const AIExploreSearchInput = ({
   onNLPToggle,
   onClearSearch,
   onSuggestionSelect,
-}: AIExploreSearchInputProps) => {
+}: ExploreSearchInputProps) => {
   const { t } = useTranslation();
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
@@ -141,7 +141,7 @@ export const AIExploreSearchInput = ({
       <form
         aria-label={t(SEARCH_PLACEHOLDER_KEY)}
         className="tw:relative tw:w-full tw:min-w-0"
-        data-testid="ai-explore-search-form"
+        data-testid="explore-search-form"
         ref={searchContainerRef}
         role="search"
         onBlur={(event) => {
@@ -164,7 +164,7 @@ export const AIExploreSearchInput = ({
                     ? NLP_TOGGLE_ACTIVE_CLASS
                     : NLP_TOGGLE_INACTIVE_CLASS
                 }`}
-                data-testid="ai-explore-nlp-toggle"
+                data-testid="explore-nlp-toggle"
                 title={
                   isNLPActive
                     ? t('message.natural-language-search-active')
@@ -187,7 +187,7 @@ export const AIExploreSearchInput = ({
           <Input
             data-input-wrapper
             className={INPUT_FIELD_CONTAINER_CLASS}
-            data-testid="ai-explore-search-input"
+            data-testid="explore-search-input"
             fontSize="xs"
             icon={SearchMd}
             iconClassName="tw:size-4 tw:text-brand-600"
@@ -210,7 +210,7 @@ export const AIExploreSearchInput = ({
               aria-label={t('label.clear')}
               className={CLEAR_BUTTON_CLASS}
               color="tertiary"
-              data-testid="ai-explore-clear-search-button"
+              data-testid="explore-clear-search-button"
               icon={<IconCloseCircleOutlined className={CLEAR_ICON_CLASS} />}
               size="xs"
               tooltip={t('label.clear')}
@@ -220,7 +220,7 @@ export const AIExploreSearchInput = ({
           <kbd
             aria-label={`${t(SEARCH_PLACEHOLDER_KEY)} (${searchShortcutLabel})`}
             className={SEARCH_SHORTCUT_CLASS}
-            data-testid="ai-explore-search-shortcut">
+            data-testid="explore-search-shortcut">
             {searchShortcutLabel}
           </kbd>
         </div>
@@ -229,7 +229,7 @@ export const AIExploreSearchInput = ({
           isNonModal
           className={SEARCH_POPOVER_CLASS}
           containerPadding={0}
-          data-testid="ai-explore-search-popover"
+          data-testid="explore-search-popover"
           isOpen={isSearchPopoverOpen}
           offset={12}
           placement="bottom"
@@ -244,7 +244,7 @@ export const AIExploreSearchInput = ({
             className={`${SUGGESTIONS_CONTAINER_CLASS} ${
               isNLPActive ? NLP_SUGGESTION_ITEM_CLASS : ''
             }`}
-            data-testid="ai-explore-search-results">
+            data-testid="explore-search-results">
             <Suspense fallback={null}>
               <Suggestions
                 isNLPActive={isNLPActive}

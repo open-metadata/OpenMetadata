@@ -13,8 +13,8 @@
 
 import { TEST_STATUS_COLORS } from '../../../../constants/Color.constants';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
-import type { QuickFilter } from './AIExploreQuickFilters.interface';
-import { buildQuickFilterQuery } from './AIExploreQuickFilters.utils';
+import type { QuickFilter } from './ExploreQuickFilters.interface';
+import { buildQuickFilterQuery } from './ExploreQuickFilters.utils';
 
 export const QUICK_FILTERS: QuickFilter[] = [
   {

@@ -650,12 +650,12 @@ const ExplorePageV1WithLayout = withPageLayout(withAdvanceSearch(ExplorePageV1))
 
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
-const AI_EXPLORE_PAGE_CLASS_NAME =
+const EXPLORE_MODE_PAGE_CLASS_NAME =
   'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
 
-const AI_EXPLORE_SEARCH_CARD_WRAPPER_CLASS_NAME = 'tw:mx-2 tw:mt-2 tw:shrink-0';
+const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME = 'tw:mx-2 tw:mt-2 tw:shrink-0';
 
-const AI_EXPLORE_CONTENT_CLASS_NAME = classNames(
+const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
   'tw:flex tw:h-full tw:flex-col tw:bg-primary',
   'tw:[&_.explore-page]:!bg-primary',
   'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
@@ -663,11 +663,11 @@ const AI_EXPLORE_CONTENT_CLASS_NAME = classNames(
   "tw:[&>[data-testid='loader']]:tw:m-auto"
 );
 
-const AIExploreSearchCard = withSuspenseFallback(
+const ExploreSearchCard = withSuspenseFallback(
   React.lazy(() =>
     import(
-      '../../components/discovery/explore/ExploreAiHeader/AIExploreSearchCard'
-    ).then((module) => ({ default: module.AIExploreSearchCard }))
+      '../../components/discovery/explore/ExploreHeader/ExploreSearchCard'
+    ).then((module) => ({ default: module.ExploreSearchCard }))
   )
 );
 
@@ -683,15 +683,15 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = (props) => {
 
   return (
     <Box
-      className={AI_EXPLORE_PAGE_CLASS_NAME}
-      data-testid="ai-explore-page"
+      className={EXPLORE_MODE_PAGE_CLASS_NAME}
+      data-testid="explore-page"
       direction="col">
-      <Box className={AI_EXPLORE_SEARCH_CARD_WRAPPER_CLASS_NAME}>
-        <AIExploreSearchCard />
+      <Box className={EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME}>
+        <ExploreSearchCard />
       </Box>
       <Box
-        className={AI_EXPLORE_CONTENT_CLASS_NAME}
-        data-testid="ai-explore-content">
+        className={EXPLORE_MODE_CONTENT_CLASS_NAME}
+        data-testid="explore-content">
         <ExplorePageV1WithLayout {...props} />
       </Box>
     </Box>

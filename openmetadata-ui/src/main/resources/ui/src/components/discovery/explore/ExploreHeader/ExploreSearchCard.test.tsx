@@ -14,7 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import React from 'react';
-import { AIExploreSearchCard } from './AIExploreSearchCard';
+import { ExploreSearchCard } from './ExploreSearchCard';
 
 const mockNavigate = jest.fn();
 const mockGetExplorePath = jest.fn();
@@ -35,16 +35,16 @@ let mockCurrentUser: { displayName?: string; name?: string } = {
 };
 
 const mockTranslations: Record<string, string> = {
-  'label.ai-explore-title': 'Explore Assets',
+  'label.explore-title': 'Explore Assets',
   'label.dashboard-plural': 'Dashboards',
   'label.quick-filter-plural': 'Quick filters',
   'label.recently-updated': 'Recently updated',
   'label.table-plural': 'Tables',
   'label.tier-1': 'Tier 1',
   'label.use-natural-language-search': 'Use natural language search',
-  'message.ai-explore-assets-indexed': '{{total}} assets indexed',
-  'message.ai-explore-assets-indexed-suffix': 'assets indexed',
-  'message.ai-explore-search-placeholder':
+  'message.explore-assets-indexed': '{{total}} assets indexed',
+  'message.explore-assets-indexed-suffix': 'assets indexed',
+  'message.explore-search-placeholder':
     'Search across your Context Platform',
   'message.natural-language-search-active': 'Natural language search active',
 };
@@ -82,7 +82,7 @@ jest.mock('../../../../components/AppBar/Suggestions', () => ({
         NLP suggestion
       </button>
     ) : (
-      <div data-testid="ai-explore-search-suggestions">
+      <div data-testid="explore-search-suggestions">
         {searchCriteria}:{searchText}
       </div>
     ),
@@ -244,10 +244,10 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock(
-  '../../../../assets/svg/ai-explore-header-icon.svg',
+  '../../../../assets/svg/explore-header-icon.svg',
   () => ({
     ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg data-testid="ai-explore-search-card-icon" {...props} />
+      <svg data-testid="explore-search-card-icon" {...props} />
     ),
   }),
   { virtual: true }
@@ -270,7 +270,7 @@ const getSearchInput = () =>
     name: 'Search across your Context Platform',
   });
 
-describe('AIExploreSearchCard', () => {
+describe('ExploreSearchCard', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockNavigate.mockClear();
@@ -297,23 +297,23 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('renders the AI explore search card', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    expect(screen.getByTestId('ai-explore-search-card')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-search-card')).toBeInTheDocument();
     expect(
-      screen.getByTestId('ai-explore-search-card-icon')
+      screen.getByTestId('explore-search-card-icon')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('ai-explore-search-card-title')
+      screen.getByTestId('explore-search-card-title')
     ).toHaveTextContent('Explore Assets');
     expect(
-      screen.queryByTestId('ai-explore-search-card-subtitle')
+      screen.queryByTestId('explore-search-card-subtitle')
     ).not.toBeInTheDocument();
     expect(mockInitNLP).toHaveBeenCalled();
   });
 
   it('removes the core input outline from the embedded search field', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     expect(getSearchInput().parentElement).toHaveClass(
       'tw:outline-0!',
@@ -322,14 +322,14 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('centers the search and filters in a constrained column beside the Explore information', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    const headerLayout = screen.getByTestId('ai-explore-header-layout');
-    const searchActions = screen.getByTestId('ai-explore-search-actions');
+    const headerLayout = screen.getByTestId('explore-header-layout');
+    const searchActions = screen.getByTestId('explore-search-actions');
     const ossHeaderTitleRow = headerLayout.parentElement;
     const ossHeaderTitleContent = ossHeaderTitleRow?.parentElement;
 
-    expect(screen.getByTestId('ai-explore-search-card')).toHaveClass(
+    expect(screen.getByTestId('explore-search-card')).toHaveClass(
       'tw:w-full'
     );
     expect(headerLayout).toHaveClass('tw:w-full', 'tw:min-w-0', 'tw:flex-1');
@@ -340,7 +340,7 @@ describe('AIExploreSearchCard', () => {
     expect(ossHeaderTitleContent).toHaveClass('tw:min-w-0', 'tw:flex-1');
     expect(headerLayout.closest('.tw\\:shrink-0')).toBeNull();
     expect(headerLayout).toContainElement(
-      screen.getByTestId('ai-explore-search-card-title')
+      screen.getByTestId('explore-search-card-title')
     );
     expect(headerLayout).toContainElement(searchActions);
     expect(searchActions).toHaveClass(
@@ -351,7 +351,7 @@ describe('AIExploreSearchCard', () => {
       'tw:mx-auto',
       'tw:px-8'
     );
-    expect(screen.getByTestId('ai-explore-search-form')).toHaveClass(
+    expect(screen.getByTestId('explore-search-form')).toHaveClass(
       'tw:w-full'
     );
   });
@@ -362,14 +362,14 @@ describe('AIExploreSearchCard', () => {
       aggregations: {},
     });
 
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     await act(async () => {
       await Promise.resolve();
     });
 
     expect(
-      screen.getByTestId('ai-explore-search-card-stats')
+      screen.getByTestId('explore-search-card-stats')
     ).toHaveTextContent('12,480 assets indexed');
     expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ trackTotalHits: true })
@@ -377,12 +377,12 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('navigates to explore on submit', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     fireEvent.change(getSearchInput(), {
       target: { value: ' orders ' },
     });
-    fireEvent.submit(screen.getByTestId('ai-explore-search-form'));
+    fireEvent.submit(screen.getByTestId('explore-search-form'));
 
     expect(mockGetExplorePath).toHaveBeenCalledWith({
       tab: 'tables',
@@ -397,7 +397,7 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('navigates to explore when Enter is pressed in the search input', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     const searchInput = getSearchInput();
     fireEvent.change(searchInput, {
@@ -419,23 +419,23 @@ describe('AIExploreSearchCard', () => {
   it('hydrates search input from the URL search parameter', () => {
     mockLocation = { pathname: '/explore/tables', search: '?search=orders' };
 
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     expect(getSearchInput()).toHaveValue('orders');
   });
 
   it('keeps search input in sync when entity type changes preserve URL search', () => {
     mockLocation = { pathname: '/explore', search: '?search=orders' };
-    const { rerender } = render(<AIExploreSearchCard />);
+    const { rerender } = render(<ExploreSearchCard />);
 
     mockLocation = { pathname: '/explore/topics', search: '?search=invoices' };
-    rerender(<AIExploreSearchCard />);
+    rerender(<ExploreSearchCard />);
 
     expect(getSearchInput()).toHaveValue('invoices');
   });
 
   it('opens suggestions while typing', async () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     fireEvent.change(getSearchInput(), {
       target: { value: 'orders' },
@@ -448,7 +448,7 @@ describe('AIExploreSearchCard', () => {
     });
 
     expect(
-      screen.getByTestId('ai-explore-search-suggestions')
+      screen.getByTestId('explore-search-suggestions')
     ).toHaveTextContent('table:orders');
   });
 
@@ -458,7 +458,7 @@ describe('AIExploreSearchCard', () => {
     globalThis.PointerEvent = MouseEvent as typeof PointerEvent;
 
     try {
-      render(<AIExploreSearchCard />);
+      render(<ExploreSearchCard />);
 
       const searchInput = getSearchInput();
       act(() => searchInput.focus());
@@ -473,7 +473,7 @@ describe('AIExploreSearchCard', () => {
       });
 
       expect(
-        screen.getByTestId('ai-explore-search-popover')
+        screen.getByTestId('explore-search-popover')
       ).toBeInTheDocument();
 
       fireEvent.blur(searchInput, { relatedTarget: document.body });
@@ -481,7 +481,7 @@ describe('AIExploreSearchCard', () => {
       fireEvent.click(document.body);
 
       expect(
-        screen.queryByTestId('ai-explore-search-popover')
+        screen.queryByTestId('explore-search-popover')
       ).not.toBeInTheDocument();
     } finally {
       globalThis.PointerEvent = originalPointerEvent;
@@ -493,7 +493,7 @@ describe('AIExploreSearchCard', () => {
     globalThis.PointerEvent = MouseEvent as typeof PointerEvent;
 
     try {
-      render(<AIExploreSearchCard />);
+      render(<ExploreSearchCard />);
 
       const searchInput = getSearchInput();
       fireEvent.change(searchInput, {
@@ -507,14 +507,14 @@ describe('AIExploreSearchCard', () => {
       });
 
       expect(
-        screen.getByTestId('ai-explore-search-popover')
+        screen.getByTestId('explore-search-popover')
       ).toBeInTheDocument();
 
       fireEvent.pointerDown(searchInput);
       fireEvent.click(searchInput);
 
       expect(
-        screen.getByTestId('ai-explore-search-popover')
+        screen.getByTestId('explore-search-popover')
       ).toBeInTheDocument();
     } finally {
       globalThis.PointerEvent = originalPointerEvent;
@@ -526,7 +526,7 @@ describe('AIExploreSearchCard', () => {
     globalThis.PointerEvent = MouseEvent as typeof PointerEvent;
 
     try {
-      render(<AIExploreSearchCard />);
+      render(<ExploreSearchCard />);
 
       fireEvent.change(getSearchInput(), {
         target: { value: 'orders' },
@@ -538,7 +538,7 @@ describe('AIExploreSearchCard', () => {
         await Promise.resolve();
       });
 
-      const popover = screen.getByTestId('ai-explore-search-popover');
+      const popover = screen.getByTestId('explore-search-popover');
       fireEvent.pointerDown(popover);
       fireEvent.click(popover);
 
@@ -554,13 +554,13 @@ describe('AIExploreSearchCard', () => {
     mockIsNLPActive = true;
 
     try {
-      render(<AIExploreSearchCard />);
+      render(<ExploreSearchCard />);
 
       const searchInput = getSearchInput();
       act(() => searchInput.focus());
 
       expect(
-        await screen.findByTestId('ai-explore-search-popover')
+        await screen.findByTestId('explore-search-popover')
       ).toBeInTheDocument();
 
       fireEvent.blur(searchInput, { relatedTarget: document.body });
@@ -568,7 +568,7 @@ describe('AIExploreSearchCard', () => {
       fireEvent.click(document.body);
 
       expect(
-        screen.queryByTestId('ai-explore-search-popover')
+        screen.queryByTestId('explore-search-popover')
       ).not.toBeInTheDocument();
     } finally {
       globalThis.PointerEvent = originalPointerEvent;
@@ -576,7 +576,7 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('clears the search text and suggestions on clear click', async () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     fireEvent.change(getSearchInput(), {
       target: { value: 'orders' },
@@ -588,14 +588,14 @@ describe('AIExploreSearchCard', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByTestId('ai-explore-search-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-search-popover')).toBeInTheDocument();
 
     mockGetExplorePath.mockReturnValueOnce('/explore/tables?sort=_score');
-    fireEvent.click(screen.getByTestId('ai-explore-clear-search-button'));
+    fireEvent.click(screen.getByTestId('explore-clear-search-button'));
 
     expect(getSearchInput()).toHaveValue('');
     expect(
-      screen.queryByTestId('ai-explore-search-popover')
+      screen.queryByTestId('explore-search-popover')
     ).not.toBeInTheDocument();
     expect(mockGetExplorePath).toHaveBeenCalledWith({
       isPersistFilters: true,
@@ -606,7 +606,7 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('closes suggestions on route changes', async () => {
-    const { rerender } = render(<AIExploreSearchCard />);
+    const { rerender } = render(<ExploreSearchCard />);
 
     fireEvent.change(getSearchInput(), {
       target: { value: 'orders' },
@@ -618,29 +618,29 @@ describe('AIExploreSearchCard', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByTestId('ai-explore-search-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-search-popover')).toBeInTheDocument();
 
     mockLocation = { pathname: '/dashboards', search: '' };
-    rerender(<AIExploreSearchCard />);
+    rerender(<ExploreSearchCard />);
 
     expect(
-      screen.queryByTestId('ai-explore-search-popover')
+      screen.queryByTestId('explore-search-popover')
     ).not.toBeInTheDocument();
   });
 
   it('does not navigate when search is empty', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    fireEvent.submit(screen.getByTestId('ai-explore-search-form'));
+    fireEvent.submit(screen.getByTestId('explore-search-form'));
 
     expect(mockGetExplorePath).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('toggles NLP search', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    fireEvent.click(screen.getByTestId('ai-explore-nlp-toggle'));
+    fireEvent.click(screen.getByTestId('explore-nlp-toggle'));
 
     expect(mockSetNLPActive).toHaveBeenCalledWith(true);
     expect(mockSetPreference).toHaveBeenCalledWith({ isNLPActive: true });
@@ -649,7 +649,7 @@ describe('AIExploreSearchCard', () => {
   it('restores the persisted NLP search preference on refresh', () => {
     mockPersistedNLPActive = true;
 
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     expect(mockSetNLPActive).toHaveBeenCalledWith(true);
   });
@@ -658,8 +658,8 @@ describe('AIExploreSearchCard', () => {
     mockIsNLPActive = true;
     mockPersistedNLPActive = true;
 
-    render(<AIExploreSearchCard />);
-    fireEvent.click(screen.getByTestId('ai-explore-nlp-toggle'));
+    render(<ExploreSearchCard />);
+    fireEvent.click(screen.getByTestId('explore-nlp-toggle'));
 
     expect(mockSetNLPActive).toHaveBeenLastCalledWith(false);
     expect(mockSetPreference).toHaveBeenCalledWith({ isNLPActive: false });
@@ -667,18 +667,18 @@ describe('AIExploreSearchCard', () => {
 
   it('hides NLP toggle when NLP is not enabled', () => {
     mockIsNLPEnabled = false;
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     expect(
-      screen.queryByTestId('ai-explore-nlp-toggle')
+      screen.queryByTestId('explore-nlp-toggle')
     ).not.toBeInTheDocument();
   });
 
   it('shows active NLP state when NLP is on', () => {
     mockIsNLPActive = true;
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    const toggle = screen.getByTestId('ai-explore-nlp-toggle');
+    const toggle = screen.getByTestId('explore-nlp-toggle');
 
     expect(toggle).toHaveAttribute('title', 'Natural language search active');
 
@@ -692,7 +692,7 @@ describe('AIExploreSearchCard', () => {
     mockGetExplorePath.mockReturnValue(
       '/explore/tables?search=Tables%20owned%20by%20marketing&sort=_score'
     );
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     act(() => getSearchInput().focus());
     fireEvent.click(screen.getByTestId('nlp-suggestions-button'));
@@ -712,12 +712,12 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('navigates quick filter chips with quickFilter param', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     fireEvent.change(getSearchInput(), {
       target: { value: 'orders' },
     });
-    fireEvent.click(screen.getByTestId('ai-explore-quick-filter-dashboards'));
+    fireEvent.click(screen.getByTestId('explore-quick-filter-dashboards'));
 
     expect(getSearchInput()).toHaveValue('');
     expect(mockGetExplorePath).toHaveBeenCalledWith({
@@ -743,9 +743,9 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('navigates my-assets filter with ownerDisplayName of current user', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
-    fireEvent.click(screen.getByTestId('ai-explore-quick-filter-my-assets'));
+    fireEvent.click(screen.getByTestId('explore-quick-filter-my-assets'));
 
     expect(mockGetExplorePath).toHaveBeenCalledWith({
       isPersistFilters: false,
@@ -770,10 +770,10 @@ describe('AIExploreSearchCard', () => {
   });
 
   it('navigates recently-updated filter with updatedAt sort', () => {
-    render(<AIExploreSearchCard />);
+    render(<ExploreSearchCard />);
 
     fireEvent.click(
-      screen.getByTestId('ai-explore-quick-filter-recently-updated')
+      screen.getByTestId('explore-quick-filter-recently-updated')
     );
 
     expect(mockGetExplorePath).toHaveBeenCalledWith({

@@ -14,38 +14,38 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { GRAY_700, TEST_STATUS_COLORS } from '../../../../constants/Color.constants';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AIExploreHeaderIcon } from '../../../../assets/svg/ai-explore-header-icon.svg';
+import { ReactComponent as ExploreHeaderIcon } from '../../../../assets/svg/explore-header-icon.svg';
 
-export interface AIExploreSearchCardInfoProps {
+export interface ExploreSearchCardInfoProps {
   assetCount: number | null;
 }
 
-export const AIExploreSearchCardInfo = ({
+export const ExploreSearchCardInfo = ({
   assetCount,
-}: AIExploreSearchCardInfoProps) => {
+}: ExploreSearchCardInfoProps) => {
   const { t } = useTranslation();
 
   return (
     <div className="tw:relative tw:mr-5 tw:shrink-0 tw:self-start">
       <Box align="start" className="tw:flex tw:gap-4" direction="row">
-        <AIExploreHeaderIcon
+        <ExploreHeaderIcon
           className="tw:mt-1.5 tw:size-10 tw:shrink-0"
-          data-testid="ai-explore-search-card-icon"
+          data-testid="explore-search-card-icon"
         />
         <div className="tw:flex tw:min-w-0 tw:flex-col">
           <div className="tw:flex tw:flex-col tw:gap-0.5">
             <Typography
               as="h3"
               className="tw:text-xl tw:font-semibold tw:leading-[30px] tw:text-primary"
-              data-testid="ai-explore-search-card-title"
+              data-testid="explore-search-card-title"
               size="text-xl"
               weight="semibold">
-              {t('label.ai-explore-title')}
+              {t('label.explore-title')}
             </Typography>
           </div>
           <div
             className="tw:mt-1 tw:flex tw:items-center tw:gap-1.5 tw:text-xs tw:leading-[18px] tw:text-secondary"
-            data-testid="ai-explore-search-card-stats">
+            data-testid="explore-search-card-stats">
             {assetCount !== null && (
               <>
                 <span
@@ -56,7 +56,7 @@ export const AIExploreSearchCardInfo = ({
                   <b className="tw:font-semibold" style={{ color: GRAY_700 }}>
                     {assetCount.toLocaleString()}
                   </b>{' '}
-                  {t('message.ai-explore-assets-indexed-suffix')}
+                  {t('message.explore-assets-indexed-suffix')}
                 </span>
               </>
             )}

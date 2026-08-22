@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isFocusWithinSearchControl } from './AIExploreSearchInput.utils';
+import { isFocusWithinSearchControl } from './ExploreSearchInput.utils';
 
 describe('isFocusWithinSearchControl', () => {
   it('returns true for focus within the search container', () => {
@@ -26,7 +26,7 @@ describe('isFocusWithinSearchControl', () => {
     const searchContainer = document.createElement('form');
     const popover = document.createElement('div');
     const suggestion = document.createElement('button');
-    popover.dataset.testid = 'ai-explore-search-popover';
+    popover.dataset.testid = 'explore-search-popover';
     popover.append(suggestion);
 
     expect(isFocusWithinSearchControl(suggestion, searchContainer)).toBe(true);
