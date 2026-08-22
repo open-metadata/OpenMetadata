@@ -47,7 +47,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
-import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../../hooks/useAppMode';
 import {
   createWorkflowDefinition,
   getWorkflowDefinitions,
@@ -66,7 +66,7 @@ import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interfa
 
 const WorkflowsPage = () => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
   const [loading, setLoading] = useState(true);
   const [workflows, setWorkflows] = useState<SettingMenuItem[]>([]);
   const [paging, setPaging] = useState<Paging>({
@@ -308,16 +308,16 @@ const WorkflowsPage = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
+      className={classNames('workflow-page', { 'tw:!px-0': !isClassicV1Mode })}
       mainContainerClassName="workflow-page-layout"
       pageTitle={t('label.workflow-plural')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      variant={isClassicV1Mode ? 'compact' : 'default'}>
       <div
         className={classNames(
           'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
-          { 'tw:mx-2': !isAiMode }
+          { 'tw:mx-2': !isClassicV1Mode }
         )}>
-        {isAiMode ? (
+        {isClassicV1Mode ? (
           <HeaderShell
             actions={createWorkflowButton}
             badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}

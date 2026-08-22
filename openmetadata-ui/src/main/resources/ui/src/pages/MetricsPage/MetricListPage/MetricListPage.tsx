@@ -84,7 +84,7 @@ import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useIsClassicV1Mode } from '../../../hooks/useAppMode';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
@@ -159,7 +159,7 @@ const METRIC_SEARCH_DEBOUNCE_MS = 500;
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const isAiMode = useIsAiMode();
+  const isClassicV1Mode = useIsClassicV1Mode();
 
   const {
     pageSize,
@@ -786,13 +786,13 @@ const MetricListPage = () => {
   return (
     <PageLayoutV1
       pageTitle={t('label.metric-plural')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      variant={isClassicV1Mode ? 'compact' : 'default'}>
       <div
         className={classNames('metric-list-page-stack', {
-          'p-b-md m-t-xs': !isAiMode,
+          'p-b-md m-t-xs': !isClassicV1Mode,
         })}>
         <div>
-          {isAiMode ? (
+          {isClassicV1Mode ? (
             <HeaderShell
               actions={metricActions}
               badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}

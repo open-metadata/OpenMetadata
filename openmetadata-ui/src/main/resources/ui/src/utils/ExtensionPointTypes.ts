@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ComponentType, ReactNode } from 'react';
+import { ComponentType, ReactElement, ReactNode } from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
 import { User } from '../generated/entity/teams/user';
@@ -50,6 +50,21 @@ export const EXTENSION_POINTS = {
 
   // Global UI
   GLOBAL_FLOATING_BUTTONS: 'global.floating-buttons',
+
+  // App Mode Shell (platform / ai-shell)
+  // A plugin contributes AI-exclusive chrome through these points so OSS
+  // core never imports plugin code. Read via the typed helpers in
+  // `components/platform/ai-shell/appModeExtensions.ts`. Modules (nav +
+  // owned routes) are contributed via `AppPlugin.getModeModules(mode)`
+  // instead of a registry point — see `sharedAppModules.ts`.
+  APP_MODE_ROUTES_FALLBACK: 'app-mode.routes.fallback',
+  APP_MODE_LAYOUT_BANNERS: 'app-mode.layout.banners',
+  APP_MODE_LAYOUT_OVERLAYS: 'app-mode.layout.overlays',
+  // Sidebar region slots — proprietary chrome (chat list, profile, inbox,
+  // user menu) a plugin injects into the neutral shell sidebar.
+  APP_MODE_SIDEBAR_HEADER: 'app-mode.sidebar.header',
+  APP_MODE_SIDEBAR_MAIN_FOOTER: 'app-mode.sidebar.mainFooter',
+  APP_MODE_SIDEBAR_RAIL_FOOTER: 'app-mode.sidebar.railFooter',
 } as const;
 
 /**
@@ -155,4 +170,31 @@ export interface ActionContribution {
 
   /** Button danger flag */
   danger?: boolean;
+}
+
+// ============================================================================
+// App Mode Shell Contribution Types
+// ============================================================================
+
+/**
+ * Contribution to `app-mode.routes.fallback`. The `element` becomes the
+ * catch-all (`path="*"`) route mounted last in the app-mode route table —
+ * i.e. what renders for any URL no module route matched. Last contribution
+ * wins.
+ */
+export interface AppModeRoutesFallbackContribution {
+  element: ReactElement;
+}
+
+/**
+ * Generic layout / sidebar region slot. A plugin renders proprietary chrome
+ * (banners, overlays, chat list, profile, inbox) into a named region of the
+ * neutral shell without OSS importing plugin code. Contributions stack in
+ * registration order.
+ */
+export interface AppModeSlotContribution {
+  /** Stable React key, unique within the slot. */
+  key: string;
+  /** Rendered with no props at the slot location. */
+  component: ComponentType;
 }
