@@ -813,8 +813,14 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 
   if (totalFailed > 0 || infrastructureIssues.length > 0) {
+    // Tell the author which kind of red this is: test failures need their
+    // action; infrastructure-only failures explicitly do not.
+    const verdict =
+      totalFailed > 0
+        ? 'test failures — author action needed'
+        : 'no test failures — CI infrastructure/reporting problem, not this change';
     core.setFailed(
-      `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s).`
+      `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s) (${verdict}).`
     );
   }
 }
