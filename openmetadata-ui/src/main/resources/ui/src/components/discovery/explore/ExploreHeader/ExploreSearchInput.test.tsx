@@ -36,7 +36,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       react.createElement(actual.SelectPopover, {
         ...props,
         'data-classname-type': typeof props.className,
-      }),
+      } as ComponentProps<typeof actual.SelectPopover>),
   };
 });
 

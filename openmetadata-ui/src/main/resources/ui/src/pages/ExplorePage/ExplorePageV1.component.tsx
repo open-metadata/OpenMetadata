@@ -674,11 +674,13 @@ const ExploreSearchCard = withSuspenseFallback(
 // Single Explore entry for every app mode. Classic mode renders the shared page
 // unchanged; AI mode wraps it with the AI search header. The route is the same
 // (`/explore`) in both modes — the presentation is selected by app mode here.
-const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = (props) => {
+const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
+  pageTitle = '',
+}) => {
   const isAiMode = useIsAiMode();
 
   if (!isAiMode) {
-    return <ExplorePageV1WithLayout {...props} />;
+    return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
   }
 
   return (
@@ -692,7 +694,7 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = (props) => {
       <Box
         className={EXPLORE_MODE_CONTENT_CLASS_NAME}
         data-testid="explore-content">
-        <ExplorePageV1WithLayout {...props} />
+        <ExplorePageV1WithLayout pageTitle={pageTitle} />
       </Box>
     </Box>
   );
