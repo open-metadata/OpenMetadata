@@ -12,9 +12,9 @@
  */
 
 import type {
-  AuthCoordinatorEvent,
-  EventPayloadMap,
-  Unsubscribe,
+    AuthCoordinatorEvent,
+    EventPayloadMap,
+    Unsubscribe
 } from './types';
 
 type Handler<E extends AuthCoordinatorEvent> = (

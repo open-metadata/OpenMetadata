@@ -12,16 +12,16 @@
  */
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import {
-  AuthenticationConfiguration,
-  ClientType,
-  ResponseType,
+    AuthenticationConfiguration,
+    ClientType,
+    ResponseType
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import {
-  getAuthConfig,
-  getCandidateUserManagerConfig,
-  getUserManagerConfig,
-  isRefreshableAuthError,
+    getAuthConfig,
+    getCandidateUserManagerConfig,
+    getUserManagerConfig,
+    isRefreshableAuthError
 } from './AuthProvider.util';
 
 const baseAuthConfig = (

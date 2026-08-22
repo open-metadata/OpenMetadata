@@ -13,12 +13,12 @@
 
 import { useOktaAuth } from '@okta/okta-react';
 import {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
+    forwardRef,
+    Fragment,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useImperativeHandle
 } from 'react';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';

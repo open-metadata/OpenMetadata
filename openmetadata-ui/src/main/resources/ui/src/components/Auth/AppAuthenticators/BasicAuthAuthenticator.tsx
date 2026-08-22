@@ -12,25 +12,25 @@
  */
 
 import {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
+    forwardRef,
+    Fragment,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useImperativeHandle
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  AccessTokenResponse,
-  getAccessTokenOnExpiry,
+    AccessTokenResponse,
+    getAccessTokenOnExpiry
 } from '../../../rest/auth-API';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
-  setOidcToken,
-  setRefreshToken,
+    setOidcToken,
+    setRefreshToken
 } from '../../../utils/SwTokenStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';

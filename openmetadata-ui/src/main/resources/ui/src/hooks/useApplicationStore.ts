@@ -23,8 +23,8 @@ import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
 import { authCoordinator } from '../utils/Auth/AuthCoordinator';
 import {
-  EXPIRY_THRESHOLD_MILLES,
-  extractDetailsFromToken,
+    EXPIRY_THRESHOLD_MILLES,
+    extractDetailsFromToken
 } from '../utils/AuthProvider.util';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';

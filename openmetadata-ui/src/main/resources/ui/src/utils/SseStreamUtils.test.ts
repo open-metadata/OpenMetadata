@@ -12,14 +12,14 @@
  */
 
 import {
-  abortableSleep,
-  createStreamOpenHandler,
-  createStreamRetryState,
-  FatalStreamError,
-  getBackoffDelay,
-  MAX_BACKOFF_MS,
-  nextRetryHealth,
-  RetriableStreamError,
+    abortableSleep,
+    createStreamOpenHandler,
+    createStreamRetryState,
+    FatalStreamError,
+    getBackoffDelay,
+    MAX_BACKOFF_MS,
+    nextRetryHealth,
+    RetriableStreamError
 } from './SseStreamUtils';
 
 const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);

@@ -13,12 +13,12 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
+    forwardRef,
+    Fragment,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useImperativeHandle
 } from 'react';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
