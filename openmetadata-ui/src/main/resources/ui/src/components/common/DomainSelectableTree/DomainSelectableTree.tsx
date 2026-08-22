@@ -52,6 +52,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtil
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
+  getErrorText,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
@@ -100,6 +101,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     >
   >({});
   const [domainMapper, setDomainMapper] = useState<Record<string, Domain>>({});
+  const [searchError, setSearchError] = useState<AxiosError>();
 
   const { activeDomain } = useDomainStore();
   const pagingRef = useRef(INITIAL_PAGING_STATE);
@@ -352,6 +354,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     async (isLoadMore = false) => {
       const setLoadingState = isLoadMore ? setIsLoadingMore : setIsLoading;
       setLoadingState(true);
+      setSearchError(undefined);
 
       if (!isLoadMore) {
         setPaging(INITIAL_PAGING_STATE);
@@ -449,6 +452,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       if (value) {
         try {
           setIsLoading(true);
+          setSearchError(undefined);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
           const filteredResults = restrictedDomains?.length
@@ -475,6 +479,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           );
           setTreeData(updatedTreeData);
           setDomains(uniqueData);
+        } catch (error) {
+          setSearchError(error as AxiosError);
+          setTreeData([]);
         } finally {
           setIsLoading(false);
         }
@@ -531,6 +538,34 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const treeContent = useMemo(() => {
     if (isLoading) {
       return <Loader />;
+    } else if (searchError) {
+      return (
+        <Box
+          align="center"
+          className="tw:py-6"
+          data-testid="domain-search-error"
+          direction="col"
+          gap={2}
+          justify="center">
+          <Typography
+            className="tw:text-text-tertiary tw:px-4 tw:text-center tw:break-words tw:line-clamp-4"
+            size="text-sm">
+            {getErrorText(
+              searchError,
+              t('server.entity-fetch-error', {
+                entity: t('label.domain-plural'),
+              })
+            )}
+          </Typography>
+          <Button
+            color="link-color"
+            data-testid="retry-domain-search"
+            size="sm"
+            onClick={() => onSearch(searchTerm)}>
+            {t('label.try-again')}
+          </Button>
+        </Box>
+      );
     } else if (treeData.length === 0) {
       return (
         <Box
@@ -589,9 +624,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
     }
   }, [
+    searchError,
     isLoading,
     isLoadingMore,
     isSubmitLoading,
+    onSearch,
     treeData,
     value,
     onSelect,

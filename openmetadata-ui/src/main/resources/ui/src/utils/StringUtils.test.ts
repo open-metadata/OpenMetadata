@@ -31,6 +31,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 import { AxiosError } from 'axios';
 import {
   decodeHtmlEntities,
+  escapeESReservedCharacters,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
@@ -450,6 +451,35 @@ describe('StringUtils', () => {
       const result = getTrimmedContent(content, 1000);
 
       expect(result).not.toContain('line-four');
+    });
+  });
+
+  describe('escapeESReservedCharacters', () => {
+    it('should escape every Lucene reserved character', () => {
+      expect(escapeESReservedCharacters('a+b-c=d&e')).toBe(
+        String.raw`a\+b\-c\=d\&e`
+      );
+      expect(escapeESReservedCharacters('(a){b}[c]')).toBe(
+        String.raw`\(a\)\{b\}\[c\]`
+      );
+      expect(escapeESReservedCharacters('a*b?c:d/e')).toBe(
+        String.raw`a\*b\?c\:d\/e`
+      );
+    });
+
+    it('should escape a single pipe so consecutive pipes cannot form an OR operator', () => {
+      expect(escapeESReservedCharacters('a|b')).toBe(String.raw`a\|b`);
+      expect(escapeESReservedCharacters('a||||b')).toBe(String.raw`a\|\|\|\|b`);
+    });
+
+    it('should leave a plain term untouched', () => {
+      expect(escapeESReservedCharacters('Customer Support')).toBe(
+        'Customer Support'
+      );
+    });
+
+    it('should return an empty string for an undefined term', () => {
+      expect(escapeESReservedCharacters()).toBe('');
     });
   });
 });
