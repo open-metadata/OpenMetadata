@@ -12,29 +12,29 @@
  */
 
 import {
-    InteractionRequiredAuthError,
-    InteractionStatus
+  InteractionRequiredAuthError,
+  InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import {
-    forwardRef,
-    Fragment,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useImperativeHandle,
-    useRef
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
 } from 'react';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import {
-    msalLoginRequest,
-    parseMSALResponse
+  msalLoginRequest,
+  parseMSALResponse,
 } from '../../../utils/AuthProvider.util';
 import Loader from '../../common/Loader/Loader';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
-    AuthenticatorRef,
-    OidcUser
+  AuthenticatorRef,
+  OidcUser,
 } from '../AuthProviders/AuthProvider.interface';
 interface Props {
   children: ReactNode;

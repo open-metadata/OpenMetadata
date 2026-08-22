@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "प्रमाणीकरण करा",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "प्रमाणीकरण प्रकार",
     "authentication-uri": "प्रमाणीकरण URI",
     "author": "लेखक",

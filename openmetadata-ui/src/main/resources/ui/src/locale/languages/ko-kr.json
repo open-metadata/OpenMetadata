@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "인증",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "인증 유형",
     "authentication-uri": "인증 URI",
     "author": "작성자",

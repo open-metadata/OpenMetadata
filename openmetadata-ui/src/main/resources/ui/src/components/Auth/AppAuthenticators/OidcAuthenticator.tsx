@@ -13,14 +13,14 @@
 
 import { User, UserManager, WebStorageStateStore } from 'oidc-client';
 import {
-    ComponentType,
-    forwardRef,
-    Fragment,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useImperativeHandle,
-    useMemo
+  ComponentType,
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -34,8 +34,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
-    AuthenticatorRef,
-    OidcUser
+  AuthenticatorRef,
+  OidcUser,
 } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {

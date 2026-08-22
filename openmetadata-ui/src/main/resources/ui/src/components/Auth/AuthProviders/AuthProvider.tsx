@@ -13,39 +13,39 @@
 
 import { removeSession } from '@analytics/session-utils';
 import type {
-    Configuration,
-    IPublicClientApplication
+  Configuration,
+  IPublicClientApplication,
 } from '@azure/msal-browser';
 import {
-    AxiosError,
-    AxiosRequestHeaders,
-    InternalAxiosRequestConfig
+  AxiosError,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil } from 'lodash';
 import type { WebStorageStateStore } from 'oidc-client';
 import {
-    ComponentType,
-    createContext,
-    ReactNode,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  ComponentType,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
-    APP_ROUTER_ROUTES as ROUTES,
-    REDIRECT_PATHNAME
+  APP_ROUTER_ROUTES as ROUTES,
+  REDIRECT_PATHNAME,
 } from '../../../constants/router.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
-    AuthenticationConfiguration,
-    ClientType
+  AuthenticationConfiguration,
+  ClientType,
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
@@ -53,21 +53,21 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import {
-    derivePreferencesFromList,
-    hydrateBackendSyncedPreferences,
-    resetBackendSyncState
+  derivePreferencesFromList,
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    clearAppMode,
-    isAppModeHintFresh,
-    readAppModeHint,
-    readAppModeSession,
-    resolveEffectiveAppMode,
-    resolveInitialAppMode,
-    setAppDefaultMode,
-    translateWireMode,
-    writeAppMode
+  clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
+  readAppModeSession,
+  resolveEffectiveAppMode,
+  resolveInitialAppMode,
+  setAppDefaultMode,
+  translateWireMode,
+  writeAppMode,
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -75,45 +75,45 @@ import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
 import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
-    fetchAuthenticationConfig,
-    fetchAuthorizerConfig
+  fetchAuthenticationConfig,
+  fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
 import {
-    AuthFieldError,
-    getAuthConfig,
-    getUrlPathnameExpiry,
-    getUserManagerConfig,
-    isRefreshableAuthError,
-    prepareUserProfileFromClaims,
-    validateAuthFieldsDetailed
+  AuthFieldError,
+  getAuthConfig,
+  getUrlPathnameExpiry,
+  getUserManagerConfig,
+  isRefreshableAuthError,
+  prepareUserProfileFromClaims,
+  validateAuthFieldsDetailed,
 } from '../../../utils/AuthProvider.util';
 import {
-    clearOidcToken,
-    getOidcToken
+  clearOidcToken,
+  getOidcToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import {
-    LazyAuth0Authenticator,
-    LazyBasicAuthAuthenticator,
-    LazyGenericAuthenticator,
-    LazyMsalAuthenticator,
-    LazyOidcAuthenticator,
-    LazyOktaAuthenticator
+  LazyAuth0Authenticator,
+  LazyBasicAuthAuthenticator,
+  LazyGenericAuthenticator,
+  LazyMsalAuthenticator,
+  LazyOidcAuthenticator,
+  LazyOktaAuthenticator,
 } from '../AppAuthenticators/LazyAuthenticators';
 import ConfigErrorPage from '../ConfigErrorPage';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import {
-    LazyAuth0ProviderWrapper,
-    LazyBasicAuthProviderWrapper,
-    LazyMsalProviderWrapper,
-    LazyOktaAuthProviderWrapper
+  LazyAuth0ProviderWrapper,
+  LazyBasicAuthProviderWrapper,
+  LazyMsalProviderWrapper,
+  LazyOktaAuthProviderWrapper,
 } from './LazyAuthProviderWrappers';
 
 interface AuthProviderProps {

@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "ยืนยันตัวตน",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "ประเภทการยืนยันตัวตน",
     "authentication-uri": "URI การรับรอง",
     "author": "ผู้แต่ง",

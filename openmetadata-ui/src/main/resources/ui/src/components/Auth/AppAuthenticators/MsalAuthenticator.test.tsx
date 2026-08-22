@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import {
-    InteractionRequiredAuthError,
-    InteractionStatus
+  InteractionRequiredAuthError,
+  InteractionStatus,
 } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { render, screen } from '@testing-library/react';

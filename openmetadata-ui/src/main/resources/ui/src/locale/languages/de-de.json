@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "Authentifizieren",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "Authentifizierungstyp",
     "authentication-uri": "Authentifizierungs-URI",
     "author": "Autor",

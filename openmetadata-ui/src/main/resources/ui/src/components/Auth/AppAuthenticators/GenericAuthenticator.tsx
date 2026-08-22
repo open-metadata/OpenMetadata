@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-    forwardRef,
-    Fragment,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useImperativeHandle
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
 } from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

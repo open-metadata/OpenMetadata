@@ -13,8 +13,8 @@
 
 import type { AxiosInstance } from 'axios';
 import {
-    EXPIRY_THRESHOLD_MILLES,
-    extractDetailsFromToken
+  EXPIRY_THRESHOLD_MILLES,
+  extractDetailsFromToken,
 } from '../../AuthProvider.util';
 import { getOidcToken, setOidcToken } from '../../SwTokenStorageUtils';
 import { CrossTabLock, LockTimeoutError } from './CrossTabLock';
@@ -22,11 +22,11 @@ import { TypedEventBus } from './eventBus';
 import { ProactiveTimer } from './ProactiveTimer';
 import { RefreshQueue } from './RefreshQueue';
 import type {
-    AuthCoordinatorEvent,
-    EventPayloadMap,
-    Renewer,
-    RenewResult,
-    Unsubscribe
+  AuthCoordinatorEvent,
+  EventPayloadMap,
+  Renewer,
+  RenewResult,
+  Unsubscribe,
 } from './types';
 import { VisibilityWatcher } from './VisibilityWatcher';
 

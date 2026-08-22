@@ -240,6 +240,7 @@
     "auth0": "Auth0",
     "authenticate": "احراز هویت",
     "authentication": "Authentication",
+    "authentication-configuration-error": "Authentication configuration error",
     "authentication-type": "نوع احراز هویت",
     "authentication-uri": "آدرس URI احراز هویت",
     "author": "نویسنده",

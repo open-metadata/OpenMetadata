@@ -12,19 +12,19 @@
  */
 
 import {
-    EventSourceMessage,
-    fetchEventSource
+  EventSourceMessage,
+  fetchEventSource,
 } from '@microsoft/fetch-event-source';
 import { act, renderHook } from '@testing-library/react-hooks';
 import {
-    LogStreamEndReason,
-    LogStreamEvent,
-    LogStreamEventType
+  LogStreamEndReason,
+  LogStreamEvent,
+  LogStreamEventType,
 } from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
 import {
-    getIngestionLogStreamUrl,
-    useLogStream,
-    withLogStreamCursor
+  getIngestionLogStreamUrl,
+  useLogStream,
+  withLogStreamCursor,
 } from './useLogStream';
 
 jest.mock('@microsoft/fetch-event-source', () => ({

@@ -17,20 +17,20 @@ import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import {
-    AuthenticationConfigurationWithScope,
-    OidcUser,
-    UserProfile
+  AuthenticationConfigurationWithScope,
+  OidcUser,
+  UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import {
-    REFRESHABLE_AUTH_ERRORS,
-    UN_AUTHORIZED_EXCLUDED_PATHS
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../constants/Auth.constants';
 import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
-    AuthenticationConfiguration,
-    ClientType
+  AuthenticationConfiguration,
+  ClientType,
 } from '../generated/configuration/authenticationConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';

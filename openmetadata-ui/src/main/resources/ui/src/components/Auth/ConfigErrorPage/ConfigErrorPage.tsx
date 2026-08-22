@@ -24,8 +24,7 @@ export interface ConfigErrorPageProps {
   onRetry: () => void;
 }
 
-const DOCS_HREF =
-  'https://docs.open-metadata.org/latest/deployment/security';
+const DOCS_HREF = 'https://docs.open-metadata.org/latest/deployment/security';
 
 const ConfigErrorPage = ({ errors, onRetry }: ConfigErrorPageProps) => {
   const { t } = useTranslation();
