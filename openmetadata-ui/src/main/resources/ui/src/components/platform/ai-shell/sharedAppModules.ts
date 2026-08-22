@@ -12,6 +12,8 @@
  */
 
 import { useMemo } from 'react';
+import { entityModule } from '../../discovery/entity/entity.module';
+import { personalSpaceModule } from '../../discovery/personal-space/personalSpace.module';
 import { contextCenterModule } from '../../discovery/context-center/contextCenter.module';
 import { marketplaceModule } from '../../governance/marketplace/marketplace.module';
 import { observabilityModule } from '../../observability/ObservabilityModule/observability.module';
@@ -26,9 +28,11 @@ import { useAppModeModuleContributions } from './appModeExtensions';
  * with plugin contributions regardless.
  */
 export const sharedAppModules: AppModule[] = [
+  entityModule,
   observabilityModule,
   contextCenterModule,
   marketplaceModule,
+  personalSpaceModule,
 ];
 
 /**
