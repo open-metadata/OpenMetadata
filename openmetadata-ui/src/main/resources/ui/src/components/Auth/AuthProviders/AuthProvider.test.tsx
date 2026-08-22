@@ -97,10 +97,6 @@ jest.mock('../../../utils/AuthProvider.util', () => {
   };
 });
 
-const mockRefreshToken = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve('newToken'));
-
 // Spies on the cookie write `handleStoreProtectedRedirectPath` performs, so
 // the regression test below can assert it ran without reaching into
 // AuthProvider's private closures.
