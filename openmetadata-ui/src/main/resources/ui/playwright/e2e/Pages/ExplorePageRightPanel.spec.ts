@@ -158,6 +158,13 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
+      // Nightly EKS/RDS infra runs every test body in this group at 72-84 s
+      // (run 32560604531 in openmetadata-nightly; PR infra ~45 s) — genuine
+      // remote-server latency, uniform across all 10 tests. Budget for that
+      // infra explicitly instead of the old suite-wide test.slow(true),
+      // which tripled EVERY test in the file and let failures grind for
+      // minutes. Applies to all tests in this describe only.
+      test.setTimeout(120_000);
       const crudEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
