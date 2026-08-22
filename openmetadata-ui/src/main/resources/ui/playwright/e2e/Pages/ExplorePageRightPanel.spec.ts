@@ -114,7 +114,12 @@ const testTier = 'Tier1';
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.slow(true); // 5 minutes
+    // Explicit hook budget for the 9 sequential entity creations. Do NOT
+    // use test.slow(true) here: combined with the (now removed) suite-wide
+    // beforeEach slow, stacked tripled budgets let a single failing attempt
+    // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
+    // 3m — run 32500973433) instead of failing fast.
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -130,11 +135,6 @@ test.describe('Right Panel Test Suite', () => {
     } finally {
       await afterAction();
     }
-  });
-
-  // No need for explicit beforeEach instantiation as fixtures handle it
-  test.beforeEach(async () => {
-    test.slow(true);
   });
 
   // Cleanup test data
@@ -372,7 +372,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1476,7 +1477,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
