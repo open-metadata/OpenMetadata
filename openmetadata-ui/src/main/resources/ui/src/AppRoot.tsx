@@ -34,12 +34,13 @@ import { getThemeConfig } from './utils/ThemeUtils';
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
 
-  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
+  const { applicationConfig, setApplicationConfig, setRdfEnabled, setTimeFormat } =
     useApplicationStore(
       useShallow((state) => ({
         applicationConfig: state.applicationConfig,
         setApplicationConfig: state.setApplicationConfig,
         setRdfEnabled: state.setRdfEnabled,
+        setTimeFormat: state.setTimeFormat,
       }))
     );
 
@@ -56,6 +57,7 @@ const AppRoot: FC = () => {
       });
 
       setRdfEnabled(systemConfig.rdfEnabled || false);
+      setTimeFormat(systemConfig.timeFormat || '12h');
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
