@@ -445,9 +445,9 @@ for (const fixture of FIXTURES) {
           );
 
           expect(authConfigWarnings.length).toBeGreaterThan(0);
-          expect(
-            authConfigWarnings.some((w) => expectedPattern!.test(w))
-          ).toBe(true);
+          expect(authConfigWarnings.some((w) => expectedPattern!.test(w))).toBe(
+            true
+          );
         } finally {
           await restoreBroken?.();
           const { apiContext: apiCtx2, afterAction: afterAction2 } =

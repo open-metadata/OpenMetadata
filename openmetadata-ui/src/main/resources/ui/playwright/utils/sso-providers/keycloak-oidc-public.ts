@@ -153,9 +153,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
 
   async performLogin(page: Page) {
     await page.goto('/signin');
-    await page
-      .getByRole('button', { name: this.signInButtonPattern })
-      .click();
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: process.env[SSO_ENV.USERNAME] ?? '',
       password: process.env[SSO_ENV.PASSWORD] ?? '',

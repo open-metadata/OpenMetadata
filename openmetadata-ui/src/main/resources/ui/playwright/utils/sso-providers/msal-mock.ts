@@ -89,8 +89,9 @@ const buildBrokenConfig = () => {
   };
   // Intentionally omit clientId here.
   delete oidcConfig.clientId;
-  (cfg.authenticationConfiguration as Record<string, unknown>)
-    .oidcConfiguration = oidcConfig;
+  (
+    cfg.authenticationConfiguration as Record<string, unknown>
+  ).oidcConfiguration = oidcConfig;
   // Also drop the top-level clientId to make the missing-field branch
   // reachable regardless of which layer the validator inspects first.
   delete (cfg.authenticationConfiguration as Record<string, unknown>).clientId;

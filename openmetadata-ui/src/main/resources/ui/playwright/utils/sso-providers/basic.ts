@@ -108,9 +108,7 @@ export const basicProviderFixture: SsoProviderFixture = {
     await page.goto('/signin');
     await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
     await page.getByLabel(/password/i).fill(ADMIN_PASSWORD);
-    await page
-      .getByRole('button', { name: /^(sign in|log in)$/i })
-      .click();
+    await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();
     // Authenticated app renders the sidebar's home nav; wait for it before
     // returning so downstream assertions can rely on isAuthenticated=true.
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({

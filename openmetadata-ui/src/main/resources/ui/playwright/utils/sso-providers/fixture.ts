@@ -90,9 +90,7 @@ export interface SsoProviderFixture {
    * Configure the backend's `authenticationConfiguration` to this provider.
    * Returns a `restore` that must be called from `afterAll` to reset config.
    */
-  configureBackend(
-    apiContext: APIRequestContext
-  ): Promise<SsoConfigureResult>;
+  configureBackend(apiContext: APIRequestContext): Promise<SsoConfigureResult>;
 
   /**
    * Same as configureBackend but with one intentionally-invalid field so
@@ -148,6 +146,11 @@ export interface SsoProviderFixture {
 // this refactor incrementally rewrites each to full SsoProviderFixture.
 // The scenarios spec MUST NOT depend on this — it's a migration bridge.
 export interface LegacyProviderShim {
-  buildConfigPayload: () => Promise<ProviderConfigOverride> | ProviderConfigOverride;
-  performProviderLogin: (page: Page, creds: { username: string; password: string }) => Promise<void>;
+  buildConfigPayload: () =>
+    | Promise<ProviderConfigOverride>
+    | ProviderConfigOverride;
+  performProviderLogin: (
+    page: Page,
+    creds: { username: string; password: string }
+  ) => Promise<void>;
 }
