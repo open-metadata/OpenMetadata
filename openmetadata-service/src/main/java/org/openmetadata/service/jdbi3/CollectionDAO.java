@@ -89,6 +89,7 @@ import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.NotificationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -11373,6 +11374,7 @@ public interface CollectionDAO {
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
+            case NOTIFICATION_SETTINGS -> JsonUtils.readValue(json, NotificationSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
