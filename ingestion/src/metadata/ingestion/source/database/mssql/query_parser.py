@@ -12,6 +12,7 @@
 MSSQL usage module
 """
 
+import traceback
 from abc import ABC
 from copy import deepcopy
 from typing import Iterator, Optional  # noqa: UP035
@@ -119,6 +120,17 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         for database in databases:
             engine = self._engine_for_database(database)
             self._active_query_store = is_query_store_enabled(engine)
+            if self._active_query_store:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is enabled.",
+                    database,
+                )
+            else:
+                logger.info(
+                    "MSSQL query history for database %s: Query Store is not enabled or not accessible, "
+                    "using plan-cache DMVs.",
+                    database,
+                )
             try:
                 yield engine
             finally:
@@ -126,8 +138,15 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         self._active_query_store = None
 
     def _databases_to_scan(self) -> Iterator[str]:
-        with self.engine.connect() as conn:
-            rows = conn.execute(text(MSSQL_GET_QUERY_STORE_DATABASES)).fetchall()
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(text(MSSQL_GET_QUERY_STORE_DATABASES)).fetchall()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not list databases to scan, falling back to the configured connection database: {exc}"
+            )
+            return
         database_filter = getattr(self.source_config, "databaseFilterPattern", None)
         for row in rows:
             database = row[0]

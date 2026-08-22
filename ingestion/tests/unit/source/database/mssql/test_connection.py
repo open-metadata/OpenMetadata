@@ -218,6 +218,28 @@ _NO_VIEW_SERVER_STATE = (
     (300, "VIEW SERVER STATE permission was denied on object 'server', database 'master'."),
     (297, "The user does not have permission to perform this action."),
 )
+_THROTTLED_LOGIN_LIMIT = (
+    (
+        10928,
+        "Resource ID: 1. The request limit for the database is 60 and has been reached. See "
+        "'https://docs.microsoft.com/azure/azure-sql/database/resource-limits-logical-server' for assistance.",
+    ),
+)
+_THROTTLED_ELASTIC_POOL_LIMIT = (
+    (
+        10936,
+        "Resource ID: 1. The request limit for the elastic pool is 200 and has been reached. See "
+        "'https://docs.microsoft.com/azure/azure-sql/database/resource-limits-logical-server' for assistance.",
+    ),
+)
+_THROTTLED_WORKER_LIMIT = (
+    (
+        10929,
+        "Resource ID: 1. The worker minimum guarantee is 10, maximum limit is 60, and the current usage "
+        "for the database is 61. However, the server is currently too busy to support requests greater "
+        "than 60 for this database. Otherwise, please try again later.",
+    ),
+)
 
 
 @pytest.mark.parametrize(
@@ -360,6 +382,59 @@ def test_statement_permission_denied_is_not_diagnosed():
     denied", so the message rule misses it too."""
     error = _wrapped(_pytds_error((262, "CREATE DATABASE permission denied in database 'master'.")))
     assert MSSQL_ERRORS.classify(error) is None
+
+
+def test_pytds_throttling_limit_reached_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_LOGIN_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pytds_throttling_worker_limit_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_WORKER_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pymssql_throttling_tuple_shape_classifies():
+    diagnosis = MSSQL_ERRORS.classify(_wrapped(_pymssql_error(10928, "The request limit for the database is 60.")))
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pytds_throttling_elastic_pool_limit_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_ELASTIC_POOL_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pyodbc_throttling_limit_reached_classifies():
+    """pyodbc never exposes a SQL Server error number (see _mssql_number), so this rule
+    must fall through to the text match for pyodbc connections to get diagnosed at all."""
+    diagnosis = MSSQL_ERRORS.classify(
+        _pyodbc_error(
+            "HY000",
+            "Resource ID: 1. The request limit for the database is 60 and has been reached.",
+        )
+    )
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pyodbc_throttling_worker_limit_classifies():
+    diagnosis = MSSQL_ERRORS.classify(
+        _pyodbc_error(
+            "HY000",
+            "Resource ID: 1. The worker minimum guarantee is 10, maximum limit is 60, and the current "
+            "usage for the database is 61. However, the server is currently too busy to support "
+            "requests greater than 60 for this database.",
+        )
+    )
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
 
 
 def test_network_pack_is_folded_in():
