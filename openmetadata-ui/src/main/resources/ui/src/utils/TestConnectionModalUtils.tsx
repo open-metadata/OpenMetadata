@@ -290,6 +290,13 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   );
 }
 
+// A failed step's summary line is the definition's `errorMessage`, not a success
+// summary — `resultSummary` is the success channel. Painting it green reads as
+// "this step passed", so a failed step gets the advisory colour instead.
+function getSummaryColorClass(passed: boolean | undefined): string {
+  return passed ? 'tw:text-utility-success-300' : 'tw:text-utility-warning-300';
+}
+
 function renderColoredLines(
   text: string,
   colorClass: string,
@@ -782,7 +789,7 @@ export function ConnectionCapabilitySection(
                               ? ` (${result.durationMs} ms)`
                               : ''
                           }`,
-                          'tw:text-utility-success-300',
+                          getSummaryColorClass(result.passed),
                           'sum-'
                         )}
                       {result.errorLog &&
@@ -883,7 +890,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-utility-success-300',
+                  getSummaryColorClass(result.passed),
                   `${stepIdx}-sum-`
                 )
               );
@@ -1094,7 +1101,7 @@ export function ConnectionRemediationCard(
         </div>
       )}
       {!diagnosis && errorContent && (
-        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold tw:max-h-[220px]">
           {renderColoredLines(
             errorContent,
             'tw:text-utility-error-300',

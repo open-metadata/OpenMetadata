@@ -39,6 +39,9 @@ const testConnectionStepResult = [
   },
 ];
 
+const MOCK_FAILED_STEP_MESSAGE =
+  'Mock step message from the test connection definition';
+
 const mockOnTestConnection = jest.fn();
 const mockHandleCloseErrorMessage = jest.fn();
 
@@ -714,6 +717,70 @@ describe('TestConnectionModal', () => {
         'Schema access denied'
       )
     ).toBeInTheDocument();
+  });
+
+  it('should not render a failed step message in the success colour', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: false,
+            mandatory: true,
+            message: MOCK_FAILED_STEP_MESSAGE,
+            errorLog: 'OperationalError: invalid credentials',
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const rawLog = screen.getByTestId('raw-connection-log');
+    const inColour = (className: string) =>
+      Array.from(rawLog.querySelectorAll(className)).some((el) =>
+        el.textContent?.includes(MOCK_FAILED_STEP_MESSAGE)
+      );
+
+    expect(inColour('.tw\\:text-utility-success-300')).toBe(false);
+    expect(inColour('.tw\\:text-utility-warning-300')).toBe(true);
+  });
+
+  it('should keep a passed step summary in the success colour', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: true,
+            mandatory: true,
+            resultSummary: 'connection established',
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const successSpans = Array.from(
+      screen
+        .getByTestId('raw-connection-log')
+        .querySelectorAll('.tw\\:text-utility-success-300')
+    );
+
+    expect(
+      successSpans.some((el) =>
+        el.textContent?.includes('connection established')
+      )
+    ).toBe(true);
   });
 
   it('should not render the remediation card when test succeeds', () => {
