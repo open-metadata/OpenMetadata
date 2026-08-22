@@ -152,6 +152,18 @@ test.describe(
       await afterAction();
     });
 
+    test.afterAll('Cleanup certified data products', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await goldDataProduct.delete(apiContext);
+      await silverDataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await goldCertification.delete(apiContext);
+      await silverCertification.delete(apiContext);
+
+      await afterAction();
+    });
+
     test.beforeEach('Visit home page', async ({ page }) => {
       await redirectToHomePage(page);
     });
