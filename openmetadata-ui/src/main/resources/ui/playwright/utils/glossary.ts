@@ -50,6 +50,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { waitForAggregation } from './searchAggregation';
 import { sidebarClick } from './sidebar';
 import {
   TaskDetails,
@@ -940,9 +941,7 @@ const testFilterWithSpecificOption = async (
   await page.getByTestId('drop-down-menu').waitFor();
 
   if (searchText) {
-    const aggregateResponse = page.waitForResponse(
-      '/api/v1/search/aggregate?*'
-    );
+    const aggregateResponse = waitForAggregation(page, { value: searchText });
     await page
       .getByRole('textbox', { name: 'Search Service Type...' })
       .fill(searchText);
