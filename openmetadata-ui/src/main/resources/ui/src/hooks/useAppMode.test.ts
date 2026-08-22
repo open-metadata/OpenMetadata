@@ -20,6 +20,7 @@ import {
   CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { Document } from '../generated/entity/docStore/document';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
   clearAppMode,
@@ -31,6 +32,7 @@ import {
   readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
+  resolvePersonaAppMode,
   RUNTIME_TO_PREFERENCE_WIRE,
   setAppDefaultMode,
   translatePreferenceMode,
@@ -679,5 +681,102 @@ describe('setAppDefaultMode / getAppDefaultMode', () => {
     setAppDefaultMode(CLASSIC_V1_APP_MODE);
 
     expect(getAppDefaultMode()).toBe(CLASSIC_V1_APP_MODE);
+  });
+});
+
+describe('resolvePersonaAppMode', () => {
+  const PERSONA_ID = 'persona-1';
+
+  const buildDoc = (appMode?: string): Document =>
+    ({
+      data: {
+        personaPreferences: [
+          {
+            personaId: PERSONA_ID,
+            personaName: 'p',
+            ...(appMode ? { appMode } : {}),
+          },
+        ],
+      },
+    } as unknown as Document);
+
+  it('maps a persona "classic" appMode to DEFAULT_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('classic'), PERSONA_ID)).toBe(
+      DEFAULT_APP_MODE
+    );
+  });
+
+  it('maps a persona "classicV1" appMode to CLASSIC_V1_APP_MODE', () => {
+    expect(
+      resolvePersonaAppMode(buildDoc(CLASSIC_V1_APP_MODE), PERSONA_ID)
+    ).toBe(CLASSIC_V1_APP_MODE);
+  });
+
+  it('maps the persona legacy uppercase "AI" appMode to CLASSIC_V1_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID)).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('maps the persona legacy lowercase "ai" appMode to CLASSIC_V1_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('ai'), PERSONA_ID)).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('returns null when the persona entry has no appMode set', () => {
+    expect(resolvePersonaAppMode(buildDoc(), PERSONA_ID)).toBeNull();
+  });
+
+  it('returns null when no persona entry matches the id', () => {
+    expect(resolvePersonaAppMode(buildDoc('AI'), 'other-persona')).toBeNull();
+  });
+
+  it('returns null when the doc or personaId is missing', () => {
+    expect(resolvePersonaAppMode(undefined, PERSONA_ID)).toBeNull();
+    expect(resolvePersonaAppMode(buildDoc('AI'), undefined)).toBeNull();
+  });
+});
+
+describe('boot resolution: persona forces the runtime mode', () => {
+  const PERSONA_ID = 'persona-1';
+
+  const buildDoc = (appMode: string): Document =>
+    ({
+      data: {
+        personaPreferences: [
+          { personaId: PERSONA_ID, personaName: 'p', appMode },
+        ],
+      },
+    } as unknown as Document);
+
+  it('lets a persona appMode beat an absent userPref and the tenant default', () => {
+    // Mirrors AuthProvider.hydrateAndResolveAppMode's final write when
+    // there is no sticky session/hint: userPref is absent, so the
+    // persona-forced mode must win over the tenant default.
+    const personaMode = resolvePersonaAppMode(
+      buildDoc(CLASSIC_V1_APP_MODE),
+      PERSONA_ID
+    );
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('resolves a persona legacy "AI" mode to CLASSIC_V1 over the default at boot', () => {
+    const personaMode = resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID);
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('resolves a persona "classic" mode to DEFAULT at boot', () => {
+    const personaMode = resolvePersonaAppMode(buildDoc('classic'), PERSONA_ID);
+
+    expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
+      DEFAULT_APP_MODE
+    );
   });
 });
