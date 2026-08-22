@@ -17,14 +17,31 @@ import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import appModeAiIcon from '../../assets/svg/app-mode-ai.svg';
+import appModeClassicV1Icon from '../../assets/svg/app-mode-classic-v1.svg';
 import { ReactComponent as AppModeClassicIcon } from '../../assets/svg/app-mode-classic.svg';
 import {
   CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { useAppMode, writeAppMode } from '../../hooks/useAppMode';
+import {
+  useAppMode,
+  useIsClassicV1Mode,
+  writeAppMode,
+} from '../../hooks/useAppMode';
+
+// The persisted "remember" preference (`AppModePreference.config.value`,
+// see openmetadata-spec/.../api/teams/preferences/appModePreference.json)
+// speaks its own wire vocabulary ("classic" | "classicV1" | null) that is
+// NOT the same as the runtime mode string `useAppMode`/`writeAppMode` use
+// (`DEFAULT_APP_MODE` = "default" / `CLASSIC_V1_APP_MODE` = "classicV1").
+// Writing the runtime value straight to the preference (the pre-existing
+// #31906 bug) silently persisted "default" — a token the boot resolver
+// never recognizes — instead of the "classic" the schema expects.
+const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
+  [DEFAULT_APP_MODE]: 'classic',
+  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
+};
 
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-blue-50 tw:border tw:border-blue-100 tw:shrink-0';
@@ -47,15 +64,12 @@ const AppModeSwitcher: React.FC<{
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const currentMode = useAppMode();
-  // ClassicV1 is always available in OSS — the shell ships in-tree, no
-  // install-gate. Kept as a variable (rather than inlining `true` at each
-  // call site) so a later task can reintroduce a real gate without
-  // touching the render logic below.
-  const isAiInstalled = true;
+  const isClassicV1Mode = useIsClassicV1Mode();
   const { preferences, setPreference } = useCurrentUserPreferences();
-  const isAiMode = currentMode === CLASSIC_V1_APP_MODE;
 
-  const modeLabel = isAiMode ? t('label.ai') : t('label.classic');
+  const modeLabel = isClassicV1Mode
+    ? t('label.classic-v1')
+    : t('label.classic');
 
   const handleClassicClick = () => {
     writeAppMode(DEFAULT_APP_MODE);
@@ -63,19 +77,22 @@ const AppModeSwitcher: React.FC<{
     setIsOpen(false);
   };
 
-  const handleAiClick = () => {
+  const handleClassicV1Click = () => {
     writeAppMode(CLASSIC_V1_APP_MODE);
     navigate(aiHref);
     setIsOpen(false);
   };
 
   // Checkbox is the ONLY writer of the persistent app-mode preference.
-  // Toggling on → write the current mode; toggling off → clear it. The
-  // active runtime mode is untouched — the preference only affects the
-  // boot resolver on the next fresh tab / login.
-  const isRemembered = preferences.appMode === currentMode;
+  // Toggling on → write the current mode (translated to the preference's
+  // wire token, see RUNTIME_TO_PREFERENCE_WIRE above); toggling off →
+  // clear it. The active runtime mode is untouched — the preference only
+  // affects the boot resolver on the next fresh tab / login.
+  const currentModeWireToken =
+    RUNTIME_TO_PREFERENCE_WIRE[currentMode] ?? currentMode;
+  const isRemembered = preferences.appMode === currentModeWireToken;
   const handleRememberToggle = () => {
-    setPreference({ appMode: isRemembered ? null : currentMode });
+    setPreference({ appMode: isRemembered ? null : currentModeWireToken });
   };
 
   return (
@@ -89,12 +106,12 @@ const AppModeSwitcher: React.FC<{
           ref={triggerRef}
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}>
-          {isAiMode ? (
+          {isClassicV1Mode ? (
             <img
-              alt={t('label.ai')}
-              data-testid="app-mode-trigger-icon-ai"
+              alt={t('label.classic-v1')}
+              data-testid="app-mode-trigger-icon-classic-v1"
               height={12}
-              src={appModeAiIcon}
+              src={appModeClassicV1Icon}
               width={12}
             />
           ) : (
@@ -125,12 +142,12 @@ const AppModeSwitcher: React.FC<{
           ref={triggerRef}
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}>
-          {isAiMode ? (
+          {isClassicV1Mode ? (
             <img
-              alt={t('label.ai')}
-              data-testid="app-mode-trigger-icon-ai"
+              alt={t('label.classic-v1')}
+              data-testid="app-mode-trigger-icon-classic-v1"
               height={16}
-              src={appModeAiIcon}
+              src={appModeClassicV1Icon}
               width={16}
             />
           ) : (
@@ -176,8 +193,8 @@ const AppModeSwitcher: React.FC<{
             className={classNames(
               'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': isAiMode,
+                'tw:bg-blue-50 tw:border-blue-200': !isClassicV1Mode,
+                'tw:border-transparent tw:hover:bg-blue-50': isClassicV1Mode,
               }
             )}
             data-testid="app-mode-option-classic"
@@ -194,7 +211,7 @@ const AppModeSwitcher: React.FC<{
                 {t('label.classic')}
               </Typography>
             </Box>
-            {!isAiMode && (
+            {!isClassicV1Mode && (
               <span className={BADGE_CLASS} data-testid="classic-current-badge">
                 <Check height={12} width={12} />
                 {t('label.current')}
@@ -206,28 +223,28 @@ const AppModeSwitcher: React.FC<{
             className={classNames(
               'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': !isAiMode,
-                'tw:opacity-50 tw:cursor-not-allowed': !isAiInstalled,
+                'tw:bg-blue-50 tw:border-blue-200': isClassicV1Mode,
+                'tw:border-transparent tw:hover:bg-blue-50': !isClassicV1Mode,
               }
             )}
-            data-testid="app-mode-option-ai"
-            disabled={!isAiInstalled}
+            data-testid="app-mode-option-classic-v1"
             type="button"
-            onClick={isAiInstalled ? handleAiClick : undefined}>
+            onClick={handleClassicV1Click}>
             <Box align="center" className={OPTION_ICON_BOX} justify="center">
-              <img alt="" height={30} src={appModeAiIcon} width={30} />
+              <img alt="" height={30} src={appModeClassicV1Icon} width={30} />
             </Box>
             <Box className="tw:flex-1 tw:min-w-0" direction="col">
               <Typography
                 className="tw:text-primary"
                 size="text-sm"
                 weight="semibold">
-                {t('label.ai')}
+                {t('label.classic-v1')}
               </Typography>
             </Box>
-            {isAiMode && (
-              <span className={BADGE_CLASS} data-testid="ai-current-badge">
+            {isClassicV1Mode && (
+              <span
+                className={BADGE_CLASS}
+                data-testid="classic-v1-current-badge">
                 <Check height={12} width={12} />
                 {t('label.current')}
               </span>
