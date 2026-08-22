@@ -309,7 +309,10 @@ jobs:
           npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
 
       - name: Clean Up
-        if: always()
+        # Runs even on step failure, but not on skipped legs — the leg never
+        # checked out the repo or booted docker, so `cd ./docker/development`
+        # would fail with "no such file or directory".
+        if: ${{ always() && env.SKIP_LEG != 'true' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
           docker compose -f docker/development/docker-compose.yml --profile sso-playwright down --remove-orphans || true
