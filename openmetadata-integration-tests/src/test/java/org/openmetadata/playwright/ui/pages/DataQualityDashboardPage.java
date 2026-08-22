@@ -16,12 +16,18 @@ import org.openmetadata.playwright.ui.UiSession;
  */
 public final class DataQualityDashboardPage extends PageObject {
 
-  private static final Pattern TEST_CASE_STATUS_URL =
-      Pattern.compile("/data-quality/test-cases.*testCaseStatus(?:%5B%5D|\\[\\])?=");
-
   public static final String TEST_CASE_STATUS_PIE_ID = "test-case-result-pie-chart";
   public static final String ENTITY_HEALTH_PIE_ID = "healthy-data-assets-pie-chart";
   public static final String DATA_ASSETS_COVERAGE_PIE_ID = "data-assets-coverage-pie-chart";
+
+  /**
+   * The Test Case Result pie still redirects with a scalar {@code testCaseStatus=Failed}, but the
+   * Entity Health pie maps one segment to several statuses and serializes them through
+   * {@code qs.stringify(..., {arrayFormat: 'brackets'})}, which emits {@code testCaseStatus%5B%5D=}.
+   * Both encodings satisfy the contract under test: the click navigated with a status filter.
+   */
+  private static final Pattern TEST_CASES_WITH_STATUS_URL =
+      Pattern.compile("/data-quality/test-cases.*testCaseStatus(%5B%5D|\\[\\])?=");
 
   private DataQualityDashboardPage(final Page page, final UiSession session) {
     super(page, session);
@@ -59,8 +65,7 @@ public final class DataQualityDashboardPage extends PageObject {
 
   /**
    * Click the first available pie chart segment and assert the URL navigates to
-   * {@code /data-quality/test-cases} carrying a scalar or array-form {@code testCaseStatus} query
-   * parameter.
+   * {@code /data-quality/test-cases} carrying ANY {@code testCaseStatus} param, scalar or array.
    * Recharts only renders segments for non-zero data and the rendering order isn't
    * stable across data shapes, so this method asserts the navigation contract
    * rather than a specific segment-to-status mapping.
@@ -71,7 +76,7 @@ public final class DataQualityDashboardPage extends PageObject {
     PlaywrightAssertions.assertThat(segment)
         .isVisible(new LocatorAssertions.IsVisibleOptions().setTimeout(15_000));
     segment.evaluate("el => el.dispatchEvent(new MouseEvent('click', { bubbles: true }))");
-    page.waitForURL(TEST_CASE_STATUS_URL, new Page.WaitForURLOptions().setTimeout(20_000));
+    page.waitForURL(TEST_CASES_WITH_STATUS_URL, new Page.WaitForURLOptions().setTimeout(20_000));
     return this;
   }
 

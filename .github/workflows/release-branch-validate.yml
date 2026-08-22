@@ -46,10 +46,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout with history
+      - name: Checkout with parent
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Determine changed Java files
@@ -61,6 +63,9 @@ jobs:
           if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
             BASE=$(git rev-parse HEAD~1)
           else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
             BASE="${BEFORE}"
           fi
           CHANGED=$(git diff --name-only --diff-filter=ACMR "${BASE}" HEAD -- '*.java' | tr '\n' ' ')
@@ -115,10 +120,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout with history
+      - name: Checkout with parent
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Determine changed Python files
@@ -130,6 +137,9 @@ jobs:
           if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
             BASE=$(git rev-parse HEAD~1)
           else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
             BASE="${BEFORE}"
           fi
           # Scope to the two dirs ingestion/Makefile:py_format_check targets.
@@ -176,10 +186,12 @@ jobs:
     env:
       UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
     steps:
-      - name: Checkout with history
+      - name: Checkout with parent
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
+          # older base on demand in the "Determine changed X files" step.
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Determine changed UI files
@@ -191,6 +203,9 @@ jobs:
           if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
             BASE=$(git rev-parse HEAD~1)
           else
+            # Multi-commit push: BEFORE may be older than the shallow depth 2
+            # checkout carries, so pull just that one object on demand.
+            git cat-file -e "${BEFORE}" 2>/dev/null || git fetch --depth=1 origin "${BEFORE}"
             BASE="${BEFORE}"
           fi
           # Match existing ui-checkstyle: src globs only, exclude generated/**.
