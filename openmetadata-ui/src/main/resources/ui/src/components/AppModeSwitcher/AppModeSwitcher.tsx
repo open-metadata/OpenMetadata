@@ -25,7 +25,6 @@ import {
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useAppMode, writeAppMode } from '../../hooks/useAppMode';
-import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-blue-50 tw:border tw:border-blue-100 tw:shrink-0';
@@ -48,9 +47,11 @@ const AppModeSwitcher: React.FC<{
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const currentMode = useAppMode();
-  const isAiInstalled = useAppRoutesRegistry(
-    (state) => CLASSIC_V1_APP_MODE in state.routes
-  );
+  // ClassicV1 is always available in OSS — the shell ships in-tree, no
+  // install-gate. Kept as a variable (rather than inlining `true` at each
+  // call site) so a later task can reintroduce a real gate without
+  // touching the render logic below.
+  const isAiInstalled = true;
   const { preferences, setPreference } = useCurrentUserPreferences();
   const isAiMode = currentMode === CLASSIC_V1_APP_MODE;
 

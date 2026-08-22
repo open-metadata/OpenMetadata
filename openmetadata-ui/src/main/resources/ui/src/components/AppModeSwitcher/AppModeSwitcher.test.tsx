@@ -20,7 +20,6 @@ const mockWriteAppMode = jest.fn();
 const mockSetPreference = jest.fn();
 let currentMode = 'default';
 let preferenceMode: string | null = null;
-let isAiInstalled = true;
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -89,12 +88,6 @@ jest.mock('../../hooks/useAppMode', () => ({
     mockWriteAppMode(mode, personaAppMode),
 }));
 
-jest.mock('../../hooks/useAppRoutesRegistry', () => ({
-  useAppRoutesRegistry: (
-    selector: (s: { routes: Record<string, unknown> }) => unknown
-  ) => selector({ routes: isAiInstalled ? { ai: () => null } : {} }),
-}));
-
 jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
   useCurrentUserPreferences: () => ({
     preferences: { appMode: preferenceMode },
@@ -115,7 +108,6 @@ describe('AppModeSwitcher', () => {
     jest.clearAllMocks();
     currentMode = 'default';
     preferenceMode = null;
-    isAiInstalled = true;
   });
 
   it('renders current mode label', () => {
@@ -140,12 +132,11 @@ describe('AppModeSwitcher', () => {
     expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
   });
 
-  it('disables AI option when no AI route is registered', () => {
-    isAiInstalled = false;
+  it('AI option is always enabled (ClassicV1 ships in-tree, no install-gate)', () => {
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());
 
-    expect(screen.getByTestId('app-mode-option-ai')).toBeDisabled();
+    expect(screen.getByTestId('app-mode-option-ai')).not.toBeDisabled();
   });
 
   it('clicking Classic writes DEFAULT_APP_MODE and navigates to /', () => {
