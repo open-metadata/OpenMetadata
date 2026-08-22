@@ -8,7 +8,14 @@
       "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
       "errorMessage": "Failed to connect to Teradata, please validate the credentials",
       "mandatory": true,
-      "shortCircuit": true
+      "shortCircuit": true,
+      "category": "ConnectionGate"
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List all the databases available to the user.",
+      "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+      "mandatory": false
     },
     {
       "name": "GetSchemas",
