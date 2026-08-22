@@ -31,7 +31,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { uuid, waitForDeletionFromSearchIndex } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   getEntityDisplayName,
@@ -1075,6 +1075,18 @@ test.describe('Right Panel Test Suite', () => {
               await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
               await deletedUser.delete(apiContext);
+              // The owner dropdown is search-backed and index deletion is
+              // eventually consistent — gate on the index before asserting
+              // absence, or the dropdown can still return the deleted user.
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedUser.getUserDisplayName(),
+                'user',
+                [
+                  deletedUser.getUserDisplayName(),
+                  deletedUser.responseData.name,
+                ]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1126,6 +1138,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedTag.delete(apiContext);
               await deletedClassification.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed tag dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTagDisplayName,
+                'tag',
+                [deletedTagDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1174,6 +1194,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedGlossaryTerm.delete(apiContext);
               await deletedGlossary.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed term dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTermDisplayName,
+                'glossaryTerm',
+                [deletedTermDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
