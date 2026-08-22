@@ -410,7 +410,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*sale*',
+            q: 'sale',
           })
         );
       });
@@ -524,7 +524,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*test*',
+            q: 'test',
             testCaseStatus: 'Failed',
           })
         );

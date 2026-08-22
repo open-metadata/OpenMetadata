@@ -142,18 +142,34 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
+    return buildDataQualitySearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  /**
+   * {@code freeText} selects how {@code query} is parsed, because this builder serves two endpoint
+   * families with opposing contracts. {@code /v1/search/query} and {@code /v1/search/export}
+   * document {@code q} as a Lucene expression and must keep {@code query_string}; the data quality
+   * list endpoints document it as free text and pass {@code true} so a pasted URL or a name
+   * containing Lucene syntax cannot produce a {@code query_shard_exception}.
+   */
+  default S buildDataQualitySearchBuilderV2(
+      String indexName, String query, int from, int size, boolean freeText) {
     return switch (indexName) {
       case "test_case_search_index",
           "testCase",
           "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+          "testSuite" -> buildTestCaseSearchV2(query, from, size, freeText);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
   S buildTestCaseSearchV2(String query, int from, int size);
 
+  S buildTestCaseSearchV2(String query, int from, int size, boolean freeText);
+
   S buildTestCaseResultSearchV2(String query, int from, int size);
+
+  S buildTestCaseResultSearchV2(String query, int from, int size, boolean freeText);
 
   S buildTestCaseResolutionStatusSearchV2(String query, int from, int size);
 
@@ -172,6 +188,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * Build a search query builder with the specified fields and weights.
    */
   Q buildSearchQueryBuilderV2(String query, Map<String, Float> fields);
+
+  /**
+   * As above, but {@code freeText} parses {@code query} as literal text rather than as a Lucene
+   * expression. See {@link #buildDataQualitySearchBuilderV2(String, String, int, int, boolean)}.
+   */
+  Q buildSearchQueryBuilderV2(String query, Map<String, Float> fields, boolean freeText);
 
   /**
    * Build highlights for the specified fields.

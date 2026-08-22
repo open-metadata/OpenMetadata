@@ -28,6 +28,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
+import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
@@ -51,7 +52,7 @@ const AddTestSuitePipeline = ({
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { fqn, ingestionFQN } = useFqn();
+  const { ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
   const testSuiteId = useMemo(() => {
@@ -76,6 +77,20 @@ const AddTestSuitePipeline = ({
 
     return undefined;
   }, [testSuite?.basic, testSuite?.basicEntityReference]);
+
+  // The picker's `q` is free text: the endpoint parses it as a literal term rather than as a
+  // Lucene expression, so the suite scope travels as first-class filter params. A basic suite owns
+  // exactly its table's test cases, so scoping by the table's entityLink is equivalent.
+  const testCasePickerScope = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      testSuiteId,
+      ...(tableFqnForFilters && {
+        entityLink: `<#E::table::${tableFqnForFilters}>`,
+        includeAllTests: true,
+      }),
+    }),
+    [testSuiteId, tableFqnForFilters]
+  );
 
   const [selectAllTestCases, setSelectAllTestCases] = useState(
     initialData?.selectAllTestCases
@@ -221,14 +236,7 @@ const AddTestSuitePipeline = ({
                     }
                     hideTableFilter={Boolean(tableFqnForFilters)}
                     showButton={false}
-                    testCaseFilters={
-                      !testSuiteId
-                        ? `testSuite.fullyQualifiedName:"${escapeESReservedCharacters(
-                            testSuite?.fullyQualifiedName ?? fqn
-                          )}"`
-                        : undefined
-                    }
-                    testCaseParams={{ testSuiteId }}
+                    testCaseParams={testCasePickerScope}
                   />
                 </Form.Item>
               </Col>

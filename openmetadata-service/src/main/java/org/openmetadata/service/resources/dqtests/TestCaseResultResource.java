@@ -315,6 +315,7 @@ public class TestCaseResultResource
     if (latest.equals("true") && (testSuiteId == null && entityFQN == null)) {
       throw new IllegalArgumentException("latest=true requires testSuiteId");
     }
+    String searchTerm = q;
     EntityUtil.Fields fields = repository.getFields(fieldParams);
     SearchListFilter searchListFilter = new SearchListFilter();
     Optional.ofNullable(startTimestamp)
@@ -339,7 +340,7 @@ public class TestCaseResultResource
           fields,
           searchListFilter,
           "testCaseFQN.keyword",
-          q,
+          searchTerm,
           limit,
           offset,
           "timestamp",
@@ -354,7 +355,7 @@ public class TestCaseResultResource
         limit,
         offset,
         new SearchSortFilter("timestamp", "desc", null, null),
-        q,
+        searchTerm,
         queryString,
         authRequests,
         AuthorizationLogic.ANY);

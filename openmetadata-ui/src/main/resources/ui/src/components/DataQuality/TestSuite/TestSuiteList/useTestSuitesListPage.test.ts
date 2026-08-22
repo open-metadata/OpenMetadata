@@ -328,7 +328,7 @@ describe('useTestSuitesListPage', () => {
 
     expect(result.current.searchValue).toBe('abc');
     expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
-      expect.objectContaining({ q: '*abc*' })
+      expect.objectContaining({ q: 'abc' })
     );
   });
 

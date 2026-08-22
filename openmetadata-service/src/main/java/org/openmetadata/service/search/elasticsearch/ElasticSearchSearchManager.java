@@ -230,8 +230,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // Handle query building
     if (!nullOrEmpty(q)) {
       ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+      // freeText: the */search/list endpoints document `q` as a term to match, unlike
+      // /v1/search/query whose `q` is a Lucene expression. Only the data quality branches
+      // read the flag today, so this does not change any other index's behaviour.
       requestBuilder =
-          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false);
+          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false, true, true);
     }
 
     // Handle queryString parameter (raw ES query DSL)
@@ -272,8 +275,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     if (!nullOrEmpty(q)) {
       ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+      // freeText: the */search/list endpoints document `q` as a term to match, unlike
+      // /v1/search/query whose `q` is a Lucene expression. Only the data quality branches
+      // read the flag today, so this does not change any other index's behaviour.
       requestBuilder =
-          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false);
+          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false, true, true);
     }
 
     if (!nullOrEmpty(queryString)) {

@@ -470,6 +470,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
+    String searchTerm = q;
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter =
@@ -481,7 +482,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             type,
             testPlatforms,
             dataQualityDimension,
-            q,
+            searchTerm,
             includeFields,
             domain,
             tags,
@@ -506,7 +507,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         searchSortFilter,
         limit,
         offset,
-        q,
+        searchTerm,
         queryString);
   }
 
