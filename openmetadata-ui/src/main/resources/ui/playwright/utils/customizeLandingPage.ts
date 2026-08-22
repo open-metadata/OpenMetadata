@@ -264,9 +264,20 @@ export const waitForLandingPageWidget = async (
 ): Promise<Locator> => {
   const widget = page.getByTestId(widgetKey);
 
-  await revealLandingPageWidget(page, widgetKey);
-
-  await expect(widget).toBeVisible();
+  // The reveal has to be retried, not done once. A deferred slot mounts its widget only
+  // when scrolled into view, and `expect(...).toBeVisible()` cannot scroll. So when the
+  // layout attaches *after* a single reveal — a fresh `/my-data` load right after saving a
+  // layout is the common case — `revealLandingPageWidget` finds nothing to scroll, the
+  // widget never mounts, and the visibility assertion then burns its entire timeout on an
+  // element that was never going to appear no matter how long it waited. Polling the reveal
+  // rides out that render delay; a widget that is genuinely missing still fails, just at the
+  // poll timeout rather than instantly.
+  await expect
+    .poll(() => isLandingPageWidgetVisible(page, widgetKey), {
+      timeout: 60_000,
+      intervals: [500, 1_000, 2_000, 5_000],
+    })
+    .toBe(true);
 
   await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
 
