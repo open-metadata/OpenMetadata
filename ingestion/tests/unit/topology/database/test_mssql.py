@@ -711,6 +711,12 @@ class TestMssqlQueryStoreSelection:
         engine = self._engine_with_query_store_state(2, readonly_reason=0)
         assert mssql_dialet.is_query_store_enabled(engine) is True
 
+    def test_query_store_enabled_when_readonly_reason_is_null(self):
+        # On some SQL Server editions/configs, readonly_reason is SQL NULL for a healthy
+        # READ_WRITE database.  None & 8 raises TypeError; (None or 0) & 8 == 0 (not AG secondary).
+        engine = self._engine_with_query_store_state(2, readonly_reason=None)
+        assert mssql_dialet.is_query_store_enabled(engine) is True
+
     def test_query_store_enabled_on_read_only_non_ag(self):
         # readonly_reason == 1 — explicit SET READ_ONLY, not an AG secondary.
         # Query Store still reflects this database's own workload.

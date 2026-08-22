@@ -513,7 +513,7 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
             if row is not None:
                 actual_state, readonly_reason = row[0], row[1]
-                is_ag_secondary = bool(readonly_reason & _QS_READONLY_REASON_AG_SECONDARY)
+                is_ag_secondary = bool((readonly_reason or 0) & _QS_READONLY_REASON_AG_SECONDARY)
                 enabled = (
                     actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
                     and not is_ag_secondary
