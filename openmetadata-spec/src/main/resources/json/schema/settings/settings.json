@@ -42,7 +42,8 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "appConfiguration"
+        "appConfiguration",
+        "startupChecksums"
       ]
     }
   },
@@ -121,6 +122,9 @@
         },
         {
           "$ref": "../api/configuration/appConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

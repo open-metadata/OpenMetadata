@@ -90,6 +90,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -2474,13 +2475,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :fromId) "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :fromId "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -2712,13 +2721,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -2747,14 +2764,23 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "AND json->>'source' = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation AND json->>'source' = :source "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findLineageBySourcePipeline(
@@ -2985,8 +3011,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE (json->>'$.pipeline.id' = :toId "
+                + "OR toId = :toId) AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -3759,47 +3786,6 @@ public interface CollectionDAO {
                 original = "toType",
                 parts = {":toType", ".%"})
             String toType);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(
-        @Define("tableName") String tableName, @Bind("entityLink") String entityLink);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9835,7 +9821,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9854,7 +9840,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9866,8 +9852,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(PipelineSummaryRowMapper.class)
     List<PipelineSummaryRow> listPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -9883,7 +9868,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9896,7 +9881,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9905,8 +9890,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int countPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -10512,11 +10496,12 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
     @SqlQuery(
-        "SELECT t1.entityFQNHash, t1.json FROM test_case_resolution_status_time_series t1 "
-            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
-            + "FROM test_case_resolution_status_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
-            + "GROUP BY entityFQNHash) t2 "
-            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
+        "SELECT ranked.entityFQNHash, ranked.json FROM ("
+            + "SELECT entityFQNHash, json, ROW_NUMBER() OVER ("
+            + "PARTITION BY entityFQNHash ORDER BY timestamp DESC, id DESC) AS rowNumber "
+            + "FROM test_case_resolution_status_time_series "
+            + "WHERE entityFQNHash IN (<entityFQNHashes>)) ranked "
+            + "WHERE ranked.rowNumber = 1")
     List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
 
@@ -11176,6 +11161,53 @@ public interface CollectionDAO {
   }
 
   interface SystemDAO {
+    @SqlQuery(
+        "SELECT (SELECT COUNT(*) FROM type_entity WHERE nameHash IN (<typeHashes>)) + "
+            + "(SELECT COUNT(*) FROM policy_entity WHERE fqnHash IN (<policyHashes>)) + "
+            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>)) + "
+            + "(SELECT COUNT(*) FROM task_form_schema_entity WHERE fqnHash IN (<taskFormSchemaHashes>)) + "
+            + "(SELECT COUNT(*) FROM doc_store WHERE fqnHash IN (<documentHashes>)) + "
+            + "(SELECT COUNT(*) FROM workflow_definition_entity WHERE fqnHash IN (<workflowDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM event_subscription_entity WHERE nameHash IN (<eventSubscriptionHashes>)) + "
+            + "(SELECT COUNT(*) FROM notification_template_entity WHERE fqnHash IN (<notificationTemplateHashes>)) + "
+            + "(SELECT COUNT(*) FROM learning_resource_entity WHERE fqnHash IN (<learningResourceHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_definition WHERE nameHash IN (<testDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_connection_definition WHERE nameHash IN (<testConnectionDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM web_analytic_event WHERE fqnHash IN (<webAnalyticEventHashes>)) + "
+            + "(SELECT COUNT(*) FROM data_insight_chart WHERE fqnHash IN (<dataInsightChartHashes>)) + "
+            + "(SELECT COUNT(*) FROM di_chart_entity WHERE name IN (<dataInsightCustomChartNames>)) + "
+            + "(SELECT COUNT(*) FROM bot_entity WHERE nameHash IN (<botHashes>)) + "
+            + "(SELECT COUNT(*) FROM classification WHERE nameHash IN (<classificationHashes>)) + "
+            + "(SELECT COUNT(*) FROM tag WHERE fqnHash IN (<tagHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_entity WHERE nameHash IN (<glossaryHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash IN (<glossaryTermHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_policy_entity WHERE fqnHash IN (<aiGovernancePolicyHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_framework_entity WHERE fqnHash IN (<aiGovernanceFrameworkHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>))")
+    long countRequiredSeedData(
+        @BindListFQN("typeHashes") List<String> typeNames,
+        @BindListFQN("policyHashes") List<String> policyNames,
+        @BindListFQN("roleHashes") List<String> roleNames,
+        @BindListFQN("taskFormSchemaHashes") List<String> taskFormSchemaNames,
+        @BindListFQN("documentHashes") List<String> documentNames,
+        @BindListFQN("workflowDefinitionHashes") List<String> workflowDefinitionNames,
+        @BindListFQN("eventSubscriptionHashes") List<String> eventSubscriptionNames,
+        @BindListFQN("notificationTemplateHashes") List<String> notificationTemplateNames,
+        @BindListFQN("learningResourceHashes") List<String> learningResourceNames,
+        @BindListFQN("testDefinitionHashes") List<String> testDefinitionNames,
+        @BindListFQN("testConnectionDefinitionHashes") List<String> testConnectionDefinitionNames,
+        @BindListFQN("webAnalyticEventHashes") List<String> webAnalyticEventNames,
+        @BindListFQN("dataInsightChartHashes") List<String> dataInsightChartNames,
+        @BindList("dataInsightCustomChartNames") List<String> dataInsightCustomChartNames,
+        @BindListFQN("botHashes") List<String> botNames,
+        @BindListFQN("classificationHashes") List<String> classificationNames,
+        @BindListFQN("tagHashes") List<String> tagNames,
+        @BindListFQN("glossaryHashes") List<String> glossaryNames,
+        @BindListFQN("glossaryTermHashes") List<String> glossaryTermNames,
+        @BindListFQN("aiGovernancePolicyHashes") List<String> aiGovernancePolicyNames,
+        @BindListFQN("aiGovernanceFrameworkHashes") List<String> aiGovernanceFrameworkNames,
+        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "
@@ -11373,6 +11405,7 @@ public interface CollectionDAO {
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
             case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
+            case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
