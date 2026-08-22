@@ -26,11 +26,14 @@ import {
   CONFIG_MODE_TO_RUNTIME,
   getAppDefaultMode,
   isAppModeHintFresh,
+  PREFERENCE_MODE_TO_RUNTIME,
   readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
+  RUNTIME_TO_PREFERENCE_WIRE,
   setAppDefaultMode,
+  translatePreferenceMode,
   translateWireMode,
   useAppMode,
   useAppModeStore,
@@ -457,12 +460,33 @@ describe('resolveInitialAppMode', () => {
     expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
   });
 
-  it('returns the stored user preference when no session and no fresh hint', () => {
+  // #31906 follow-up: `pref.appMode` holds the preference's WIRE token
+  // ("classic" / "classicV1" / legacy "ai"), not the runtime mode string.
+  // `resolveInitialAppMode` must translate before comparing/returning.
+  it('translates a stored "classicV1" preference to CLASSIC_V1_APP_MODE', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: CLASSIC_V1_APP_MODE });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(CLASSIC_V1_APP_MODE);
+  });
+
+  it('translates a stored "classic" preference to DEFAULT_APP_MODE (falls through to default)', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'classic' });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('translates the legacy "ai" preference wire token to CLASSIC_V1_APP_MODE', () => {
+    // Rows written before this translation existed may still hold the
+    // tenant-config wire value ("ai") instead of "classicV1".
     usePersistentStorage
       .getState()
       .setUserPreference(TEST_USER, { appMode: 'ai' });
 
-    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+    expect(resolveInitialAppMode(TEST_USER)).toBe(CLASSIC_V1_APP_MODE);
   });
 
   it('ignores a DEFAULT-valued preference (falls through to default)', () => {
@@ -587,6 +611,58 @@ describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
 
   it('returns null for an unrecognised wire value', () => {
     expect(translateWireMode('bogus')).toBeNull();
+  });
+});
+
+describe('RUNTIME_TO_PREFERENCE_WIRE / PREFERENCE_MODE_TO_RUNTIME / translatePreferenceMode', () => {
+  it('maps DEFAULT_APP_MODE to the "classic" wire token', () => {
+    expect(RUNTIME_TO_PREFERENCE_WIRE[DEFAULT_APP_MODE]).toBe('classic');
+  });
+
+  it('maps CLASSIC_V1_APP_MODE to itself (identity)', () => {
+    expect(RUNTIME_TO_PREFERENCE_WIRE[CLASSIC_V1_APP_MODE]).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('maps the "classic" wire token back to DEFAULT_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME.classic).toBe(DEFAULT_APP_MODE);
+    expect(translatePreferenceMode('classic')).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('maps the "classicV1" wire token back to CLASSIC_V1_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME[CLASSIC_V1_APP_MODE]).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+    expect(translatePreferenceMode(CLASSIC_V1_APP_MODE)).toBe(
+      CLASSIC_V1_APP_MODE
+    );
+  });
+
+  it('maps the legacy "ai" wire token to CLASSIC_V1_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME.ai).toBe(CLASSIC_V1_APP_MODE);
+    expect(translatePreferenceMode('ai')).toBe(CLASSIC_V1_APP_MODE);
+  });
+
+  it('returns null for a null/undefined wire value', () => {
+    expect(translatePreferenceMode(null)).toBeNull();
+    expect(translatePreferenceMode(undefined)).toBeNull();
+  });
+
+  it('passes an unrecognised wire value through unchanged', () => {
+    expect(translatePreferenceMode('bogus')).toBe('bogus');
+  });
+
+  it('round-trips through the write map and back to the same runtime mode', () => {
+    // Every runtime mode the switcher can write must survive a write
+    // (RUNTIME_TO_PREFERENCE_WIRE) followed by a read
+    // (PREFERENCE_MODE_TO_RUNTIME) unchanged — this is the invariant the
+    // #31906 fix depends on.
+    for (const mode of [DEFAULT_APP_MODE, CLASSIC_V1_APP_MODE]) {
+      const wireToken = RUNTIME_TO_PREFERENCE_WIRE[mode];
+
+      expect(PREFERENCE_MODE_TO_RUNTIME[wireToken]).toBe(mode);
+    }
   });
 });
 

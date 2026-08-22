@@ -389,6 +389,75 @@ export const useIsClassicV1Mode = (): boolean =>
   useAppMode() === CLASSIC_V1_APP_MODE;
 
 /**
+ * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
+ * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
+ * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
+ * for Classic, while the plugin registers its routes under
+ * `CLASSIC_V1_APP_MODE` ("classicV1"). The wire value stays the readable
+ * "ai"/"classic" pair for admins; this map is the only place that needs to
+ * know the runtime strings differ.
+ */
+export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
+  [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
+  [DefaultAppMode.AI]: CLASSIC_V1_APP_MODE,
+};
+
+/**
+ * Safe wrapper around {@link CONFIG_MODE_TO_RUNTIME} for the nullable wire
+ * value returned by `getAppConfiguration()` / `AppConfiguration.defaultAppMode`.
+ */
+export const translateWireMode = (
+  wireMode: string | null | undefined
+): string | null =>
+  wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
+
+/**
+ * Translates the runtime mode string (`DEFAULT_APP_MODE` / `CLASSIC_V1_APP_MODE`)
+ * into the wire token persisted in the user's "remember this mode on login"
+ * preference (`AppModePreference.config.value`, enum
+ * `["ai", "classic", "classicV1", null]` — see
+ * `openmetadata-spec/.../api/teams/preferences/appModePreference.json`).
+ *
+ * This is a DIFFERENT wire vocabulary from {@link CONFIG_MODE_TO_RUNTIME}
+ * above, which translates the tenant-wide `appConfiguration.defaultAppMode`
+ * setting and still only speaks the legacy `["ai", "classic"]` pair. The
+ * preference enum is richer — it has a first-class `"classicV1"` — so
+ * `CLASSIC_V1_APP_MODE` maps to itself here rather than to the legacy `"ai"`
+ * token. Single source of truth for both directions of this translation;
+ * {@link PREFERENCE_MODE_TO_RUNTIME} below is its inverse. Consumed by
+ * `AppModeSwitcher`'s remember checkbox.
+ */
+export const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
+  [DEFAULT_APP_MODE]: 'classic',
+  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
+};
+
+/**
+ * Inverse of {@link RUNTIME_TO_PREFERENCE_WIRE}: translates the stored
+ * `appMode` preference wire token back into the runtime mode string
+ * consumed by `useAppMode`/`writeAppMode`. Also accepts the legacy `"ai"`
+ * token — preference rows written before this translation existed may still
+ * hold the tenant-config wire value instead of `"classicV1"` — and maps it
+ * to `CLASSIC_V1_APP_MODE` the same as `"classicV1"` does.
+ */
+export const PREFERENCE_MODE_TO_RUNTIME: Record<string, string> = {
+  classic: DEFAULT_APP_MODE,
+  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
+  ai: CLASSIC_V1_APP_MODE,
+};
+
+/**
+ * Safe wrapper around {@link PREFERENCE_MODE_TO_RUNTIME} for the nullable
+ * wire value read off the user's stored `appMode` preference. Unrecognised
+ * tokens pass through unchanged (matches `translateWireMode`'s sibling
+ * behavior of not inventing a fallback mode).
+ */
+export const translatePreferenceMode = (
+  wireMode: string | null | undefined
+): string | null =>
+  wireMode ? PREFERENCE_MODE_TO_RUNTIME[wireMode] ?? wireMode : null;
+
+/**
  * Synchronously resolve the app mode a freshly-authenticated user should
  * land in, using the same precedence as {@link useResolvedAppMode} minus
  * the async persona lookup:
@@ -424,36 +493,18 @@ export const resolveInitialAppMode = (userName?: string): string => {
 
   if (userName) {
     const pref = usePersistentStorage.getState().getUserPreference(userName);
-    if (pref?.appMode && pref.appMode !== DEFAULT_APP_MODE) {
-      return pref.appMode;
+    // `pref.appMode` holds the preference's WIRE token ("classic" /
+    // "classicV1" / legacy "ai"), not the runtime mode string — translate
+    // before comparing/returning. See `translatePreferenceMode` and its
+    // #31906 follow-up doc comment above.
+    const runtimeMode = translatePreferenceMode(pref?.appMode ?? null);
+    if (runtimeMode && runtimeMode !== DEFAULT_APP_MODE) {
+      return runtimeMode;
     }
   }
 
   return DEFAULT_APP_MODE;
 };
-
-/**
- * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
- * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
- * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
- * for Classic, while the plugin registers its routes under
- * `CLASSIC_V1_APP_MODE` ("classicV1"). The wire value stays the readable
- * "ai"/"classic" pair for admins; this map is the only place that needs to
- * know the runtime strings differ.
- */
-export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
-  [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
-  [DefaultAppMode.AI]: CLASSIC_V1_APP_MODE,
-};
-
-/**
- * Safe wrapper around {@link CONFIG_MODE_TO_RUNTIME} for the nullable wire
- * value returned by `getAppConfiguration()` / `AppConfiguration.defaultAppMode`.
- */
-export const translateWireMode = (
-  wireMode: string | null | undefined
-): string | null =>
-  wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
 
 /**
  * Canonical precedence for the "no valid session tuple, no fresh hint"

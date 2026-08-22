@@ -87,6 +87,7 @@ jest.mock('../../hooks/useAppMode', () => ({
   useIsClassicV1Mode: () => currentMode === 'classicV1',
   writeAppMode: (mode: string, personaAppMode?: string | null) =>
     mockWriteAppMode(mode, personaAppMode),
+  RUNTIME_TO_PREFERENCE_WIRE: { default: 'classic', classicV1: 'classicV1' },
 }));
 
 jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({

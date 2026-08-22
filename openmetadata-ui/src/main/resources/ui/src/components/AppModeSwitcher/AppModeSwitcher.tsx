@@ -25,23 +25,11 @@ import {
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import {
+  RUNTIME_TO_PREFERENCE_WIRE,
   useAppMode,
   useIsClassicV1Mode,
   writeAppMode,
 } from '../../hooks/useAppMode';
-
-// The persisted "remember" preference (`AppModePreference.config.value`,
-// see openmetadata-spec/.../api/teams/preferences/appModePreference.json)
-// speaks its own wire vocabulary ("classic" | "classicV1" | null) that is
-// NOT the same as the runtime mode string `useAppMode`/`writeAppMode` use
-// (`DEFAULT_APP_MODE` = "default" / `CLASSIC_V1_APP_MODE` = "classicV1").
-// Writing the runtime value straight to the preference (the pre-existing
-// #31906 bug) silently persisted "default" — a token the boot resolver
-// never recognizes — instead of the "classic" the schema expects.
-const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
-  [DEFAULT_APP_MODE]: 'classic',
-  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
-};
 
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-blue-50 tw:border tw:border-blue-100 tw:shrink-0';
@@ -85,9 +73,9 @@ const AppModeSwitcher: React.FC<{
 
   // Checkbox is the ONLY writer of the persistent app-mode preference.
   // Toggling on → write the current mode (translated to the preference's
-  // wire token, see RUNTIME_TO_PREFERENCE_WIRE above); toggling off →
-  // clear it. The active runtime mode is untouched — the preference only
-  // affects the boot resolver on the next fresh tab / login.
+  // wire token via RUNTIME_TO_PREFERENCE_WIRE, see useAppMode.ts); toggling
+  // off → clear it. The active runtime mode is untouched — the preference
+  // only affects the boot resolver on the next fresh tab / login.
   const currentModeWireToken =
     RUNTIME_TO_PREFERENCE_WIRE[currentMode] ?? currentMode;
   const isRemembered = preferences.appMode === currentModeWireToken;

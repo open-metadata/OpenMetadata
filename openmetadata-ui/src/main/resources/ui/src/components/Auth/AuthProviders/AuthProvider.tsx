@@ -71,6 +71,7 @@ import {
   resolveEffectiveAppMode,
   resolveInitialAppMode,
   setAppDefaultMode,
+  translatePreferenceMode,
   translateWireMode,
   writeAppMode,
 } from '../../../hooks/useAppMode';
@@ -193,8 +194,14 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     return;
   }
 
-  const userPref =
-    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+  // `appMode` off the wire is the preference's WIRE token ("classic" /
+  // "classicV1" / legacy "ai"), not the runtime mode string — translate
+  // before feeding it into the resolver. See `translatePreferenceMode` in
+  // `useAppMode.ts` (#31906 follow-up: the switcher's remember checkbox
+  // writes the wire token, so the boot read must undo that translation).
+  const userPref = translatePreferenceMode(
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null
+  );
 
   // Provisional boot write — persona isn't known synchronously (its
   // docStore doc is fetched by `useResolvedAppMode`), so we compute
