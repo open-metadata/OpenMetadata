@@ -62,6 +62,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
@@ -553,6 +554,32 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   + e.getMessage())
           .build();
     }
+  }
+
+  @GET
+  @Path("/fields/{entityType}/workflowTriggerFields")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "getWorkflowTriggerFields",
+      summary = "Get the fields that can trigger a governance workflow for an entity type",
+      description =
+          "Returns the list of fields whose change can trigger a governance workflow for the given "
+              + "entity type, as declared in the entity schema.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of workflow trigger field names",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getWorkflowTriggerFields(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type", required = true) @PathParam("entityType")
+          String entityType) {
+    return Response.ok(
+            List.copyOf(WorkflowTriggerFieldsRegistry.getEffectiveTriggerFields(entityType)))
+        .type(MediaType.APPLICATION_JSON)
+        .build();
   }
 
   @GET
