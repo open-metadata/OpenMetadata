@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -97,6 +98,8 @@ export const useTestCaseListPage = () => {
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    setShowDeleted,
   } = useTestCaseList({
     params,
     selectedFilter,
@@ -118,6 +121,14 @@ export const useTestCaseListPage = () => {
   const { handleTestCaseUpdate, handleStatusSubmit } = useTestCaseActions({
     setTestCase,
   });
+
+  const handleShowDeletedChange = useCallback(
+    (value: boolean) => {
+      setShowDeleted(value);
+      paging.handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [setShowDeleted, paging]
+  );
 
   const extraDropdownContent = useMemo(
     () =>
@@ -182,5 +193,7 @@ export const useTestCaseListPage = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    setShowDeleted: handleShowDeletedChange,
   };
 };

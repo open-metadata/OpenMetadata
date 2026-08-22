@@ -71,6 +71,8 @@ export const TestCases = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    setShowDeleted,
   } = useTestCaseListPage();
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
@@ -291,6 +293,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
+          allowSoftDelete
           afterDeleteAction={fetchTestCases}
           breadcrumbData={[
             {
@@ -311,7 +314,9 @@ export const TestCases = () => {
             <TestCaseListTableHeader
               extraDropdownContent={extraDropdownContent}
               searchValue={searchValue}
+              showDeleted={showDeleted}
               onSearch={(value) => handleSearchParam('searchValue', value)}
+              onShowDeletedChange={setShowDeleted}
             />
           }
           testCases={testCase}

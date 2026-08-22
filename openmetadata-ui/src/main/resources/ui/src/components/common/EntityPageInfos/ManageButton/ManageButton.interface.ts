@@ -31,6 +31,13 @@ export interface ManageButtonProps {
   softDeleteMessagePostFix?: string;
   hardDeleteMessagePostFix?: string;
   canDelete?: boolean;
+  /**
+   * Gates the Restore action specifically. Defaults to `canDelete` for
+   * backward compatibility, but restore endpoints commonly authorize on a
+   * different capability (e.g. EditAll) than delete — pass this explicitly
+   * when that's the case.
+   */
+  canRestore?: boolean;
   isAsyncDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;

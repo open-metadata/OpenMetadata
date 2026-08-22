@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
@@ -187,7 +187,7 @@ export const getListTestCaseResults = async (
 
 export const getTestCaseByFqn = async (
   fqn: string,
-  params?: { fields?: string[] }
+  params?: { fields?: string[]; include?: Include }
 ) => {
   const response = await APIClient.get<TestCase>(
     `/dataQuality/testCases/name/${getEncodedFqn(fqn)}`,
@@ -195,6 +195,17 @@ export const getTestCaseByFqn = async (
       params,
     }
   );
+
+  return response.data;
+};
+
+export const restoreTestCase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/restore`, {
+    id,
+  });
 
   return response.data;
 };

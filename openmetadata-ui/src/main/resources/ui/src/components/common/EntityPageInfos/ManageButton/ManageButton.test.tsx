@@ -204,4 +204,23 @@ describe('Test manage button component', () => {
 
     expect(mockOnRestoreEntity).toHaveBeenCalled();
   });
+
+  it('should gate restore on canRestore independently of canDelete', async () => {
+    const mockPropsData = {
+      ...mockProps,
+      deleted: true,
+      canDelete: true,
+      canRestore: false,
+    };
+    render(<ManageButton {...mockPropsData} />);
+
+    const manageButton = await screen.findByTestId('manage-button');
+    fireEvent.click(manageButton);
+
+    const restoreOption = await screen.findByTestId('restore-button');
+    fireEvent.click(restoreOption);
+
+    expect(screen.queryByTestId('restore-modal-body')).not.toBeInTheDocument();
+    expect(mockOnRestoreEntity).not.toHaveBeenCalled();
+  });
 });
