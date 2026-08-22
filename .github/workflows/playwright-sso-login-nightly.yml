@@ -126,15 +126,17 @@ jobs:
             needs_docker: ''
           - name: 'okta'
             env_prefix: 'OKTA'
-            filter: '--grep-invert @tokenRenewal|@sso-matrix'
+            # Regex quoted so the `|` isn't a shell pipe when the string
+            # expands into the `Run SSO Scenarios` step's command line.
+            filter: "--grep-invert '@tokenRenewal|@sso-matrix'"
             needs_docker: ''
           - name: 'keycloak-azure-saml'
             env_prefix: 'KEYCLOAK_AZURE_SAML'
-            filter: '--grep-invert @okta|@sso-matrix'
+            filter: "--grep-invert '@okta|@sso-matrix'"
             needs_docker: 'keycloak'
           - name: 'keycloak-azure-saml-crosssite'
             env_prefix: 'KEYCLOAK_AZURE_SAML'
-            filter: '--grep-invert @okta|@tokenRenewal|@sso-matrix'
+            filter: "--grep-invert '@okta|@tokenRenewal|@sso-matrix'"
             needs_docker: 'keycloak'
     # Per-event / per-dispatch filtering. Every leg in the static matrix
     # spins up a runner, but the runner short-circuits at the first step
@@ -267,7 +269,7 @@ jobs:
           mkdir -p /tmp/sso-docker-cache
           # Save whichever images this leg actually pulled — smallest set.
           if [ "${{ matrix.provider.needs_docker }}" = "ldap" ]; then
-            docker save bitnami/openldap:2.6.7 -o /tmp/sso-docker-cache/openldap.tar || true
+            docker save bitnamilegacy/openldap:2.6.7 -o /tmp/sso-docker-cache/openldap.tar || true
           fi
           if [ "${{ matrix.provider.needs_docker }}" = "keycloak" ]; then
             # keycloak image tag is decided by docker/local-sso/keycloak-saml/docker-compose.yml

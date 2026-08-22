@@ -86,30 +86,43 @@ for (const fixture of FIXTURES) {
       });
 
       let restoreConfig: (() => Promise<void>) | undefined;
+      // Describe-scoped admin session. `configureBackend`'s returned
+      // restore closure captures the apiContext it received, so disposing
+      // early (in a beforeAll finally) makes the afterAll restore hit a
+      // dead context with "apiRequestContext.put: Target page, context or
+      // browser has been closed". Keep both apiContext and afterAction
+      // alive for the whole describe; dispose only from afterAll AFTER
+      // restore runs. Additionally: once configureBackend swaps the
+      // backend away from Basic, /api/v1/auth/login no longer accepts the
+      // seeded admin creds — scenarios 8/9 must reuse this same context
+      // instead of re-performing admin login.
+      let sharedApiContext:
+        | import('@playwright/test').APIRequestContext
+        | undefined;
+      let sharedAfterAction: (() => Promise<void>) | undefined;
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
+        sharedApiContext = apiContext;
+        sharedAfterAction = afterAction;
         try {
           const configured = await fixture.configureBackend(apiContext);
           restoreConfig = configured.restore;
-        } finally {
+        } catch (err) {
+          // If configureBackend failed, we still own the admin session —
+          // release it so the leg fails fast without leaking the worker.
           await afterAction();
+          sharedApiContext = undefined;
+          sharedAfterAction = undefined;
+          throw err;
         }
       });
 
-      test.afterAll(async ({ browser }) => {
-        if (!restoreConfig) {
-          return;
-        }
-        // apiContext is baked into the closure returned by configureBackend,
-        // so we only need the admin login to keep the worker's admin session
-        // alive for the restore call. Destructure `afterAction` explicitly and
-        // ignore the rest to keep the intent legible.
-        const { afterAction } = await performAdminLogin(browser);
+      test.afterAll(async () => {
         try {
-          await restoreConfig();
+          await restoreConfig?.();
         } finally {
-          await afterAction();
+          await sharedAfterAction?.();
         }
       });
 
@@ -356,17 +369,20 @@ for (const fixture of FIXTURES) {
       // regression where the guard is removed and the user gets bounced
       // through a half-configured IdP.
       test('broken config renders ConfigErrorPage before IdP redirect', async ({
-        browser,
         page,
       }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        let restoreBroken: (() => Promise<void>) | undefined;
-        try {
-          const broken = await fixture.configureBrokenBackend(apiContext);
-          restoreBroken = broken.restore;
-        } finally {
-          await afterAction();
+        // Reuse the describe-scoped apiContext. Once configureBackend
+        // swapped the backend to a non-Basic provider,
+        // POST /api/v1/auth/login no longer accepts the seeded admin
+        // creds, so a fresh performAdminLogin call inside this test
+        // would 400/405. See admin.ts:61.
+        if (!sharedApiContext) {
+          test.skip(true, 'shared admin apiContext not initialized');
+
+          return;
         }
+        const broken = await fixture.configureBrokenBackend(sharedApiContext);
+        const restoreBroken = broken.restore;
 
         try {
           // Track any /authorize or IdP-side call — none should fire.
@@ -390,20 +406,12 @@ for (const fixture of FIXTURES) {
           ).toBeVisible({ timeout: 20_000 });
           expect(idpCalled).toBe(false);
         } finally {
-          await restoreBroken?.();
+          await restoreBroken();
           // Restore the valid config so subsequent scenarios keep passing.
-          // The per-describe `beforeAll(fixture.configureBackend)` does not
-          // re-run for this test, so put the good config back explicitly and
-          // chain its restore into the outer `restoreConfig` closure so the
+          // Chain its restore into the outer `restoreConfig` closure so the
           // `afterAll` teardown still works.
-          const { apiContext: apiCtx2, afterAction: afterAction2 } =
-            await performAdminLogin(browser);
-          try {
-            const good = await fixture.configureBackend(apiCtx2);
-            restoreConfig = good.restore;
-          } finally {
-            await afterAction2();
-          }
+          const good = await fixture.configureBackend(sharedApiContext);
+          restoreConfig = good.restore;
         }
       });
 
@@ -412,19 +420,18 @@ for (const fixture of FIXTURES) {
       // the expected pattern (each provider misconfigures its own field),
       // so we assert the pattern shows up in at least one warn line.
       test('broken config surfaces the specific field in a console.warn', async ({
-        browser,
         page,
       }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        let expectedPattern: RegExp | undefined;
-        let restoreBroken: (() => Promise<void>) | undefined;
-        try {
-          const broken = await fixture.configureBrokenBackend(apiContext);
-          restoreBroken = broken.restore;
-          expectedPattern = broken.expectedWarningPattern;
-        } finally {
-          await afterAction();
+        // Same rationale as scenario 8 — the seeded admin login no
+        // longer works once the backend is on a non-Basic provider.
+        if (!sharedApiContext) {
+          test.skip(true, 'shared admin apiContext not initialized');
+
+          return;
         }
+        const broken = await fixture.configureBrokenBackend(sharedApiContext);
+        const restoreBroken = broken.restore;
+        const expectedPattern = broken.expectedWarningPattern;
 
         try {
           const warnings: string[] = [];
@@ -445,19 +452,13 @@ for (const fixture of FIXTURES) {
           );
 
           expect(authConfigWarnings.length).toBeGreaterThan(0);
-          expect(authConfigWarnings.some((w) => expectedPattern!.test(w))).toBe(
+          expect(authConfigWarnings.some((w) => expectedPattern.test(w))).toBe(
             true
           );
         } finally {
-          await restoreBroken?.();
-          const { apiContext: apiCtx2, afterAction: afterAction2 } =
-            await performAdminLogin(browser);
-          try {
-            const good = await fixture.configureBackend(apiCtx2);
-            restoreConfig = good.restore;
-          } finally {
-            await afterAction2();
-          }
+          await restoreBroken();
+          const good = await fixture.configureBackend(sharedApiContext);
+          restoreConfig = good.restore;
         }
       });
     }

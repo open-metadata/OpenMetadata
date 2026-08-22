@@ -625,7 +625,11 @@ services:
   # spun up under the sso-playwright profile so `docker compose up` on the
   # base stack does not pay for an unused directory.
   openldap:
-    image: bitnami/openldap:2.6.7
+    # bitnami/openldap:2.6.7 was removed from the primary Docker Hub org
+    # after Bitnami moved older tags to `bitnamilegacy`. Point at that
+    # namespace so `docker pull` still succeeds in CI without a version
+    # bump.
+    image: bitnamilegacy/openldap:2.6.7
     container_name: openmetadata_openldap
     environment:
       LDAP_ADMIN_USERNAME: admin
