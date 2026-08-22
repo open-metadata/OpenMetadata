@@ -154,6 +154,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
       }
+
+      // initializeEntity() is create-only, so an existing Tag that drifted from the seed - or one
+      // predating a newly seeded recognizer - is reconciled separately
+      repository.reconcileSeededTags(tagsToCreate);
     }
   }
 

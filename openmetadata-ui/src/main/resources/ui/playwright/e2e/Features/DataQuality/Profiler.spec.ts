@@ -22,6 +22,7 @@ import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
+import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
 const table = new TableClass();
@@ -121,6 +122,7 @@ const validateProfilerAccessForRole = async (
   expect(getTestCaseDetailsResponse.status()).toBe(200);
   expect(getTestResultResponse.status()).toBe(200);
 
+  await verifyTestCaseLastRunBanner(page, 'failed');
   await expect(page.locator(`#${testCase.name}_graph`)).toBeVisible();
 };
 

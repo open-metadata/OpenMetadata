@@ -47,6 +47,12 @@ This is the command to trust — it runs the fixing steps (organize-imports, esl
 headers, i18n sync, app-docs) **and** the audit gates (`tw-audit`, `tw-guard`).
 The gates are collected rather than short-circuited, so one failure does not hide the others.
 
+In CI, warnings appear in the sticky GitHub Actions comment on the PR titled
+**UI Checkstyle passed — lint findings in changed files**. The comment groups findings by rule and
+includes file, line, column, and message details for the PR's changed files. The same output is
+available in **Actions → UI Checkstyle → checkstyle → ESLint + Prettier + Organise Imports (src)**.
+Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-checkstyle`.
+
 ## What each gate enforces
 
 | Gate | Scope | Fails when |
@@ -58,6 +64,8 @@ The gates are collected rather than short-circuited, so one failure does not hid
 | `tw-guard` | **added lines** | new `antd` import or new `.less` file |
 | `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
+| OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |
+| OpenMetadata import architecture (ESLint) | changed files | warning-only architecture, cycle, barrel, or request fan-out finding |
 | SonarCloud gate | **new code** | complexity, duplication, or new issues on lines this PR added |
 
 ## Component reuse — guidance, not a gate
@@ -85,15 +93,59 @@ would fail PRs for code they merely touched.
 
 | Tier | Meaning | Today |
 |---|---|---|
-| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y |
-| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, `react-hooks/exhaustive-deps`, `i18next/no-literal-string`, `@typescript-eslint/no-non-null-assertion` |
+| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance |
+| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, 10 OpenMetadata import rules, `react-hooks/exhaustive-deps`, `i18next/no-literal-string`, `@typescript-eslint/no-non-null-assertion` |
 
-Repo-wide today: **0 errors, 8935 warnings** across 3846 files. The warnings *are* the backlog, made
+Repo-wide today: **0 errors, 10120 warnings** across 2228 files. The warnings *are* the backlog, made
 visible instead of hidden — the target is zero, reached rule by rule.
 
 `i18next/no-literal-string` was disabled with a `TODO: re-enable when the plugin supports ESLint 9`.
 That incompatibility no longer reproduces; it runs fine and reports a large backlog, so it is back on
 at `warn`. The repo convention is no user-facing string literals, so it should reach `error`.
+
+## Repository-specific performance rules
+
+`openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-performance.mjs` contains three
+reporting-only rules. Their test suite is run with `yarn test:eslint-rules`. All three were enabled at
+`error` only after a full `src/` scan reached zero findings.
+
+- `no-eager-page-imports` applies to `src/components/AppRouter/**` and rejects runtime static imports
+  whose path contains `pages/`. Type-only imports remain valid.
+- `require-suspense-fallback` recognizes `lazy` and `React.lazy` only when imported from React. It
+  accepts a component passed directly or subsequently to an approved helper imported from
+  `components/AppRouter/withSuspenseFallback`, or a local variable-dependency path from the lazy
+  binding to JSX rendered or passed beneath a real React `Suspense` boundary with an explicit
+  `fallback` prop. An unrelated boundary elsewhere in the module does not satisfy the rule.
+- `no-unbounded-module-cache` checks module-level `Map` and `Set` bindings with cache-like names. A
+  cache needs an explicit numeric or uppercase named size comparison whose guarded `if` branch or
+  `while` body evicts from the same binding using `delete` or `clear`.
+
+The rules intentionally do not autofix because introducing a loading boundary, choosing an eviction
+policy, and deciding which route dependency should remain eager require runtime context.
+
+## Import architecture and request warnings
+
+`openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-imports.mjs` contains ten
+reporting-only rules. They are enabled at `warn`, do not autofix, and therefore do not fail CI while
+their measured backlog is reduced.
+
+| Rule | What it reports | Baseline findings / files |
+|---|---|---:|
+| `no-impure-pure-utils` | React/JSX or upward UI, state, page, hook, or REST dependencies in `*PureUtils` | 62 / 23 |
+| `no-lower-layer-page-imports` | page imports outside pages and the AppRouter owner | 291 / 271 |
+| `no-cross-page-imports` | one page feature statically importing another page feature | 43 / 32 |
+| `no-rest-ui-imports` | REST clients depending on components, pages, hooks, context, or stores | 55 / 37 |
+| `no-hook-ui-imports` | hooks depending on components or pages | 10 / 6 |
+| `no-circular-imports` | runtime imports/re-exports that participate in a cycle; type-only imports are ignored | 295 / 164 |
+| `no-internal-barrel-imports` | runtime imports resolving to an app-internal `index` barrel; type-only imports are allowed | 143 / 134 |
+| `no-lodash-default-import` | default or namespace imports from the Lodash package root | 1 / 1 |
+| `no-api-calls-in-iteration` | REST calls inside loops or dynamic iteration callbacks such as `map` | 28 / 21 |
+| `review-sequential-api-calls` | a second or later directly awaited REST call in one function, for dependency review | 207 / 105 |
+
+The last rule is intentionally phrased as a review: static analysis cannot prove whether the second
+request depends on the first. Keep legitimate sequencing; parallelize independent requests. Promote
+each deterministic rule to `error` only after its repo-wide baseline reaches zero. Re-evaluate the
+request-review rule separately before making it mandatory.
 
 **Rules deliberately still off**, and why:
 

@@ -57,6 +57,7 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
+import { queryClient } from '../../../../queryClient';
 import {
   getDataProductByName,
   getDataProductOutputPorts,
@@ -71,6 +72,7 @@ import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
+import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
@@ -126,6 +128,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
+      addDisabledMessage,
       entityFqn,
       assetCount,
       preloadedData,
@@ -583,6 +586,9 @@ const AssetsTabs = forwardRef(
                 activeEntity.fullyQualifiedName ?? '',
                 entities
               );
+              queryClient.invalidateQueries({
+                queryKey: domainAssetsCountQueryKey,
+              });
 
               break;
             default:
@@ -623,6 +629,7 @@ const AssetsTabs = forwardRef(
           activeEntity.fullyQualifiedName ?? '',
           pendingRemoveEntities
         );
+        queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
         setRemoveDryRunWarnings(undefined);
         setPendingRemoveEntities(undefined);
         await new Promise((resolve) => {
@@ -724,7 +731,7 @@ const AssetsTabs = forwardRef(
         return (
           <CreatePlaceholder
             actions={
-              permissions.Create
+              permissions.Create && !addDisabledMessage
                 ? [
                     {
                       key: 'add-asset',
@@ -738,9 +745,12 @@ const AssetsTabs = forwardRef(
                   ]
                 : undefined
             }
-            description={t('message.link-assets-description', {
-              entity: getEntityTypeString(type),
-            })}
+            description={
+              addDisabledMessage ??
+              t('message.link-assets-description', {
+                entity: getEntityTypeString(type),
+              })
+            }
             icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
             title={t('label.no-assets-linked-yet')}
           />
@@ -749,6 +759,7 @@ const AssetsTabs = forwardRef(
     }, [
       searchValue,
       noDataPlaceholder,
+      addDisabledMessage,
       permissions,
       onAddAsset,
       isEntityDeleted,

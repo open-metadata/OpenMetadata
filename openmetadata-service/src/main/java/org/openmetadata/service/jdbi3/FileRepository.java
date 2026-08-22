@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -101,6 +102,10 @@ public class FileRepository extends EntityRepository<File> {
       file.setFullyQualifiedName(
           FullyQualifiedName.add(service.getFullyQualifiedName(), file.getName()));
     }
+    // Columns need their FQN set on the write path too, not only when read back in setFields:
+    // the update path compares columns by FQN, and a null one NPEs on every re-ingestion.
+    // listOrEmpty because non-tabular files (images, PDFs, ...) carry no columns.
+    ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), listOrEmpty(file.getColumns()));
   }
 
   @Override

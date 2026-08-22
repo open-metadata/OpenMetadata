@@ -57,7 +57,8 @@ export const getKnowledgeCenterPagePath = (
 ) => {
   const encodedFqn = getEncodedFqn(pageFQN);
 
-  return `${ROUTES.KNOWLEDGE_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
+  // Articles live under the Context Center; /knowledge-center/<fqn> is not a registered route.
+  return `${ROUTES.CONTEXT_CENTER_ARTICLES}/${encodedFqn}/${tab}/${subTab}`;
 };
 
 export const getTaskDetailPath = (task: Thread) => {

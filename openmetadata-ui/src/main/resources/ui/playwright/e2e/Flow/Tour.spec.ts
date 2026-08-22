@@ -173,7 +173,11 @@ test.describe(
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await user.login(page);
+      // Tour is entered from the welcome banner, so this suite must NOT suppress
+      // it. The other tour tests already guard against the banner if present.
+      await user.login(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+      });
     });
 
     test('Tour should work from help section', async ({ page }) => {

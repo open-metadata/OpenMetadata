@@ -68,7 +68,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
   return (
     <Box
       align="center"
-      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
+      className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
       data-testid={`archive-row-${item.id}`}
       gap={4}>
       <FileIcon

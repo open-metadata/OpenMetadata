@@ -105,7 +105,10 @@ public class TestDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class)))
+                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "entityType is not one of the TestDefinitionEntityType values")
       })
   public ResultList<TestDefinition> list(
       @Context UriInfo uriInfo,
@@ -167,9 +170,7 @@ public class TestDefinitionResource
           @QueryParam("enabled")
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
-    if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
-    }
+    TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
     }
