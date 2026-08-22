@@ -43,13 +43,21 @@ export const VersionButton = forwardRef<
 
     return (
       <div
+        aria-label={versionText}
         className={classNames(
           'timeline-content p-b-md cursor-pointer',
           className
         )}
         data-testid={`version-entry-${versionText}`}
         ref={ref}
-        onClick={() => onVersionSelect(toString(versionNumber))}>
+        role="button"
+        tabIndex={0}
+        onClick={() => onVersionSelect(toString(versionNumber))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onVersionSelect(toString(versionNumber));
+          }
+        }}>
         <div className="timeline-wrapper">
           <span
             className={classNames(

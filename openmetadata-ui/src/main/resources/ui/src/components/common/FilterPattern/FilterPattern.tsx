@@ -35,6 +35,7 @@ const FilterPattern = ({
     <div data-testid="filter-pattern-container">
       <Row>
         <Col span={8}>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-linked to checkbox (sibling column) */}
           <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
             type
           )} ${t('label.filter-pattern')}`}</label>
@@ -55,7 +56,7 @@ const FilterPattern = ({
         <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
           <Col span={24}>
             <Space size={2}>
-              <label className="d-flex flex-col">{t('label.include')}:</label>
+              <span className="d-flex flex-col">{t('label.include')}:</span>
             </Space>
 
             <Select
@@ -79,7 +80,7 @@ const FilterPattern = ({
           </Col>
           <Col span={24}>
             <Space size={2}>
-              <label className="d-flex flex-col">{t('label.exclude')}:</label>
+              <span className="d-flex flex-col">{t('label.exclude')}:</span>
             </Space>
             <Select
               className="m-t-xss"

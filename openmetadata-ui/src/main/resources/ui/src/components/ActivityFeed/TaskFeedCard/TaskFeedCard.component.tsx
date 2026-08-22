@@ -222,7 +222,17 @@ const TaskFeedCard = ({
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer m-l-xs"
-                      onClick={!hidePopover ? showReplies : noop}>
+                      role="button"
+                      tabIndex={0}
+                      onClick={!hidePopover ? showReplies : noop}
+                      onKeyDown={(e) => {
+                        if (
+                          (e.key === 'Enter' || e.key === ' ') &&
+                          !hidePopover
+                        ) {
+                          showReplies();
+                        }
+                      }}>
                       <ThreadIcon width={20} />{' '}
                       <span className="text-xs p-t-xss p-l-xss">
                         {postLength}
