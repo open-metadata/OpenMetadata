@@ -241,6 +241,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
@@ -4171,6 +4172,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    ApprovalGate.stageAndHold(original, updated, updatedBy);
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntity")) {
@@ -4409,6 +4411,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // This ensures that when regular users make changes (impersonatedBy=null),
     // any existing impersonatedBy value is cleared, preventing it from persisting
     updated.setImpersonatedBy(impersonatedBy);
+    ApprovalGate.stageAndHold(original, updated, user);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
@@ -9003,6 +9006,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     /** React phase: post-commit side effects. */
     private void reactUpdate() {
+      // The approval gate may have held all changed fields (making this a no-op write); the pending
+      // review workflow must still be triggered, so fire it before the no-op short-circuit below.
+      ApprovalGate.submitPending(updated, updated.getUpdatedBy());
       // No-op updates should not fan out search/RDF work.
       // Must also check incrementalFieldsChanged() because session consolidation may net
       // to zero change (previous == updated) while intermediate operations already modified

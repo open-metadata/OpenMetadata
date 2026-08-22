@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
@@ -57,8 +58,10 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
 
-    // No changeDescription means it's a create event - return true
-    ChangeDescription changeDescription = entity.getChangeDescription();
+    // Evaluate the held pending change unioned with the entity's persisted change description, so
+    // this node sees the proposed (not-yet-applied) change. No change at all -> create event ->
+    // true.
+    ChangeDescription changeDescription = PendingApprovalChangeStore.effective(entity);
     if (changeDescription == null) {
       LOG.debug("No changeDescription found (likely a create event), returning true");
       return true;

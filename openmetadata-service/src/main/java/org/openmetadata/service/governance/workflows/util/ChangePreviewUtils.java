@@ -29,6 +29,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -262,11 +263,35 @@ public final class ChangePreviewUtils {
    * unit of work to fold into the running merge.
    */
   private static ChangeDescription pickIncrementalOrFull(EntityInterface entity) {
+    ChangeDescription result;
     ChangeDescription incremental = entity.getIncrementalChangeDescription();
     if (!hasNoChanges(incremental)) {
-      return incremental;
+      result = incremental;
+    } else {
+      // No persisted diff on this hop. If an approval-gated edit was held off the entity (reverted,
+      // so it carries no change description of its own), the pending hold is exactly what the
+      // reviewer is being asked to approve - surface it. A real incremental diff always wins, so a
+      // parked hold never masks an actual change; unlike the trigger's effective() (persisted UNION
+      // hold), the preview must not fold in the cumulative diff or it would double-count re-edits.
+      ChangeDescription pendingHold = pendingHold(entity);
+      result = !hasNoChanges(pendingHold) ? pendingHold : entity.getChangeDescription();
     }
-    return entity.getChangeDescription();
+    return result;
+  }
+
+  // Reading the hold touches the entity_extension store. Guard it so this shared preview path (used
+  // by every approval task, not just held ones) degrades to "no hold" instead of failing task
+  // creation if the lookup ever throws (e.g. no CollectionDAO in a pure unit test, or a DB error).
+  private static ChangeDescription pendingHold(EntityInterface entity) {
+    ChangeDescription hold = null;
+    if (entity.getId() != null) {
+      try {
+        hold = PendingApprovalChangeStore.get(entity.getId());
+      } catch (Exception e) {
+        LOG.debug("Could not read pending approval hold for {}", entity.getId(), e);
+      }
+    }
+    return hold;
   }
 
   /**
