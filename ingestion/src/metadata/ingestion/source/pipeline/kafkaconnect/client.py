@@ -315,9 +315,6 @@ class KafkaConnectClient:
         """
         Get the details of a single connector.
 
-        For Confluent Cloud, the API returns configs as an array of {config, value} objects.
-        For self-hosted Kafka Connect, it returns a flat config dictionary.
-
         Args:
             connector (str): The name of the connector.
         """
@@ -326,19 +323,8 @@ class KafkaConnectClient:
             if not result:
                 return None
 
-            # Check if this is Confluent Cloud format (array of {config, value})
-            if self.is_confluent_cloud and "configs" in result:
-                # Transform Confluent Cloud format: [{config: "key", value: "val"}] -> {key: val}
-                configs_array = result.get("configs", [])
-                if isinstance(configs_array, list):
-                    config_dict = {
-                        item["config"]: item["value"]
-                        for item in configs_array
-                        if isinstance(item, dict) and "config" in item and "value" in item
-                    }
-                    return config_dict or None
-
-            # Standard self-hosted Kafka Connect format
+            # Confluent Cloud and self-hosted Connect both return a flat config map here
+            # (verified against the Connect v1 API on 2026-08-05).
             return result.get("config")
 
         except Exception as exc:
