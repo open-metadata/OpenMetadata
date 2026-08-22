@@ -2738,7 +2738,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on database name, supporting basic tokenization and stemming for flexible matching."
+          "description": "Standard text analysis on database name, supporting basic tokenization and stemming for flexible matching.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -2746,7 +2747,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable database name with basic tokenization and stemming."
+          "description": "Standard text analysis on the human-readable database name with basic tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -2754,7 +2756,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on database descriptions to find databases based on their documented purpose or content."
+          "description": "Full-text search on database descriptions to find databases based on their documented purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -2783,7 +2786,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on schema name, supporting basic tokenization and stemming."
+          "description": "Standard text analysis on schema name, supporting basic tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -2791,7 +2795,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable schema name."
+          "description": "Standard text analysis on the human-readable schema name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -2799,7 +2804,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on schema descriptions to find schemas based on their documented purpose."
+          "description": "Full-text search on schema descriptions to find schemas based on their documented purpose.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -2828,7 +2834,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on table name, supporting basic tokenization and stemming."
+          "description": "Standard text analysis on table name, supporting basic tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -2836,7 +2843,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable table name."
+          "description": "Standard text analysis on the human-readable table name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -2844,7 +2852,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on table descriptions to find tables based on their documented purpose or contents."
+          "description": "Full-text search on table descriptions to find tables based on their documented purpose or contents.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -2884,7 +2893,8 @@
         },
         {
           "name": "columns.description",
-          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+          "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents.",
+          "highlight": true
         }
       ]
     },
@@ -2893,7 +2903,8 @@
       "fields": [
         {
           "name": "name",
-          "description": "Column name - primary search field for finding columns by their database name."
+          "description": "Column name - primary search field for finding columns by their database name.",
+          "highlight": true
         },
         {
           "name": "name.keyword",
@@ -2905,11 +2916,13 @@
         },
         {
           "name": "displayName",
-          "description": "Display name for the column."
+          "description": "Display name for the column.",
+          "highlight": true
         },
         {
           "name": "description",
-          "description": "Column description text for finding columns by their documented purpose."
+          "description": "Column description text for finding columns by their documented purpose.",
+          "highlight": true
         },
         {
           "name": "dataType",
@@ -2917,7 +2930,8 @@
         },
         {
           "name": "table.name",
-          "description": "Parent table name for finding columns within specific tables."
+          "description": "Parent table name for finding columns within specific tables.",
+          "highlight": true
         },
         {
           "name": "table.displayName",
@@ -2942,7 +2956,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on stored procedure name with basic tokenization."
+          "description": "Standard text analysis on stored procedure name with basic tokenization.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -2950,7 +2965,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable stored procedure name."
+          "description": "Standard text analysis on the human-readable stored procedure name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -2958,7 +2974,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on stored procedure descriptions for finding by purpose or functionality."
+          "description": "Full-text search on stored procedure descriptions for finding by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -2999,7 +3016,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on query name with tokenization and stemming."
+          "description": "Standard text analysis on query name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3007,7 +3025,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable query name."
+          "description": "Standard text analysis on the human-readable query name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3015,7 +3034,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on query descriptions to find by purpose or functionality."
+          "description": "Full-text search on query descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3052,7 +3072,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on topic name with tokenization and stemming."
+          "description": "Standard text analysis on topic name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3060,7 +3081,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable topic name."
+          "description": "Standard text analysis on the human-readable topic name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3068,7 +3090,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on topic descriptions to find by purpose or content."
+          "description": "Full-text search on topic descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3137,7 +3160,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on dashboard name with tokenization and stemming."
+          "description": "Standard text analysis on dashboard name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3145,7 +3169,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable dashboard name."
+          "description": "Standard text analysis on the human-readable dashboard name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3153,7 +3178,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on dashboard descriptions to find by purpose or content."
+          "description": "Full-text search on dashboard descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3165,7 +3191,8 @@
         },
         {
           "name": "charts.name",
-          "description": "Search on the names of charts included in the dashboard to find dashboards containing specific visualizations."
+          "description": "Search on the names of charts included in the dashboard to find dashboards containing specific visualizations.",
+          "highlight": true
         },
         {
           "name": "charts.description",
@@ -3222,7 +3249,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on data model name with tokenization and stemming."
+          "description": "Standard text analysis on data model name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3230,7 +3258,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable data model name."
+          "description": "Standard text analysis on the human-readable data model name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3238,7 +3267,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on data model descriptions to find by purpose or content."
+          "description": "Full-text search on data model descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3254,7 +3284,8 @@
         },
         {
           "name": "columns.name",
-          "description": "Standard text analysis on column names in the data model."
+          "description": "Standard text analysis on column names in the data model.",
+          "highlight": true
         },
         {
           "name": "columns.displayName",
@@ -3262,7 +3293,8 @@
         },
         {
           "name": "columns.description",
-          "description": "Search on column descriptions to find data models with fields serving specific purposes."
+          "description": "Search on column descriptions to find data models with fields serving specific purposes.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",
@@ -3295,7 +3327,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on pipeline name with tokenization and stemming."
+          "description": "Standard text analysis on pipeline name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3303,7 +3336,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable pipeline name."
+          "description": "Standard text analysis on the human-readable pipeline name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3311,7 +3345,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on pipeline descriptions to find by purpose or functionality."
+          "description": "Full-text search on pipeline descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3323,11 +3358,13 @@
         },
         {
           "name": "tasks.name",
-          "description": "Search on the names of tasks within the pipeline to find pipelines with specific processing steps."
+          "description": "Search on the names of tasks within the pipeline to find pipelines with specific processing steps.",
+          "highlight": true
         },
         {
           "name": "tasks.description",
-          "description": "Search on task descriptions to find pipelines with tasks serving specific purposes."
+          "description": "Search on task descriptions to find pipelines with tasks serving specific purposes.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",
@@ -3360,7 +3397,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on ML model name with tokenization and stemming."
+          "description": "Standard text analysis on ML model name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3368,7 +3406,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable ML model name."
+          "description": "Standard text analysis on the human-readable ML model name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3376,7 +3415,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on ML model descriptions to find by purpose or functionality."
+          "description": "Full-text search on ML model descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3388,11 +3428,13 @@
         },
         {
           "name": "mlFeatures.name",
-          "description": "Search on the names of features used by the ML model to find models using specific input features."
+          "description": "Search on the names of features used by the ML model to find models using specific input features.",
+          "highlight": true
         },
         {
           "name": "mlFeatures.description",
-          "description": "Search on feature descriptions to find models with features serving specific purposes."
+          "description": "Search on feature descriptions to find models with features serving specific purposes.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",
@@ -3425,7 +3467,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on search index name with tokenization and stemming."
+          "description": "Standard text analysis on search index name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3433,7 +3476,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable search index name."
+          "description": "Standard text analysis on the human-readable search index name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3441,7 +3485,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on search index descriptions to find by purpose or functionality."
+          "description": "Full-text search on search index descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3494,7 +3539,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on container name with tokenization and stemming."
+          "description": "Standard text analysis on container name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3502,7 +3548,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable container name."
+          "description": "Standard text analysis on the human-readable container name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3510,7 +3557,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on container descriptions to find by purpose or content."
+          "description": "Full-text search on container descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3522,7 +3570,8 @@
         },
         {
           "name": "dataModel.columns.name",
-          "description": "Search on column names in the container's data model to find containers with specific data fields."
+          "description": "Search on column names in the container's data model to find containers with specific data fields.",
+          "highlight": true
         },
         {
           "name": "dataModel.columns.name.keyword",
@@ -3534,7 +3583,8 @@
         },
         {
           "name": "dataModel.columns.description",
-          "description": "Search on column descriptions to find containers with fields serving specific purposes."
+          "description": "Search on column descriptions to find containers with fields serving specific purposes.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",
@@ -3567,7 +3617,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on API endpoint name with tokenization and stemming."
+          "description": "Standard text analysis on API endpoint name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3575,7 +3626,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable API endpoint name."
+          "description": "Standard text analysis on the human-readable API endpoint name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3583,7 +3635,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on API endpoint descriptions to find by purpose or functionality."
+          "description": "Full-text search on API endpoint descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3644,7 +3697,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on domain name with tokenization and stemming."
+          "description": "Standard text analysis on domain name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3652,7 +3706,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable domain name."
+          "description": "Standard text analysis on the human-readable domain name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3660,7 +3715,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on domain descriptions to find by purpose or coverage."
+          "description": "Full-text search on domain descriptions to find by purpose or coverage.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3685,7 +3741,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on data product name with tokenization and stemming."
+          "description": "Standard text analysis on data product name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3693,7 +3750,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable data product name."
+          "description": "Standard text analysis on the human-readable data product name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3701,7 +3759,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on data product descriptions to find by purpose or functionality."
+          "description": "Full-text search on data product descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3726,7 +3785,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on tag name with tokenization and stemming."
+          "description": "Standard text analysis on tag name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3734,7 +3794,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable tag name."
+          "description": "Standard text analysis on the human-readable tag name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3742,7 +3803,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on tag descriptions to find by purpose or meaning."
+          "description": "Full-text search on tag descriptions to find by purpose or meaning.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3767,7 +3829,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on glossary term name with tokenization and stemming."
+          "description": "Standard text analysis on glossary term name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3775,7 +3838,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable glossary term name."
+          "description": "Standard text analysis on the human-readable glossary term name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3783,7 +3847,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on glossary term descriptions to find by purpose or meaning."
+          "description": "Full-text search on glossary term descriptions to find by purpose or meaning.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3828,7 +3893,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on metric name with tokenization and stemming."
+          "description": "Standard text analysis on metric name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3836,7 +3902,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable metric name."
+          "description": "Standard text analysis on the human-readable metric name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3844,7 +3911,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on metric descriptions to find by purpose or definition."
+          "description": "Full-text search on metric descriptions to find by purpose or definition.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3865,7 +3933,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on drive service name with tokenization and stemming."
+          "description": "Standard text analysis on drive service name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3873,7 +3942,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable drive service name."
+          "description": "Standard text analysis on the human-readable drive service name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3881,7 +3951,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on drive service descriptions to find by purpose or functionality."
+          "description": "Full-text search on drive service descriptions to find by purpose or functionality.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3914,7 +3985,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on directory name with tokenization and stemming."
+          "description": "Standard text analysis on directory name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3922,7 +3994,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable directory name."
+          "description": "Standard text analysis on the human-readable directory name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3930,7 +4003,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on directory descriptions to find by purpose or content."
+          "description": "Full-text search on directory descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -3942,7 +4016,8 @@
         },
         {
           "name": "path",
-          "description": "Exact match on the directory path within the drive service."
+          "description": "Exact match on the directory path within the drive service.",
+          "highlight": true
         },
         {
           "name": "parent.displayName.keyword",
@@ -3979,7 +4054,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on file name with tokenization and stemming."
+          "description": "Standard text analysis on file name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -3987,7 +4063,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable file name."
+          "description": "Standard text analysis on the human-readable file name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -3995,7 +4072,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on file descriptions to find by purpose or content."
+          "description": "Full-text search on file descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4019,7 +4097,8 @@
         },
         {
           "name": "path",
-          "description": "Exact match on the file path within the drive service."
+          "description": "Exact match on the file path within the drive service.",
+          "highlight": true
         },
         {
           "name": "directory.displayName.keyword",
@@ -4056,7 +4135,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on spreadsheet name with tokenization and stemming."
+          "description": "Standard text analysis on spreadsheet name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4064,7 +4144,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable spreadsheet name."
+          "description": "Standard text analysis on the human-readable spreadsheet name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4072,7 +4153,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on spreadsheet descriptions to find by purpose or content."
+          "description": "Full-text search on spreadsheet descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4088,7 +4170,8 @@
         },
         {
           "name": "path",
-          "description": "Exact match on the spreadsheet path within the drive service."
+          "description": "Exact match on the spreadsheet path within the drive service.",
+          "highlight": true
         },
         {
           "name": "directory.displayName.keyword",
@@ -4125,7 +4208,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on worksheet name with tokenization and stemming."
+          "description": "Standard text analysis on worksheet name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4133,7 +4217,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable worksheet name."
+          "description": "Standard text analysis on the human-readable worksheet name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4141,7 +4226,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on worksheet descriptions to find by purpose or content."
+          "description": "Full-text search on worksheet descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4198,7 +4284,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on context file name with tokenization and stemming."
+          "description": "Standard text analysis on context file name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4206,7 +4293,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable context file name."
+          "description": "Standard text analysis on the human-readable context file name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4214,7 +4302,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on context file descriptions to find by purpose or content."
+          "description": "Full-text search on context file descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4246,7 +4335,8 @@
         },
         {
           "name": "extractedText",
-          "description": "Full-text search on text extracted from the uploaded context file."
+          "description": "Full-text search on text extracted from the uploaded context file.",
+          "highlight": true
         },
         {
           "name": "tags.tagFQN.text",
@@ -4275,7 +4365,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on folder name with tokenization and stemming."
+          "description": "Standard text analysis on folder name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4283,7 +4374,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable folder name."
+          "description": "Standard text analysis on the human-readable folder name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4291,7 +4383,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on folder descriptions to find by purpose or content."
+          "description": "Full-text search on folder descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4332,7 +4425,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on knowledge page name with tokenization and stemming."
+          "description": "Standard text analysis on knowledge page name with tokenization and stemming.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4340,7 +4434,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable knowledge page name."
+          "description": "Standard text analysis on the human-readable knowledge page name.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4348,7 +4443,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on knowledge page descriptions to find by purpose or content."
+          "description": "Full-text search on knowledge page descriptions to find by purpose or content.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
@@ -4393,7 +4489,8 @@
         },
         {
           "name": "name",
-          "description": "Standard text analysis on entity name with tokenization and stemming. This provides more flexible matching than keyword searches."
+          "description": "Standard text analysis on entity name with tokenization and stemming. This provides more flexible matching than keyword searches.",
+          "highlight": true
         },
         {
           "name": "name.ngram",
@@ -4401,7 +4498,8 @@
         },
         {
           "name": "displayName",
-          "description": "Standard text analysis on the human-readable entity name. This searches the user-friendly names assigned to entities."
+          "description": "Standard text analysis on the human-readable entity name. This searches the user-friendly names assigned to entities.",
+          "highlight": true
         },
         {
           "name": "displayName.ngram",
@@ -4409,7 +4507,8 @@
         },
         {
           "name": "description",
-          "description": "Full-text search on entity descriptions to find by purpose, content or other documented details."
+          "description": "Full-text search on entity descriptions to find by purpose, content or other documented details.",
+          "highlight": true
         },
         {
           "name": "fullyQualifiedName",
