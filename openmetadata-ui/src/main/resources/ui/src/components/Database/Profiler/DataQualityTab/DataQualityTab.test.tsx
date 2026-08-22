@@ -17,11 +17,15 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from '@testing-library/react';
 import React, { act } from 'react';
+import { Link } from 'react-router-dom';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
@@ -244,9 +248,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children,
       title,
     }: React.PropsWithChildren<{ title?: string }>) => (
-      <div title={title}>{children}</div>
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
     ),
-    TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+    TooltipTrigger: ({
+      children,
+      className,
+      onPress,
+      'data-testid': testId,
+    }: React.PropsWithChildren<{
+      className?: string;
+      onPress?: () => void;
+      'data-testid'?: string;
+    }>) => (
+      <button className={className} data-testid={testId} onClick={onPress}>
+        {children}
+      </button>
+    ),
     Typography: ({
       children,
       className,
@@ -264,6 +283,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
     },
   };
 });
+
+jest.mock('react-aria-components', () => ({
+  ...jest.requireActual('react-aria-components'),
+  // Focusable is a transparent ref/context-wiring wrapper in real usage; for
+  // DOM-structure assertions in tests it's equivalent to rendering its child
+  // directly.
+  Focusable: ({ children }: React.PropsWithChildren) => <>{children}</>,
+}));
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
@@ -539,6 +566,45 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should show a styled Tooltip with the full entity name for the Name cell, not a native title attribute', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameCellWrapper = await screen.findByTestId(firstRowData.name);
+    const trigger = within(nameCellWrapper).getByText(
+      getEntityName(firstRowData)
+    );
+
+    // The trigger is a real Link (wrapped in Focusable, not TooltipTrigger),
+    // so it keeps native link semantics, while still not relying on a
+    // native title attribute for the full name.
+    expect(trigger).not.toHaveAttribute('title');
+
+    const tooltip = within(nameCellWrapper).getByTestId('tooltip');
+
+    expect(tooltip).toHaveAttribute('title', getEntityName(firstRowData));
+  });
+
+  it('Should link the Name cell trigger to the test case detail page', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) =>
+        props.to?.pathname ===
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          firstRowData.fullyQualifiedName ?? ''
+        )
+    );
+
+    expect(nameLinkCall).toBeDefined();
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData: undefined });
   });
 
   it('Should keep action dropdowns aligned when dimensions are present', async () => {
