@@ -11,9 +11,17 @@
 
 """Unit tests for the Snowflake session query tag statement"""
 
+from unittest.mock import Mock
+
 import pytest
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 
 from metadata.ingestion.source.database.snowflake.queries import set_session_tag_query
+from metadata.ingestion.source.database.snowflake.utils import (
+    _qualified_identifier,
+    _quote_identifier,
+    get_table_names,
+)
 
 
 @pytest.mark.parametrize(
@@ -43,3 +51,26 @@ from metadata.ingestion.source.database.snowflake.queries import set_session_tag
 )
 def test_set_session_tag_query_keeps_the_tag_inside_one_string_literal(query_tag, expected):
     assert set_session_tag_query(query_tag) == expected
+
+
+def test_identifier_helpers_escape_embedded_double_quotes():
+    schema = 'sales"; DROP SCHEMA secret; --'
+    table = 'orders"; DROP TABLE secret; --'
+
+    assert _quote_identifier(schema) == '"sales""; DROP SCHEMA secret; --"'
+    assert _qualified_identifier(schema, table) == (
+        '"sales""; DROP SCHEMA secret; --"."orders""; DROP TABLE secret; --"'
+    )
+
+
+def test_table_name_query_binds_catalog_schema_name():
+    dialect = SnowflakeDialect()
+    connection = Mock()
+    connection.execute.return_value = []
+    schema = "sales' OR 1=1 --"
+
+    get_table_names(dialect, connection, schema)
+
+    statement, parameters = connection.execute.call_args.args
+    assert schema not in str(statement)
+    assert parameters["schema"] == schema

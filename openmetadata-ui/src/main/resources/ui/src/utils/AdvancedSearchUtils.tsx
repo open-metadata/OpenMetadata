@@ -21,7 +21,7 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
-import { isArray, isEmpty } from 'lodash';
+import { escapeRegExp, isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -34,10 +34,34 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
+
+const renderSearchLabel = (label: string, searchKey: string) => {
+  if (!searchKey) {
+    return label;
+  }
+
+  const matches = label.matchAll(new RegExp(escapeRegExp(searchKey), 'gi'));
+  const parts: React.ReactNode[] = [];
+  let previousIndex = 0;
+
+  for (const match of matches) {
+    const matchIndex = match.index;
+    if (matchIndex > previousIndex) {
+      parts.push(label.slice(previousIndex, matchIndex));
+    }
+    parts.push(<mark key={`match-${matchIndex}`}>{match[0]}</mark>);
+    previousIndex = matchIndex + match[0].length;
+  }
+
+  if (previousIndex < label.length) {
+    parts.push(label.slice(previousIndex));
+  }
+
+  return parts;
+};
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
@@ -139,11 +163,7 @@ export const generateSearchDropdownLabel = (
             ellipsis
             className="dropdown-option-label"
             title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
+            <span>{renderSearchLabel(option.label, searchKey)}</span>
           </Typography.Text>
           {option.description && (
             <Typography.Text

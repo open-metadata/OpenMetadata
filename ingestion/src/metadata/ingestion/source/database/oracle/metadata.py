@@ -185,7 +185,7 @@ class OracleSource(CommonDbSourceService):
             schema = schema.upper()
         prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
-            results: FetchObjectList = conn.execute(text(query.format(schema=schema, prefix=prefix))).all()
+            results: FetchObjectList = conn.execute(text(query.format(prefix=prefix)), {"schema": schema}).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

@@ -12,9 +12,18 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.services.connections.common.sslCertValues import (
+    SslCertificatesByValues,
+)
+from metadata.generated.schema.entity.services.connections.common.sslConfig import (
+    SslConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.search.elasticsearch.connection import (
     ElasticsearchConnection,
+    get_ssl_context,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.search.elasticsearch.connection"
@@ -43,3 +52,12 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_steps.return_value
+
+
+def test_empty_certificate_configuration_does_not_disable_tls_verification(
+    tmp_path,
+):
+    ssl_config = SslConfig(certificates=SslCertificatesByValues(stagingDir=str(tmp_path)))
+
+    with pytest.raises(ValueError, match="must include a CA certificate"):
+        get_ssl_context(ssl_config)
