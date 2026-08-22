@@ -36,7 +36,6 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -94,15 +93,6 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -141,7 +131,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -1528,7 +1517,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
