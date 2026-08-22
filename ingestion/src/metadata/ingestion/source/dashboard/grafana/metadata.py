@@ -187,6 +187,23 @@ class GrafanaSource(DashboardServiceSource):
                 )
             )
 
+    @staticmethod
+    def _flatten_panels(panels: List[GrafanaPanel]) -> List[GrafanaPanel]:  # noqa: UP006
+        """Flatten top-level panels, recursing into collapsed row panels.
+
+        When a Grafana row is collapsed the API moves child panels from the
+        top-level ``dashboard.panels`` list into the row panel's own ``panels``
+        field.  Expanded rows keep their children at the top level, so in that
+        case the row's ``panels`` list is empty and nothing extra is yielded.
+        """
+        result: List[GrafanaPanel] = []  # noqa: UP006
+        for panel in panels or []:
+            if panel.type == "row" and panel.collapsed and panel.panels:
+                result.extend(panel.panels)
+            else:
+                result.append(panel)
+        return result
+
     def yield_dashboard_chart(
         self, dashboard_details: GrafanaDashboardResponse
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -194,7 +211,7 @@ class GrafanaSource(DashboardServiceSource):
         if not dashboard_details.dashboard.panels:
             return
 
-        for panel in dashboard_details.dashboard.panels:
+        for panel in self._flatten_panels(dashboard_details.dashboard.panels):
             try:
                 # Skip row panels and panels without visualizations
                 if panel.type in ["row", "text"]:
@@ -261,8 +278,8 @@ class GrafanaSource(DashboardServiceSource):
             if not to_entity:
                 return
 
-            # Extract lineage from panels
-            for panel in dashboard_details.dashboard.panels:
+            # Extract lineage from panels (including those inside collapsed rows)
+            for panel in self._flatten_panels(dashboard_details.dashboard.panels):
                 if not panel.targets:
                     continue
 

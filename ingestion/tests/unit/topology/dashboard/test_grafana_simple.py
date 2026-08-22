@@ -18,7 +18,13 @@ from unittest.mock import MagicMock
 
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
-from metadata.ingestion.source.dashboard.grafana.models import GrafanaDashboardResponse
+from metadata.ingestion.source.dashboard.grafana.models import (
+    GrafanaDashboardResponse,
+    GrafanaPanel,
+)
+from tests.unit.topology.dashboard.fixtures.grafana_fixtures import (
+    DASHBOARD_WITH_COLLAPSED_ROW,
+)
 
 
 class TestGrafanaComponents(TestCase):
@@ -110,6 +116,38 @@ class TestGrafanaComponents(TestCase):
         self.assertEqual(response.dashboard.title, "Test Dashboard")
         self.assertEqual(len(response.dashboard.panels), 1)
         self.assertEqual(response.meta.slug, "test-dashboard")
+
+    def test_flatten_panels_collapsed_row(self):
+        """Panels nested inside a collapsed row must be surfaced at the top level."""
+        response = GrafanaDashboardResponse(**DASHBOARD_WITH_COLLAPSED_ROW)
+        flat = GrafanaSource._flatten_panels(response.dashboard.panels)
+
+        panel_ids = [p.id for p in flat]
+        # id=1 top-level, id=3 and id=4 from inside the collapsed row,
+        # id=2 (the row itself) is replaced by its children,
+        # id=5 (expanded row) stays as-is, id=6 expanded-row child at top level.
+        self.assertIn(1, panel_ids, "Top-level panel must survive")
+        self.assertIn(3, panel_ids, "First panel inside collapsed row must be surfaced")
+        self.assertIn(4, panel_ids, "Second panel inside collapsed row must be surfaced")
+        self.assertNotIn(2, panel_ids, "Collapsed row sentinel must not appear in output")
+        self.assertIn(5, panel_ids, "Expanded row sentinel stays (for type filtering)")
+        self.assertIn(6, panel_ids, "Child of expanded row at top level must survive")
+        self.assertEqual(len(flat), 5)
+
+    def test_flatten_panels_expanded_row_unchanged(self):
+        """An expanded row (collapsed=False, empty panels) must not lose panels."""
+        panels = [
+            GrafanaPanel(id=1, type="graph", title="Normal"),
+            GrafanaPanel(id=2, type="row", title="Row", collapsed=False, panels=[]),
+            GrafanaPanel(id=3, type="stat", title="After Row"),
+        ]
+        flat = GrafanaSource._flatten_panels(panels)
+        self.assertEqual([p.id for p in flat], [1, 2, 3])
+
+    def test_flatten_panels_no_panels(self):
+        """Empty or None input must not raise."""
+        self.assertEqual(GrafanaSource._flatten_panels([]), [])
+        self.assertEqual(GrafanaSource._flatten_panels(None), [])
 
     def test_api_client_initialization(self):
         """Test API client initialization"""
