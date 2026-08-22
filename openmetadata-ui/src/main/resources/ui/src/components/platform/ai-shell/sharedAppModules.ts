@@ -12,6 +12,9 @@
  */
 
 import { useMemo } from 'react';
+import { contextCenterModule } from '../../discovery/context-center/contextCenter.module';
+import { marketplaceModule } from '../../governance/marketplace/marketplace.module';
+import { observabilityModule } from '../../observability/ObservabilityModule/observability.module';
 import { AppModule } from './AppModule.types';
 import { useAppModeModuleContributions } from './appModeExtensions';
 
@@ -19,11 +22,14 @@ import { useAppModeModuleContributions } from './appModeExtensions';
  * OSS shared app-mode modules — surfaces owned by OpenMetadata core that
  * appear in the app-mode shell for every consumer.
  *
- * Intentionally EMPTY for now: the shared domain modules (discovery,
- * governance, observability, …) are moved into this list in a later phase.
- * Until then the shell renders its nav entirely from plugin contributions.
+ * Ordered by `navOrder` for readability; `useAllAppModules` sorts the union
+ * with plugin contributions regardless.
  */
-export const sharedAppModules: AppModule[] = [];
+export const sharedAppModules: AppModule[] = [
+  observabilityModule,
+  contextCenterModule,
+  marketplaceModule,
+];
 
 /**
  * The full, ordered module list backing the app-mode shell.
