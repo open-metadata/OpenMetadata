@@ -555,7 +555,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("Starting OpenMetadata application...");
     OpenMetadataApplicationConfig config = buildRuntimeApplicationConfig();
     String projectRoot = getProjectRoot();
-    String flyWayMigrationScriptsLocation = getFlywayMigrationScriptsLocation(projectRoot);
     String nativeMigrationScriptsLocation = getNativeMigrationScriptsLocation(projectRoot);
 
     IndexMappingLoader.init(getSearchConfig());
@@ -578,7 +577,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         ConnectionType.from(DATABASE_CONTAINER.getDriverClassName()),
         nativeMigrationScriptsLocation,
         "",
-        flyWayMigrationScriptsLocation,
         false);
 
     createIndices();
@@ -659,7 +657,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       ConnectionType connType,
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
-      String flywayPath,
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
@@ -668,7 +665,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
-            flywayPath,
             config,
             forceMigrations);
     SearchRepository searchRepository = new SearchRepository(getSearchConfig(), 50);
@@ -1162,6 +1158,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return jdbi;
   }
 
+  public static JdbcDatabaseContainer<?> getDatabaseContainer() {
+    if (DATABASE_CONTAINER == null) {
+      throw new IllegalStateException(
+          "Database container is not running. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return DATABASE_CONTAINER;
+  }
+
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {
     if (APP == null || DATABASE_CONTAINER == null || searchHost == null) {
       throw new IllegalStateException(
@@ -1201,9 +1205,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
     config
         .getMigrationConfiguration()
-        .setFlywayPath(getFlywayMigrationScriptsLocation(projectRoot));
-    config
-        .getMigrationConfiguration()
         .setNativePath(getNativeMigrationScriptsLocation(projectRoot));
 
     String testResourcesPath = getTestResourcesPath(projectRoot);
@@ -1226,12 +1227,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       projectRoot = projectRootPath.getParent().toString();
     }
     return projectRoot;
-  }
-
-  private static String getFlywayMigrationScriptsLocation(String projectRoot) {
-    return projectRoot
-        + "/bootstrap/sql/migrations/flyway/"
-        + DATABASE_CONTAINER.getDriverClassName();
   }
 
   private static String getNativeMigrationScriptsLocation(String projectRoot) {

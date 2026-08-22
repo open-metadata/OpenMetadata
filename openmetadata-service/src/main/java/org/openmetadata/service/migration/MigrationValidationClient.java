@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.migration.utils.MigrationVersionUtil;
 
 @Slf4j
 public class MigrationValidationClient {
@@ -38,6 +39,27 @@ public class MigrationValidationClient {
     return migrationDAO.getMigrationVersions();
   }
 
+  /**
+   * Applied versions, restricted to the range this release still ships directories for.
+   *
+   * <p>An upgraded cluster keeps its full history — those rows are an audit trail and are never
+   * deleted — but the pre-2.0 entries no longer have a matching directory on disk, and the baseline
+   * row stands in for all of them at once. Comparing the raw lists would therefore report every
+   * long-running installation as broken.
+   */
+  public List<String> getCurrentVersionsForValidation() {
+    return migrationDAO.getMigrationVersions().stream()
+        .filter(version -> !MigrationVersionUtil.BASELINE_VERSION.equals(version))
+        .filter(MigrationValidationClient::isWithinSupportedRange)
+        .sorted()
+        .toList();
+  }
+
+  /** Extension versions are supplied by downstream distributions and are never floored. */
+  private static boolean isWithinSupportedRange(String version) {
+    return version.contains("-") || !MigrationVersionUtil.isBelowMinimum(version);
+  }
+
   private List<String> loadExpectedMigrationList() {
     try {
       String nativePath = config.getMigrationConfiguration().getNativePath();
@@ -45,30 +67,24 @@ public class MigrationValidationClient {
 
       List<String> availableOMNativeMigrations = getMigrationFilesFromPath(nativePath);
 
-      // Get Flyway versions from server_change_log (they have metrics = NULL)
-      List<String> expectedFlywayVersions = getExpectedFlywayVersions();
-
-      // If we only have OM and Flyway migrations, return them
       if (extensionPath == null || extensionPath.isEmpty()) {
-        return Stream.concat(expectedFlywayVersions.stream(), availableOMNativeMigrations.stream())
-            .sorted()
-            .toList();
+        return withinSupportedRange(availableOMNativeMigrations.stream());
       }
 
       // Otherwise, fetch the extension migration and sort all results
       List<String> availableOMExtensionMigrations = getMigrationFilesFromPath(extensionPath);
 
-      return Stream.of(
-              expectedFlywayVersions.stream(),
-              availableOMNativeMigrations.stream(),
-              availableOMExtensionMigrations.stream())
-          .flatMap(s -> s)
-          .sorted()
-          .toList();
+      return withinSupportedRange(
+          Stream.concat(
+              availableOMNativeMigrations.stream(), availableOMExtensionMigrations.stream()));
     } catch (Exception e) {
       LOG.error("Error loading expected migration list", e);
       return List.of();
     }
+  }
+
+  private static List<String> withinSupportedRange(Stream<String> versions) {
+    return versions.filter(MigrationValidationClient::isWithinSupportedRange).sorted().toList();
   }
 
   private List<String> getMigrationFilesFromPath(String path) {
@@ -76,16 +92,5 @@ public class MigrationValidationClient {
         .map(File::getName)
         .sorted()
         .toList();
-  }
-
-  private List<String> getExpectedFlywayVersions() {
-    try {
-      // Query server_change_log for versions where migrationFileName contains 'flyway'
-      return migrationDAO.getFlywayMigrationVersions();
-    } catch (Exception e) {
-      // If there's an error (e.g., table doesn't exist yet), return empty list
-      LOG.debug("Could not fetch Flyway versions from SERVER_CHANGE_LOG: {}", e.getMessage());
-      return List.of();
-    }
   }
 }

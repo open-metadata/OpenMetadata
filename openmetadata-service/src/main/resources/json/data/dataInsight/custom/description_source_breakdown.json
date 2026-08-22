@@ -1,0 +1,20 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "sum(k='descriptionSources.Ingested')+sum(k='descriptionSources.Manual')+sum(k='descriptionSources.Propagated')+sum(k='descriptionSources.Automated')",
+      "name" : "manual"
+    }, {
+      "formula" : "sum(k='descriptionSources.Suggested')",
+      "name" : "ai"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "description_source_breakdown",
+  "isSystemChart" : true,
+  "name" : "description_source_breakdown"
+}

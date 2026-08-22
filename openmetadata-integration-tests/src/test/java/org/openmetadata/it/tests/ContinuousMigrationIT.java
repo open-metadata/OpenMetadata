@@ -112,7 +112,6 @@ class ContinuousMigrationIT {
             nativeRoot.toString(),
             connectionType,
             extensionRoot.toString(),
-            "",
             new OpenMetadataApplicationConfig(),
             false);
     workflow.loadMigrations();

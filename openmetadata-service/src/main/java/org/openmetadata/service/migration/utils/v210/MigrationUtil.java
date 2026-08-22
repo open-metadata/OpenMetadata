@@ -10,59 +10,80 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.migration.utils.v210;
 
-import java.sql.ResultSet;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-/** Migration utility for 2.1.0 archival of legacy thread storage after task cutover. */
 @Slf4j
 public class MigrationUtil {
-  private final Handle handle;
-  private final ConnectionType connectionType;
 
-  public MigrationUtil(Handle handle, ConnectionType connectionType) {
-    this.handle = handle;
-    this.connectionType = connectionType;
-  }
+  private static final String FLOWABLE_EVENT_SUBSCRIPTION_TABLE = "ACT_RU_EVENT_SUBSCR";
+  private static final String ACTIVITY_ID_COLUMN = "ACTIVITY_ID_";
+  private static final int REQUIRED_ACTIVITY_ID_LENGTH = 255;
 
-  public void archiveLegacyThreadStorage() {
-    if (!tableExists("thread_entity_legacy")) {
-      LOG.info("No thread_entity_legacy table found, skipping legacy thread archival");
-      return;
-    }
+  private static final String WIDEN_ACTIVITY_ID_MYSQL =
+      "ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY COLUMN ACTIVITY_ID_ varchar(255)";
+  private static final String WIDEN_ACTIVITY_ID_POSTGRES =
+      "ALTER TABLE ACT_RU_EVENT_SUBSCR ALTER COLUMN ACTIVITY_ID_ TYPE varchar(255)";
 
-    if (tableExists("thread_entity_archived")) {
-      LOG.info("thread_entity_archived already exists, skipping legacy thread archival");
-      return;
-    }
+  private static final String COLUMN_LENGTH_MYSQL =
+      "SELECT character_maximum_length FROM information_schema.columns"
+          + " WHERE table_schema = DATABASE() AND UPPER(table_name) = :tableName"
+          + " AND UPPER(column_name) = :columnName";
+  private static final String COLUMN_LENGTH_POSTGRES =
+      "SELECT character_maximum_length FROM information_schema.columns"
+          + " WHERE table_schema = current_schema() AND UPPER(table_name) = :tableName"
+          + " AND UPPER(column_name) = :columnName";
 
-    if (connectionType == ConnectionType.MYSQL) {
-      handle.execute("RENAME TABLE thread_entity_legacy TO thread_entity_archived");
+  private MigrationUtil() {}
+
+  /**
+   * Restore the activity-id width OpenMetadata's governance workflows need.
+   *
+   * <p>Flowable declares {@code ACT_RU_EVENT_SUBSCR.ACTIVITY_ID_} as {@code varchar(64)}. Workflow
+   * activity ids generated here are longer than that, so migration 1.6.0 — which used to create
+   * Flowable's schema by hand — declared the column at {@code varchar(255)}. Flowable now creates
+   * and versions that schema itself, so the widening has to be re-applied or the first workflow
+   * signal fails with a data-truncation error.
+   *
+   * <p>Deliberately Java rather than SQL: the table only exists once Flowable has initialized, and
+   * that initialization is allowed to fail without aborting a migration. A plain {@code ALTER} in a
+   * SQL file would turn that tolerated failure into a hard stop, so the column is inspected first
+   * and left alone when Flowable has not created its schema (yet) or the width is already correct.
+   */
+  public static void widenFlowableActivityId(Handle handle, ConnectionType connectionType) {
+    Integer currentLength = currentActivityIdLength(handle, connectionType);
+    if (currentLength == null) {
+      LOG.info(
+          "{} not present — Flowable has not created its schema; skipping activity id widening",
+          FLOWABLE_EVENT_SUBSCRIPTION_TABLE);
+    } else if (currentLength >= REQUIRED_ACTIVITY_ID_LENGTH) {
+      LOG.debug("{} already at {} characters", ACTIVITY_ID_COLUMN, currentLength);
     } else {
-      handle.execute("ALTER TABLE thread_entity_legacy RENAME TO thread_entity_archived");
+      LOG.info(
+          "Widening {}.{} from {} to {} characters",
+          FLOWABLE_EVENT_SUBSCRIPTION_TABLE,
+          ACTIVITY_ID_COLUMN,
+          currentLength,
+          REQUIRED_ACTIVITY_ID_LENGTH);
+      handle.execute(
+          connectionType == ConnectionType.MYSQL
+              ? WIDEN_ACTIVITY_ID_MYSQL
+              : WIDEN_ACTIVITY_ID_POSTGRES);
     }
-
-    LOG.info("Archived legacy thread storage from thread_entity_legacy to thread_entity_archived");
   }
 
-  private boolean tableExists(String tableName) {
-    try (ResultSet tables =
-        handle
-            .getConnection()
-            .getMetaData()
-            .getTables(null, null, tableName, new String[] {"TABLE"})) {
-      while (tables.next()) {
-        if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-          return true;
-        }
-      }
-      return false;
-    } catch (Exception e) {
-      return false;
-    }
+  private static Integer currentActivityIdLength(Handle handle, ConnectionType connectionType) {
+    String query =
+        connectionType == ConnectionType.MYSQL ? COLUMN_LENGTH_MYSQL : COLUMN_LENGTH_POSTGRES;
+    return handle
+        .createQuery(query)
+        .bind("tableName", FLOWABLE_EVENT_SUBSCRIPTION_TABLE)
+        .bind("columnName", ACTIVITY_ID_COLUMN)
+        .mapTo(Integer.class)
+        .findOne()
+        .orElse(null);
   }
 }

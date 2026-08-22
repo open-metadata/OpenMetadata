@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ "tag", "glossaryTerm" ],
+    "groupBy" : "entityType.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "total_data_assets",
+  "isSystemChart" : true,
+  "name" : "total_data_assets"
+}
