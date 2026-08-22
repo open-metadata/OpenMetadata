@@ -12,6 +12,7 @@
  */
 import { expect, Response, test } from '@playwright/test';
 import { performAdminLogin } from '../../utils/admin';
+import { getAuthContext } from '../../utils/common';
 import { auth0MockProviderFixture } from '../../utils/sso-providers/auth0-mock';
 import { basicProviderFixture } from '../../utils/sso-providers/basic';
 import type { SsoProviderFixture } from '../../utils/sso-providers/fixture';
@@ -21,6 +22,12 @@ import { keycloakSamlProviderFixture } from '../../utils/sso-providers/keycloak-
 import { ldapProviderFixture } from '../../utils/sso-providers/ldap';
 import { msalMockProviderFixture } from '../../utils/sso-providers/msal-mock';
 import { oktaProviderFixture } from '../../utils/sso-providers/okta';
+import {
+  fetchSecurityConfig,
+  mintAdminRestoreToken,
+  restoreSecurityConfig,
+  SecurityConfigSnapshot,
+} from '../../utils/ssoAuth';
 
 // Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6
 // covered here; commit 10 layers scenarios 7–9 (misconfig, self-signup) on top.
@@ -70,6 +77,13 @@ for (const fixture of FIXTURES) {
     `SSO / ${fixture.name} [${fixture.slug}]`,
     { tag: [`@${fixture.slug}`, '@sso-matrix'] },
     () => {
+      // A test failure must NOT retry: retries re-run beforeAll, but the
+      // backend is now on this fixture's provider and /api/v1/auth/login no
+      // longer accepts the seeded admin creds → the retry fails at setup
+      // and masks the real failure. Each matrix leg starts with a fresh
+      // backend anyway, so retries never bought us anything here.
+      test.describe.configure({ retries: 0 });
+
       // Every scenario in this describe block is skipped as a group if the
       // fixture reports it isn't runnable in the current env — e.g. Okta with
       // no OKTA_CLIENT_ID, Keycloak with no KEYCLOAK_SAML_BASE_URL. Runs before
@@ -106,8 +120,41 @@ for (const fixture of FIXTURES) {
         sharedApiContext = apiContext;
         sharedAfterAction = afterAction;
         try {
+          // Mint a PAT and snapshot BEFORE the provider swap. The current
+          // admin session is provider-bound (JwtFilter rejects it once the
+          // provider is swapped); a PAT carries no `sessionId` claim and
+          // stays verifiable across the swap — see `mintAdminRestoreToken`
+          // in ssoAuth.ts. Without this, afterAll's restore hits 401 on
+          // every non-Basic leg and fails the whole describe.
+          let restoreToken: string | undefined;
+          let snapshot: SecurityConfigSnapshot | undefined;
+          try {
+            restoreToken = await mintAdminRestoreToken(apiContext);
+            snapshot = await fetchSecurityConfig(apiContext);
+          } catch {
+            // Non-fatal: fall back to the fixture-owned restore below. Some
+            // legs (e.g. LDAP mounted on a fresh backend) may not have PAT
+            // minting wired yet — better to try the fixture's own restore
+            // than to bail on setup.
+          }
+
           const configured = await fixture.configureBackend(apiContext);
-          restoreConfig = configured.restore;
+          restoreConfig = async () => {
+            if (restoreToken && snapshot) {
+              const patContext = await getAuthContext(restoreToken);
+              try {
+                await restoreSecurityConfig(patContext, snapshot);
+
+                return;
+              } finally {
+                await patContext.dispose();
+              }
+            }
+            // Fallback: fixture's own restore uses the (now provider-bound)
+            // apiContext. Works for Basic; expected to 401 for other legs
+            // but the next matrix leg starts with a fresh backend anyway.
+            await configured.restore();
+          };
         } catch (err) {
           // If configureBackend failed, we still own the admin session —
           // release it so the leg fails fast without leaking the worker.
@@ -119,8 +166,13 @@ for (const fixture of FIXTURES) {
       });
 
       test.afterAll(async () => {
+        // Swallow restore failures — a failed teardown must not mask the
+        // real test result, and each matrix leg starts with a fresh
+        // backend so lingering non-Basic config never leaks between legs.
         try {
           await restoreConfig?.();
+        } catch {
+          // Intentionally silent — see comment above.
         } finally {
           await sharedAfterAction?.();
         }

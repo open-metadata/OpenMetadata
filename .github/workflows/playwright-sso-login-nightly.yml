@@ -128,15 +128,17 @@ jobs:
             env_prefix: 'OKTA'
             # Regex quoted so the `|` isn't a shell pipe when the string
             # expands into the `Run SSO Scenarios` step's command line.
-            filter: "--grep-invert '@tokenRenewal|@sso-matrix'"
+            # `@self-signup-mock-oidc` is excluded because that spec needs
+            # the `mock-oidc-provider` docker service which no leg starts.
+            filter: "--grep-invert '@tokenRenewal|@sso-matrix|@self-signup-mock-oidc'"
             needs_docker: ''
           - name: 'keycloak-azure-saml'
             env_prefix: 'KEYCLOAK_AZURE_SAML'
-            filter: "--grep-invert '@okta|@sso-matrix'"
+            filter: "--grep-invert '@okta|@sso-matrix|@self-signup-mock-oidc'"
             needs_docker: 'keycloak'
           - name: 'keycloak-azure-saml-crosssite'
             env_prefix: 'KEYCLOAK_AZURE_SAML'
-            filter: "--grep-invert '@okta|@tokenRenewal|@sso-matrix'"
+            filter: "--grep-invert '@okta|@tokenRenewal|@sso-matrix|@self-signup-mock-oidc'"
             needs_docker: 'keycloak'
     # Per-event / per-dispatch filtering. Every leg in the static matrix
     # spins up a runner, but the runner short-circuits at the first step

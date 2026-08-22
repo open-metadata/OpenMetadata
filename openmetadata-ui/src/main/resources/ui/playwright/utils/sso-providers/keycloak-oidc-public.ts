@@ -71,6 +71,11 @@ const buildConfigPayload = (): ProviderConfigOverride => {
         // extra block on public clients.
         id: CLIENT_ID,
         type: 'custom-oidc',
+        // Server-side schema (oidcClientConfig.json) makes `secret` and
+        // `tenant` non-null even for public clients — the browser flow ignores
+        // them but the PUT is rejected without them.
+        secret: 'public-client-no-secret',
+        tenant: realm,
         scope: 'openid email profile',
         discoveryUri: `${internal}/.well-known/openid-configuration`,
         callbackUrl: `${OM_BASE_URL}/callback`,

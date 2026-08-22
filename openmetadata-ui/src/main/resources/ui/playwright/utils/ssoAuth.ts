@@ -108,12 +108,11 @@ export const applyProviderConfig = async (
     // schema branches (basic vs oidc vs saml vs ldap); without the body
     // it's guesswork which field the server disliked.
     const body = await response.text().catch(() => '<no body>');
-    // eslint-disable-next-line no-console
-    console.error(
+
+    throw new Error(
       `[applyProviderConfig] PUT ${SECURITY_CONFIG_ENDPOINT} → ${response.status()}. Body: ${body}`
     );
   }
-  expect(response.status()).toBe(200);
 };
 
 export const restoreSecurityConfig = async (

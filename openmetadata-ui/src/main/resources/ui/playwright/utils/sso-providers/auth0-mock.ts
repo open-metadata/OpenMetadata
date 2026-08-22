@@ -68,6 +68,11 @@ const buildValidConfig = () => ({
     oidcConfiguration: {
       id: MOCK_CLIENT_ID,
       type: 'auth0',
+      // Server-side schema (oidcClientConfig.json) makes `secret` and `tenant`
+      // non-null even for public clients — the browser flow ignores them but
+      // the PUT is rejected without them.
+      secret: 'auth0-mock-secret',
+      tenant: MOCK_DOMAIN,
       scope: 'openid email profile',
       discoveryUri: `https://${MOCK_DOMAIN}/.well-known/openid-configuration`,
       callbackUrl: 'http://localhost:8585/callback',

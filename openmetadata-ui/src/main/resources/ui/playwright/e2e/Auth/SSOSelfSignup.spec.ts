@@ -57,7 +57,14 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
   }
 };
 
-test.describe('OIDC self-signup with mapped principal claims', () => {
+// Tagged so CI legs can opt out — this spec only runs against the
+// docker-compose `mock-oidc-provider` service (see the header block above);
+// legs that don't start that container (all current SSO-matrix legs) must
+// filter this out or the beforeAll hangs on `waitForMockOidcReady`.
+test.describe(
+  'OIDC self-signup with mapped principal claims',
+  { tag: ['@self-signup-mock-oidc'] },
+  () => {
   test.slow();
 
   test.beforeAll(async ({ request }) => {
