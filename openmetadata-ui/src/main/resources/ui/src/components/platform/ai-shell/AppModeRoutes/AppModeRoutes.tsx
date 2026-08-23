@@ -13,6 +13,7 @@
 
 import { useMemo } from 'react';
 import { Route } from 'react-router-dom';
+import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
 import KeepAliveRoutes, {
@@ -48,6 +49,15 @@ export const AppModeRoutes = () => {
   const modules = useAllAppModules();
   const fallback = useAppModeRoutesFallback();
 
+  // The catch-all page route table. Mirrors how the classic `AppContainer`
+  // renders its content: the same `applicationRoutesClass.getRouteElements()`
+  // (OSS `AuthenticatedAppRouter`, or `CollateRouter` in Collate), just wrapped
+  // in the ClassicV1 `AppShell` chrome instead of the classic sidebar. So every
+  // canonical page (Explore, Glossary, Settings, entity details…) renders
+  // inside the shell, and `/` redirects to `/my-data` via that table's own
+  // ROUTES.HOME rule. A plugin-contributed fallback still takes precedence.
+  const RouteElements = applicationRoutesClass.getRouteElements();
+
   const routes: KeepAliveRoute[] = useMemo(
     () =>
       modules.flatMap((m) =>
@@ -63,7 +73,11 @@ export const AppModeRoutes = () => {
   return (
     <AppShell>
       <KeepAliveRoutes routes={routes}>
-        {fallback ? <Route element={fallback.element} path="/*" /> : null}
+        {fallback ? (
+          <Route element={fallback.element} path="/*" />
+        ) : (
+          <Route element={<RouteElements />} path="/*" />
+        )}
       </KeepAliveRoutes>
     </AppShell>
   );

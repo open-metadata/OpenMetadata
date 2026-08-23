@@ -145,7 +145,7 @@ export default defineConfig(async ({ mode }) => {
                   const [orig] = spec.split(/\s+as\s+/);
                   return `import { ${spec} } from '@untitledui/icons/${orig.trim()}';`;
                 })
-                .join('\n'),
+                .join('\n')
           );
           return out === code ? null : { code: out, map: null };
         },
@@ -465,6 +465,12 @@ export default defineConfig(async ({ mode }) => {
         '@azure/msal-react',
         'codemirror',
         '@deuex-solutions/react-tour',
+        // Force-prebundle react-hook-form so it shares the single optimized
+        // React instance. Through a symlinked node_modules (worktree/linked
+        // dev setups) Vite otherwise serves it raw via `@fs`, pulling a second
+        // React copy — an "Invalid hook call" (`useRef` of null) in every RHF
+        // form. `dedupe` alone does not cover the dev pre-bundle path.
+        'react-hook-form',
       ],
       esbuildOptions: {
         target: 'esnext',
