@@ -88,18 +88,20 @@ class TestGCSObjectStats:
     def test_stats_from_blob(self):
         blob = MagicMock(size=2048, time_created=LAST_MODIFIED)
         client = MagicMock()
-        client.get_bucket.return_value.get_blob.return_value = blob
+        client.bucket.return_value.get_blob.return_value = blob
 
         stats = get_object_stats(GCSConfig(), client, BUCKET, KEY)
 
-        client.get_bucket.assert_called_once_with(BUCKET)
-        client.get_bucket.return_value.get_blob.assert_called_once_with(KEY)
+        # `bucket()`, not `get_bucket()`: the latter would need `storage.buckets.get`
+        client.get_bucket.assert_not_called()
+        client.bucket.assert_called_once_with(BUCKET)
+        client.bucket.return_value.get_blob.assert_called_once_with(KEY)
         assert stats.size_in_bytes == 2048
         assert stats.create_date_time == LAST_MODIFIED
 
     def test_missing_blob_returns_empty_stats(self):
         client = MagicMock()
-        client.get_bucket.return_value.get_blob.return_value = None
+        client.bucket.return_value.get_blob.return_value = None
 
         assert get_object_stats(GCSConfig(), client, BUCKET, KEY) == ObjectStats()
 

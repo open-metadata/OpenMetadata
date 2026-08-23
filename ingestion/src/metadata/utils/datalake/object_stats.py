@@ -73,8 +73,10 @@ def _(_: S3Config, client: Any, bucket_name: str, key: str) -> ObjectStats:
 
 @get_object_stats.register
 def _(_: GCSConfig, client: Any, bucket_name: str, key: str) -> ObjectStats:
-    # `bucket.blob()` only builds a reference; `get_blob()` is the call that fetches the properties.
-    blob = client.get_bucket(bucket_name).get_blob(key)
+    # `bucket()` only builds a reference, so it needs no `storage.buckets.get` permission --
+    # unlike `get_bucket()`. `get_blob()` then fetches the properties with object-level read access,
+    # which the profiler already holds to read the object itself.
+    blob = client.bucket(bucket_name).get_blob(key)
     if blob is None:
         return ObjectStats()
     return ObjectStats(size_in_bytes=blob.size, create_date_time=_as_utc(blob.time_created))
