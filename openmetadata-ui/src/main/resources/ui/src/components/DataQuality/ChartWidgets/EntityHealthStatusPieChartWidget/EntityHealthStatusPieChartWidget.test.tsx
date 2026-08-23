@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import EntityHealthStatusPieChartWidget from './EntityHealthStatusPieChartWidget.component';
 
@@ -192,6 +193,10 @@ describe('EntityHealthStatusPieChartWidget', () => {
       unhealthySegment.click();
     });
 
+    const expectedTitle = encodeURIComponent(
+      `${formatDate(100, true)} -> ${formatDate(200, true)}`
+    );
+
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/observability/data-quality/test-cases',
       search:
@@ -200,7 +205,7 @@ describe('EntityHealthStatusPieChartWidget', () => {
         '&lastRunRange%5BstartTs%5D=100' +
         '&lastRunRange%5BendTs%5D=200' +
         '&lastRunRange%5Bkey%5D=customRange' +
-        '&lastRunRange%5Btitle%5D=Jan%201%2C%201970%20-%3E%20Jan%201%2C%201970',
+        `&lastRunRange%5Btitle%5D=${expectedTitle}`,
     });
 
     const { getTestCaseTabPath } = jest.requireMock(
