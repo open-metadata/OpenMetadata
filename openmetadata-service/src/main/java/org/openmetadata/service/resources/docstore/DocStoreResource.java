@@ -99,7 +99,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
-    repository.initSeedDataFromResources();
+    repository.initSeedDataFromResourcesOnStartup();
   }
 
   @GET

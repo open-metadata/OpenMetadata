@@ -36,12 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 
--- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
--- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
--- via UserRepository#postDelete rather than a foreign key.
-CREATE TABLE IF NOT EXISTS user_preferences (
-    userId VARCHAR(36) NOT NULL,
-    json JSONB NOT NULL,
-    updatedAt BIGINT NOT NULL,
-    PRIMARY KEY (userId)
-);
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- The partial index avoids write amplification for relationships that have no pipeline metadata.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
+ON entity_relationship ((json->'pipeline'->>'id'), relation)
+WHERE (json->'pipeline'->>'id') IS NOT NULL;

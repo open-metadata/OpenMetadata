@@ -931,12 +931,23 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string
+  expectedQueryFilterValue: string,
+  searchText?: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
   await page.getByTestId('drop-down-menu').waitFor();
+
+  if (searchText) {
+    const aggregateResponse = page.waitForResponse(
+      '/api/v1/search/aggregate?*'
+    );
+    await page
+      .getByRole('textbox', { name: 'Search Service Type...' })
+      .fill(searchText);
+    await aggregateResponse;
+  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -974,6 +985,7 @@ const testFilterWithFirstOption = async (
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
     await page.getByTestId('close-btn').click();
+    await page.getByTestId('close-btn').waitFor({ state: 'detached' });
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
@@ -1048,8 +1060,9 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'mysql-checkbox',
-    'mysql'
+    'Mysql-checkbox',
+    'mysql',
+    'Mysql'
   );
 
   await testFilterWithFirstOption(page, filterWrapper, 'tags.tagFQN');
@@ -1163,7 +1176,8 @@ export const confirmationDragAndDropGlossary = async (
     .getByTestId('confirmation-modal')
     .getByRole('button', { name: 'Move' })
     .click();
-  await patchGlossaryTermResponse;
+  const patchResponse = await patchGlossaryTermResponse;
+  expect(patchResponse.status()).toBe(200);
 };
 
 export const changeTermHierarchyFromModal = async (
@@ -1175,16 +1189,29 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
+  // that never satisfies toBeVisible even while the dialog is on screen — the
+  // dialog itself is the element with a box. Scoping still matters: the bare
+  // `Select Parent` label also matches the control of a hierarchy modal left in
+  // the DOM by an earlier step, and clicking that waits out the whole test on a
+  // hidden element.
+  const hierarchyModal = page
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('dialog');
+  await expect(hierarchyModal).toBeVisible();
 
-  await page.getByLabel('Select Parent').click();
+  const parentSelect = hierarchyModal.getByLabel('Select Parent');
+  await expect(parentSelect).toBeVisible();
+  await expect(parentSelect).toBeEnabled();
+  await parentSelect.click();
+
   await page.locator('.async-tree-select-list-dropdown').waitFor({
     state: 'visible',
   });
 
   if (isGlossaryTerm) {
     const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await parentSelect.fill(entityDisplayName);
     await searchRes;
   }
 

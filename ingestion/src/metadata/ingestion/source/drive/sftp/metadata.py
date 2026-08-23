@@ -432,7 +432,13 @@ class SftpSource(DriveServiceSource):
             )
 
     def register_record_directory(self, directory_request: CreateDirectoryRequest) -> None:
-        """Build FQN using complete directory path for nested directories."""
+        """
+        Build FQN using complete directory path for nested directories.
+
+        The FQN must match what the create request stores. Stale-entity deletion removes anything
+        absent from this set, so a bare-name FQN for a nested directory deletes it right after it
+        was ingested.
+        """
         if self._current_directory_context and self._current_directory_context in self._directories_cache:
             directory_info = self._directories_cache[self._current_directory_context]
 
@@ -453,6 +459,33 @@ class SftpSource(DriveServiceSource):
             )
 
         self.directory_source_state.add(directory_fqn)
+
+    def register_record_file(
+        self,
+        file_request: CreateFileRequest,
+        directory_path: List[str] | None = None,  # noqa: UP006
+    ) -> None:
+        """
+        Record the file FQN exactly as the create request will be stored.
+
+        The base implementation builds it from a single context directory, which does not match
+        the stored FQN for nested directories and cannot represent a root-level file at all. A
+        mismatch here is not cosmetic: stale-entity deletion treats anything missing from this
+        set as deleted at the source, so a wrong FQN removes a file that was just ingested.
+        """
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
+        if directory_path:
+            file_fqn = fqn.build(
+                self.metadata,
+                entity_type=File,
+                service_name=service_name,
+                directory_path=directory_path,
+                file_name=file_request.name.root,
+            )
+        else:
+            # A root-level file has no parent directory, which fqn.build rejects.
+            file_fqn = fqn._build(service_name, file_request.name.root)
+        self.file_source_state.add(file_fqn)
 
     def yield_file(self, directory_path: str) -> Iterable[Either[CreateFileRequest]]:  # noqa: C901
         """Process all files in given directory."""
@@ -515,7 +548,7 @@ class SftpSource(DriveServiceSource):
                                     columns=columns,
                                 )
 
-                                self.register_record_file(request)
+                                self.register_record_file(request, directory_path=None)
                                 yield Either(right=request)
 
                                 if sample_data:
@@ -553,7 +586,11 @@ class SftpSource(DriveServiceSource):
             if directory_path in self._directory_fqn_cache:
                 directory_reference = self._directory_fqn_cache[directory_path]
             if directory_path in self._directories_cache:
-                directory_path_components = self._directories_cache[directory_path].path
+                directory_info = self._directories_cache[directory_path]
+                # `path` is optional; fall back to the bare name as the create/register sites
+                # for directories do. Without it a nested file would register the root-level
+                # FQN and be deleted as stale right after being ingested.
+                directory_path_components = directory_info.path or [directory_info.name]
 
             for file_info in files_in_directory:
                 try:
@@ -593,7 +630,7 @@ class SftpSource(DriveServiceSource):
                             columns=columns,
                         )
 
-                        self.register_record_file(request)
+                        self.register_record_file(request, directory_path=directory_path_components)
                         yield Either(right=request)
 
                         if sample_data:

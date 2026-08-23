@@ -6,9 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -31,13 +36,22 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Integration tests for Pipeline entity operations.
@@ -633,6 +647,70 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     ListResponse<Pipeline> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() <= 2);
+  }
+
+  @Test
+  void get_pipelineSummariesFiltersAndPaginates_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    String namePrefix = ns.prefix("pipeline_summary_page");
+    Set<UUID> expectedIds = new HashSet<>();
+
+    for (int i = 0; i < 3; i++) {
+      CreatePipeline request = new CreatePipeline();
+      request.setName(namePrefix + "_" + i);
+      request.setService(service.getFullyQualifiedName());
+      expectedIds.add(createEntity(request).getId());
+    }
+
+    ResultList<PipelineSummary> firstPage =
+        listPipelineSummaries(client, service.getName(), namePrefix, 2, null);
+
+    assertEquals(3, firstPage.getPaging().getTotal());
+    assertEquals(2, firstPage.getData().size());
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    ResultList<PipelineSummary> secondPage =
+        listPipelineSummaries(
+            client, service.getName(), namePrefix, 2, firstPage.getPaging().getAfter());
+
+    assertEquals(3, secondPage.getPaging().getTotal());
+    assertEquals(1, secondPage.getData().size());
+    Set<UUID> actualIds = new HashSet<>();
+    firstPage.getData().forEach(summary -> actualIds.add(summary.getPipelineId()));
+    secondPage.getData().forEach(summary -> actualIds.add(summary.getPipelineId()));
+    assertEquals(expectedIds, actualIds);
+  }
+
+  @Test
+  void listPipelineSummaries_serviceTypeFilterIsBound(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_summary_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    Pipeline pipeline = createEntity(request);
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+
+    ListFilter validFilter =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("search", pipeline.getName())
+            .addQueryParam("serviceType", "Airflow");
+    ResultList<PipelineSummary> validResult =
+        repository.listPipelineSummaries(
+            null, null, Fields.EMPTY_FIELDS, validFilter, 10, null, null);
+    assertEquals(1, validResult.getPaging().getTotal());
+    assertEquals(pipeline.getId(), validResult.getData().get(0).getPipelineId());
+
+    ListFilter injectionFilter =
+        new ListFilter(Include.NON_DELETED)
+            .addQueryParam("search", pipeline.getName())
+            .addQueryParam("serviceType", "Airflow' OR '1'='1");
+    ResultList<PipelineSummary> injectionResult =
+        repository.listPipelineSummaries(
+            null, null, Fields.EMPTY_FIELDS, injectionFilter, 10, null, null);
+    assertEquals(0, injectionResult.getPaging().getTotal());
+    assertTrue(injectionResult.getData().isEmpty());
   }
 
   @Test
@@ -1329,6 +1407,27 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   @Override
   protected BulkOperationResult executeBulkCreateAsync(List<CreatePipeline> createRequests) {
     return SdkClients.adminClient().pipelines().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  private ResultList<PipelineSummary> listPipelineSummaries(
+      OpenMetadataClient client, String service, String search, int limit, String after) {
+    StringBuilder path =
+        new StringBuilder("/v1/pipelines/summary?service=")
+            .append(encodeQueryValue(service))
+            .append("&search=")
+            .append(encodeQueryValue(search))
+            .append("&limit=")
+            .append(limit);
+    if (after != null) {
+      path.append("&after=").append(encodeQueryValue(after));
+    }
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, path.toString(), null);
+    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineSummary>>() {});
+  }
+
+  private String encodeQueryValue(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   @Override
