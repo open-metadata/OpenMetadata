@@ -484,7 +484,10 @@ export const getPropertyValues = (
 
 export const createCustomPropertyForEntity = async (
   apiContext: APIRequestContext,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  propertyTypes: readonly CustomPropertyTypeByName[] = Object.values(
+    CustomPropertyTypeByName
+  )
 ) => {
   const propertiesResponse = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
@@ -492,7 +495,7 @@ export const createCustomPropertyForEntity = async (
   const properties = await propertiesResponse.json();
   const propertyList = properties.data.filter(
     (item: { name: CustomPropertyTypeByName }) =>
-      Object.values(CustomPropertyTypeByName).includes(item.name)
+      propertyTypes.includes(item.name)
   );
 
   const entitySchemaResponse = await apiContext.get(
