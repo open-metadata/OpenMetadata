@@ -51,8 +51,15 @@ public class OpenBaoSecretsManager extends ExternalSecretsManager {
   private static final int DEFAULT_CONNECT_TIMEOUT_MS = 5000;
   private static final int DEFAULT_READ_TIMEOUT_MS = 10000;
 
-  /** Characters that are legal in a KV v2 path segment, applied to prefix and cluster name. */
-  private static final Pattern LEGAL_PATH = Pattern.compile("[A-Za-z0-9_\\-]*");
+  /**
+   * Characters legal in a KV v2 path segment, applied to prefix and cluster name.
+   *
+   * <p>Deliberately matches what OpenBao accepts rather than being stricter: dots are valid in KV v2
+   * paths (verified), and a deployment already running as {@code prod.eu-west-1} on another provider
+   * must not be refused a boot purely by switching to this one. What is excluded is what would break
+   * the URL or the path structure - whitespace, {@code /}, {@code %} and friends.
+   */
+  private static final Pattern LEGAL_PATH = Pattern.compile("[A-Za-z0-9._\\-]*");
 
   private static final String DEFAULT_AUTH_METHOD = "token";
 
@@ -122,7 +129,7 @@ public class OpenBaoSecretsManager extends ExternalSecretsManager {
       throw new SecretsManagerException(
           String.format(
               "The OpenBao Secrets Manager cannot build a valid KV v2 path from %s [%s]. "
-                  + "Only letters, digits, `-` and `_` are allowed.",
+                  + "Only letters, digits, `.`, `-` and `_` are allowed.",
               field, value));
     }
   }

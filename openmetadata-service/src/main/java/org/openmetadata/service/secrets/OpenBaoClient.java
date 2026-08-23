@@ -351,21 +351,18 @@ public class OpenBaoClient implements AutoCloseable {
     try (Response response =
         send("delete", () -> request(secretUrl(METADATA_SEGMENT, path)).delete())) {
       final int status = response.getStatus();
-      if (status != Response.Status.NO_CONTENT.getStatusCode()
-          && status != Response.Status.OK.getStatusCode()
-          && status != Response.Status.NOT_FOUND.getStatusCode()) {
+      if (status == Response.Status.NOT_FOUND.getStatusCode()) {
+        // Same discrimination as read(): an empty errors array means the secret is already gone
+        // (fine, the delete is idempotent), while a populated one means the mount is wrong - and
+        // silently reporting success there would leave live credentials behind on every delete.
+        classifyNotFound(readBody(response));
+      } else if (status != Response.Status.NO_CONTENT.getStatusCode()
+          && status != Response.Status.OK.getStatusCode()) {
         throw requestFailure("delete", status);
       }
     }
   }
 
-  /**
-   * Runs a call, re-authenticating once if the token was rejected.
-   *
-   * <p>Bounded to a single retry, and only for AppRole - under token auth there is no login to
-   * repeat, so a 403 is final. No background renewal thread: this client lives in a process-global
-   * singleton, where a daemon thread would outlive any request able to report its failure.
-   */
   /**
    * Runs a call, translating transport failures so they name the backend.
    *
@@ -385,6 +382,13 @@ public class OpenBaoClient implements AutoCloseable {
     }
   }
 
+  /**
+   * Runs a call, re-authenticating once if the token was rejected.
+   *
+   * <p>Bounded to a single retry, and only for AppRole - under token auth there is no login to
+   * repeat, so a 403 is final. No background renewal thread: this client lives in a process-global
+   * singleton, where a daemon thread would outlive any request able to report its failure.
+   */
   private Response withRetry(final Supplier<Response> call) {
     final String tokenUsed = currentToken;
     Response response = call.get();
@@ -415,9 +419,30 @@ public class OpenBaoClient implements AutoCloseable {
 
   private void authenticate() {
     if (authMethod == AuthMethod.TOKEN) {
+      requireParameter(staticToken, "baoToken", "token");
       currentToken = staticToken;
     } else {
+      requireParameter(roleId, "baoRoleId", "approle");
+      requireParameter(secretId, "baoSecretId", "approle");
       currentToken = loginWithAppRole();
+    }
+  }
+
+  /**
+   * Fails on a missing credential before any request is made.
+   *
+   * <p>Without this an unset token reaches the server as an empty {@code X-Vault-Token}, and the
+   * first symptom is {@code verifyMount()}'s 403 - which advises the operator to check the mount
+   * name and the policy, neither of which is the actual problem.
+   */
+  private static void requireParameter(
+      final String value, final String key, final String forAuthMethod) {
+    if (nullOrEmpty(value)) {
+      throw new OpenBaoConfigurationException(
+          String.format(
+              "OpenBao `baoAuthMethod` is `%s` but `%s` is missing or empty. Review your "
+                  + "configuration.",
+              forAuthMethod, key));
     }
   }
 

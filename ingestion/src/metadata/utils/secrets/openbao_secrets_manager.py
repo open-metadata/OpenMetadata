@@ -139,10 +139,13 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
             headers[NAMESPACE_HEADER] = self.namespace
         return headers
 
-    def _authenticate(self) -> str:
+    def _is_approle(self) -> bool:
         # `authMethod` is a generated Enum, not a plain string.
         auth_method = getattr(self.credentials.authMethod, "value", self.credentials.authMethod) or "token"
-        if str(auth_method).lower() == "token":
+        return str(auth_method).lower() == "approle"
+
+    def _authenticate(self) -> str:
+        if not self._is_approle():
             if not self.credentials.token:
                 raise SecretsManagerConfigException("OpenBao `authMethod` is `token` but no token was supplied.")
             return str(self.credentials.token.get_secret_value())
@@ -191,6 +194,16 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
             raise SecretsManagerConfigException(
                 f"Could not reach OpenBao at [{self.address}] to read [{path}]: {exc}"
             ) from exc
+
+        # A rejected token is worth exactly one retry. AppRole tokens are short-lived (the shipped
+        # dev role uses token_ttl=20m), and an ingestion workflow easily outlives that. Without this
+        # the 403 becomes a SecretsManagerConfigException that CustomSecretStr.get_secret_value
+        # catches and logs, leaving the literal "secret:/..." reference as the password - so the
+        # connector fails later with an unrelated authentication error.
+        if response.status_code in (401, 403) and self._is_approle():
+            logger.info("OpenBao rejected the token; re-authenticating once and retrying")
+            self.token = self._authenticate()
+            response = self.session.get(url, headers=self._headers(), timeout=DEFAULT_TIMEOUT_SECONDS)
 
         if response.status_code == 200:
             value = response.json().get("data", {}).get("data", {}).get("value")

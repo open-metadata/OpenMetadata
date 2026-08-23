@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -42,6 +45,28 @@ import org.openmetadata.schema.utils.JsonUtils;
  * between a misconfigured mount and silently discarded credentials.
  */
 class OpenBaoClientTest {
+
+  /** Self-signed certificate used only to exercise the CA-bundle parse path. */
+  private static final String CERT_FIXTURE =
+      "-----BEGIN CERTIFICATE-----\n"
+          + "MIIDFTCCAf2gAwIBAgIUCDJ2mFosGJO5M2BnrgaQvR1o6howDQYJKoZIhvcNAQEL\n"
+          + "BQAwGjEYMBYGA1UEAwwPb3BlbmJhby10ZXN0LWNhMB4XDTI2MDgyMzIwMTYzNVoX\n"
+          + "DTM2MDgyMDIwMTYzNVowGjEYMBYGA1UEAwwPb3BlbmJhby10ZXN0LWNhMIIBIjAN\n"
+          + "BgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwmubKfnwBHxSsmCqg441lvElJGvq\n"
+          + "0uSpfZBcDtjVZj43Ysct8cUm6w2NvEWYxEj5gYZMY3QYZBmKYbszkfoY33Zmi2wo\n"
+          + "59Aj6Ewclj3Zx5IoqDPP9I0xEBMbI8Ago2AkHCggEx8JY9phPMiDDwKiXBBsCxYL\n"
+          + "gM8wWgX61wk487zWlQ1ccpzoMO41+VfXIY1yWLTCmsbj5JazX5tsA2v+sg+nvqSB\n"
+          + "7i9iRIQbU9JlvgrB+a7/dkmevyu0beNkMRUZkrp6Kai3VxElKKPc/sIX8AR+jI65\n"
+          + "n0htVfwoZDVJgYnuFGx/l7j8DzSCk1b8TVCo9KNiRjUtvHP6Dmpz4WzVwwIDAQAB\n"
+          + "o1MwUTAdBgNVHQ4EFgQUJGb5ID+s6nVLyXhdA+eP4m+ZiQowHwYDVR0jBBgwFoAU\n"
+          + "JGb5ID+s6nVLyXhdA+eP4m+ZiQowDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0B\n"
+          + "AQsFAAOCAQEAhM9jVGJIdfQv9qT16worN5lSXBMoE6ku/rtCV4xwUFbTyyqwxSMZ\n"
+          + "CALxvXcyxHJAuBMe+fkwsBRz3ZkLf0mmNGNXnPq0DKUxAv3S+Y6+7W7THxW9WF0C\n"
+          + "GZXHHlNh9mDWbby9PmYKT4Tm2SFv9rWCrBwraShMhD9KnWLrPrAB+5GjGPzbPu6K\n"
+          + "Xt/6o30oqkpBe0ErstaS2sk2EMbD1RDFzZIHDXT8CTcWcDZSoayeZ7VqldAz0ueT\n"
+          + "md9WO21VF1+RoxnqsEuLEp3Y+4u/gOKkWXXhGSPwmTD3n/E3v1e5T590ygXbZ7U+\n"
+          + "41r9aAulfBA3v69Ukjb6QAB8YesvsQQZMw==\n"
+          + "-----END CERTIFICATE-----\n";
 
   private HttpServer server;
   private String address;
@@ -90,6 +115,15 @@ class OpenBaoClientTest {
 
   private void stub(String path, int status, String body) {
     routes.put(path, new StubResponse(status, body));
+  }
+
+  /**
+   * Config builder with defaults, so a test names only what it varies. The record has 12 positional
+   * fields and mis-counting them silently produces a config that tests nothing.
+   */
+  private OpenBaoClient.OpenBaoConfig config(final String mount, final String caCertPath) {
+    return new OpenBaoClient.OpenBaoConfig(
+        address, mount, "", "token", "t0ken", "", "", "", caCertPath, false, 2000, 2000);
   }
 
   private OpenBaoClient tokenClient() {
@@ -293,6 +327,105 @@ class OpenBaoClientTest {
                         2000,
                         2000)));
     assertTrue(error.getMessage().contains("kerberos"));
+  }
+
+  @Test
+  void missingTokenIsRejectedByNameRatherThanAsAMountProblem() {
+    OpenBaoClient.OpenBaoConfigurationException error =
+        assertThrows(
+            OpenBaoClient.OpenBaoConfigurationException.class,
+            () ->
+                new OpenBaoClient(
+                    new OpenBaoClient.OpenBaoConfig(
+                        address,
+                        "openmetadata",
+                        "",
+                        "token",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        false,
+                        2000,
+                        2000)));
+    assertTrue(error.getMessage().contains("baoToken"), "must name the missing parameter");
+  }
+
+  @Test
+  void missingAppRoleCredentialsAreRejectedByName() {
+    OpenBaoClient.OpenBaoConfigurationException error =
+        assertThrows(
+            OpenBaoClient.OpenBaoConfigurationException.class,
+            () ->
+                new OpenBaoClient(
+                    new OpenBaoClient.OpenBaoConfig(
+                        address,
+                        "openmetadata",
+                        "",
+                        "approle",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        false,
+                        2000,
+                        2000)));
+    assertTrue(error.getMessage().contains("baoRoleId"), "must name the missing parameter");
+  }
+
+  /** A wrong mount must not let entity deletion report success while nothing is removed. */
+  @Test
+  void deleteOnAMissingMountFailsRatherThanReportingSuccess() {
+    stub(
+        "/v1/typo/metadata/svc/password",
+        404,
+        "{\"errors\":[\"no handler for route \\\"typo/metadata/svc/password\\\". route entry not found.\"]}");
+    OpenBaoClient client =
+        new OpenBaoClient(
+            new OpenBaoClient.OpenBaoConfig(
+                address, "typo", "", "token", "t0ken", "", "", "", "", false, 2000, 2000));
+    assertThrows(
+        OpenBaoClient.OpenBaoConfigurationException.class,
+        () -> client.deleteAllVersions("svc/password"));
+  }
+
+  @Test
+  void deleteOnAnAlreadyAbsentSecretStillSucceeds() {
+    stub("/v1/openmetadata/metadata/svc/gone2", 404, "{\"errors\":[]}");
+    tokenClient().deleteAllVersions("svc/gone2");
+  }
+
+  @Test
+  void emptyCaCertBundleIsRejectedNamingTheFile(@TempDir Path tempDir) throws IOException {
+    Path emptyPem = Files.writeString(tempDir.resolve("empty.pem"), "");
+    OpenBaoClient.OpenBaoConfigurationException error =
+        assertThrows(
+            OpenBaoClient.OpenBaoConfigurationException.class,
+            () -> new OpenBaoClient(config("openmetadata", emptyPem.toString())));
+    assertTrue(
+        error.getMessage().contains(emptyPem.toString()),
+        "the operator needs to know which file was unusable");
+  }
+
+  @Test
+  void unreadableCaCertPathIsRejectedNamingTheFile(@TempDir Path tempDir) {
+    Path missing = tempDir.resolve("nope.pem");
+    OpenBaoClient.OpenBaoConfigurationException error =
+        assertThrows(
+            OpenBaoClient.OpenBaoConfigurationException.class,
+            () -> new OpenBaoClient(config("openmetadata", missing.toString())));
+    assertTrue(error.getMessage().contains(missing.toString()));
+  }
+
+  @Test
+  void validCaCertBundleIsAccepted(@TempDir Path tempDir) throws IOException {
+    Path pem = Files.writeString(tempDir.resolve("ca.pem"), CERT_FIXTURE);
+    stub("/v1/openmetadata/config", 200, "{\"data\":{}}");
+    // Asserts the bundle parses into a trust store. The stub speaks plain HTTP, so this covers the
+    // parse path rather than the handshake - which is the part that can fail on operator input.
+    new OpenBaoClient(config("openmetadata", pem.toString())).verifyMount();
   }
 
   @Test

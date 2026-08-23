@@ -36,6 +36,8 @@ from metadata.utils.singleton import Singleton
 
 ROUTES = {}
 SEEN_HEADERS = {}
+LOGIN_COUNT = []
+GET_STATUSES = []
 
 
 class _StubHandler(BaseHTTPRequestHandler):
@@ -44,6 +46,21 @@ class _StubHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         SEEN_HEADERS.clear()
         SEEN_HEADERS.update(dict(self.headers))
+        if GET_STATUSES:
+            status, body = GET_STATUSES.pop(0)
+        else:
+            status, body = ROUTES.get(self.path, (404, {"errors": []}))
+        payload = json.dumps(body).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def do_POST(self):
+        SEEN_HEADERS.clear()
+        SEEN_HEADERS.update(dict(self.headers))
+        LOGIN_COUNT.append(1)
         status, body = ROUTES.get(self.path, (404, {"errors": []}))
         payload = json.dumps(body).encode()
         self.send_response(status)
@@ -69,8 +86,23 @@ def _clean_state():
     Singleton.clear_all()
     ROUTES.clear()
     SEEN_HEADERS.clear()
+    LOGIN_COUNT.clear()
+    GET_STATUSES.clear()
     yield
     Singleton.clear_all()
+
+
+def build_approle_manager(address: str, namespace: str | None = None) -> OpenBaoSecretsManager:
+    credentials = OpenBaoCredentials(
+        address=address,
+        mount="openmetadata",
+        namespace=namespace,
+        authMethod="approle",
+        roleId="role",
+        secretId="s3cret-id",
+    )
+    with patch.object(OpenBaoSecretsManager, "load_credentials", return_value=credentials):
+        return OpenBaoSecretsManager(SecretsManagerClientLoader.env)
 
 
 def build_manager(address: str, namespace: str | None = None) -> OpenBaoSecretsManager:
@@ -133,3 +165,44 @@ class TestOpenBaoSecretsManager:
         with patch.object(OpenBaoSecretsManager, "load_credentials", return_value=credentials):
             manager = SecretsManagerFactory(provider, SecretsManagerClientLoader.env).get_secrets_manager()
         assert isinstance(manager, OpenBaoSecretsManager)
+
+
+class TestOpenBaoAppRole:
+    """The documented production auth mode; previously uncovered because the stub only spoke GET."""
+
+    def test_login_exchanges_role_and_secret_for_a_token(self, address):
+        ROUTES["/v1/auth/approle/login"] = (200, {"auth": {"client_token": "tok-1", "lease_duration": 1200}})
+        assert build_approle_manager(address).token == "tok-1"
+        assert len(LOGIN_COUNT) == 1
+
+    def test_login_sends_the_namespace_header(self, address):
+        ROUTES["/v1/auth/approle/login"] = (200, {"auth": {"client_token": "tok-1"}})
+        build_approle_manager(address, namespace="team-a")
+        assert SEEN_HEADERS.get("X-Vault-Namespace") == "team-a"
+
+    def test_login_failure_names_the_parameters_to_check(self, address):
+        ROUTES["/v1/auth/approle/login"] = (400, {"errors": ["invalid role or secret id"]})
+        with pytest.raises(SecretsManagerConfigException) as error:
+            build_approle_manager(address)
+        assert "roleId" in str(error.value)
+
+    def test_expired_token_is_refreshed_once_and_the_read_retried(self, address):
+        """
+        AppRole tokens are short-lived (the shipped dev role uses token_ttl=20m). Without this
+        retry a long ingestion run gets a 403, and CustomSecretStr.get_secret_value swallows the
+        error - handing the connector the literal `secret:/...` reference as its password.
+        """
+        ROUTES["/v1/auth/approle/login"] = (200, {"auth": {"client_token": "tok-1"}})
+        manager = build_approle_manager(address)
+        assert len(LOGIN_COUNT) == 1
+
+        GET_STATUSES.append((403, {"errors": ["permission denied"]}))
+        GET_STATUSES.append((200, {"data": {"data": {"value": "recovered"}}}))
+        assert manager.get_string_value("/svc/password") == "recovered"
+        assert len(LOGIN_COUNT) == 2, "exactly one re-authentication, never a loop"
+
+    def test_token_auth_does_not_retry(self, address):
+        GET_STATUSES.append((403, {"errors": ["permission denied"]}))
+        with pytest.raises(SecretsManagerConfigException):
+            build_manager(address).get_string_value("/svc/password")
+        assert not LOGIN_COUNT, "token auth has no login to repeat"
