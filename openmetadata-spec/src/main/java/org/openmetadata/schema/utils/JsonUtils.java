@@ -22,15 +22,20 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
+import com.fasterxml.jackson.datatype.jsonp.JSONPModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.github.fge.jsonpatch.JsonPatchException;
@@ -46,11 +51,9 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -58,12 +61,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -71,16 +75,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
@@ -93,6 +96,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper JSONP_MAPPER;
   private static final ObjectMapper OBJECT_MAPPER_LENIENT;
   private static final ObjectMapper OBJECT_MAPPER_IGNORE_NULL;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
@@ -100,6 +104,8 @@ public final class JsonUtils {
   private static final SchemaRegistry schemaFactory =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+  // Below this length a containment match is noise ("id" would match "validationId").
+  private static final int MIN_FIELD_SUGGESTION_LENGTH = 3;
   private static final List<String> READ_ONLY_PATCH_ROOT_FIELDS =
       List.of(
           "/changeDescription",
@@ -134,6 +140,8 @@ public final class JsonUtils {
     // java.util.Date fields keeps deserialization tolerant while serialization stays on the
     // microsecond format above.
     OBJECT_MAPPER.registerModule(lenientDateModule());
+
+    JSONP_MAPPER = OBJECT_MAPPER.copy().registerModule(new JSONPModule());
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -185,12 +193,11 @@ public final class JsonUtils {
 
   public static JsonStructure getJsonStructure(Object o) {
     try {
-      // Convert object to JSON string using Jackson
-      String jsonString = OBJECT_MAPPER.writeValueAsString(o);
-      // Parse the JSON string using Jakarta JSON API to get a JsonStructure
-      try (JsonReader reader = Json.createReader(new java.io.StringReader(jsonString))) {
-        return reader.read();
+      JsonValue value = JSONP_MAPPER.convertValue(o, JsonValue.class);
+      if (value instanceof JsonStructure structure) {
+        return structure;
       }
+      throw new IllegalArgumentException("Expected a JSON object or array");
     } catch (Exception e) {
       throw new RuntimeException("Failed to convert object to JsonStructure", e);
     }
@@ -432,15 +439,133 @@ public final class JsonUtils {
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
-    // Convert Jakarta JSON JsonValue to Jackson JsonNode
+    T result;
     try {
-      String jsonString = value.toString();
-      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
-      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+      // Bind straight from the patched JSON text. Going through readTree + convertValue parses
+      // once to build a tree and then walks that tree again to bind it, and every PATCH request
+      // pays for both passes.
+      result = OBJECT_MAPPER.readValue(value.toString(), clz);
+    } catch (JsonMappingException e) {
+      throw toPatchFailure(e, clz);
     } catch (Exception e) {
       throw new RuntimeException(
           "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
     }
+    return result;
+  }
+
+  /**
+   * Translates a Jackson binding failure into the right exception type. A patch naming a field the
+   * entity does not have is a client error - a renamed, misspelled or hallucinated field - so it
+   * must surface as {@link IllegalArgumentException} (mapped to HTTP 400) rather than as an
+   * unhandled server fault. The document being bound is the output of a JSON Patch the client sent,
+   * so every mapping failure here is about client-supplied content; malformed JSON is not a {@code
+   * JsonMappingException} and stays a server fault, since {@code JsonValue.toString()} cannot
+   * produce it.
+   */
+  private static RuntimeException toPatchFailure(JsonMappingException cause, Class<?> clz) {
+    RuntimeException result;
+    if (cause instanceof UnrecognizedPropertyException unknownField) {
+      result = new IllegalArgumentException(unknownFieldMessage(unknownField, clz));
+    } else {
+      result = new IllegalArgumentException(invalidValueMessage(cause, clz));
+    }
+    return result;
+  }
+
+  private static String unknownFieldMessage(UnrecognizedPropertyException e, Class<?> clz) {
+    // getKnownPropertyIds() is documented to return null when the property set is unavailable;
+    // an NPE here would turn this client error back into the 500 this path exists to prevent.
+    Collection<Object> knownIds = e.getKnownPropertyIds();
+    List<String> knownFields =
+        knownIds == null ? List.of() : knownIds.stream().map(String::valueOf).sorted().toList();
+    String rejectedField = e.getPropertyName();
+    String suggested = closestKnownField(rejectedField, knownFields);
+    String hint = suggested == null ? "" : String.format(" Did you mean '%s'?", suggested);
+    return String.format(
+        "Invalid field '%s' for %s.%s Valid fields are: %s",
+        rejectedField, clz.getSimpleName(), hint, String.join(", ", knownFields));
+  }
+
+  /**
+   * Message for a patch that names a real field but supplies a value the field cannot hold - a stale
+   * enum constant or the wrong JSON type. Enumerating the accepted constants matters more than the
+   * raw Jackson text here, because the caller that just guessed a field name will guess the value
+   * next.
+   */
+  private static String invalidValueMessage(JsonMappingException e, Class<?> clz) {
+    String field = mappingFieldPath(e);
+    List<String> allowed = allowedValuesFor(e);
+    String detail =
+        allowed.isEmpty()
+            ? String.format(": %s", rootReason(e))
+            : String.format(". Allowed values are: %s", String.join(", ", allowed));
+    return String.format(
+        "Invalid value for field '%s' on %s%s", field, clz.getSimpleName(), detail);
+  }
+
+  /** Dotted path of the field Jackson choked on, e.g. {@code owners.id}. */
+  private static String mappingFieldPath(JsonMappingException e) {
+    String path =
+        e.getPath().stream()
+            .map(JsonMappingException.Reference::getFieldName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining("."));
+    return path.isEmpty() ? "<unknown>" : path;
+  }
+
+  /**
+   * Wire-format constants a rejected enum field accepts. Generated enums render their JSON value
+   * from {@code toString()}, not from the constant name, so the strings here match what a caller
+   * must actually send. Empty for any target that is not an enum.
+   */
+  private static List<String> allowedValuesFor(JsonMappingException e) {
+    Class<?> target = rejectedTargetType(e);
+    Object[] constants = target == null ? null : target.getEnumConstants();
+    return constants == null
+        ? List.of()
+        : Arrays.stream(constants).map(Object::toString).sorted().toList();
+  }
+
+  /**
+   * The type Jackson failed to build. The two exception families expose it differently: a rejected
+   * enum constant arrives as {@link ValueInstantiationException}, which carries the type on {@code
+   * getType()} and leaves {@code getTargetType()} null, while a plain shape mismatch fills in {@code
+   * getTargetType()}.
+   */
+  private static Class<?> rejectedTargetType(JsonMappingException e) {
+    Class<?> result = null;
+    if (e instanceof ValueInstantiationException instantiation) {
+      result = instantiation.getType() == null ? null : instantiation.getType().getRawClass();
+    } else if (e instanceof MismatchedInputException mismatch) {
+      result = mismatch.getTargetType();
+    }
+    return result;
+  }
+
+  /** Jackson's own reason, minus the "at [Source: UNKNOWN...]" location noise it appends. */
+  private static String rootReason(JsonMappingException e) {
+    String message = e.getOriginalMessage();
+    return message == null ? e.toString() : message;
+  }
+
+  /**
+   * Suggests a replacement for a rejected field name. Matches on containment rather than edit
+   * distance because the failures seen in practice come from schema renames that wrapped or
+   * pluralized the old name (status to entityStatus, owner to owners, domain to domains), which edit
+   * distance scores poorly. The shortest match wins so 'tag' prefers 'tags' over 'tagLabels'.
+   */
+  private static String closestKnownField(String rejectedField, List<String> knownFields) {
+    String result = null;
+    if (rejectedField != null && rejectedField.length() >= MIN_FIELD_SUGGESTION_LENGTH) {
+      String needle = rejectedField.toLowerCase(Locale.ROOT);
+      result =
+          knownFields.stream()
+              .filter(known -> known.toLowerCase(Locale.ROOT).contains(needle))
+              .min(Comparator.comparingInt(String::length))
+              .orElse(null);
+    }
+    return result;
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
@@ -537,6 +662,10 @@ public final class JsonUtils {
 
   /** Get all the fields types and entity types from OpenMetadata JSON schema definition files. */
   public static List<Type> getTypes() {
+    return getTypes(ignored -> {});
+  }
+
+  public static List<Type> getTypes(Consumer<String> loadFailureHandler) {
     // Get Field Types
     List<Type> types = new ArrayList<>();
     List<String> jsonSchemas;
@@ -549,6 +678,7 @@ public final class JsonUtils {
       try {
         types.addAll(JsonUtils.getFieldTypes(jsonSchema));
       } catch (Exception e) {
+        loadFailureHandler.accept(jsonSchema);
         LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
       }
     }
@@ -566,10 +696,37 @@ public final class JsonUtils {
           types.add(entityType);
         }
       } catch (Exception e) {
+        loadFailureHandler.accept(jsonSchema);
         LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
       }
     }
     return types;
+  }
+
+  public static List<String> getTypeNames(String jsonSchemaFile, byte[] jsonSchema) {
+    String normalizedSchemaFile = jsonSchemaFile.replace('\\', '/');
+    boolean fieldTypeSchema = normalizedSchemaFile.contains("json/schema/type/");
+    boolean entityTypeSchema = normalizedSchemaFile.contains("json/schema/entity/");
+    if (!fieldTypeSchema && !entityTypeSchema) {
+      return Collections.emptyList();
+    }
+
+    String annotation = fieldTypeSchema ? FIELD_TYPE_ANNOTATION : ENTITY_TYPE_ANNOTATION;
+    if (!new String(jsonSchema, StandardCharsets.UTF_8).contains(annotation)) {
+      return Collections.emptyList();
+    }
+
+    JsonNode node;
+    try {
+      node = OBJECT_MAPPER.readTree(jsonSchema);
+    } catch (IOException e) {
+      throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+    }
+    if (fieldTypeSchema) {
+      return getFieldTypeNames(node);
+    }
+    String entityTypeName = getEntityTypeName(normalizedSchemaFile, node);
+    return entityTypeName == null ? Collections.emptyList() : List.of(entityTypeName);
   }
 
   /**
@@ -593,24 +750,19 @@ public final class JsonUtils {
     String jsonNamespace = getSchemaName(jsonSchemaFile);
 
     List<Type> types = new ArrayList<>();
-    Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
-    while (definitions != null && definitions.hasNext()) {
-      Entry<String, JsonNode> entry = definitions.next();
-      String typeName = entry.getKey();
-      JsonNode value = entry.getValue();
-      if (JsonUtils.hasAnnotation(value, JsonUtils.FIELD_TYPE_ANNOTATION)) {
-        String description = String.valueOf(value.get("description"));
-        Type type =
-            new Type()
-                .withName(typeName)
-                .withCategory(Category.Field)
-                .withFullyQualifiedName(typeName)
-                .withNameSpace(jsonNamespace)
-                .withDescription(description)
-                .withDisplayName(entry.getKey())
-                .withSchema(value.toPrettyString());
-        types.add(type);
-      }
+    for (String typeName : getFieldTypeNames(node)) {
+      JsonNode value = node.get("definitions").get(typeName);
+      String description = String.valueOf(value.get("description"));
+      Type type =
+          new Type()
+              .withName(typeName)
+              .withCategory(Category.Field)
+              .withFullyQualifiedName(typeName)
+              .withNameSpace(jsonNamespace)
+              .withDescription(description)
+              .withDisplayName(typeName)
+              .withSchema(value.toPrettyString());
+      types.add(type);
     }
     return types;
   }
@@ -629,11 +781,11 @@ public final class JsonUtils {
     } catch (IOException e) {
       throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
-    if (!JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)) {
+    String entityName = getEntityTypeName(jsonSchemaFile, node);
+    if (entityName == null) {
       return null;
     }
 
-    String entityName = getSchemaName(jsonSchemaFile);
     String namespace = getSchemaGroup(jsonSchemaFile);
 
     String description = String.valueOf(node.get("description"));
@@ -645,6 +797,28 @@ public final class JsonUtils {
         .withDescription(description)
         .withDisplayName(entityName)
         .withSchema(node.toPrettyString());
+  }
+
+  private static List<String> getFieldTypeNames(JsonNode node) {
+    JsonNode definitionsNode = node.get("definitions");
+    if (definitionsNode == null) {
+      return Collections.emptyList();
+    }
+    List<String> typeNames = new ArrayList<>();
+    Iterator<Entry<String, JsonNode>> definitions = definitionsNode.fields();
+    while (definitions.hasNext()) {
+      Entry<String, JsonNode> entry = definitions.next();
+      if (JsonUtils.hasAnnotation(entry.getValue(), JsonUtils.FIELD_TYPE_ANNOTATION)) {
+        typeNames.add(entry.getKey());
+      }
+    }
+    return typeNames;
+  }
+
+  private static String getEntityTypeName(String jsonSchemaFile, JsonNode node) {
+    return JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)
+        ? getSchemaName(jsonSchemaFile)
+        : null;
   }
 
   /** Given a json schema file name .../json/schema/entity/data/table.json - return table */
@@ -725,13 +899,33 @@ public final class JsonUtils {
     }
   }
 
-  public static <T> T deepCopy(T original, Class<T> clazz) {
+  public static <T> T deepCopy(Object original, Class<T> clazz) {
+    return readFromTokenBuffer(toTokenBuffer(original), clazz);
+  }
+
+  public static TokenBuffer toTokenBuffer(Object value) {
     try {
-      TokenBuffer tb = new TokenBuffer(OBJECT_MAPPER, false);
-      OBJECT_MAPPER.writeValue(tb, original);
-      return OBJECT_MAPPER.readValue(tb.asParser(), clazz);
+      TokenBuffer tokenBuffer = new TokenBuffer(OBJECT_MAPPER, false);
+      OBJECT_MAPPER.writeValue(tokenBuffer, value);
+      return tokenBuffer;
     } catch (IOException e) {
-      throw new RuntimeException("Deep copy failed", e);
+      throw new RuntimeException("Failed to create JSON token buffer", e);
+    }
+  }
+
+  public static <T> T readFromTokenBuffer(TokenBuffer tokenBuffer, Class<T> clazz) {
+    try (JsonParser parser = tokenBuffer.asParser()) {
+      return OBJECT_MAPPER.readValue(parser, clazz);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read JSON token buffer", e);
+    }
+  }
+
+  public static void overwriteFromTokenBuffer(Object target, TokenBuffer tokenBuffer) {
+    try (JsonParser parser = tokenBuffer.asParser()) {
+      OBJECT_MAPPER.readerForUpdating(target).readValue(parser);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to restore object from JSON token buffer", e);
     }
   }
 
@@ -862,61 +1056,7 @@ public final class JsonUtils {
   }
 
   public static List<String> getJsonDataResources(Pattern pattern) throws IOException {
-    ArrayList<String> resources = new ArrayList<>();
-    String classPath = System.getProperty("java.class.path", ".");
-    Set<String> classPathElements =
-        Arrays.stream(classPath.split(File.pathSeparator))
-            .filter(
-                jarName ->
-                    Stream.of("openmetadata", "collate").anyMatch(jarName.toLowerCase()::contains))
-            .collect(Collectors.toSet());
-
-    for (String element : classPathElements) {
-      File file = new File(element);
-      resources.addAll(
-          file.isDirectory()
-              ? getResourcesFromDirectory(file, pattern)
-              : getResourcesFromJarFile(file, pattern));
-    }
-    return resources;
-  }
-
-  private static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
-      throws IOException {
-    final Path root = Path.of(file.getPath());
-    try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
-      return paths
-          .filter(Files::isRegularFile)
-          .filter(path -> pattern.matcher(path.toString()).matches())
-          .map(
-              path -> {
-                String relativePath = root.relativize(path).toString();
-                LOG.debug("Adding directory file {}", relativePath);
-                return relativePath;
-              })
-          .collect(Collectors.toSet());
-    }
-  }
-
-  private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
-    LOG.debug("Adding from file {}", file);
-    ArrayList<String> retval = new ArrayList<>();
-    try (ZipFile zf = new ZipFile(file)) {
-      Enumeration<? extends ZipEntry> e = zf.entries();
-      while (e.hasMoreElements()) {
-        // CodeQL flags this as Zip Slip (java/zipslip) but this is a false positive:
-        // we only collect entry names for pattern matching, no files are extracted to disk.
-        // The JARs are from our own classpath (filtered to openmetadata/collate JARs only).
-        String fileName = e.nextElement().getName(); // lgtm[java/zipslip]
-        if (pattern.matcher(fileName).matches()) {
-          retval.add(fileName);
-          LOG.debug("Adding file from jar {}", fileName);
-        }
-      }
-    } catch (Exception ignored) {
-      // Ignored exception
-    }
-    return retval;
+    return CommonUtil.getResources(pattern);
   }
 
   /**

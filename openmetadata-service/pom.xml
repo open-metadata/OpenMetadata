@@ -29,7 +29,6 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
   </properties>
 

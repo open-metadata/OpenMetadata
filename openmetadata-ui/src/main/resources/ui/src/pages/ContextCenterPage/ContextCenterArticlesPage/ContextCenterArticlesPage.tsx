@@ -66,16 +66,20 @@ import {
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   getKnowledgePageByFqn,
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
+
+const ARTICLE_PLURAL_LABEL = 'label.article-plural';
 
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
@@ -102,6 +106,8 @@ const ContextCenterArticlesPage = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [debouncedArticleSearchQuery, setDebouncedArticleSearchQuery] =
+    useState('');
   const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
   const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
 
@@ -123,6 +129,15 @@ const ContextCenterArticlesPage = () => {
       showErrorToast(error as AxiosError);
     }
   }, []);
+
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedArticleSearchQuery(articleSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [articleSearchQuery]);
 
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
@@ -177,6 +192,9 @@ const ContextCenterArticlesPage = () => {
           tags,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         knowledgeCenterPageRef.current?.addKnowledgePage(response);
         knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         showSuccessToast(
@@ -285,14 +303,14 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[{ label: t('label.article-plural') }]}
+        breadcrumbs={[{ label: t(ARTICLE_PLURAL_LABEL) }]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {
-          entity: t('label.article-plural'),
+          entity: t(ARTICLE_PLURAL_LABEL),
         })}
         searchQuery={articleSearchQuery}
         subtitle={t('message.internal-knowledge-base-agent-training')}
-        title={t('label.article-plural')}
+        title={t(ARTICLE_PLURAL_LABEL)}
         onSearch={setArticleSearchQuery}
       />
     );
@@ -314,11 +332,11 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab) {
+    if (isActivityFeedTab || version) {
       return null;
     }
 
-    if (version || isRightPanelOpen) {
+    if (isRightPanelOpen) {
       return page.rightPanel;
     }
 
@@ -334,6 +352,7 @@ const ContextCenterArticlesPage = () => {
       return (
         <KnowledgePageDetailComponent
           isRightPanelOpen={isRightPanelOpen}
+          onArticleSaved={() => handleFetchKnowledgePageHierarchy(true)}
           onPageChange={handlePageChange}
           onToggleRightPanel={handleToggleRightPanel}
         />
@@ -349,7 +368,7 @@ const ContextCenterArticlesPage = () => {
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
-        searchQuery={articleSearchQuery}
+        searchQuery={debouncedArticleSearchQuery}
         onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
@@ -360,7 +379,7 @@ const ContextCenterArticlesPage = () => {
     isRightPanelOpen,
     permissions,
     isPermissionsLoading,
-    articleSearchQuery,
+    debouncedArticleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
@@ -386,7 +405,7 @@ const ContextCenterArticlesPage = () => {
         dir={i18n.dir()}
         direction="col"
         id="knowledge-center-layout-container">
-        <DocumentTitle title={page.title || t('label.article-plural')} />
+        <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
         {showArticlesEmptyState && (
           <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
             <EmptyPlaceholder

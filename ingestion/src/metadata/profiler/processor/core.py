@@ -44,6 +44,7 @@ from metadata.generated.schema.tests.customMetric import (
 )
 from metadata.generated.schema.type.basic import ProfileSampleType, Timestamp
 from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
+from metadata.profiler.constants import COLUMN_COUNT, CREATE_DATETIME, SIZE_IN_BYTES
 from metadata.profiler.interface.profiler_interface import ProfilerInterface  # noqa: TC001
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -59,7 +60,6 @@ from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
-CREATE_DATETIME = "createDateTime"
 
 
 class MissingMetricException(Exception):  # noqa: N818
@@ -516,10 +516,10 @@ class Profiler(Generic[TMetric]):
 
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
-                columnCount=self._table_results.get("columnCount"),
+                columnCount=self._table_results.get(COLUMN_COUNT),
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=raw_create_date,
-                sizeInByte=self._table_results.get("sizeInBytes"),
+                sizeInByte=self._table_results.get(SIZE_IN_BYTES),
                 profileSample=(sample_config.profileSample if sample_config else None),
                 profileSampleType=TableProfileSampleType(
                     sample_config.profileSampleType

@@ -537,6 +537,8 @@ describe('TestSummaryGraph', () => {
 
   it('should flip the fixed tooltip position when the chart edges would overflow', () => {
     mockPointCoordinate = { x: 760, y: 360 };
+    const getBoundingClientRect = HTMLElement.prototype
+      .getBoundingClientRect as jest.Mock;
     render(<TestSummaryGraph {...mockProps} />);
 
     const point = screen.getByTestId(POINT_TEST_ID);
@@ -551,5 +553,6 @@ describe('TestSummaryGraph', () => {
     expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '516');
     expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '196');
     expect(tooltip).toHaveAttribute('data-visibility', 'visible');
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(1);
   });
 });

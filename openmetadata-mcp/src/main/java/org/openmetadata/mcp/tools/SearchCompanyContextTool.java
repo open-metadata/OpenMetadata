@@ -20,6 +20,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -53,12 +54,13 @@ public class SearchCompanyContextTool implements McpTool {
           errorResponse(
               "Semantic search is not enabled. Configure vector embeddings in the OpenMetadata server settings.");
     } else {
-      result = runSearch(query, params);
+      result = runSearch(query, params, securityContext);
     }
     return result;
   }
 
-  private Map<String, Object> runSearch(String query, Map<String, Object> params) {
+  private Map<String, Object> runSearch(
+      String query, Map<String, Object> params, CatalogSecurityContext securityContext) {
     Map<String, Object> result;
     OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
     if (vectorService == null) {
@@ -69,9 +71,18 @@ public class SearchCompanyContextTool implements McpTool {
           VectorPagingContract.cursorOffsetOrDefault(
               params, Math.max(McpParams.getInt(params, "from", 0), 0));
       try {
+        // Without a subject the vector query fails closed to org-wide memories only, which excludes
+        // every Shared knowledge pill — that is, all of them — for admins and non-admins alike.
         VectorSearchResponse response =
             vectorService.search(
-                query, companyContextFilters(), size, from, DEFAULT_K, DEFAULT_THRESHOLD);
+                query,
+                companyContextFilters(),
+                size,
+                from,
+                DEFAULT_K,
+                DEFAULT_THRESHOLD,
+                null,
+                DefaultAuthorizer.getSubjectContext(securityContext));
         result = buildResponse(query, response, size, from);
       } catch (Exception e) {
         LOG.error("Company context search failed: {}", e.getMessage(), e);

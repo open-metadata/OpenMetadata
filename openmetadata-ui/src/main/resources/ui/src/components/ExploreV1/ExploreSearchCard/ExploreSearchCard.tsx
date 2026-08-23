@@ -30,7 +30,10 @@ import {
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { TableColumnSearchSource } from '../../../interface/search.interface';
+import {
+  SearchExplanation,
+  TableColumnSearchSource,
+} from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
@@ -68,7 +71,28 @@ const RANKING_STAGE_DESCRIPTION_KEYS: Record<string, string> = {
 const MAX_RANKING_REASONS = 4;
 const IGNORED_EXPLANATION_FIELDS = new Set(['deleted']);
 
+const FUNCTION_SCORE_PREFIX = 'function score, score mode';
+const MATCH_FILTER_PREFIX = 'match filter:';
+const MAX_BOOST_DESCRIPTION = 'maxboost';
+const CAPPED_SIGNAL_PREFIX = 'min of';
+const SUMMED_SIGNAL_PREFIX = 'sum of';
+const MAX_EXPLANATION_DEPTH = 8;
+
 const formatScoreValue = (value: number) => value.toFixed(value >= 10 ? 2 : 4);
+
+const normalizeDescription = (description: string) =>
+  description.replace(/\s+/g, ' ').trim();
+
+const startsWithDescription = (
+  explanation: SearchExplanation | undefined,
+  prefix: string
+) =>
+  Boolean(
+    explanation &&
+      normalizeDescription(explanation.description)
+        .toLowerCase()
+        .startsWith(prefix)
+  );
 
 const formatExplanationFieldMatch = (fieldValue: string) => {
   const fieldMatch = fieldValue.match(/^([^:]+):(.+?)(?: in \d+)?$/);
@@ -104,6 +128,73 @@ const getReadableExplanation = (description: string) => {
   }
 
   return;
+};
+
+/**
+ * Elasticsearch renders the `function_score` clause as its own explanation subtree, so the tier,
+ * status, usage and vote boosts never surface in the lexical `Reason` list — they are a sibling of
+ * it. Returns that subtree along with the two ancestors that say how it folded into the final
+ * score: an enclosing `min of` is the `max_boost` cap, and a `sum of` above that is
+ * `boost_mode: sum`, which is what lets the score be split into lexical vs signal.
+ */
+const findSignalSubtree = (root?: SearchExplanation) => {
+  let found:
+    | {
+        grandParent?: SearchExplanation;
+        node: SearchExplanation;
+        parent?: SearchExplanation;
+      }
+    | undefined;
+
+  const visit = (
+    node: SearchExplanation | undefined,
+    parent: SearchExplanation | undefined,
+    grandParent: SearchExplanation | undefined,
+    depth: number
+  ) => {
+    if (!node || found || depth > MAX_EXPLANATION_DEPTH) {
+      return;
+    }
+
+    if (startsWithDescription(node, FUNCTION_SCORE_PREFIX)) {
+      found = { grandParent, node, parent };
+
+      return;
+    }
+
+    node.details?.forEach((detail) => visit(detail, node, parent, depth + 1));
+  };
+
+  visit(root, undefined, undefined, 0);
+
+  return found;
+};
+
+const getSignalLabel = (detail: SearchExplanation, baselineLabel: string) => {
+  const description = normalizeDescription(detail.description);
+  const fieldValueMatch = description.match(
+    /^field value function: [^(]*\(doc\['([^']+)'\]/i
+  );
+
+  if (fieldValueMatch?.[1]) {
+    return fieldValueMatch[1];
+  }
+
+  const filter = detail.details?.find((child) =>
+    startsWithDescription(child, MATCH_FILTER_PREFIX)
+  );
+
+  if (!filter) {
+    // The `match_all` weight every document receives, which exists so `boost_mode: multiply`
+    // cannot zero out the lexical score. Naming it keeps the contributions adding up to the total.
+    return baselineLabel;
+  }
+
+  const filterDescription = normalizeDescription(filter.description).slice(
+    MATCH_FILTER_PREFIX.length
+  );
+
+  return getReadableExplanation(filterDescription) ?? filterDescription.trim();
 };
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
@@ -164,6 +255,42 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         name: stageName,
       }));
     }, [matchedQueries, t]);
+
+    const signalBoosts = useMemo(() => {
+      const subtree = findSignalSubtree(scoreExplanation);
+
+      if (!subtree) {
+        return undefined;
+      }
+
+      const { grandParent, node, parent } = subtree;
+      const capNode = startsWithDescription(parent, CAPPED_SIGNAL_PREFIX)
+        ? parent
+        : undefined;
+      const maxBoost = capNode?.details?.find(
+        (detail) =>
+          normalizeDescription(detail.description).toLowerCase() ===
+          MAX_BOOST_DESCRIPTION
+      )?.value;
+      const signalRoot = capNode ?? node;
+      const combiner = capNode ? grandParent : parent;
+
+      return {
+        contributions: (node.details ?? [])
+          .map((detail) => ({
+            label: getSignalLabel(detail, t('label.baseline')),
+            value: detail.value,
+          }))
+          .sort((left, right) => right.value - left.value),
+        isCapped: maxBoost !== undefined && node.value > maxBoost,
+        lexicalScore: startsWithDescription(combiner, SUMMED_SIGNAL_PREFIX)
+          ? (combiner?.value ?? 0) - signalRoot.value
+          : undefined,
+        maxBoost,
+        rawTotal: node.value,
+        total: signalRoot.value,
+      };
+    }, [scoreExplanation, t]);
 
     const scoreReasons = useMemo(() => {
       const reasons: { description: string; value: number }[] = [];
@@ -598,6 +725,51 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     </Typography.Text>
                   </div>
                 ))}
+              </div>
+            ) : null}
+            {signalBoosts && signalBoosts.contributions.length > 0 ? (
+              <div
+                className="ranking-score-explanation"
+                data-testid="ranking-signal-boosts">
+                <div className="ranking-details-header">
+                  <Typography.Text className="text-xs font-medium">
+                    {t('label.signal-boost-plural')}
+                  </Typography.Text>
+                  <Typography.Text
+                    className="text-xs text-grey-muted"
+                    data-testid="ranking-signal-total">
+                    {signalBoosts.isCapped &&
+                    signalBoosts.maxBoost !== undefined
+                      ? t('message.search-ranking-signal-capped', {
+                          max: formatScoreValue(signalBoosts.maxBoost),
+                          raw: formatScoreValue(signalBoosts.rawTotal),
+                        })
+                      : `+${formatScoreValue(signalBoosts.total)}`}
+                  </Typography.Text>
+                </div>
+                {signalBoosts.contributions.map(({ label, value }) => (
+                  <div
+                    className="ranking-score-contributor"
+                    data-testid="ranking-signal-contributor"
+                    key={`${label}-${value}`}>
+                    <Typography.Text className="text-xs font-medium">
+                      {`+${formatScoreValue(value)}`}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {label}
+                    </Typography.Text>
+                  </div>
+                ))}
+                {signalBoosts.lexicalScore !== undefined ? (
+                  <Typography.Text
+                    className="text-xs text-grey-muted"
+                    data-testid="ranking-score-breakdown">
+                    {t('message.search-ranking-score-breakdown', {
+                      lexical: formatScoreValue(signalBoosts.lexicalScore),
+                      signals: formatScoreValue(signalBoosts.total),
+                    })}
+                  </Typography.Text>
+                ) : null}
               </div>
             ) : null}
             <Typography.Text className="text-xs text-grey-muted">

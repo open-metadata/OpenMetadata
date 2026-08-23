@@ -76,15 +76,63 @@ const scrollIntoViewCenter = async (locator: Locator) => {
     .catch(() => undefined);
 };
 
-// The CSV jobs tray is position:fixed at bottom-right and can appear at any
-// moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
-// complete. Injecting pointer-events:none once disables click interception for
-// the entire page session — no need to poll or dismiss at every step.
-const disableCsvJobsTrayInterception = async (page: Page) => {
-  await page.addStyleTag({
-    content:
-      '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
-  });
+const CSV_JOBS_TRAY_INERT_CSS =
+  '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }';
+
+// Pages that already carry the suppression. addInitScript stacks, so without
+// this guard a page routed through several import helpers would grow one style
+// tag per call.
+const csvJobsTraySuppressedPages = new WeakSet<Page>();
+
+/**
+ * Make the CSV background-jobs tray click-through for the rest of this page's
+ * life.
+ *
+ * The tray is a position:fixed panel anchored at bottom:88px that auto-expands
+ * whenever a job it is watching reaches a terminal status. Because the anchor
+ * pins its lower edge just above the viewport bottom, it lands on the profiler's
+ * Manage button (measured at 1280x720: button y 596-636, tray bottom y 632), and
+ * a single job is enough — extra rows only push the top edge higher.
+ *
+ * A spec's own export therefore triggers this. Jobs from other workers make it
+ * worse rather than causing it: `/api/v1/csvAsyncJobs` is scoped per *user* and
+ * every worker shares the admin identity, so unrelated jobs both grow the panel
+ * and keep re-expanding it mid-test.
+ *
+ * addStyleTag alone is not enough — it lives on the current document and dies on
+ * the next hard navigation. addInitScript re-applies the rule to every document
+ * the page loads afterwards, so one call at the start of a flow holds for the
+ * whole flow.
+ *
+ * pointer-events (not display) so the tray stays in the DOM: specs that assert
+ * on it still see it, they just must not route through this helper.
+ */
+export const suppressCsvJobsTray = async (page: Page) => {
+  if (csvJobsTraySuppressedPages.has(page)) {
+    return;
+  }
+
+  csvJobsTraySuppressedPages.add(page);
+
+  await page.addInitScript((css: string) => {
+    const applyStyle = () => {
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyStyle);
+    } else {
+      applyStyle();
+    }
+  }, CSV_JOBS_TRAY_INERT_CSS);
+
+  // addInitScript only reaches documents loaded from now on, so the document
+  // already on screen needs the rule injected directly.
+  await page
+    .addStyleTag({ content: CSV_JOBS_TRAY_INERT_CSS })
+    .catch(() => undefined);
 };
 
 const getTextEditorCandidates = (page: Page) => {
@@ -459,9 +507,12 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   ).toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user&*'
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes('index=user')
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
@@ -1001,7 +1052,7 @@ export const startCsvPreviewAndWaitForGrid = async (
   // Disable the CSV jobs tray's click interception for the entire page session.
   // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
   // one-shot CSS injection is more robust than polling at specific steps.
-  await disableCsvJobsTrayInterception(page);
+  await suppressCsvJobsTray(page);
 
   if (
     !(await waitForVisibleLocator(

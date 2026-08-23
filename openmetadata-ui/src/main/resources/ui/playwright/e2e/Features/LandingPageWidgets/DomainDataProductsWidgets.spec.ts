@@ -20,7 +20,7 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage, removeLandingBanner } from '../../../utils/common';
+import { redirectToHomePage } from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -95,7 +95,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     if (testInfo.title !== 'Assign Widgets') {
@@ -112,7 +111,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
         dataProduct.responseData.id ?? ''
       );
       await redirectToHomePage(page, false);
-      await removeLandingBanner(page);
       await waitForAllLoadersToDisappear(page).catch(() => undefined);
     }
   });
@@ -134,7 +132,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
     await redirectToHomePage(page, false);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     await verifyWidgetCountOnCurrentPage(

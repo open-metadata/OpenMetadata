@@ -106,6 +106,12 @@
       "type": "boolean",
       "default": false
     },
+    "includeSemanticViews": {
+      "title": "Include Semantic Views",
+      "description": "Ingest Snowflake semantic views as data assets.",
+      "type": "boolean",
+      "default": false
+    },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
       "description": "Keep the session alive for long-running scans.",
