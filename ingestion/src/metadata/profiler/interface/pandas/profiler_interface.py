@@ -194,11 +194,17 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Subclasses of this interface are not always backed by an object store (BurstIQ has no
         `configSource` at all), in which case `get_object_stats` falls back to empty stats.
         """
+        # The schema an object-store table hangs off of is its bucket; without one there is
+        # nothing to look the object up in.
+        database_schema = self.table_entity.databaseSchema
+        if database_schema is None:
+            return {}
+
         try:
             stats = get_object_stats(
                 getattr(self.service_connection_config, "configSource", None),
                 self.client.client,
-                self.table_entity.databaseSchema.name,
+                database_schema.name,
                 self.table_entity.name.root,
             )
         except Exception as exc:
