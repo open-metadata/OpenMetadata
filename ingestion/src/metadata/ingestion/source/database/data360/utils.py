@@ -40,6 +40,8 @@ def get_metadata_type(schema_name: str) -> str | None:
 
 def get_table_constraints(primary_keys: list) -> list:
     """Builds table constraint objects from a list of primary key definitions."""
+    if not primary_keys:
+        return []
     return [
         TableConstraint(
             constraintType=ConstraintType.PRIMARY_KEY,

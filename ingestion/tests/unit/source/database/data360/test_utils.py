@@ -51,8 +51,7 @@ def test_get_table_constraints_builds_primary_key():
 
 
 def test_get_table_constraints_with_no_primary_keys():
-    constraints = get_table_constraints([])
-    assert constraints[0].columns == []
+    assert get_table_constraints([]) == []
 
 
 def test_combine_ci_fields_tags_dimensions_and_measures():

@@ -238,9 +238,8 @@ class Data360PipelineSource(PipelineServiceSource):
         """Builds the Salesforce UI deep-link URL for a DataStream."""
         try:
             if host and datastream_id:
-                if "my" in host:
-                    return f"https://{host.split('my')[0]}lightning.force.com/lightning/r/DataLakeObjectInstance/{datastream_id}/view"
-                return f"https://{host}.lightning.force.com/lightning/r/DataLakeObjectInstance/{datastream_id}/view"
+                base = host[:-3] if host.endswith(".my") else host
+                return f"https://{base}.lightning.force.com/lightning/r/DataLakeObjectInstance/{datastream_id}/view"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")

@@ -93,6 +93,9 @@ def _run_paginator(
 
     if object_type == MetadataTypesConstant.CALCULATED_INSIGHT:
         response = response.get(ResponseConstant.COLLECTION)
+        if not response:
+            log_warning(f"Missing '{ResponseConstant.COLLECTION}' in response for {object_type} at {path}")
+            return total_objects
 
     total_size = response.get(json_config.get(ResponseConstant.TOTAL_SIZE), 0)
     total_objects = list(response.get(json_config.get(ResponseConstant.ITEMS), []))
@@ -109,10 +112,19 @@ def _run_paginator(
         )
         page += 1
         if not page_response:
-            log_warning(f"Skipping page {page} for {object_type}: API returned no response")
-            continue
+            raise RuntimeError(
+                f"Failed to fetch page {page} for {object_type} at {path}: "
+                "API returned no response. Aborting to avoid returning a partial "
+                "listing that could be mistaken for the full set of live entities."
+            )
         if object_type == MetadataTypesConstant.CALCULATED_INSIGHT:
             page_response = page_response.get(ResponseConstant.COLLECTION)
+            if not page_response:
+                raise RuntimeError(
+                    f"Missing '{ResponseConstant.COLLECTION}' in response for page {page} "
+                    f"of {object_type} at {path}. Aborting to avoid returning a partial "
+                    "listing that could be mistaken for the full set of live entities."
+                )
         total_objects.extend(page_response.get(json_config.get(ResponseConstant.ITEMS), []))
 
     return total_objects
