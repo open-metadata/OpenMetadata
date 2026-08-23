@@ -35,6 +35,18 @@ KEY = "profiler_test_.csv"
 LAST_MODIFIED = datetime(2026, 8, 20, 10, 30, tzinfo=timezone.utc)
 
 
+class TestObjectStatsModel:
+    """UTC normalization is a property of the model, so no provider branch can forget it"""
+
+    def test_aware_timestamp_is_converted_on_construction(self):
+        aware = datetime(2026, 8, 20, 12, 30, tzinfo=timezone(timedelta(hours=2)))
+
+        assert ObjectStats(create_date_time=aware).create_date_time == LAST_MODIFIED
+
+    def test_naive_timestamp_is_labelled_utc_on_construction(self):
+        assert ObjectStats(create_date_time=datetime(2026, 8, 20, 10, 30)).create_date_time == LAST_MODIFIED
+
+
 class TestS3ObjectStats:
     """S3 (and S3-compatible stores) go through head_object"""
 

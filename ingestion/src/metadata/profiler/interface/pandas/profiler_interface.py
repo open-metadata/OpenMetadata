@@ -184,7 +184,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             logger.warning(f"Error trying to compute profile for {exc}")
             raise RuntimeError(exc)  # noqa: B904
 
-    def _get_object_stats(self) -> Dict[str, Any]:  # noqa: UP006
+    def _get_object_stats(self) -> dict[str, Any]:
         """Size and creation time of the object backing the table.
 
         Best effort: a missing `HeadObject` permission must degrade to "no size", never to
