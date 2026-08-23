@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import decimal
 from unittest.mock import patch
 
 import pytest
@@ -25,6 +26,8 @@ from metadata.pii.algorithms.preprocessing import (
         ("hello", "hello"),
         (123, "123"),
         (123.45, "123.45"),
+        (decimal.Decimal("77046931"), "77046931"),
+        (decimal.Decimal("123.456"), "123.456"),
         (b"hello", None),
         (None, None),
         ({"key": "value"}, ["value"]),
