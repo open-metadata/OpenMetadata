@@ -21,6 +21,8 @@ import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
 } from '../appModeExtensions';
+import SidebarBrand from './SidebarBrand';
+import UserProfileCard from './UserProfileCard';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 
 export interface RailItem {
@@ -129,9 +131,11 @@ const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
     <div className="ask-rail" data-testid="ask-rail">
       <div className="ask-rail__header">
         <div className="ask-rail__header-top">
-          {headerSlots.map(({ key, component: Slot }) => (
-            <Slot key={key} />
-          ))}
+          {headerSlots.length > 0 ? (
+            headerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
+          ) : (
+            <SidebarBrand />
+          )}
           <button
             aria-label={t('label.expand')}
             className="ask-rail__expand-btn"
@@ -150,9 +154,11 @@ const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
       </nav>
 
       <div className="ask-rail__profile">
-        {footerSlots.map(({ key, component: Slot }) => (
-          <Slot key={key} />
-        ))}
+        {footerSlots.length > 0 ? (
+          footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
+        ) : (
+          <UserProfileCard />
+        )}
       </div>
     </div>
   );

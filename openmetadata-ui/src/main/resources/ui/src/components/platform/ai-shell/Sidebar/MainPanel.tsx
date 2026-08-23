@@ -21,7 +21,9 @@ import {
 } from '../appModeExtensions';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';
+import SidebarBrand from './SidebarBrand';
 import { useActiveNavKey } from './useActiveNavKey';
+import UserProfileCard from './UserProfileCard';
 import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 
 export interface MainPanelProps {
@@ -46,9 +48,11 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, items }) => {
     <div className="ask-main-panel" data-testid="ask-main-panel">
       <header className="ask-main-panel__header">
         <div className="ask-main-panel__header-brand">
-          {headerSlots.map(({ key, component: Slot }) => (
-            <Slot key={key} />
-          ))}
+          {headerSlots.length > 0 ? (
+            headerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
+          ) : (
+            <SidebarBrand />
+          )}
         </div>
         <div className="ask-main-panel__header-actions">
           <ButtonUtility
@@ -88,9 +92,11 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, items }) => {
       </nav>
 
       <div className="ask-main-panel__footer">
-        {footerSlots.map(({ key, component: Slot }) => (
-          <Slot key={key} />
-        ))}
+        {footerSlots.length > 0 ? (
+          footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
+        ) : (
+          <UserProfileCard />
+        )}
       </div>
     </div>
   );
