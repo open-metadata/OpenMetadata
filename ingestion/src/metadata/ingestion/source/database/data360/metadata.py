@@ -233,16 +233,15 @@ class Data360Source(DatabaseServiceSource):
         dataspace_name = self.context.get().database
         schema_name = self.context.get().database_schema
         metadata_type = get_metadata_type(schema_name)
-        metadata_res = get_metadata_by_type(
+        metadata_items = get_metadata_by_type(
             client=self.client,
             entity_type=metadata_type,
             dataspace_name=dataspace_name,
+            pagination_limit=self.service_connection.paginationLimit,
             log_warning=self.log_warning,
         )
-        if not metadata_res:
-            return
 
-        for datacloud_object in metadata_res.get(ResponseConstant.METADATA, []):
+        for datacloud_object in metadata_items:
             table_name = datacloud_object.get(ResponseConstant.NAME)
             table_fqn = fqn.build(
                 self.metadata,

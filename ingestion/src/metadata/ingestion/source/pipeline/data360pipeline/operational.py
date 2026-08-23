@@ -41,6 +41,9 @@ from metadata.ingestion.source.pipeline.data360pipeline.constant import (
     MetadataTypesConstant,
     ResponseConstant,
 )
+from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
+    ResourceNotFoundException,
+)
 from metadata.ingestion.source.pipeline.data360pipeline.metadata import (
     Data360PipelineSource,
 )
@@ -50,9 +53,6 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
     DataStreamDetails,
     DataTransformDetails,
     DataTransformRun,
-)
-from metadata.ingestion.source.pipeline.informatica.exceptions import (
-    ResourceNotFoundException,
 )
 from metadata.utils.logger import ingestion_logger
 

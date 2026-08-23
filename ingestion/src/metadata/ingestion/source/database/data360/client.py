@@ -16,15 +16,7 @@ from collections.abc import Callable
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from simple_salesforce.api import Salesforce
-from simple_salesforce.exceptions import (
-    SalesforceAuthenticationFailed,
-    SalesforceExpiredSession,
-    SalesforceGeneralError,
-    SalesforceMalformedRequest,
-    SalesforceMoreThanOneRecord,
-    SalesforceRefusedRequest,
-    SalesforceResourceNotFound,
-)
+from simple_salesforce.exceptions import SalesforceResourceNotFound
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from metadata.ingestion.source.database.data360.constant import (
@@ -37,15 +29,11 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_SALESFORCE_API_ERRORS = (
-    SalesforceResourceNotFound,
-    SalesforceRefusedRequest,
-    SalesforceMoreThanOneRecord,
-    SalesforceMalformedRequest,
-    SalesforceExpiredSession,
-    SalesforceAuthenticationFailed,
-    SalesforceGeneralError,
-)
+# Only a "resource not found" response is treated as a legitimate empty result.
+# Every other Salesforce error (auth failure, expired session, refused/malformed
+# request, general error) must propagate so callers don't mistake a genuine API
+# failure for "no data".
+_SALESFORCE_NOT_FOUND_ERRORS = (SalesforceResourceNotFound,)
 
 
 @retry(
@@ -65,8 +53,8 @@ def _get(
     _warn = log_warning or logger.warning
     try:
         return client.restful(path=path, params=params)
-    except _SALESFORCE_API_ERRORS as exc:
-        _warn(f"Error fetching {metadata_type} from Data 360: {exc}")
+    except _SALESFORCE_NOT_FOUND_ERRORS as exc:
+        _warn(f"{metadata_type} not found in Data 360: {exc}")
         return None
 
 
@@ -76,12 +64,14 @@ def _run_paginator(
     path: str,
     limit: int,
     log_warning: Callable,
+    extra_params: dict | None = None,
 ) -> list:
     """Fetches all pages of a paginated Data 360 API endpoint and returns all items."""
     json_config = get_json_config(object_type=object_type)
     params = {
         json_config.get(Constant.LIMIT): limit,
         json_config.get(Constant.OFFSET): 0,
+        **(extra_params or {}),
     }
     total_objects = []
 
@@ -140,15 +130,20 @@ def get_dataspaces(client: Salesforce, limit: int, log_warning: Callable) -> lis
 
 
 def get_metadata_by_type(
-    client: Salesforce, entity_type: str, dataspace_name: str, log_warning: Callable
-) -> dict | None:
-    """Fetches metadata objects of the given type within a dataspace."""
-    return _get(
+    client: Salesforce,
+    entity_type: str,
+    dataspace_name: str,
+    pagination_limit: int,
+    log_warning: Callable,
+) -> list:
+    """Fetches all metadata objects of the given type within a dataspace, across all pages."""
+    return _run_paginator(
         client=client,
+        object_type=MetadataTypesConstant.METADATA,
         path="ssot/metadata",
-        params={"dataspace": dataspace_name, "entityType": entity_type},
-        metadata_type=entity_type,
+        limit=pagination_limit,
         log_warning=log_warning,
+        extra_params={"dataspace": dataspace_name, "entityType": entity_type},
     )
 
 

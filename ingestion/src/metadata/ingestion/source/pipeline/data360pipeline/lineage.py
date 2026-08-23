@@ -15,7 +15,7 @@ Salesforce Data 360 pipeline lineage ingestion
 import json
 import traceback
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, cast
 
 from cached_property import cached_property
 from collate_sqllineage.core.models import SubQuery
@@ -40,6 +40,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.parser import InvalidWorkflowException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, search_table_entities
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -55,6 +56,10 @@ from metadata.ingestion.source.pipeline.data360pipeline.constant import (
     ConnectionTypesConstant,
     ResponseConstant,
 )
+from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
+    QueryParseException,
+    ResourceNotFoundException,
+)
 from metadata.ingestion.source.pipeline.data360pipeline.metadata import (
     Data360PipelineSource,
 )
@@ -63,10 +68,6 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
     DataCloudPipelineDetails,
     DataStreamDetails,
     DataTransformDetails,
-)
-from metadata.ingestion.source.pipeline.informatica.exceptions import (
-    QueryParseException,
-    ResourceNotFoundException,
 )
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
@@ -83,6 +84,24 @@ class Data360PipelineLineageSource(Data360PipelineSource):
     - DMO → CIO (model to calculated insight, via SQL expression parsing)
     - DataTransform → source/target DMOs
     """
+
+    @classmethod
+    def create(
+        cls,
+        config_dict,
+        metadata,
+        pipeline_name: str | None = None,
+    ) -> "Data360PipelineLineageSource":
+        source = cast(
+            "Data360PipelineLineageSource",
+            super().create(config_dict, metadata, pipeline_name),
+        )
+        if not source.service_connection.data360DbServiceName:
+            raise InvalidWorkflowException(
+                "Please provide the Data360 database service name in the service "
+                "connection to extract lineage."
+            )
+        return source
 
     @cached_property
     def service_mapping(self) -> dict:
@@ -162,11 +181,18 @@ class Data360PipelineLineageSource(Data360PipelineSource):
             ConnectionTypesConstant.AWS_S3,
             ConnectionTypesConstant.SFTP,
         ):
+            connector_name = pipeline_details.connectorInfo.connectorDetails.name
+            storage_service_name = self.service_mapping.get(connector_name)
+            if not storage_service_name:
+                raise ResourceNotFoundException(
+                    f"No service mapping found for connector '{connector_name}' in datastream "
+                    f"{pipeline_details.get_name()}. Add it to serviceMapping."
+                )
             source_details[ResponseConstant.FILE_NAME] = pipeline_details.advancedAttributes.fileName
             fqn_string = fqn.build(
                 metadata=self.metadata,
                 entity_type=Container,
-                service_name="*",
+                service_name=storage_service_name,
                 parent_container="*",
                 container_name=pipeline_details.advancedAttributes.fileName,
             )

@@ -32,7 +32,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.parser import InvalidWorkflowException
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -41,6 +40,9 @@ from metadata.ingestion.source.database.data360.client import (
     get_calculated_insights,
     get_datastreams,
     get_datatransforms,
+)
+from metadata.ingestion.source.database.data360.constant import (
+    Constant as Data360Constant,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
     MetadataTypesConstant,
@@ -77,10 +79,6 @@ class Data360PipelineSource(PipelineServiceSource):
         if not isinstance(connection, Data360PipelineConnection):
             raise InvalidSourceException(
                 f"Expected Data360PipelineConnection, but got {connection}"
-            )
-        if not connection.data360DbServiceName:
-            raise InvalidWorkflowException(
-                "Please provide the Data360 database service name in the service connection"
             )
         return cls(config, metadata)
 
@@ -161,7 +159,7 @@ class Data360PipelineSource(PipelineServiceSource):
             "tags": get_tag_labels(
                 self.metadata,
                 pipeline_details.get_tags(),
-                self.source_config.tagClassificationName,
+                Data360Constant.TAG_CLASSIFICATION_NAME,
                 self.source_config.includeTags,
             ),
             "tasks": [
@@ -220,7 +218,7 @@ class Data360PipelineSource(PipelineServiceSource):
             tags = pipeline_details.get_tags()
             yield from get_ometa_tag_and_classification(
                 tags=tags,
-                classification_name=self.source_config.tagClassificationName,
+                classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
                 tag_description="Data360 Tags",
                 classification_description="Tags associated with Salesforce Data 360",
                 include_tags=self.source_config.includeTags,

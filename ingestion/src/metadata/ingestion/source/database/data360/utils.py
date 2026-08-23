@@ -102,6 +102,12 @@ def get_json_config(object_type: str) -> dict | None:
             Constant.OFFSET: Constant.OFFSET,
             ResponseConstant.ITEMS: ResponseConstant.DATATRANSFORMS,
         },
+        MetadataTypesConstant.METADATA: {
+            ResponseConstant.TOTAL_SIZE: ResponseConstant.TOTAL_SIZE,
+            Constant.LIMIT: Constant.LIMIT,
+            Constant.OFFSET: Constant.OFFSET,
+            ResponseConstant.ITEMS: ResponseConstant.METADATA,
+        },
     }
     return res_json_config.get(object_type)
 

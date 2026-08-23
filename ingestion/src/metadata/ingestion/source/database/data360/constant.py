@@ -23,6 +23,7 @@ class MetadataTypesConstant:
     CIO = "CIO"
     DATASTREAMS = "Datastreams"
     DATATRANSFORMS = "Datatransforms"
+    METADATA = "Metadata"
 
 
 class ResponseConstant:
