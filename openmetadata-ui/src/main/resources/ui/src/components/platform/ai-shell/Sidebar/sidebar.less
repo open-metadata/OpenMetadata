@@ -38,10 +38,21 @@
 
 // Sidebar widths for each sub-mode combination.
 // Formula: outer-padding*2 + left-rail + gap + right-panel/rail.
-@ask-sidebar-sub-width: (@ask-rail-width-sub + @ask-sub-panel-width + @ask-sub-gap + (@ask-sub-outer-padding * 2)); // main expanded + sub expanded  = 321px
-@ask-sidebar-sub-rail-only-width: (@ask-rail-width-sub + @ask-sub-rail-width + @ask-sub-gap + (@ask-sub-outer-padding * 2)); // main expanded + sub collapsed = 136px
-@ask-sidebar-main-collapsed-sub-width: (@ask-rail-width + @ask-sub-panel-width + @ask-sub-gap + (@ask-sub-outer-padding * 2)); // main collapsed + sub expanded  = 331px
-@ask-sidebar-both-collapsed-width: (@ask-rail-width + @ask-sub-rail-width + (@ask-sub-outer-padding * 2)); // both collapsed               = 138px
+@ask-sidebar-sub-width: (
+  @ask-rail-width-sub + @ask-sub-panel-width + @ask-sub-gap +
+    (@ask-sub-outer-padding * 2)
+); // main expanded + sub expanded  = 321px
+@ask-sidebar-sub-rail-only-width: (
+  @ask-rail-width-sub + @ask-sub-rail-width + @ask-sub-gap +
+    (@ask-sub-outer-padding * 2)
+); // main expanded + sub collapsed = 136px
+@ask-sidebar-main-collapsed-sub-width: (
+  @ask-rail-width + @ask-sub-panel-width + @ask-sub-gap +
+    (@ask-sub-outer-padding * 2)
+); // main collapsed + sub expanded  = 331px
+@ask-sidebar-both-collapsed-width: (
+  @ask-rail-width + @ask-sub-rail-width + (@ask-sub-outer-padding * 2)
+); // both collapsed               = 138px
 
 // Sub-panel nav item — taller / different padding than the main nav.
 // Figma 3405:13529.
@@ -135,10 +146,23 @@
 
   // [main expanded] + [sub collapsed → SubRail].
   &--sub&--sub-collapsed:not(&--collapsed) {
-    flex: 0 0 (@ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width + (@ask-sub-outer-padding * 2));
-    width: (@ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width + (@ask-sub-outer-padding * 2));
-    min-width: (@ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width + (@ask-sub-outer-padding * 2));
-    max-width: (@ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width + (@ask-sub-outer-padding * 2));
+    flex: 0 0
+      (
+        @ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width +
+          (@ask-sub-outer-padding * 2)
+      );
+    width: (
+      @ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width +
+        (@ask-sub-outer-padding * 2)
+    );
+    min-width: (
+      @ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width +
+        (@ask-sub-outer-padding * 2)
+    );
+    max-width: (
+      @ask-sidebar-width + @ask-sub-gap + @ask-sub-rail-width +
+        (@ask-sub-outer-padding * 2)
+    );
     gap: @ask-sub-gap;
   }
 
@@ -246,6 +270,13 @@
   }
 
   &__profile {
+    flex-shrink: 0;
+  }
+
+  // Footer (user card) sticks to the bottom of the panel — no chat section
+  // fills the space between the nav and the footer in OSS ClassicV1.
+  &__footer {
+    margin-top: auto;
     flex-shrink: 0;
   }
 }
@@ -966,7 +997,7 @@
       }
 
       // Same reason — `ProfilePicture`'s outer wrapper has inline 40x40.
-      >div:not(.name-persona-container) {
+      > div:not(.name-persona-container) {
         width: 24px !important;
         height: 24px !important;
       }

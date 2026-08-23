@@ -134,7 +134,7 @@ const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
           {headerSlots.length > 0 ? (
             headerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
           ) : (
-            <SidebarBrand />
+            <SidebarBrand variant="rail" />
           )}
           <button
             aria-label={t('label.expand')}
@@ -157,7 +157,7 @@ const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
         ) : (
-          <UserProfileCard />
+          <UserProfileCard compact />
         )}
       </div>
     </div>

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Scales01 } from '@untitledui/icons';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import { ReactComponent as GovernIcon } from '../../../assets/svg/governance.svg';
 import { ReactComponent as MetricsIcon } from '../../../assets/svg/metric.svg';
 import { ReactComponent as OntologyIcon } from '../../../assets/svg/ic-governance.svg';
 import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/workflow.svg';
@@ -31,8 +31,8 @@ export const governModule: AppModule = {
   id: 'govern',
   navOrder: 65,
   labelKey: 'label.governance',
-  icon: GovernIcon,
-  activeIcon: GovernIcon,
+  icon: Scales01,
+  activeIcon: Scales01,
   prefix: ROUTES.GLOSSARY,
   additionalPrefixes: [
     ROUTES.TAGS,

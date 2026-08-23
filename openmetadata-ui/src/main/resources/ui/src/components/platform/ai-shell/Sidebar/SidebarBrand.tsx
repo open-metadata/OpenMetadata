@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+
+export interface SidebarBrandProps {
+  /**
+   * Which sidebar surface hosts the brand. `panel` (default) is the expanded
+   * MainPanel header; `rail` is the collapsed 32px rail, where the button must
+   * center a square monogram rather than stretch a wide logo.
+   */
+  variant?: 'panel' | 'rail';
+}
 
 /**
  * Default brand chrome for the ClassicV1 sidebar header — the OpenMetadata
@@ -24,7 +34,7 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
  * (Collate) brand still overrides it. Uses `brandClassBase.getMonogram()` so it
  * honours white-label branding, the same source the classic NavBar logo uses.
  */
-const SidebarBrand: React.FC = () => {
+const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const Monogram = brandClassBase.getMonogram().svg;
@@ -32,7 +42,10 @@ const SidebarBrand: React.FC = () => {
   return (
     <button
       aria-label={t('label.home')}
-      className="ask-logo-btn ask-main-panel__logo-btn"
+      className={classNames('ask-logo-btn', {
+        'ask-main-panel__logo-btn': variant === 'panel',
+        'ask-rail__logo-btn': variant === 'rail',
+      })}
       data-testid="ask-logo-btn"
       type="button"
       onClick={() => navigate(ROUTES.MY_DATA)}>

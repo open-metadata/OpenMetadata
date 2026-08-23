@@ -13,10 +13,20 @@
 
 .assistant-layout {
   height: 100%;
+  // Page background sits behind the sidebar card and the content panel, so the
+  // gaps around them read as a framed surface rather than bare white.
+  background: var(--tw-color-utility-gray-blue-50);
 }
 
 .assistant-content {
   flex: 1;
   min-width: 0;
+  // Flex column + relative so pages fill the height and can dock elements
+  // (headers, footers) to the panel; the white surface + card radius (applied
+  // via `border-radius-card` in the layout markup) make it a distinct panel.
+  display: flex;
+  flex-direction: column;
+  position: relative;
   overflow: auto;
+  background-color: var(--tw-color-bg-primary);
 }

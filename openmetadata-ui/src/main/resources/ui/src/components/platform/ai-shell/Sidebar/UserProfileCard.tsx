@@ -11,20 +11,45 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import classNames from 'classnames';
+import React, { useRef } from 'react';
+import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import { UserProfileIcon } from '../../../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 
+export interface UserProfileCardProps {
+  /**
+   * `true` in the collapsed 32px rail: show only the avatar and drop the
+   * full-width mode switcher (its label can't fit the rail — the switcher is
+   * reachable once the panel is expanded).
+   */
+  compact?: boolean;
+}
+
 /**
- * Default user chrome for the ClassicV1 sidebar footer — reuses the shared
- * `UserProfileIcon` (avatar, name, and the profile dropdown that also carries
- * the Classic/ClassicV1 mode switcher). Rendered by `MainPanel`/`Rail` only
- * when no plugin contributes an `app-mode.sidebar.*.footer` slot, so a
- * downstream (Collate) user card still overrides it.
+ * Default user chrome for the ClassicV1 sidebar footer — the shared
+ * `UserProfileIcon` (avatar, name, profile dropdown) plus the Classic/ClassicV1
+ * `AppModeSwitcher`, mirroring Collate's user card. Rendered by
+ * `MainPanel`/`Rail` only when no plugin contributes an
+ * `app-mode.sidebar.*.footer` slot, so a downstream (Collate) user card still
+ * overrides it. `cardRef` lets the switcher popover treat clicks inside the
+ * card as "inside" and not self-close.
  */
-const UserProfileCard: React.FC = () => (
-  <div className="ask-user-card" data-testid="ask-user-card">
-    <UserProfileIcon />
-  </div>
-);
+const UserProfileCard: React.FC<UserProfileCardProps> = ({
+  compact = false,
+}) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      className={classNames('ask-user-card', {
+        'tw:flex tw:flex-col tw:gap-2': !compact,
+      })}
+      data-testid="ask-user-card"
+      ref={cardRef}>
+      <UserProfileIcon />
+      {compact ? null : <AppModeSwitcher cardRef={cardRef} />}
+    </div>
+  );
+};
 
 export default UserProfileCard;
