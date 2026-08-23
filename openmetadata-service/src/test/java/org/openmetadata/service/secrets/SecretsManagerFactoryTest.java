@@ -90,6 +90,31 @@ public class SecretsManagerFactoryTest {
         GCPSecretsManager.class);
   }
 
+  /**
+   * The non-managed value falls through to the DB manager, exactly as `aws` / `azure-kv` do: the
+   * server does not write to OpenBao in that mode, only the ingestion side reads from it.
+   */
+  @Test
+  void testIsCreatedIfOpenBaoSecretsManager() {
+    config.setSecretsManager(SecretsManagerProvider.OPENBAO);
+    assertInstanceOf(
+        DBSecretsManager.class, SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
+  }
+
+  @Test
+  void testIsCreatedIfManagedOpenBaoSecretsManager() {
+    OpenBaoSecretsManager.resetInstance();
+    config.setSecretsManager(SecretsManagerProvider.MANAGED_OPENBAO);
+    Parameters parameters = new Parameters();
+    config.setParameters(parameters);
+    // No address: construction must fail before any network call is attempted, which is what keeps
+    // this test container-free.
+    Assertions.assertThrows(
+        RuntimeException.class,
+        () -> SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME));
+    OpenBaoSecretsManager.resetInstance();
+  }
+
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
     config.setSecretsManager(secretManagerProvider);
     Parameters parameters = new Parameters();

@@ -1,0 +1,98 @@
+# Development-only overlay adding an OpenBao instance and pointing the OpenMetadata
+# server and ingestion containers at it.
+#
+# Must live in docker/development/ to work: an override file's relative paths resolve
+# against the Compose project directory (the first -f file's directory), so the
+# bootstrap script mount below only resolves once this file sits beside the base compose.
+#
+# Usage (from docker/development/):
+#   docker compose -f docker-compose.yml -f docker-compose.openbao.yml up -d
+#
+# The root token below is a fixed dev-mode literal. OpenBao dev mode keeps everything
+# in memory, unsealed, with no persistence. Never use this file, or this token, anywhere
+# but a local developer machine.
+
+services:
+  openbao:
+    image: openbao/openbao:2.6.2
+    container_name: openmetadata_openbao
+    command: server -dev
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: openbao-dev-root
+      BAO_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      BAO_ADDR: http://127.0.0.1:8200
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    networks:
+      - local_app_net
+    healthcheck:
+      # `bao status` exits non-zero until the server is initialized and unsealed,
+      # which in dev mode lands a couple of seconds after the process starts.
+      # A port-based check would pass before then and race the bootstrap container.
+      test: ["CMD", "bao", "status", "-address=http://127.0.0.1:8200"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  openbao-init:
+    image: openbao/openbao:2.6.2
+    container_name: openmetadata_openbao_init
+    depends_on:
+      openbao:
+        condition: service_healthy
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: openbao-dev-root
+    entrypoint: ["/bin/sh", "/bootstrap/bootstrap-openbao.sh"]
+    volumes:
+      - ./bootstrap-openbao.sh:/bootstrap/bootstrap-openbao.sh:ro
+    networks:
+      - local_app_net
+    restart: "no"
+
+  # The migration container initialises a secrets manager too, and `migrate` ends by
+  # running SecretsManagerUpdateService (the same code behind `migrate-secrets`). Leaving
+  # it on the default `db` while the server runs `managed-openbao` produces a split-brain
+  # deployment: migration re-writes credentials through the DB manager, the server then
+  # looks for them in OpenBao. Both must carry identical settings.
+  execute-migrate-all:
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+    environment:
+      SECRET_MANAGER: managed-openbao
+      # These map to the bao-prefixed parameter keys in conf/openmetadata.yaml.
+      # The keys are prefixed because `parameters:` is one flat map shared by every
+      # provider, and a bare `namespace` would collide with the Kubernetes provider's.
+      OM_SM_BAO_ADDRESS: http://openbao:8200
+      OM_SM_BAO_MOUNT: openmetadata
+      OM_SM_BAO_NAMESPACE: ""
+      OM_SM_BAO_TOKEN: openbao-dev-root
+      OM_SM_BAO_AUTH_METHOD: token
+      PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER: airflow
+
+  openmetadata-server:
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+    environment:
+      SECRET_MANAGER: managed-openbao
+      # These map to the bao-prefixed parameter keys in conf/openmetadata.yaml.
+      # The keys are prefixed because `parameters:` is one flat map shared by every
+      # provider, and a bare `namespace` would collide with the Kubernetes provider's.
+      OM_SM_BAO_ADDRESS: http://openbao:8200
+      OM_SM_BAO_MOUNT: openmetadata
+      OM_SM_BAO_NAMESPACE: ""
+      OM_SM_BAO_TOKEN: openbao-dev-root
+      OM_SM_BAO_AUTH_METHOD: token
+      # Decides which load_credentials branch INGESTION runs. Defaults to "noop", under
+      # which the AIRFLOW__..._OPENBAO_* vars below are never read and every workflow fails.
+      PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER: airflow
+
+  ingestion:
+    environment:
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_ADDRESS: http://openbao:8200
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_MOUNT: openmetadata
+      AIRFLOW__OPENMETADATA_SECRETS_MANAGER__OPENBAO_TOKEN: openbao-dev-root
