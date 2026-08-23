@@ -14831,6 +14831,16 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM activity_stream WHERE timestamp < :cutoff")
     int deleteOlderThan(@Bind("cutoff") long cutoffTimestamp);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entityType = :entityType AND entityId = :entityId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entitytype = :entityType AND entityid = :entityId",
+        connectionType = POSTGRES)
+    int deleteByEntity(@Bind("entityType") String entityType, @Bind("entityId") String entityId);
+
     @SqlQuery("SELECT json FROM activity_stream WHERE id = :id")
     String findById(@Bind("id") String id);
 
