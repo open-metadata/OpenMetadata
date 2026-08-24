@@ -12,11 +12,7 @@
  */
 import { Skeleton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode, useState } from 'react';
-import {
-  getTagImageSrc,
-  ICON_MAP,
-  isImageUrl,
-} from '../../../utils/IconUtils';
+import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
 
 export interface IconProps {
   iconValue: string | undefined;
@@ -76,6 +72,7 @@ export const Icon: FC<IconProps> = ({
           width={size}
         />
       )}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
         className={className}

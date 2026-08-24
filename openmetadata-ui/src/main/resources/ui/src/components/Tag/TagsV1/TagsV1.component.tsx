@@ -34,8 +34,8 @@ import {
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { Icon } from '../../common/Icon/Icon';
+import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 

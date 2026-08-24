@@ -56,9 +56,7 @@ describe('Icon', () => {
     });
 
     it('should apply custom strokeWidth to icon component', () => {
-      const { container } = render(
-        <Icon iconValue="Cube01" strokeWidth={2} />
-      );
+      const { container } = render(<Icon iconValue="Cube01" strokeWidth={2} />);
       const svg = container.querySelector('svg');
 
       expect(svg).toBeInTheDocument();
@@ -106,7 +104,9 @@ describe('Icon', () => {
 
       const img = getByTestId('icon-image');
 
-      expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+      expect(
+        container.querySelector('[aria-hidden="true"]')
+      ).toBeInTheDocument();
       expect(img).toHaveStyle({ display: 'none' });
     });
 
@@ -119,7 +119,9 @@ describe('Icon', () => {
       fireEvent.load(img);
 
       expect(img).not.toHaveStyle({ display: 'none' });
-      expect(container.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
+      expect(
+        container.querySelector('[aria-hidden="true"]')
+      ).not.toBeInTheDocument();
     });
 
     it('should render the img element with the resolved src', () => {
@@ -134,9 +136,7 @@ describe('Icon', () => {
     });
 
     it('should apply custom size to img element', () => {
-      const { getByTestId } = render(
-        <Icon iconValue="icon.png" size={48} />
-      );
+      const { getByTestId } = render(<Icon iconValue="icon.png" size={48} />);
 
       expect(getByTestId('icon-image')).toHaveStyle({
         width: '48px',
