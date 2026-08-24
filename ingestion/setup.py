@@ -77,7 +77,7 @@ VERSIONS = {
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=8.1.0",
+    "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
