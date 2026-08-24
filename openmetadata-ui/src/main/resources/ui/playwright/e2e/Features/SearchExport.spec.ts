@@ -14,7 +14,11 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, getApiContext, redirectToExplorePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
