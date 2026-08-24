@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+
 import pytest
 
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
@@ -18,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleScheme,
     OracleServiceName,
 )
+from metadata.ingestion.source.database.oracle import connection as oracle_connection
 from metadata.ingestion.source.database.oracle.connection import OracleConnection
 
 
@@ -41,3 +44,28 @@ def test_connection_url_uses_native_oracledb_dialect(scheme):
         OracleConnection.get_connection_url(connection)
         == "oracle+oracledb://admin:password@localhost:1521/?service_name=my_service"
     )
+
+
+@pytest.mark.parametrize(
+    ("client_version", "expects_deprecation_warning"),
+    [
+        ((18, 5, 0, 0, 0), True),
+        ((19, 3, 0, 0, 0), False),
+    ],
+)
+def test_thick_client_deprecation_warning(client_version, expects_deprecation_warning, monkeypatch, caplog):
+    connection = OracleConnectionConfig(
+        username="admin",
+        password="password",
+        hostPort="localhost:1521",
+        oracleConnectionType=OracleServiceName(oracleServiceName="my_service"),
+        instantClientDirectory="/instantclient",
+    )
+    monkeypatch.setattr(oracle_connection.oracledb, "init_oracle_client", lambda **_: None)
+    monkeypatch.setattr(oracle_connection.oracledb, "clientversion", lambda: client_version)
+    monkeypatch.setattr(oracle_connection, "create_generic_db_connection", lambda **_: object())
+
+    with caplog.at_level(logging.WARNING, logger="Ingestion"):
+        _ = OracleConnection(connection).client
+
+    assert ("older than 19 are deprecated" in caplog.text) is expects_deprecation_warning

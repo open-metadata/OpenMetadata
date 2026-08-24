@@ -60,6 +60,7 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 LD_LIB_ENV = "LD_LIBRARY_PATH"
+MIN_RECOMMENDED_ORACLE_CLIENT_VERSION = 19
 
 logger = ingestion_logger()
 
@@ -80,11 +81,19 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 )
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
                 oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
+                if oracledb.clientversion()[0] < MIN_RECOMMENDED_ORACLE_CLIENT_VERSION:
+                    logger.warning(
+                        "Oracle Client versions older than %s are deprecated and "
+                        "will not be supported in a future OpenMetadata release. "
+                        "Upgrade to Oracle Client %s or newer.",
+                        MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
+                        MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
+                    )
         except DatabaseError as err:
             logger.warning(
                 "Could not initialize Oracle thick client. "
-                "Verify that Oracle Client 19 or newer is installed and available; "
-                "continuing with the current driver mode: %s",
+                "Verify that Oracle Client 11.2 or newer is installed and available; "
+                "continuing in thin mode: %s",
                 err,
             )
 
