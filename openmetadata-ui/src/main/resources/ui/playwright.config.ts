@@ -96,6 +96,10 @@ export default defineConfig({
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
+        // Toggles the global enableAccessControl search setting in beforeAll/afterAll —
+        // same reason SearchRBAC.spec.ts is isolated below; runs in the SearchRBAC
+        // project instead so it never races other chromium tests on that setting.
+        '**/DomainIncidentIsolation.spec.ts',
         '**/SSOLogin.spec.ts',
         // Runs in its own post-chromium project to prevent IntakeForm.spec.ts's
         // per-test beforeEach (which deletes all intake forms) from racing against
@@ -160,11 +164,20 @@ export default defineConfig({
       fullyParallel: true,
     },
     {
+      // Also runs DomainIncidentIsolation.spec.ts (1.13 backport of the #31740 domain-RBAC
+      // fix) — it toggles the same global enableAccessControl setting in beforeAll/afterAll,
+      // so it needs the same isolation from chromium. workers:1 serializes the two spec
+      // files against each other too (a second file here would otherwise be free to run
+      // on a separate worker and race the same setting within this one project).
       name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
+      testMatch: [
+        '**/SearchRBAC.spec.ts',
+        '**/DomainIncidentIsolation.spec.ts',
+      ],
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
+      workers: 1,
     },
     // Compatibility shim for PR workflows that still pass --project=DomainIsolation.
     // The DomainIsolation E2E suite is not backported to 1.13, so this project intentionally
