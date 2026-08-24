@@ -336,7 +336,9 @@ const TableV2 = <T extends object>(
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();
-  const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
+  const [reorderedList, setReorderedList] = useState<
+    TableColumnDropdownList[] | null
+  >(null);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
   const [pageSizeOverride, setPageSizeOverride] = useState<number | null>(null);
@@ -400,6 +402,49 @@ const TableV2 = <T extends object>(
     },
     [clientPagination]
   );
+
+  const isCustomizeColumnEnable = useMemo(
+    () =>
+      !isEmpty(rest.staticVisibleColumns) && !isEmpty(defaultVisibleColumns),
+    [rest.staticVisibleColumns, defaultVisibleColumns]
+  );
+
+  const scrollStyle = useMemo((): React.CSSProperties => {
+    if (!scroll) {
+      return {};
+    }
+
+    return {
+      ...(scroll.x ? { overflowX: 'auto' } : {}),
+    };
+  }, [scroll?.x]);
+
+  /**
+   * Derived, not state: seeding this from an effect left the first render with
+   * zero columns, and React Aria registers the column collection on that render
+   * — the body then renders cells against an empty header and throws "Cell
+   * count must match column count".
+   */
+  const propsColumns = useMemo((): ColumnsType<T> => {
+    const columns = rest.columns ?? [];
+    if (!isCustomizeColumnEnable) {
+      return columns;
+    }
+    const visible = columns.filter(
+      (item) =>
+        columnDropdownSelections.includes(item.key as string) ||
+        (rest.staticVisibleColumns ?? []).includes(item.key as string)
+    );
+
+    return getReorderedColumns(reorderedList ?? dropdownColumnList, visible);
+  }, [
+    rest.columns,
+    isCustomizeColumnEnable,
+    columnDropdownSelections,
+    rest.staticVisibleColumns,
+    reorderedList,
+    dropdownColumnList,
+  ]);
 
   /**
    * A column carrying `sortOrder` drives the sort, exactly as in AntD — the
@@ -485,30 +530,14 @@ const TableV2 = <T extends object>(
       : internalExpandedKeys;
   }, [rest.expandable, internalExpandedKeys]);
 
-  const isCustomizeColumnEnable = useMemo(
-    () =>
-      !isEmpty(rest.staticVisibleColumns) && !isEmpty(defaultVisibleColumns),
-    [rest.staticVisibleColumns, defaultVisibleColumns]
-  );
-
-  const scrollStyle = useMemo((): React.CSSProperties => {
-    if (!scroll) {
-      return {};
-    }
-
-    return {
-      ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
-
   // ─── Column customization (identical to Table.tsx) ───────────────────────
 
   const handleMoveItem = useCallback(
     (updatedList: TableColumnDropdownList[]) => {
       setDropdownColumnList(updatedList);
-      setPropsColumns(getReorderedColumns(updatedList, propsColumns));
+      setReorderedList(updatedList);
     },
-    [propsColumns]
+    []
   );
 
   const handleColumnItemSelect = useCallback(
@@ -741,26 +770,6 @@ const TableV2 = <T extends object>(
       );
     }
   }, [isCustomizeColumnEnable, rest.columns, rest.staticVisibleColumns]);
-
-  useEffect(() => {
-    if (isCustomizeColumnEnable) {
-      const filteredColumns = (rest.columns ?? []).filter(
-        (item) =>
-          columnDropdownSelections.includes(item.key as string) ||
-          (rest.staticVisibleColumns ?? []).includes(item.key as string)
-      );
-
-      setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
-    } else {
-      setPropsColumns(rest.columns ?? []);
-    }
-  }, [
-    isCustomizeColumnEnable,
-    rest.columns,
-    columnDropdownSelections,
-    rest.staticVisibleColumns,
-    dropdownColumnList,
-  ]);
 
   useEffect(() => {
     if (isCustomizeColumnEnable) {
