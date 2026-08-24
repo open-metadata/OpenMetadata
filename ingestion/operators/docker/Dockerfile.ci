@@ -205,29 +205,38 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # apt-mark manual pins them before autoremove runs so the cleanup doesn't take
 # them out too -- verified end-to-end by the `import MySQLdb` gate check.
 #
-# The util-linux upgrade rides along in the same root layer. trixie's base ships
-# 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and CVE-2026-27456;
-# trixie-security has 2.41.5-0+deb13u1.
-# The package set is computed from dpkg rather than hand-listed. One source
+# The OS security upgrades ride along in the same root layer. trixie's base ships
+# util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
+# CVE-2026-27456; trixie-security has 2.41.5-0+deb13u1.
+# expat is the same story one release later. It is not in the trixie base at all
+# -- it arrives transitively from the top-of-file apt layer -- and that layer's
+# frozen index is exactly why the image keeps shipping 2.8.2 and being reported
+# for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
+# The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
 # report each separately, so a hand-written list silently leaves behind whichever
 # binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
-# Asking dpkg which installed packages came from the util-linux source cannot
-# miss one, and stays correct if Debian splits the source differently later.
-# The empty check is not defensive noise: `apt-get install --only-upgrade` with
-# no package arguments exits 0, so a query that silently returned nothing would
-# give a green build that shipped the vulnerable packages anyway. Fail closed.
+# Asking dpkg which installed packages came from the source cannot miss one, and
+# stays correct if Debian splits the source differently later.
+# util-linux is asserted non-empty and expat deliberately is not: util-linux is
+# Essential, so an empty query there means dpkg-query misbehaved and the build
+# must not continue, whereas expat is transitive and an empty query is a
+# legitimate image with nothing to patch. Asserting one of the two is what the
+# check is for -- `apt-get install --only-upgrade` with no package arguments
+# exits 0, so an all-empty query would give a green build that shipped the
+# vulnerable packages anyway. Fail closed.
 # This deliberately does NOT go in the top-of-file apt RUN: that layer's cache
 # key never changes, so an upgrade placed there freezes its Debian index with it
 # and the image keeps shipping whatever was current when the layer was first
 # built. Below the COPY and pip layers, the index is re-read on every build.
 USER root
 RUN set -eu; \
-    pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
-    [ -n "$pkgs" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
+    [ -n "$ul" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $pkgs; \
+    apt-get -qq install -y --only-upgrade $ul $ex; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \
@@ -238,46 +247,9 @@ USER openmetadata
 # build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
 # 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
 # what keeps scanners reporting CVE-2026-59890.
-# Keep this the LAST pip layer that can compile anything -- a later layer that builds a
-# package needing pkg_resources would fail here, and the error would not look like a
-# setuptools problem. The sqlparse override below is a pure-Python wheel, so it is exempt.
+# Keep this the LAST pip layer -- a later layer that compiles a package needing
+# pkg_resources would fail here, and the error would not look like a setuptools problem.
 RUN pip install --upgrade "setuptools>=83"
-
-# Force sqlparse past two declared ceilings to clear CVE-2026-54284, CVE-2026-59893,
-# CVE-2026-71491 (parser CPU-exhaustion DoS) and CVE-2026-59894 (SQL string breakout in
-# the python/php output formats). All four are fixed only in 0.6.0 -- OSV reports no
-# patched 0.5.x -- so no in-range version is clean and the resolver cannot help us:
-#     collate-sqllineage 2.1.4                     sqlparse==0.5.4
-#     dbt-core (transitive via collate-data-diff)  sqlparse<0.6.0
-# Both ceilings are stale rather than substantive. collate-sqllineage 2.1.5 shipped with
-# sqlparse==0.6.0 and 2.1.6 reverted only the pin to stay co-installable with dbt-core --
-# the two releases are byte-identical apart from the version string, so 0.6.0 is a version
-# upstream already released against. dbt-core's ceiling predates 0.6.0 by nine months and
-# is tracked at https://github.com/dbt-labs/dbt-core/issues/15988. Once that lands, delete
-# this layer and raise the floors in ingestion/setup.py instead.
-#
-# --no-deps because pip would otherwise backtrack on the declared conflict. `pip install`
-# exits 0 while printing the resolver-conflict ERROR, and `pip check` will report the two
-# unsatisfied pins for the life of the image, so the import gate is what actually keeps
-# this honest. It asserts the two things that would otherwise fail silently: that we really
-# got 0.6.x, and that collate-sqllineage's monkeypatch of sqlparse internals still bites.
-# That patch raises MAX_GROUPING_DEPTH/MAX_GROUPING_TOKENS 100x and retypes STRING as a
-# builtin; if a future sqlparse renames either, the patch degrades to a no-op and lineage
-# comes back quietly truncated with nothing failing.
-RUN pip install --no-deps "sqlparse==0.6.0" \
- && python -W ignore -c "\
-import sqlparse; \
-from sqlparse.engine import grouping; \
-from sqlparse.keywords import KEYWORDS; \
-import collate_sqllineage.core.parser.sqlparse; \
-from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer; \
-from collate_sqllineage.runner import LineageRunner; \
-assert sqlparse.__version__.startswith('0.6.'), sqlparse.__version__; \
-assert (grouping.MAX_GROUPING_DEPTH, grouping.MAX_GROUPING_TOKENS) == (10000, 1000000), 'sqllineage grouping patch is a no-op'; \
-assert str(KEYWORDS['STRING']) == 'Token.Name.Builtin', 'sqllineage keyword patch is a no-op'; \
-r = LineageRunner('INSERT INTO db.sch.tgt SELECT c FROM db.sch.src', analyzer=SqlParseLineageAnalyzer); \
-assert [str(t) for t in r.source_tables] == ['db.sch.src'], r.source_tables; \
-assert [str(t) for t in r.target_tables] == ['db.sch.tgt'], r.target_tables"
 
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.

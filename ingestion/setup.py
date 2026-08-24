@@ -20,8 +20,10 @@ from setuptools import setup
 # Add here versions required for multiple plugins
 VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
-    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
-    "airflow": "apache-airflow==3.3.0",
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
+    # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
+    "airflow": "apache-airflow==3.3.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -38,15 +40,15 @@ VERSIONS = {
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.1.4",
+    "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
-    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
+    "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
-    "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn>=1.3,<2",
+    "numpy": "numpy>=2,<3",
+    "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -54,7 +56,7 @@ VERSIONS = {
     "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy<3.8",
+    "spacy": "spacy>=3.8.2,<3.9",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -75,7 +77,7 @@ VERSIONS = {
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=7.4.5",
+    "asammdf": "asammdf~=8.1.0",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -178,7 +180,7 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage==2.1.4",
+    "collate-sqllineage==2.1.7",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -236,7 +238,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
-        "croniter<3",
+        # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
+        # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its
+        # floor to croniter>=6.2.2 -- a stale "croniter<3" makes the two uninstallable
+        # together. The airflow images already run croniter 6.2.x via the constraints file.
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
@@ -445,7 +450,7 @@ dev = {
     "google-api-python-client-stubs",
     "google-auth-stubs",
     "types-requests",
-    "pandas-stubs~=2.1.4",
+    "pandas-stubs~=2.2",
     "scipy-stubs",
     "nox",
     "pre-commit",

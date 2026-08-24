@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.json.Json;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -122,16 +124,18 @@ class SystemRepositoryPatchSettingTest {
   }
 
   @Test
-  void patchSettingTranslatesStaleRelationIndexToPreconditionFailed() {
+  void patchSettingRejectsInvalidRelationPatchAsBadRequest() {
     String existingJson = "{\"relationTypes\":[{\"name\":\"relatedTo\"}]}";
     when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(existingJson);
 
-    PreconditionFailedException failure =
+    BadRequestException failure =
         assertThrows(
-            PreconditionFailedException.class,
+            BadRequestException.class,
             () -> systemRepository.patchSetting(SETTING_NAME, staleRelationTypePatch()));
 
-    assertTrue(failure.getMessage().contains("settings changed"));
+    assertTrue(failure.getMessage().contains("Invalid JSON Patch"));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), failure.getResponse().getStatus());
+    assertTrue(failure.getCause() instanceof JsonException);
     verify(systemDAO, never())
         .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
     settingsCacheMock.verifyNoInteractions();
