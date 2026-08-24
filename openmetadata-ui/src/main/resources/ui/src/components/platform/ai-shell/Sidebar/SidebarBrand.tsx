@@ -32,14 +32,15 @@ export interface SidebarBrandProps {
  * downstream build overrides via the class-replacement plugin — so this shows
  * the OpenMetadata mark by default and the Collate mark in Collate, always (no
  * plugin-install gate). The expanded panel shows the full wordmark
- * (`getLogo()`); the collapsed 32px rail shows the compact monogram
- * (`getMonogram()`).
+ * (`getSidebarLogo()`); the collapsed 32px rail shows the compact monogram
+ * (`getSidebarMonogram()`). These sidebar-specific getters let a build swap
+ * the sidebar brand without touching the NavBar/login logo.
  */
 const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const Logo = brandClassBase.getLogo().svg;
-  const Monogram = brandClassBase.getMonogram().svg;
+  const Logo = brandClassBase.getSidebarLogo().svg;
+  const Monogram = brandClassBase.getSidebarMonogram().svg;
 
   return (
     <button
