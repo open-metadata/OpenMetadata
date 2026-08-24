@@ -261,6 +261,9 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                   <div className="lvm-search">
                     <SearchMd aria-hidden className="lvm-search-icon" />
                     <input
+                      aria-label={t('label.search-entity', {
+                        entity: t('label.log-lowercase-plural'),
+                      })}
                       className="lvm-search-input"
                       data-testid="log-viewer-search"
                       placeholder={t('label.search-entity', {

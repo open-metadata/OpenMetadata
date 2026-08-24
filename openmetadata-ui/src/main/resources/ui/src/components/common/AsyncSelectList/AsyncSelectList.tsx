@@ -159,23 +159,22 @@ const AsyncSelectList: FC<
 
   const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const { currentTarget } = e;
+    // optionFilteredCount added to equalize the options received from the server
     if (
       currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
+        currentTarget.scrollHeight &&
+      options.length + optionFilteredCount < paging.total
     ) {
-      // optionFilteredCount added to equalize the options received from the server
-      if (options.length + optionFilteredCount < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
+      try {
+        setHasContentLoading(true);
+        const res = await fetchOptions(searchValue, currentPage + 1);
+        setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
+        setPaging(res.paging);
+        setCurrentPage((prev) => prev + 1);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setHasContentLoading(false);
       }
     }
   };

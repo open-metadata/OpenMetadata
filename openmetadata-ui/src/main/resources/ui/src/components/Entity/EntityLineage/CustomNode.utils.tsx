@@ -108,7 +108,10 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      role="presentation"
+      onBlur={handleLineageNodeHandleMouseOut}
       onClick={handleLineageNodeHandleClick}
+      onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
@@ -276,6 +279,7 @@ const ColumnContentInner = ({
         'custom-node-header-column-tracing': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
+      role="presentation"
       style={{
         paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}
