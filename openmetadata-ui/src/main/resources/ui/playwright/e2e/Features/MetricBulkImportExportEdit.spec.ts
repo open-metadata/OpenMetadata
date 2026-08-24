@@ -1024,7 +1024,7 @@ test.describe(
 
         await clickMetricAction(page, 'Export');
         const response = await exportResponse;
-        expect(response.ok()).toBeTruthy();
+        expect(response.status()).toBe(200);
         // Verify exactly one export request was fired (no duplicate calls).
         await expect.poll(() => exportRequestCount).toBe(1);
         await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
@@ -1162,7 +1162,7 @@ test.describe(
         const applyResponse = waitForMetricImportResponse(page, false);
         await page.getByRole('button', { name: /Start Import/i }).click();
         const response = await applyResponse;
-        expect(response.ok()).toBeTruthy();
+        expect(response.status()).toBe(200);
         await expectMetricImportStatus(page, {
           processed: '1',
           passed: '1',
@@ -1222,7 +1222,7 @@ test.describe(
       const updateResponse = waitForMetricImportResponse(page, false);
       await page.getByRole('button', { name: 'Update' }).click();
       const response = await updateResponse;
-      expect(response.ok()).toBeTruthy();
+      expect(response.status()).toBe(200);
       await page.waitForURL(/\/metrics/, { timeout: 90000 });
 
       const updatedMetric = await parseResponse<MetricResponse>(
