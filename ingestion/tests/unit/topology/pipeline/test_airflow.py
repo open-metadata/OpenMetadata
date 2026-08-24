@@ -12,11 +12,14 @@
 Test Airflow processing
 """
 
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
+from sqlalchemy import JSON, Boolean, Column, DateTime, LargeBinary, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session
 
 # pylint: disable=unused-import
 try:
@@ -165,6 +168,27 @@ SERIALIZED_DAG = {
         "params": {},
     },
 }
+
+
+class Airflow2Base(DeclarativeBase):
+    pass
+
+
+class Airflow2SerializedDagModel(Airflow2Base):
+    __tablename__ = "serialized_dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    fileloc = Column(String(2000), nullable=False)
+    _data = Column("data", JSON)
+    _data_compressed = Column("data_compressed", LargeBinary)
+    last_updated = Column(DateTime, nullable=False)
+
+
+class Airflow2DagModel(Airflow2Base):
+    __tablename__ = "dag"
+
+    dag_id = Column(String(250), primary_key=True)
+    is_paused = Column(Boolean)
 
 
 class TestAirflow(TestCase):
@@ -452,28 +476,57 @@ class TestAirflow(TestCase):
         )
         self.assertEqual(session.query.call_count, 2)
 
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
-    def test_airflow_2_includes_serialized_dag_without_dag_model(
-        self,
-        mock_session,
-        mock_dag_model,  # pylint: disable=unused-argument
-        mock_serialized_dag_model,  # pylint: disable=unused-argument
-    ):
-        rows = [("undeployed_dag", SERIALIZED_DAG, "/dags/undeployed.py", None, None)]
-        self.airflow._session = None
-        self.airflow.source_config.includeUnDeployedPipelines = True
-        session = self._configure_paginated_session(mock_session, [rows, []])
+    def test_airflow_2_reads_pause_state_and_preserves_serialized_only_dag(self):
+        engine = create_engine("sqlite://")
+        Airflow2Base.metadata.create_all(engine)
+        timestamp = datetime(2026, 1, 1)
 
-        pipelines = list(self.airflow.get_pipelines_list())
+        with Session(engine) as session:
+            session.add_all(
+                [
+                    Airflow2DagModel(dag_id="active_dag", is_paused=False),
+                    Airflow2DagModel(dag_id="paused_dag", is_paused=True),
+                    Airflow2SerializedDagModel(
+                        dag_id="active_dag",
+                        fileloc="/dags/active.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="paused_dag",
+                        fileloc="/dags/paused.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                    Airflow2SerializedDagModel(
+                        dag_id="serialized_only_dag",
+                        fileloc="/dags/serialized_only.py",
+                        _data=SERIALIZED_DAG,
+                        last_updated=timestamp,
+                    ),
+                ]
+            )
+            session.commit()
+            self.airflow._session = session
+            self.airflow.source_config.includeUnDeployedPipelines = True
 
-        self.assertEqual(
-            [(pipeline.dag_id, pipeline.state) for pipeline in pipelines],
-            [("undeployed_dag", "Active")],
-        )
-        self.assertEqual(session.query.call_count, 2)
-        session.query.return_value.outerjoin.assert_called_once()
+            with (
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel",
+                    Airflow2SerializedDagModel,
+                ),
+                patch(
+                    "metadata.ingestion.source.pipeline.airflow.metadata.DagModel",
+                    Airflow2DagModel,
+                ),
+            ):
+                pipelines = list(self.airflow.get_pipelines_list())
+
+        assert [(pipeline.dag_id, pipeline.state) for pipeline in pipelines] == [
+            ("active_dag", "Active"),
+            ("paused_dag", "Inactive"),
+            ("serialized_only_dag", "Active"),
+        ]
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
