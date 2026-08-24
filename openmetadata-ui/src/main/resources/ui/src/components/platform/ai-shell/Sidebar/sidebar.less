@@ -276,8 +276,10 @@
     flex-shrink: 0;
   }
 
-  // Footer (user card) sticks to the bottom of the panel — no chat section
-  // fills the space between the nav and the footer in OSS AI.
+  // Footer (user card) sticks to the bottom of the panel. When a plugin
+  // contributes the recent-chats slot (`&__chats`), it fills the space
+  // between the nav and the footer; otherwise the footer sits directly
+  // under the nav via this auto margin.
   &__footer {
     margin-top: auto;
     flex-shrink: 0;
@@ -896,6 +898,16 @@
     flex-shrink: 0;
   }
 
+  // Collapsed-rail recent-activity region (e.g. the recent-chats popover
+  // trigger) — mirrors the nav's centered column so its icon lines up.
+  &__recent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
   &__item {
     position: relative;
     display: flex;
@@ -1355,3 +1367,135 @@
     background: @ask-bg-hover;
   }
 }
+
+// ---- Recent-chats slot (contributed by the ai-chat plugin) ----
+// ---- Chat list ----
+.ask-chat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__spinner {
+    height: 24px;
+  }
+}
+
+.ask-chat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &__header {
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 500;
+    color: @ask-text-quaternary;
+    padding: 8px 4px;
+  }
+
+  &__header--with-icon {
+    display: flex;
+    align-items: center;
+    gap: @ask-nav-item-gap;
+    height: @ask-nav-item-height;
+    padding: @ask-nav-item-padding;
+    color: @ask-text-primary;
+
+    svg {
+      color: @ask-text-tertiary;
+      flex-shrink: 0;
+    }
+
+    span {
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+    }
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.ask-chat-item {
+  display: flex;
+  align-items: center;
+  height: @ask-nav-item-height;
+  padding: @ask-nav-item-padding @ask-nav-item-padding @ask-nav-item-padding 8px;
+  border-radius: @ask-nav-item-radius;
+  transition: background-color 150ms @ask-transition-ease;
+
+  &:hover,
+  &:focus-within {
+    background: @ask-bg-hover;
+  }
+
+  &--active {
+    background: @ask-bg-active;
+  }
+
+  &__button {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &:active {
+      text-decoration: none;
+    }
+  }
+
+  &__title {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    color: @ask-text-primary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  &__avatars {
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  &__loader {
+    margin: 0 8px 0 4px;
+  }
+
+  // Blue primary dot in the loader slot for a completed-in-background chat.
+  &__unseen-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: @ask-brand;
+    margin: 0 8px 0 4px;
+    flex-shrink: 0;
+  }
+
+  // Completed-in-background highlight: bolder, darker title until opened.
+  &--unseen &__title {
+    font-weight: 600;
+    color: @ask-text-primary;
+  }
+}
+

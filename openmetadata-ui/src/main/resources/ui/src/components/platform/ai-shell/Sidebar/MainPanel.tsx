@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
+  useAppModeSidebarRecent,
 } from '../appModeExtensions';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import MoreNavPopover from './MoreNavPopover';
@@ -43,6 +44,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
   const activeItemKey = useActiveNavKey();
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarMainFooter();
+  const recentSlots = useAppModeSidebarRecent();
 
   const handleItemClick = useCallback(
     (item: MainNavItem) => handleNavItemClick({ item, navigate }),
@@ -106,6 +108,14 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
           );
         })}
       </nav>
+
+      {recentSlots.length > 0 ? (
+        <div className="ask-main-panel__chats" data-testid="ask-recent-region">
+          {recentSlots.map(({ key, component: Slot }) => (
+            <Slot key={key} />
+          ))}
+        </div>
+      ) : null}
 
       <div className="ask-main-panel__footer">
         {footerSlots.length > 0 ? (

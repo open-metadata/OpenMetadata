@@ -90,3 +90,29 @@ export const useAppModeSidebarRailFooter = (): AppModeSlotContribution[] => {
     EXTENSION_POINTS.APP_MODE_SIDEBAR_RAIL_FOOTER
   );
 };
+
+/**
+ * Slot contributions for `app-mode.sidebar.recent` — the expanded-panel
+ * recent-activity region (e.g. a plugin's recent-chats list) between the nav
+ * and the footer.
+ */
+export const useAppModeSidebarRecent = (): AppModeSlotContribution[] => {
+  const { extensionRegistry } = useApplicationsProvider();
+
+  return extensionRegistry.getContributions<AppModeSlotContribution>(
+    EXTENSION_POINTS.APP_MODE_SIDEBAR_RECENT
+  );
+};
+
+/**
+ * Slot contributions for `app-mode.sidebar.recentRail` — the collapsed-rail
+ * counterpart of {@link useAppModeSidebarRecent} (e.g. a recent-chats
+ * popover trigger).
+ */
+export const useAppModeSidebarRecentRail = (): AppModeSlotContribution[] => {
+  const { extensionRegistry } = useApplicationsProvider();
+
+  return extensionRegistry.getContributions<AppModeSlotContribution>(
+    EXTENSION_POINTS.APP_MODE_SIDEBAR_RECENT_RAIL
+  );
+};

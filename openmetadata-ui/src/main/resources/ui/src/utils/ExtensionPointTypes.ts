@@ -66,6 +66,10 @@ export const EXTENSION_POINTS = {
   APP_MODE_SIDEBAR_HEADER: 'app-mode.sidebar.header',
   APP_MODE_SIDEBAR_MAIN_FOOTER: 'app-mode.sidebar.mainFooter',
   APP_MODE_SIDEBAR_RAIL_FOOTER: 'app-mode.sidebar.railFooter',
+  // Recent-activity region between the nav and the footer — e.g. a plugin's
+  // recent-chats list (expanded panel) and its collapsed-rail popover.
+  APP_MODE_SIDEBAR_RECENT: 'app-mode.sidebar.recent',
+  APP_MODE_SIDEBAR_RECENT_RAIL: 'app-mode.sidebar.recentRail',
 } as const;
 
 /**

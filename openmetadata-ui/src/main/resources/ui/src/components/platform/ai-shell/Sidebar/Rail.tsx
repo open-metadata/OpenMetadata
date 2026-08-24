@@ -21,6 +21,7 @@ import { IconComponent } from '../AppModule.types';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
+  useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
@@ -137,6 +138,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
   const activeNavKey = useActiveNavKey();
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarRailFooter();
+  const recentSlots = useAppModeSidebarRecentRail();
 
   const toRailItem = (item: MainNavItem): RailItem => ({
     key: item.key,
@@ -182,6 +184,14 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           )
         )}
       </nav>
+
+      {recentSlots.length > 0 ? (
+        <div className="ask-rail__recent" data-testid="ask-rail-recent-region">
+          {recentSlots.map(({ key, component: Slot }) => (
+            <Slot key={key} />
+          ))}
+        </div>
+      ) : null}
 
       <div className="ask-rail__profile">
         {footerSlots.length > 0 ? (
