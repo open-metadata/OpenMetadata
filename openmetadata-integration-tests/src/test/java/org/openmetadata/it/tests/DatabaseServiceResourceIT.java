@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResultS
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
@@ -57,8 +59,11 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -902,7 +907,7 @@ public class DatabaseServiceResourceIT
 
   @Test
   void test_importExportRecursive_preservesColumnCustomProperties(TestNamespace ns)
-      throws IOException, InterruptedException {
+      throws Exception {
     String serviceName = ns.prefix("import_export_recursive_col_ext_service");
     DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
 
@@ -921,6 +926,14 @@ public class DatabaseServiceResourceIT
                 new CreateDatabaseSchema()
                     .withName(ns.prefix("schema1"))
                     .withDatabase(database.getFullyQualifiedName()));
+
+    // A table-level custom property is defined and set alongside column-level custom properties.
+    // This is the realistic governance scenario AND the regression trigger: the bulk import update
+    // path used to blanket-delete every entity_extension row for a table that carried table-level
+    // extension, which also wiped the column-level custom properties.
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableProp = "csvRoundTripGovOwner";
+    addStringCustomPropertyToEntityType(client, "table", tableProp);
 
     // Columns carry free-form custom properties (column.extension).
     Column idColumn =
@@ -942,13 +955,15 @@ public class DatabaseServiceResourceIT
                 new CreateTable()
                     .withName(ns.prefix("col_ext_table"))
                     .withDatabaseSchema(schema.getFullyQualifiedName())
-                    .withColumns(List.of(idColumn, emailColumn)));
+                    .withColumns(List.of(idColumn, emailColumn))
+                    .withExtension(Map.of(tableProp, "table-gov-owner@example.com")));
 
-    // Precondition: column custom properties persisted on create.
+    // Precondition: table-level and column-level custom properties persisted on create.
     Table created =
         SdkClients.adminClient()
             .tables()
             .getByName(table.getFullyQualifiedName(), "columns,extension");
+    assertNotNull(created.getExtension(), "Table custom property should persist on create");
     assertNotNull(
         columnByName(created, "id").getExtension(),
         "Column custom properties should persist on create");
@@ -967,6 +982,12 @@ public class DatabaseServiceResourceIT
         SdkClients.adminClient()
             .tables()
             .getByName(table.getFullyQualifiedName(), "columns,extension");
+    // Table-level custom property must survive (and must not take column-level ones down with it).
+    assertNotNull(
+        reloaded.getExtension(), "Table custom property must survive a recursive CSV round trip");
+    assertTrue(
+        reloaded.getExtension().toString().contains("table-gov-owner@example.com"),
+        "Table custom property value must be preserved after a recursive import");
     assertNotNull(
         columnByName(reloaded, "id").getExtension(),
         "Column 'id' custom properties must survive a recursive CSV round trip");
@@ -986,6 +1007,36 @@ public class DatabaseServiceResourceIT
         .filter(c -> name.equals(c.getName()))
         .findFirst()
         .orElseThrow(() -> new AssertionError("Column not found: " + name));
+  }
+
+  /** Idempotently defines a String custom property on an entity type (e.g. "table"). */
+  private void addStringCustomPropertyToEntityType(
+      OpenMetadataClient client, String entityTypeName, String propertyName) throws Exception {
+    Type stringType =
+        JsonUtils.readValue(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/metadata/types/name/string", null),
+            Type.class);
+    Type entityType =
+        JsonUtils.readValue(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET, "/v1/metadata/types/name/" + entityTypeName, null),
+            Type.class);
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDescription("CSV round-trip test custom property: " + propertyName)
+            .withPropertyType(stringType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + entityType.getId().toString(),
+            customProperty,
+            Type.class);
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {

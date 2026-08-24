@@ -5782,14 +5782,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
 
-    List<String> entityIds =
-        entities.stream()
-            .filter(entity -> entity.getExtension() != null)
-            .map(entity -> entity.getId().toString())
-            .toList();
-
-    if (!entityIds.isEmpty()) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
+    // Remove only the entity's own custom-property rows, mirroring the single-entity
+    // removeExtension(). deleteAllBatch() would delete EVERY entity_extension row for the id --
+    // including columnExtension rows -- so a bulk import update of an entity that carries
+    // table-level extension would silently wipe its column-level custom properties.
+    for (T entity : entities) {
+      removeExtension(entity);
     }
   }
 

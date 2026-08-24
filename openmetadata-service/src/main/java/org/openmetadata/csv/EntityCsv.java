@@ -1744,15 +1744,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       // Dry Run = false, True Run: Use dependency resolution helper.
-      // Fetch tableConstraints/tablePartition (the recursive CSV has no column for them) and
-      // columns (column extension is only hydrated when both "columns" and "extension" are
-      // requested) so the createOrUpdate below carries them through instead of dropping them.
+      // Fetch tableConstraints/tablePartition too: the recursive CSV has no column for them, so
+      // they must be carried through the createOrUpdate below or they would be dropped.
       try {
         table =
             getEntityWithDependencyResolution(
                 TABLE,
                 tableFqn,
-                "owners,tags,domains,extension,tableConstraints,tablePartition,columns",
+                "owners,tags,domains,extension,tableConstraints,tablePartition",
                 Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Table not found, create a new one
