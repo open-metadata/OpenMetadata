@@ -43,3 +43,5 @@ ON entity_relationship (
     (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
     relation
 );
+
+-- Ingestion pipeline source config repair is implemented by the v210 Java data migration.

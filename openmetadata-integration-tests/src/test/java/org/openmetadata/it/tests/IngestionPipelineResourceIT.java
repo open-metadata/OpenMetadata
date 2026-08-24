@@ -69,7 +69,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.migration.utils.v201.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,8 +238,8 @@ public class IngestionPipelineResourceIT
         JsonUtils.getMap(getEntity(pipeline.getId().toString()).getSourceConfig().getConfig())
             .get("type"));
 
-    MigrationUtil.MigrationResult migrationResult =
-        MigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
+    IngestionPipelineMigrationUtil.MigrationResult migrationResult =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
     EntityRepository.invalidateCacheForEntity(
         Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
 

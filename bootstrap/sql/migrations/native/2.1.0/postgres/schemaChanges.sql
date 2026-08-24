@@ -41,3 +41,5 @@ CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
 ON entity_relationship ((json->'pipeline'->>'id'), relation)
 WHERE (json->'pipeline'->>'id') IS NOT NULL;
+
+-- Ingestion pipeline source config repair is implemented by the v210 Java data migration.
