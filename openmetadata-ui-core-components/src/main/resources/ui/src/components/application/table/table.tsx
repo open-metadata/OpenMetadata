@@ -24,6 +24,7 @@ import type {
   TableProps as AriaTableProps,
 } from 'react-aria-components';
 import {
+  Checkbox as AriaCheckbox,
   Cell as AriaCell,
   Collection as AriaCollection,
   Column as AriaColumn,
@@ -36,6 +37,7 @@ import {
 } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
@@ -64,20 +66,31 @@ export const TableRowActionsDropdown = () => {
   );
 };
 
+/**
+ * `compact` matches the density of the AntD tables this component replaces —
+ * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
+ * them below the fold. See docs/antd-migration/table.md.
+ */
+type TableSize = 'compact' | 'sm' | 'md';
+
+const DEFAULT_TABLE_SIZE: TableSize = 'md';
+
+/**
+ * Defaults to `null` rather than a filled-in object: a non-null default would
+ * make `useContext` always return a size, and an explicit `size` prop could
+ * never win over it.
+ */
 const TableContext = createContext<{
-  size: 'sm' | 'md';
+  size: TableSize;
   stickyHeader: boolean;
-}>({
-  size: 'md',
-  stickyHeader: false,
-});
+} | null>(null);
 
 const TableCardRoot = ({
   children,
   className,
   size = 'md',
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: 'sm' | 'md' }) => {
+}: HTMLAttributes<HTMLDivElement> & { size?: TableSize }) => {
   return (
     <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
@@ -112,7 +125,7 @@ const TableCardHeader = ({
   contentTrailing,
   className,
 }: TableCardHeaderProps) => {
-  const { size } = useContext(TableContext);
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
 
   return (
     <div
@@ -152,7 +165,7 @@ const TableCardHeader = ({
 interface TableRootProps
   extends AriaTableProps,
     Omit<ComponentPropsWithRef<'table'>, 'className' | 'slot' | 'style'> {
-  size?: 'sm' | 'md';
+  size?: TableSize;
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
   containerClassName?: string;
@@ -160,17 +173,19 @@ interface TableRootProps
 
 const TableRoot = ({
   className,
-  size = 'md',
+  size,
   stickyHeader = false,
   containerStyle,
   containerClassName,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
+  // An explicit prop wins; otherwise inherit an enclosing TableCard's size.
+  const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
   return (
     <TableContext.Provider
-      value={{ size: context?.size ?? size, stickyHeader }}>
+      value={{ size: resolvedSize, stickyHeader }}>
       <div
         className={cx('tw:overflow-x-auto', containerClassName)}
         style={containerStyle}>
@@ -205,7 +220,10 @@ const TableHeader = <T extends object>({
   className,
   ...props
 }: TableHeaderProps<T>) => {
-  const { size, stickyHeader } = useContext(TableContext);
+  const { size, stickyHeader } = useContext(TableContext) ?? {
+    size: DEFAULT_TABLE_SIZE,
+    stickyHeader: false,
+  };
   const { selectionBehavior, selectionMode } = useTableOptions();
 
   return (
@@ -215,7 +233,7 @@ const TableHeader = <T extends object>({
         cx(
           'tw:bg-secondary',
           stickyHeader ? 'tw:sticky tw:top-0 tw:z-10' : 'tw:relative',
-          size === 'sm' ? 'tw:h-9' : 'tw:h-11',
+          size === 'compact' ? 'tw:h-8' : size === 'sm' ? 'tw:h-9' : 'tw:h-11',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
@@ -228,11 +246,11 @@ const TableHeader = <T extends object>({
         <AriaColumn
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'sm' ? 'tw:w-9 tw:md:pl-5' : 'tw:w-11 tw:md:pl-6'
+            size === 'md' ? 'tw:w-11 tw:md:pl-6' : 'tw:w-9 tw:md:pl-5'
           )}>
           {selectionMode === 'multiple' && (
             <div className="tw:flex tw:items-start">
-              <Checkbox size={size} slot="selection" />
+              <Checkbox size={size === 'md' ? 'md' : 'sm'} slot="selection" />
             </div>
           )}
         </AriaColumn>
@@ -262,6 +280,7 @@ const TableHead = ({
   ...props
 }: TableHeadProps) => {
   const { selectionBehavior } = useTableOptions();
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
 
   return (
     <AriaColumn
@@ -272,7 +291,8 @@ const TableHead = ({
           // box-shadow). `outline-hidden` is gone — it would suppress this indicator.
           // `ring-offset-bg-primary` is dropped: it set an offset *colour* while
           // --tw-ring-offset-width defaults to 0px, so it never rendered.
-          'tw:relative tw:p-0 tw:px-6 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
+          'tw:relative tw:p-0 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
+          size === 'compact' ? 'tw:px-4' : 'tw:px-6',
           selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
           state.allowsSorting && 'tw:cursor-pointer',
           typeof className === 'function' ? className(state) : className
@@ -335,8 +355,8 @@ const TableRow = <T extends object>({
   highlightSelectedRow = true,
   ...props
 }: TableRowProps<T>) => {
-  const { size } = useContext(TableContext);
-  const { selectionBehavior } = useTableOptions();
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+  const { selectionBehavior, selectionMode } = useTableOptions();
 
   return (
     <AriaRow
@@ -344,7 +364,11 @@ const TableRow = <T extends object>({
       className={(state) =>
         cx(
           'tw:relative tw:outline-focus-ring tw:transition-colors tw:after:pointer-events-none tw:hover:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          size === 'sm' ? 'tw:h-14' : 'tw:h-18',
+          size === 'compact'
+            ? 'tw:h-10'
+            : size === 'sm'
+            ? 'tw:h-14'
+            : 'tw:h-18',
           highlightSelectedRow && 'tw:selected:bg-secondary',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
@@ -357,10 +381,29 @@ const TableRow = <T extends object>({
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',
-            size === 'sm' ? 'tw:md:pl-5' : 'tw:md:pl-6'
+            size === 'md' ? 'tw:md:pl-6' : 'tw:md:pl-5'
           )}>
           <div className="tw:flex tw:items-end">
-            <Checkbox size={size} slot="selection" />
+            {selectionMode === 'single' ? (
+              // A single-selection table reads as a radio group: picking a row
+              // clears the previous pick. React Aria still wires the control
+              // through the `selection` slot, so the visual is swapped rather
+              // than the behaviour.
+              <AriaCheckbox
+                className="tw:flex tw:items-center tw:outline-hidden"
+                slot="selection">
+                {({ isSelected, isDisabled, isFocusVisible }) => (
+                  <RadioButtonBase
+                    isDisabled={isDisabled}
+                    isFocusVisible={isFocusVisible}
+                    isSelected={isSelected}
+                    size={size === 'md' ? 'md' : 'sm'}
+                  />
+                )}
+              </AriaCheckbox>
+            ) : (
+              <Checkbox size={size === 'md' ? 'md' : 'sm'} slot="selection" />
+            )}
           </div>
         </AriaCell>
       )}
@@ -381,7 +424,7 @@ interface TableCellProps
 }
 
 const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext);
+  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
   const { selectionBehavior } = useTableOptions();
 
   return (
@@ -390,6 +433,7 @@ const TableCell = ({ className, children, ...props }: TableCellProps) => {
       className={(state) =>
         cx(
           'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          size === 'compact' && 'tw:px-4 tw:py-2',
           size === 'sm' && 'tw:px-5 tw:py-3',
           size === 'md' && 'tw:px-6 tw:py-4',
 
