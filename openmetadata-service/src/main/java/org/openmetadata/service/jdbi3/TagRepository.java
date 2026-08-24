@@ -166,17 +166,14 @@ public class TagRepository extends EntityRepository<Tag> {
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    Fields exportFields = getFields("classification,owners,reviewers,parent,domains");
+    Fields exportFields = getFields("owners,reviewers,parent,domains");
     Tag tag = getByName(null, name, exportFields);
-    Classification classification =
-        Entity.getEntity(tag.getClassification(), "", Include.NON_DELETED);
-    // Export the tag itself plus all its child tags (listAllForCSV returns only descendants).
+    // listAllForCSV returns only descendants, so add the exported tag itself as well.
     List<Tag> tags = new ArrayList<>();
     tags.add(tag);
     tags.addAll(listAllForCSV(exportFields, tag.getFullyQualifiedName()));
     tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new ClassificationRepository.ClassificationCsv(classification, user)
-        .exportCsv(tags, callback);
+    return new ClassificationRepository.ClassificationCsv(user).exportCsv(tags, callback);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {

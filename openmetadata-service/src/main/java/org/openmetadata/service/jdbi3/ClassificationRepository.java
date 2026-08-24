@@ -273,8 +273,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
-    return new ClassificationCsv(classification, user)
-        .exportCsv(listTagsForCsv(classification), callback);
+    return new ClassificationCsv(user).exportCsv(listTagsForCsv(classification), callback);
   }
 
   private List<Tag> listTagsForCsv(Classification classification) {
@@ -291,11 +290,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public static final CsvDocumentation DOCUMENTATION =
         getCsvDocumentation(Entity.CLASSIFICATION, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
-    private final Classification classification;
 
-    ClassificationCsv(Classification classification, String user) {
+    ClassificationCsv(String user) {
       super(TAG, HEADERS, user);
-      this.classification = classification;
     }
 
     @Override

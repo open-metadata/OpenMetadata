@@ -920,4 +920,36 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
                       + tagFqns);
             });
   }
+
+  @Test
+  void test_exportClassificationCsv_containsAllTags(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+
+    CreateTag firstTagRequest = new CreateTag();
+    firstTagRequest.setName(ns.prefix("exportTagA"));
+    firstTagRequest.setDescription("Exportable tag A");
+    firstTagRequest.setClassification(classification.getFullyQualifiedName());
+    Tag firstTag = SdkClients.adminClient().tags().create(firstTagRequest);
+
+    CreateTag secondTagRequest = new CreateTag();
+    secondTagRequest.setName(ns.prefix("exportTagB"));
+    secondTagRequest.setDescription("Exportable tag B");
+    secondTagRequest.setClassification(classification.getFullyQualifiedName());
+    Tag secondTag = SdkClients.adminClient().tags().create(secondTagRequest);
+
+    String csv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/classifications/name/" + classification.getFullyQualifiedName() + "/export",
+                null);
+
+    assertNotNull(csv);
+    assertTrue(
+        csv.contains("parent") && csv.contains("mutuallyExclusive"),
+        "Exported CSV must contain the header row");
+    assertTrue(csv.contains(firstTag.getName()), "Exported CSV must contain the first tag");
+    assertTrue(csv.contains(secondTag.getName()), "Exported CSV must contain the second tag");
+  }
 }
