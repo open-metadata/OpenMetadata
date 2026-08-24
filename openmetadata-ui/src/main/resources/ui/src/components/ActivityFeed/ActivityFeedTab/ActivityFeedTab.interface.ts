@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Column } from '../../../generated/entity/data/table';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { FeedCounts } from '../../../interface/feed.interface';
+import { Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 
 export enum ActivityFeedTabs {
   ALL = 'all',
@@ -49,3 +53,59 @@ export type ActivityFeedTabProps = ActivityFeedTabBasicProps &
       }
     | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }
   );
+
+export interface ActivityFeedTabLeftPanelProps {
+  activeTab?: ActivityFeedTabs;
+  countData: FeedCounts;
+  isTaskActiveTab: boolean;
+  isUserEntity: boolean;
+  layoutType?: ActivityFeedLayoutType;
+  taskFilter: TaskStatusGroup;
+  onTabChange: (subTab: string) => void;
+}
+
+/** Structurally compatible with antd's MenuItemType without importing it. */
+export interface TaskFilterOption {
+  key: TaskStatusGroup;
+  label: ReactNode;
+  onClick: () => void;
+}
+
+export interface TaskFilterBarProps {
+  countData: FeedCounts;
+  isMentionTabSelected: boolean;
+  isVisible: boolean;
+  taskFilter: TaskStatusGroup;
+  taskFilterOptions: TaskFilterOption[];
+  taskToggle: ReactNode;
+}
+
+export interface ActivityFeedTabListProps {
+  activityEvents: ActivityEvent[];
+  emptyPlaceholderText: ReactNode;
+  entityThread: Thread[];
+  isActivityLoading?: boolean;
+  isFirstLoad: boolean;
+  isFullWidth: boolean;
+  isTaskListTab: boolean;
+  loading: boolean;
+  selectedActivity?: ActivityEvent;
+  selectedTask?: Task;
+  selectedThread?: Thread;
+  tasks: Task[];
+  onActivityClick: (activity: ActivityEvent) => void;
+  onAfterClose: () => void;
+  onFeedClick: (feed: Thread) => void;
+  onPanelResize: (isFullWidth: boolean) => void;
+  onTaskClick: (task: Task) => void;
+}
+
+export interface ActivityFeedTabRightPanelProps {
+  content: ReactNode;
+  hasSelection: boolean;
+  isFullWidth: boolean;
+  layoutType?: ActivityFeedLayoutType;
+  loader: ReactNode;
+  loading: boolean;
+  placeholder: ReactNode;
+}

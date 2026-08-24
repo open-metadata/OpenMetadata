@@ -85,8 +85,12 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import './activity-feed-tab.less';
 import {
   ActivityFeedLayoutType,
+  ActivityFeedTabLeftPanelProps,
+  ActivityFeedTabListProps,
   ActivityFeedTabProps,
+  ActivityFeedTabRightPanelProps,
   ActivityFeedTabs,
+  TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -119,6 +123,237 @@ const getTaskCountParams = ({
   return isCurrentUserProfile
     ? { view: 'visible' as const, domain }
     : { assignee: fqn, domain };
+};
+
+const ActivityFeedTabLeftPanel = ({
+  activeTab,
+  countData,
+  isTaskActiveTab,
+  isUserEntity,
+  layoutType,
+  taskFilter,
+  onTabChange,
+}: ActivityFeedTabLeftPanelProps) => {
+  const { t } = useTranslation();
+
+  if (layoutType !== ActivityFeedLayoutType.THREE_PANEL) {
+    return null;
+  }
+
+  return (
+    <Menu
+      className="custom-menu p-t-sm"
+      data-testid="global-setting-left-panel"
+      items={[
+        {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <AllActivityIcon
+                  style={COMMON_ICON_STYLES}
+                  {...ICON_DIMENSION}
+                />
+                <span>{t('label.all')}</span>
+              </Space>
+
+              <span data-testid="left-panel-all-count">
+                {!isUserEntity &&
+                  getCountBadge(
+                    (countData?.conversationCount ?? 0) +
+                      (countData?.activityCount ?? 0),
+                    '',
+                    activeTab === ActivityFeedTabs.ALL
+                  )}
+              </span>
+            </div>
+          ),
+          key: ActivityFeedTabs.ALL,
+        },
+        {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <TaskListIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
+                <span>{t('label.task-plural')}</span>
+              </Space>
+              <span data-testid="left-panel-task-count">
+                {getCountBadge(
+                  taskFilter === TaskStatusGroup.Open
+                    ? countData?.openTaskCount
+                    : countData?.closedTaskCount,
+                  '',
+                  isTaskActiveTab
+                )}
+              </span>
+            </div>
+          ),
+          key: ActivityFeedTabs.TASKS,
+        },
+      ]}
+      mode="inline"
+      rootClassName="left-container"
+      selectedKeys={[
+        activeTab === ActivityFeedTabs.ALL
+          ? ActivityFeedTabs.ALL
+          : ActivityFeedTabs.TASKS,
+      ]}
+      onClick={(info) => onTabChange(info.key)}
+    />
+  );
+};
+
+const TaskFilterBar = ({
+  countData,
+  isMentionTabSelected,
+  isVisible,
+  taskFilter,
+  taskFilterOptions,
+  taskToggle,
+}: TaskFilterBarProps) => {
+  const { t } = useTranslation();
+
+  if (!isVisible) {
+    return null;
+  }
+
+  const filterLabel =
+    taskFilter === TaskStatusGroup.Open
+      ? `${t('label.open')} (${countData?.openTaskCount ?? 0})`
+      : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
+
+  return (
+    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+      <Dropdown
+        disabled={isMentionTabSelected}
+        menu={{
+          items: taskFilterOptions,
+          selectedKeys: [taskFilter],
+        }}
+        overlayClassName="task-tab-custom-dropdown"
+        trigger={['click']}>
+        <Button
+          className={classNames('feed-filter-icon', {
+            'cursor-pointer': !isMentionTabSelected,
+            disabled: isMentionTabSelected,
+          })}
+          data-testid="user-profile-page-task-filter-icon">
+          <Space align="center" size={4}>
+            <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
+            <span className="text-xs font-medium" style={{ lineHeight: 1 }}>
+              {filterLabel}
+            </span>
+          </Space>
+        </Button>
+      </Dropdown>
+      {taskToggle}
+    </div>
+  );
+};
+
+/**
+ * Both sub-tabs of the Tasks pane render the task list; only the All tab renders
+ * conversations and activity events. `isTaskListTab` is the single predicate the
+ * parent uses for both this switch and which fetcher runs.
+ */
+const ActivityFeedTabList = ({
+  activityEvents,
+  emptyPlaceholderText,
+  entityThread,
+  isActivityLoading,
+  isFirstLoad,
+  isFullWidth,
+  isTaskListTab,
+  loading,
+  selectedActivity,
+  selectedTask,
+  selectedThread,
+  tasks,
+  onActivityClick,
+  onAfterClose,
+  onFeedClick,
+  onPanelResize,
+  onTaskClick,
+}: ActivityFeedTabListProps) => {
+  // The list is emptied while a first-page fetch is in flight, so the loader has
+  // to cover that window or the cleared list shows its empty placeholder.
+  const isReplacingList = isFirstLoad && loading;
+
+  if (isTaskListTab) {
+    return (
+      <TaskListV1
+        activeFeedId={selectedTask?.id}
+        emptyPlaceholderText={emptyPlaceholderText}
+        handlePanelResize={onPanelResize}
+        isFullWidth={isFullWidth}
+        isLoading={isReplacingList}
+        selectedTask={selectedTask}
+        taskList={tasks}
+        onAfterClose={onAfterClose}
+        onTaskClick={onTaskClick}
+      />
+    );
+  }
+
+  return (
+    <ActivityFeedListV1New
+      hidePopover
+      activeFeedId={selectedThread?.id ?? selectedActivity?.id}
+      activityList={activityEvents}
+      emptyPlaceholderText={emptyPlaceholderText}
+      feedList={entityThread}
+      handlePanelResize={onPanelResize}
+      isForFeedTab={false}
+      isFullWidth={isFullWidth}
+      isLoading={isReplacingList || Boolean(isActivityLoading)}
+      selectedActivity={selectedActivity}
+      selectedThread={selectedThread}
+      showThread={false}
+      onActivityClick={onActivityClick}
+      onAfterClose={onAfterClose}
+      onFeedClick={onFeedClick}
+    />
+  );
+};
+
+const ActivityFeedTabRightPanel = ({
+  content,
+  hasSelection,
+  isFullWidth,
+  layoutType,
+  loader,
+  loading,
+  placeholder,
+}: ActivityFeedTabRightPanelProps) => {
+  const isThreePanel = layoutType === ActivityFeedLayoutType.THREE_PANEL;
+
+  return (
+    <>
+      {isThreePanel && (
+        <Divider className="feed-divider h-100 m-0" type="vertical" />
+      )}
+
+      <div
+        className={classNames('right-container', {
+          'hide-panel': isFullWidth,
+          'three-panel-layout': isThreePanel,
+        })}>
+        {loader}
+        {hasSelection && !loading
+          ? content
+          : !loading && (
+              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
+                <ErrorPlaceHolderNew
+                  icon={<NoConversationsIcon />}
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  <Typography.Paragraph className="placeholder-text">
+                    {placeholder}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolderNew>
+              </div>
+            )}
+      </div>
+    </>
+  );
 };
 
 export const ActivityFeedTab = ({
@@ -282,7 +517,7 @@ export const ActivityFeedTab = ({
       setCountData((prev) => ({ ...prev, data }));
       onUpdateFeedCount?.(data);
     },
-    [setCountData]
+    [onUpdateFeedCount]
   );
 
   const fetchFeedsCount = useCallback(async () => {
@@ -551,6 +786,11 @@ export const ActivityFeedTab = ({
     [loading]
   );
 
+  const hasRightPanelSelection = useMemo(
+    () => Boolean(selectedThread || selectedTask || selectedActivity),
+    [selectedThread, selectedTask, selectedActivity]
+  );
+
   // The fetch effect above already refires on `taskFilter`; calling getTaskData
   // here as well fired two identical requests per filter click.
   const handleUpdateTaskFilter = useCallback((filter: TaskStatusGroup) => {
@@ -772,7 +1012,7 @@ export const ActivityFeedTab = ({
         </Typography.Text>
       </div>
     );
-  }, [activeTab, selectedThread, t]);
+  }, [activeTab, t]);
 
   return (
     <div
@@ -780,69 +1020,15 @@ export const ActivityFeedTab = ({
         'two-panel-layout-container':
           layoutType === ActivityFeedLayoutType.TWO_PANEL,
       })}>
-      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
-        <Menu
-          className="custom-menu p-t-sm"
-          data-testid="global-setting-left-panel"
-          items={[
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <Space align="center" size="small">
-                    <AllActivityIcon
-                      style={COMMON_ICON_STYLES}
-                      {...ICON_DIMENSION}
-                    />
-                    <span>{t('label.all')}</span>
-                  </Space>
-
-                  <span data-testid="left-panel-all-count">
-                    {!isUserEntity &&
-                      getCountBadge(
-                        (countData?.data?.conversationCount ?? 0) +
-                          (countData?.data?.activityCount ?? 0),
-                        '',
-                        activeTab === ActivityFeedTabs.ALL
-                      )}
-                  </span>
-                </div>
-              ),
-              key: ActivityFeedTabs.ALL,
-            },
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <Space align="center" size="small">
-                    <TaskListIcon
-                      style={COMMON_ICON_STYLES}
-                      {...ICON_DIMENSION}
-                    />
-                    <span>{t('label.task-plural')}</span>
-                  </Space>
-                  <span data-testid="left-panel-task-count">
-                    {getCountBadge(
-                      taskFilter === TaskStatusGroup.Open
-                        ? countData?.data?.openTaskCount
-                        : countData?.data?.closedTaskCount,
-                      '',
-                      isTaskActiveTab
-                    )}
-                  </span>
-                </div>
-              ),
-              key: ActivityFeedTabs.TASKS,
-            },
-          ]}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[
-            activeTab === ActivityFeedTabs.ALL
-              ? ActivityFeedTabs.ALL
-              : ActivityFeedTabs.TASKS,
-          ]}
-          onClick={(info) => handleTabChange(info.key)}
-        />
-      )}
+      <ActivityFeedTabLeftPanel
+        activeTab={activeTab}
+        countData={countData.data}
+        isTaskActiveTab={isTaskActiveTab}
+        isUserEntity={isUserEntity}
+        layoutType={layoutType}
+        taskFilter={taskFilter}
+        onTabChange={handleTabChange}
+      />
       <div
         className={classNames('center-container', {
           'full-width': isFullWidth,
@@ -850,72 +1036,33 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
         id="center-container">
-        {isTaskListTab && (
-          <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
-            <Dropdown
-              disabled={isMentionTabSelected}
-              menu={{
-                items: taskFilterOptions,
-                selectedKeys: [taskFilter],
-              }}
-              overlayClassName="task-tab-custom-dropdown"
-              trigger={['click']}>
-              <Button
-                className={classNames('feed-filter-icon', {
-                  'cursor-pointer': !isMentionTabSelected,
-                  disabled: isMentionTabSelected,
-                })}
-                data-testid="user-profile-page-task-filter-icon">
-                <Space align="center" size={4}>
-                  <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
-                  <span
-                    className="text-xs font-medium"
-                    style={{ lineHeight: 1 }}>
-                    {taskFilter === TaskStatusGroup.Open
-                      ? `${t('label.open')} (${
-                          countData?.data?.openTaskCount ?? 0
-                        })`
-                      : `${t('label.closed')} (${
-                          countData?.data?.closedTaskCount ?? 0
-                        })`}
-                  </span>
-                </Space>
-              </Button>
-            </Dropdown>
-            {TaskToggle()}
-          </div>
-        )}
-        {isTaskListTab ? (
-          <TaskListV1
-            activeFeedId={selectedTask?.id}
-            emptyPlaceholderText={placeholderText}
-            handlePanelResize={handlePanelResize}
-            isFullWidth={isFullWidth}
-            isLoading={isFirstLoad && loading}
-            selectedTask={selectedTask}
-            taskList={tasks}
-            onAfterClose={handleAfterTaskClose}
-            onTaskClick={handleTaskClick}
-          />
-        ) : (
-          <ActivityFeedListV1New
-            hidePopover
-            activeFeedId={selectedThread?.id ?? selectedActivity?.id}
-            activityList={activityEvents}
-            emptyPlaceholderText={placeholderText}
-            feedList={entityThread}
-            handlePanelResize={handlePanelResize}
-            isForFeedTab={false}
-            isFullWidth={isFullWidth}
-            isLoading={(isFirstLoad && loading) || (isActivityLoading ?? false)}
-            selectedActivity={selectedActivity}
-            selectedThread={selectedThread}
-            showThread={false}
-            onActivityClick={handleActivityClick}
-            onAfterClose={handleAfterTaskClose}
-            onFeedClick={handleFeedClick}
-          />
-        )}
+        <TaskFilterBar
+          countData={countData.data}
+          isMentionTabSelected={isMentionTabSelected}
+          isVisible={isTaskListTab}
+          taskFilter={taskFilter}
+          taskFilterOptions={taskFilterOptions}
+          taskToggle={TaskToggle()}
+        />
+        <ActivityFeedTabList
+          activityEvents={activityEvents}
+          emptyPlaceholderText={placeholderText}
+          entityThread={entityThread}
+          isActivityLoading={isActivityLoading}
+          isFirstLoad={isFirstLoad}
+          isFullWidth={isFullWidth}
+          isTaskListTab={isTaskListTab}
+          loading={loading}
+          selectedActivity={selectedActivity}
+          selectedTask={selectedTask}
+          selectedThread={selectedThread}
+          tasks={tasks}
+          onActivityClick={handleActivityClick}
+          onAfterClose={handleAfterTaskClose}
+          onFeedClick={handleFeedClick}
+          onPanelResize={handlePanelResize}
+          onTaskClick={handleTaskClick}
+        />
         {!isFirstLoad && loader}
         {!isEmpty(isTaskListTab ? tasks : entityThread) && !loading && (
           <div
@@ -928,31 +1075,15 @@ export const ActivityFeedTab = ({
         )}
       </div>
 
-      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
-        <Divider className="feed-divider h-100 m-0" type="vertical" />
-      )}
-
-      <div
-        className={classNames('right-container', {
-          'hide-panel': isFullWidth,
-          'three-panel-layout':
-            layoutType === ActivityFeedLayoutType.THREE_PANEL,
-        })}>
-        {loader}
-        {(selectedThread || selectedTask || selectedActivity) && !loading
-          ? getRightPanelContent()
-          : !loading && (
-              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
-                    {getRightPanelPlaceholder}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolderNew>
-              </div>
-            )}
-      </div>
+      <ActivityFeedTabRightPanel
+        content={getRightPanelContent()}
+        hasSelection={hasRightPanelSelection}
+        isFullWidth={isFullWidth}
+        layoutType={layoutType}
+        loader={loader}
+        loading={loading}
+        placeholder={getRightPanelPlaceholder}
+      />
     </div>
   );
 };
