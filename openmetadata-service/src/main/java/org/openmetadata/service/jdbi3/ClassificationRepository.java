@@ -280,6 +280,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
+    validateNotSystemClassification(classification);
     return new ClassificationCsv(classification, user)
         .exportCsv(listTagsForCsv(classification), callback);
   }
@@ -295,7 +296,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       CsvImportProgressCallback callback)
       throws IOException {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
+    validateNotSystemClassification(classification);
     return new ClassificationCsv(classification, user).importCsv(csv, dryRun, callback);
+  }
+
+  /**
+   * System-generated classifications (e.g. Tier, Certification) are managed by the platform, so
+   * their tags cannot be bulk imported or exported - matching how the UI hides these actions.
+   */
+  private void validateNotSystemClassification(Classification classification) {
+    if (ProviderType.SYSTEM.equals(classification.getProvider())) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(
+              classification.getName(), CLASSIFICATION));
+    }
   }
 
   private List<Tag> listTagsForCsv(Classification classification) {
@@ -330,6 +344,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           nullOrEmpty(parentFqn)
               ? FullyQualifiedName.build(classification.getFullyQualifiedName(), csvRecord.get(1))
               : FullyQualifiedName.add(parentFqn, csvRecord.get(1));
+      Tag existingTag =
+          ((TagRepository) Entity.getEntityRepository(TAG))
+              .findByNameOrNull(tagFqn, Include.NON_DELETED);
       Tag tag =
           new Tag()
               .withClassification(classification.getEntityReference())
@@ -343,7 +360,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
               .withEntityStatus(getTagStatus(printer, csvRecord))
               .withStyle(getStyle(csvRecord))
               .withDomains(getDomains(printer, csvRecord, 9))
-              .withMutuallyExclusive(getMutuallyExclusive(csvRecord));
+              .withMutuallyExclusive(getMutuallyExclusive(csvRecord, existingTag));
 
       if (processRecord) {
         createEntity(printer, csvRecord, tag, TAG);
@@ -403,9 +420,14 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       return style;
     }
 
-    private Boolean getMutuallyExclusive(CSVRecord csvRecord) {
+    private Boolean getMutuallyExclusive(CSVRecord csvRecord, Tag existingTag) {
       String value = csvRecord.get(10);
-      return nullOrEmpty(value) ? Boolean.FALSE : Boolean.parseBoolean(value);
+      if (nullOrEmpty(value)) {
+        // An empty cell must not silently flip the flag: keep the existing value
+        // when updating a tag, and only default to false when creating a new one.
+        return existingTag != null ? existingTag.getMutuallyExclusive() : Boolean.FALSE;
+      }
+      return Boolean.parseBoolean(value);
     }
 
     @Override

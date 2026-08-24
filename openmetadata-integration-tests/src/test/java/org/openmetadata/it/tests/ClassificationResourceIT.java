@@ -982,4 +982,120 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertNotNull(importedTag, "Imported tag must be created");
     assertEquals("An imported tag", importedTag.getDescription());
   }
+
+  @Test
+  void test_importClassificationCsv_renamedRowCreatesNewTag(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String header =
+        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+    String importPath =
+        "/v1/classifications/name/"
+            + classification.getFullyQualifiedName()
+            + "/import?dryRun=false";
+
+    String originalName = ns.prefix("renameSource");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Original,First,,,,,,,\n".formatted(originalName));
+
+    // Re-import with a changed name. A different name produces a different FQN,
+    // so the row is created as a NEW tag rather than renaming the original one.
+    String renamedName = ns.prefix("renameTarget");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Renamed,First,,,,,,,\n".formatted(renamedName));
+
+    Tag originalTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + originalName);
+    Tag renamedTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + renamedName);
+
+    assertNotNull(originalTag, "Original tag must still exist after the renamed import");
+    assertNotNull(renamedTag, "Renamed row must be created as a new tag");
+    assertNotEquals(originalTag.getId(), renamedTag.getId());
+  }
+
+  @Test
+  void test_importClassificationCsv_emptyMutuallyExclusivePreservesExisting(TestNamespace ns)
+      throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+    String header =
+        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+    String importPath =
+        "/v1/classifications/name/"
+            + classification.getFullyQualifiedName()
+            + "/import?dryRun=false";
+    String tagName = ns.prefix("mutexTag");
+
+    // Create the tag as mutuallyExclusive = true.
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, importPath, header + ",%s,Mutex,desc,,,,,,,true\n".formatted(tagName));
+
+    String tagFqn = classification.getFullyQualifiedName() + "." + tagName;
+    Tag created = SdkClients.adminClient().tags().getByName(tagFqn);
+    assertTrue(created.getMutuallyExclusive(), "Tag should be created as mutuallyExclusive");
+
+    // Re-import with an empty mutuallyExclusive cell: the flag must be preserved,
+    // not silently reset to false.
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            importPath,
+            header + ",%s,Mutex,updated desc,,,,,,,\n".formatted(tagName));
+
+    Tag updated = SdkClients.adminClient().tags().getByName(tagFqn);
+    assertTrue(
+        updated.getMutuallyExclusive(),
+        "Empty mutuallyExclusive cell must not flip an existing true value to false");
+    assertEquals("updated desc", updated.getDescription());
+  }
+
+  @Test
+  void test_importClassificationCsv_systemClassificationRejected() {
+    String csv =
+        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",SystemImportedTag,System,Should be rejected,,,,,,,\n";
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT, "/v1/classifications/name/Tier/import?dryRun=true", csv));
+
+    assertTrue(
+        exception.getMessage().contains("can not be modified"),
+        "System classification import must be rejected: " + exception.getMessage());
+  }
+
+  @Test
+  void test_exportClassificationCsv_systemClassificationRejected() {
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET, "/v1/classifications/name/Tier/export", null));
+
+    assertTrue(
+        exception.getMessage().contains("can not be modified"),
+        "System classification export must be rejected: " + exception.getMessage());
+  }
 }
