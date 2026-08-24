@@ -73,7 +73,6 @@ def _run_paginator(
         json_config.get(Constant.OFFSET): 0,
         **(extra_params or {}),
     }
-    total_objects = []
 
     response = None
     for _ in range(3):
@@ -88,14 +87,20 @@ def _run_paginator(
         )
 
     if not response:
-        log_warning(f"No response from Data 360 API for {object_type} at {path}")
-        return total_objects
+        raise RuntimeError(
+            f"No response from Data 360 API for {object_type} at {path}. Aborting to "
+            "avoid returning an empty listing that could be mistaken for the full set "
+            "of live entities."
+        )
 
     if object_type == MetadataTypesConstant.CALCULATED_INSIGHT:
         response = response.get(ResponseConstant.COLLECTION)
         if not response:
-            log_warning(f"Missing '{ResponseConstant.COLLECTION}' in response for {object_type} at {path}")
-            return total_objects
+            raise RuntimeError(
+                f"Missing '{ResponseConstant.COLLECTION}' in response for {object_type} "
+                f"at {path}. Aborting to avoid returning an empty listing that could be "
+                "mistaken for the full set of live entities."
+            )
 
     total_size = response.get(json_config.get(ResponseConstant.TOTAL_SIZE), 0)
     total_objects = list(response.get(json_config.get(ResponseConstant.ITEMS), []))

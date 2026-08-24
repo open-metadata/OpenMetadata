@@ -120,18 +120,19 @@ def test_run_paginator_raises_on_a_failed_page():
         )
 
 
-def test_run_paginator_returns_empty_list_when_first_page_has_no_response():
+def test_run_paginator_raises_when_first_page_has_no_response():
     client = _client(restful_return_value=None)
     log_warning = MagicMock()
-    result = _run_paginator(
-        client=client,
-        object_type="Dataspaces",
-        path="ssot/data-spaces",
-        limit=50,
-        log_warning=log_warning,
-    )
-    assert result == []
-    log_warning.assert_called()
+    # A failed initial fetch must raise rather than silently return an empty
+    # listing, since callers use this result to mark unseen entities as deleted.
+    with pytest.raises(RuntimeError, match="No response from Data 360 API"):
+        _run_paginator(
+            client=client,
+            object_type="Dataspaces",
+            path="ssot/data-spaces",
+            limit=50,
+            log_warning=log_warning,
+        )
 
 
 def test_run_paginator_unwraps_calculated_insight_collection():
@@ -154,18 +155,17 @@ def test_run_paginator_unwraps_calculated_insight_collection():
     assert result == [{"apiName": "revenue_ci"}]
 
 
-def test_run_paginator_returns_empty_list_when_collection_missing_on_first_page():
+def test_run_paginator_raises_when_collection_missing_on_first_page():
     client = _client(restful_return_value={"total": 1})
     log_warning = MagicMock()
-    result = _run_paginator(
-        client=client,
-        object_type="CalculatedInsight",
-        path="ssot/calculated-insights",
-        limit=50,
-        log_warning=log_warning,
-    )
-    assert result == []
-    assert any("collection" in call.args[0] for call in log_warning.call_args_list)
+    with pytest.raises(RuntimeError, match="Missing 'collection'"):
+        _run_paginator(
+            client=client,
+            object_type="CalculatedInsight",
+            path="ssot/calculated-insights",
+            limit=50,
+            log_warning=log_warning,
+        )
 
 
 def test_run_paginator_raises_when_collection_missing_on_later_page():
