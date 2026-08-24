@@ -511,7 +511,6 @@ describe('GlobalSettingsClassBase', () => {
         'preferences.appearance',
         'preferences.email',
         'preferences.loginConfiguration',
-        'preferences.notifications',
         'preferences.om-health',
         'preferences.profiler-configuration',
         'preferences.search-settings',

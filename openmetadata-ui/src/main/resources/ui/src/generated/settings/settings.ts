@@ -44,7 +44,6 @@ export enum SettingType {
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
     MCPConfiguration = "mcpConfiguration",
-    NotificationSettings = "notificationSettings",
     OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
@@ -113,9 +112,6 @@ export enum SettingType {
  *
  * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
  * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
- *
- * Notification preferences that control which entity changes OpenMetadata records as Change
- * Events.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -663,11 +659,6 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
-    /**
-     * Produce Change Events for Query entity create, update, and delete operations. Disabled by
-     * default since queries are often ingested in large bulk batches.
-     */
-    enableQueryChangeEvents?: boolean;
 }
 
 export interface AllowedFieldValueBoostFields {

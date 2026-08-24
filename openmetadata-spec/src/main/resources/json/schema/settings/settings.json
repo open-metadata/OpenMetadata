@@ -42,8 +42,7 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "appConfiguration",
-        "notificationSettings"
+        "appConfiguration"
       ]
     }
   },
@@ -122,9 +121,6 @@
         },
         {
           "$ref": "../api/configuration/appConfiguration.json"
-        },
-        {
-          "$ref": "../configuration/notificationSettings.json"
         }
       ]
     }

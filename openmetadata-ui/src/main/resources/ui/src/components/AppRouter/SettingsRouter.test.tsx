@@ -104,14 +104,6 @@ jest.mock('../../pages/NotificationListPage/NotificationListPage', () => ({
   default: jest.fn().mockReturnValue(<div>NotificationListPage</div>),
 }));
 
-jest.mock(
-  '../../pages/NotificationSettingsPage/NotificationSettingsPage',
-  () => ({
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<div>NotificationSettingsPage</div>),
-  })
-);
-
 jest.mock('../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage', () => ({
   __esModule: true,
   PersonaDetailsPage: jest.fn().mockReturnValue(<div>PersonaDetailsPage</div>),
@@ -398,18 +390,6 @@ describe.skip('SettingsRouter', () => {
 
     expect(
       await screen.findByText('EditLoginConfigurationPage')
-    ).toBeInTheDocument();
-  });
-
-  it('should render NotificationSettingsPage component for notification settings route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/preferences/notifications`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByText('NotificationSettingsPage')
     ).toBeInTheDocument();
   });
 

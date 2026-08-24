@@ -416,13 +416,6 @@ class GlobalSettingsClassBase {
             icon: LoginIcon,
           },
           {
-            label: t('label.notification-plural'),
-            description: t('message.page-sub-header-for-notification-setting'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.NOTIFICATIONS}`,
-            icon: NotificationsIcon,
-          },
-          {
             label: t('label.health-check'),
             description: t(
               'message.page-sub-header-for-om-health-configuration'

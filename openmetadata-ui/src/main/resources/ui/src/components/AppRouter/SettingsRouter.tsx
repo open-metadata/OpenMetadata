@@ -173,13 +173,6 @@ const NotificationListPage = withPageSuspenseFallback(
   )
 );
 
-const NotificationSettingsPage = withPageSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/NotificationSettingsPage/NotificationSettingsPage')
-  )
-);
-
 const OmHealthPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/OmHealth/OmHealthPage'))
 );
@@ -736,18 +729,6 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_URL_CONFIG
-        )}
-      />
-
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <NotificationSettingsPage />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.NOTIFICATIONS
         )}
       />
 
