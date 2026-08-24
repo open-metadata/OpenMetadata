@@ -2411,12 +2411,27 @@ public class OpenMetadataOperations implements Callable<Integer> {
     int exitCode = 1;
     try {
       LOG.info("Deploying Pipelines via API");
-      parseConfig();
-      exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
+      if (isValidDeployOptions(chunkSize, secondsPerPipeline)) {
+        parseConfig();
+        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
+      }
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
     }
     return exitCode;
+  }
+
+  static boolean isValidDeployOptions(final int chunkSize, final int secondsPerPipeline) {
+    boolean valid = true;
+    if (chunkSize < 1) {
+      LOG.error("--chunk-size must be at least 1, got {}", chunkSize);
+      valid = false;
+    }
+    if (secondsPerPipeline < 1) {
+      LOG.error("--seconds-per-pipeline must be at least 1, got {}", secondsPerPipeline);
+      valid = false;
+    }
+    return valid;
   }
 
   private int runPipelineDeployment(final int chunkSize, final int secondsPerPipeline) {
@@ -3121,6 +3136,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       HttpClient client, String jwtToken, String serverUrl, Duration chunkTimeout) {}
 
   private <T> List<List<T>> chunkList(List<T> list, int chunkSize) {
+    if (chunkSize < 1) {
+      throw new IllegalArgumentException("chunkSize must be at least 1, got " + chunkSize);
+    }
     List<List<T>> chunks = new ArrayList<>();
     for (int i = 0; i < list.size(); i += chunkSize) {
       int end = Math.min(list.size(), i + chunkSize);

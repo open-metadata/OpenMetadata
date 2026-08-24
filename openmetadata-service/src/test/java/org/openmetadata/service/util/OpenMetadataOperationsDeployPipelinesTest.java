@@ -47,7 +47,25 @@ class OpenMetadataOperationsDeployPipelinesTest {
   @Test
   void chunkDeadlineNeverDropsBelowTheFloor() {
     assertEquals(PREVIOUS_FIXED_TIMEOUT, OpenMetadataOperations.deployChunkTimeout(1, 5));
-    assertEquals(PREVIOUS_FIXED_TIMEOUT, OpenMetadataOperations.deployChunkTimeout(0, 30));
+    assertEquals(PREVIOUS_FIXED_TIMEOUT, OpenMetadataOperations.deployChunkTimeout(4, 1));
+  }
+
+  @Test
+  void defaultOptionsAreAccepted() {
+    assertTrue(OpenMetadataOperations.isValidDeployOptions(20, 30));
+    assertTrue(OpenMetadataOperations.isValidDeployOptions(1, 1));
+  }
+
+  @Test
+  void nonPositiveChunkSizeIsRejected() {
+    assertFalse(OpenMetadataOperations.isValidDeployOptions(0, 30));
+    assertFalse(OpenMetadataOperations.isValidDeployOptions(-1, 30));
+  }
+
+  @Test
+  void nonPositiveSecondsPerPipelineIsRejected() {
+    assertFalse(OpenMetadataOperations.isValidDeployOptions(20, 0));
+    assertFalse(OpenMetadataOperations.isValidDeployOptions(20, -5));
   }
 
   @Test
