@@ -110,7 +110,13 @@ const TestCaseIncidentTab = () => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, decodedFqn]);
+  }, [
+    entityPaging,
+    loading,
+    isInView,
+    decodedFqn,
+    handleFeedFetchFromFeedList,
+  ]);
 
   const handleTaskClick = useCallback(
     (task: Task) => {
