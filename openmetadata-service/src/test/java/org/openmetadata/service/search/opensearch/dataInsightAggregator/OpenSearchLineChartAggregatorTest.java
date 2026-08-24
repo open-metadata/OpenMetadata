@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
@@ -29,6 +30,21 @@ import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 
 class OpenSearchLineChartAggregatorTest {
+
+  private static final String TABLE_FILTER =
+      "{\"query\":{\"term\":{\"entityType.keyword\":\"table\"}}}";
+  private static final String DASHBOARD_FILTER =
+      "{\"query\":{\"term\":{\"entityType.keyword\":\"dashboard\"}}}";
+  private static final String TABLE_QUERY_TEXT = "{\"term\":{\"entityType.keyword\":\"table\"}}";
+  private static final com.fasterxml.jackson.databind.JsonNode TABLE_QUERY = tableQuery();
+
+  private static com.fasterxml.jackson.databind.JsonNode tableQuery() {
+    try {
+      return new com.fasterxml.jackson.databind.ObjectMapper().readTree(TABLE_QUERY_TEXT);
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
@@ -107,6 +123,103 @@ class OpenSearchLineChartAggregatorTest {
     aggregations.forEach(
         groupBy -> groupBy.path("aggregations").fieldNames().forEachRemaining(metricNames::add));
     assertEquals(Set.of(OWNER_METRIC, DESCRIPTION_METRIC), metricNames);
+  }
+
+  @Test
+  void metricsSharingAFilterConstrainTheLiveRequest() throws Exception {
+    JsonNode query =
+        OBJECT_MAPPER
+            .readTree(serializeToJson(prepare(filteredChart(TABLE_FILTER, TABLE_FILTER))))
+            .path("query");
+
+    assertEquals(TABLE_QUERY, unwrap(query), "the live request carried no query at all before");
+  }
+
+  @Test
+  void metricsSharingAFilterAndTheDateRangeBothConstrainTheHistoricalRequest() throws Exception {
+    JsonNode query =
+        OBJECT_MAPPER
+            .readTree(serializeToJson(prepareHistorical(filteredChart(TABLE_FILTER, TABLE_FILTER))))
+            .path("query");
+
+    JsonNode clauses = query.path("bool").path("filter");
+    assertEquals(2, clauses.size(), "expected the range and the metric filter: " + query);
+    assertTrue(clauses.get(0).has("range"), "first clause should be the @timestamp range");
+    assertEquals(TABLE_QUERY, unwrap(clauses.get(1)));
+  }
+
+  @Test
+  void anUnreadableFilterLeavesBothTheRequestAndTheSubAggregationUnfiltered() throws Exception {
+    // Asserting both halves together is what stops a later change narrowing the request while the
+    // sub-aggregations silently fall back, which would count one population and select from
+    // another.
+    for (String bad : new String[] {"{", "{\"bool\":{}}", "{}"}) {
+      JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(filteredChart(bad, bad))));
+      assertTrue(root.path("query").isMissingNode(), "no hoist for filter " + bad);
+      assertNull(
+          findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
+              .path("aggregations")
+              .get("filter"),
+          "no filter sub-aggregation for " + bad);
+    }
+  }
+
+  private SearchRequest prepareHistorical(DataInsightCustomChart chart) {
+    return aggregator.prepareSearchRequest(
+        chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), false);
+  }
+
+  private static DataInsightCustomChart filteredChart(String firstFilter, String secondFilter) {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withName(OWNER_METRIC)
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(firstFilter),
+                    new LineChartMetric()
+                        .withName(DESCRIPTION_METRIC)
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(secondFilter)))
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart().withName("filtered_chart").withChartDetails(lineChart);
+  }
+
+  private static DataInsightCustomChart groupedFilteredChart() {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(TABLE_FILTER)))
+            .withGroupBy("entityType")
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart()
+        .withName("grouped_filtered_chart")
+        .withChartDetails(lineChart);
+  }
+
+  private static DataInsightCustomChart timestampAxisChart(String groupBy) {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(TABLE_FILTER)))
+            .withGroupBy(groupBy);
+    return new DataInsightCustomChart()
+        .withName("timestamp_axis_chart")
+        .withChartDetails(lineChart);
+  }
+
+  /** OpenSearch wraps a hoisted query as base64, so assertions decode before comparing. */
+  private static JsonNode unwrap(JsonNode query) throws Exception {
+    JsonNode wrapper = query.path("wrapper").path("query");
+    assertFalse(wrapper.isMissingNode(), "expected a wrapper query, got: " + query);
+    return OBJECT_MAPPER.readTree(java.util.Base64.getDecoder().decode(wrapper.asText()));
   }
 
   private SearchRequest prepare(DataInsightCustomChart chart) {
