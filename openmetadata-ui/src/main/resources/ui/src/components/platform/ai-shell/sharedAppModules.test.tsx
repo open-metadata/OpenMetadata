@@ -12,18 +12,9 @@
  */
 
 import { renderHook } from '@testing-library/react';
-import { AppPlugin } from '../../Settings/Applications/plugins/AppPlugin';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { AppModule } from './AppModule.types';
-import { sharedAppModules, useAllAppModules } from './sharedAppModules';
-
-const mockUseApplicationsProvider = jest.fn();
-
-jest.mock(
-  '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
-  () => ({
-    useApplicationsProvider: () => mockUseApplicationsProvider(),
-  })
-);
+import { useAllAppModules } from './sharedAppModules';
 
 const buildModule = (id: string, navOrder: number): AppModule => ({
   id,
@@ -34,65 +25,51 @@ const buildModule = (id: string, navOrder: number): AppModule => ({
   routes: [],
 });
 
-const buildPlugin = (
-  name: string,
-  getModeModules?: AppPlugin['getModeModules']
-): AppPlugin => ({
-  name,
-  isInstalled: true,
-  getModeModules,
-});
+describe('useAllAppModules', () => {
+  const originalModules = leftSidebarClassBase.getAppModeModules();
 
-describe('sharedAppModules', () => {
-  beforeEach(() => {
-    mockUseApplicationsProvider.mockReset();
+  afterEach(() => {
+    leftSidebarClassBase.setAppModeModules(originalModules);
   });
 
-  it('merges shared modules with plugin classicV1 modules, sorted by navOrder', () => {
-    const pluginModule = buildModule('x', 5);
-    const plugin = buildPlugin('contributingPlugin', (mode: string) =>
-      mode === 'classicV1' ? [pluginModule] : []
-    );
-    mockUseApplicationsProvider.mockReturnValue({ plugins: [plugin] });
+  it('returns the LeftSidebarClassBase app-mode modules sorted by navOrder', () => {
+    const modules = [
+      buildModule('c', 30),
+      buildModule('a', 10),
+      buildModule('b', 20),
+    ];
+    leftSidebarClassBase.setAppModeModules(modules);
 
     const { result } = renderHook(() => useAllAppModules());
 
-    const ids = result.current.map((m) => m.id);
-
-    expect(ids).toContain('x');
-
-    const expectedOrder = [...sharedAppModules, pluginModule]
-      .map((module, index) => ({ module, index }))
-      .sort((a, b) =>
-        a.module.navOrder === b.module.navOrder
-          ? a.index - b.index
-          : a.module.navOrder - b.module.navOrder
-      )
-      .map(({ module }) => module.id);
-
-    expect(ids).toEqual(expectedOrder);
+    expect(result.current.map((m) => m.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('does not contribute modules for a plugin without getModeModules', () => {
-    const plugin = buildPlugin('noOpPlugin');
-    mockUseApplicationsProvider.mockReturnValue({ plugins: [plugin] });
+  it('keeps insertion order for modules sharing a navOrder', () => {
+    const modules = [
+      buildModule('first', 10),
+      buildModule('second', 10),
+      buildModule('third', 5),
+    ];
+    leftSidebarClassBase.setAppModeModules(modules);
 
     const { result } = renderHook(() => useAllAppModules());
 
-    expect(result.current.map((m) => m.id)).toEqual(
-      sharedAppModules.map((m) => m.id)
-    );
+    expect(result.current.map((m) => m.id)).toEqual([
+      'third',
+      'first',
+      'second',
+    ]);
   });
 
-  it('ignores modules a plugin contributes to a different mode', () => {
-    const otherModeModule = buildModule('other-mode-only', 1);
-    const plugin = buildPlugin('otherModePlugin', (mode: string) =>
-      mode === 'someOtherMode' ? [otherModeModule] : []
-    );
-    mockUseApplicationsProvider.mockReturnValue({ plugins: [plugin] });
+  it('reflects a downstream override of getAppModeModules', () => {
+    leftSidebarClassBase.setAppModeModules([
+      ...originalModules,
+      buildModule('collate-only', 999),
+    ]);
 
     const { result } = renderHook(() => useAllAppModules());
 
-    expect(result.current.map((m) => m.id)).not.toContain('other-mode-only');
+    expect(result.current.map((m) => m.id)).toContain('collate-only');
   });
 });

@@ -12,55 +12,29 @@
  */
 
 import { useMemo } from 'react';
-import { CLASSIC_V1_APP_MODE } from '../../../constants/appMode.constants';
-import { contextCenterModule } from '../../discovery/context-center/contextCenter.module';
-import { entityModule } from '../../discovery/entity/entity.module';
-import { exploreModule } from '../../discovery/explore/explore.module';
-import { homeModule } from '../../discovery/home/home.module';
-import { personalSpaceModule } from '../../discovery/personal-space/personalSpace.module';
-import { governModule } from '../../governance/govern/govern.module';
-import { marketplaceModule } from '../../governance/marketplace/marketplace.module';
-import { observabilityModule } from '../../observability/ObservabilityModule/observability.module';
-import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { AppModule } from './AppModule.types';
 
 /**
- * OSS shared modules for the app-mode shell — surfaces owned by
- * OpenMetadata core that appear in the shell for every consumer.
- *
- * Ordered by `navOrder` for readability; `useAllAppModules` sorts the union
- * with plugin contributions regardless.
+ * The modules backing the ClassicV1 app-mode shell, owned by
+ * `LeftSidebarClassBase` (a downstream build overrides `getAppModeModules()` to
+ * append its own). Re-exported here for consumers/tests that want the raw,
+ * unsorted list. ClassicV1 is an app layout — these are not contributed by an
+ * installed plugin.
  */
-export const sharedAppModules: AppModule[] = [
-  homeModule,
-  exploreModule,
-  entityModule,
-  observabilityModule,
-  governModule,
-  contextCenterModule,
-  marketplaceModule,
-  personalSpaceModule,
-];
+export const sharedAppModules: AppModule[] =
+  leftSidebarClassBase.getAppModeModules();
 
 /**
- * The full, ordered module list backing the app-mode shell.
- *
- * Merges the OSS `sharedAppModules` with every module an installed
- * `AppPlugin` contributes via `getModeModules(CLASSIC_V1_APP_MODE)` — the
- * plugin-native mechanism mirroring `getRoutes()` for Classic mode — and
- * sorts the union by `navOrder` (ascending). Ties keep insertion order:
- * shared modules before plugin-contributed ones at the same `navOrder`.
+ * The full, ordered module list backing the app-mode shell — the modules from
+ * `leftSidebarClassBase.getAppModeModules()` sorted by `navOrder` (ascending).
+ * Ties keep insertion order.
  */
 export const useAllAppModules = (): AppModule[] => {
-  const { plugins = [] } = useApplicationsProvider() ?? {};
-
   return useMemo(() => {
-    const contributed = plugins.flatMap(
-      (plugin) => plugin.getModeModules?.(CLASSIC_V1_APP_MODE) ?? []
-    );
-    const merged = [...sharedAppModules, ...contributed];
+    const modules = leftSidebarClassBase.getAppModeModules();
 
-    return merged
+    return modules
       .map((module, index) => ({ module, index }))
       .sort((a, b) =>
         a.module.navOrder === b.module.navOrder
@@ -68,5 +42,5 @@ export const useAllAppModules = (): AppModule[] => {
           : a.module.navOrder - b.module.navOrder
       )
       .map(({ module }) => module);
-  }, [plugins]);
+  }, []);
 };

@@ -121,11 +121,11 @@ export type AppModuleId = string;
  * contiguous URL namespace (`prefix`), every route inside that namespace,
  * the sidebar entry that links to it, and (optionally) its sub-nav.
  *
- * The app-mode sidebar derives its top-level items from the merged list of
- * modules (`useAllAppModules`), and the route table is the flat union of
- * every module's `routes` plus a contributed fallback — so adding a module
- * is one new module object returned from a plugin's
- * `AppPlugin.getModeModules(mode)`, or one entry in `sharedAppModules`.
+ * The app-mode sidebar derives its top-level items from the module list
+ * (`useAllAppModules`), and the route table is the flat union of every
+ * module's `routes` plus a contributed fallback — so adding a module is one
+ * new entry in `LeftSidebarClassBase.getAppModeModules()` (which a downstream
+ * build overrides to append its own).
  */
 export interface AppModule {
   /** Stable identifier. Must be unique across all contributed modules. */

@@ -16,7 +16,6 @@ import { App } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
-import type { AppModule } from '../../../platform/ai-shell/AppModule.types';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
   index: number;
@@ -136,17 +135,4 @@ export interface AppPlugin {
    * ```
    */
   contributeExtensions?(registry: ExtensionPointRegistry): void;
-
-  /**
-   * Optional method that contributes whole mode-shell modules (nav entry,
-   * owned routes, optional sub-nav) for a given runtime mode — e.g.
-   * `'classicV1'`. Mirrors `getRoutes()`'s role for Classic mode: the
-   * plugin-native way to add mode-scoped surfaces without OSS importing
-   * plugin code or a registry indirection.
-   *
-   * @param mode - The runtime app-mode key (see `CLASSIC_V1_APP_MODE`).
-   * @returns An array of modules to merge into that mode's shell, or an
-   *          empty array if this plugin contributes nothing to `mode`.
-   */
-  getModeModules?(mode: string): AppModule[];
 }
