@@ -96,7 +96,7 @@ describe('OMSelectWidget', () => {
     expect(screen.getByRole('button')).toBeDisabled();
   });
 
-  it('refetches the full option list when the dropdown is reopened', async () => {
+  it('restores the full option list from cache when the dropdown is reopened', async () => {
     const allOptions = [
       { value: 'opt1', title: 'Option 1' },
       { value: 'opt2', title: 'Option 2' },
@@ -135,20 +135,16 @@ describe('OMSelectWidget', () => {
       expect(screen.getByTestId('options').children).toHaveLength(1)
     );
 
-    // Make the reopen's background refetch hang so we can assert the list is
-    // restored synchronously from cache — no flash of the single selected item.
-    let resolveReopen: (value: unknown) => void = () => undefined;
-    asyncFetch.mockImplementationOnce(
-      () => new Promise((resolve) => (resolveReopen = resolve))
-    );
+    // Reopening restores the full option set immediately from the cached
+    // defaults. It must NOT trigger a background loadAsync('') — doing so
+    // races the debounced default fetch against the user's typed search and
+    // can clobber the search result (see onOpenChange in OMSelectWidget).
+    const callsBeforeReopen = asyncFetch.mock.calls.length;
 
-    // Reopening restores the full option set immediately, before the refetch
-    // resolves.
     fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
 
     expect(screen.getByTestId('options').children).toHaveLength(2);
-    expect(asyncFetch).toHaveBeenLastCalledWith('');
-
-    resolveReopen({ values: allOptions });
+    expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
+    expect(asyncFetch).toHaveBeenLastCalledWith('Option 1');
   });
 });
