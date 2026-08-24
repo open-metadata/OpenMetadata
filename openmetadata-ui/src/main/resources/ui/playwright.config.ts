@@ -167,8 +167,10 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     // Compatibility shim for PR workflows that still pass --project=DomainIsolation.
-    // The DomainIsolation E2E suite is not backported to 1.13, so this project intentionally
-    // matches no tests while allowing the workflow argument to resolve.
+    // Only DomainIncidentIsolation.spec.ts has been backported to 1.13 so far (as part of
+    // the #31740 domain-RBAC fix); it runs under the default chromium project instead, since
+    // this shim intentionally matches no tests. The rest of main's DomainIsolation suite
+    // (search/lineage/task/dropdown/listing isolation) is not backported.
     {
       name: 'DomainIsolation',
       testMatch: [],

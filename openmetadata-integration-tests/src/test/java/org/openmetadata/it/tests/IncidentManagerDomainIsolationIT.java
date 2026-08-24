@@ -148,7 +148,7 @@ public class IncidentManagerDomainIsolationIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/v1/dataQuality/testCases/testCaseIncidentStatus",
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/search/list",
                 null,
                 RequestOptions.builder()
                     .queryParam("limit", "1000")
