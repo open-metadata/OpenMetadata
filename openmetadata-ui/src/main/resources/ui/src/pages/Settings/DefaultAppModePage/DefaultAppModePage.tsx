@@ -100,7 +100,7 @@ const DefaultAppModePage: React.FC = () => {
       await patchAppConfiguration({ defaultAppMode });
       setInitialValue(currentValue);
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: pageTitle })
+        t('server.entity-updated-success', { entity: pageTitle })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
