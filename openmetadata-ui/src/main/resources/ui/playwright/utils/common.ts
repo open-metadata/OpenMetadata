@@ -105,6 +105,38 @@ export const disableEtagConditionalReads = async (page: Page) => {
   }
 };
 
+const LOGGED_IN_USERS_KEY = 'loggedInUsers';
+
+/**
+ * Suppress the landing-page welcome banner at the source.
+ *
+ * MyDataPage renders the welcome banner only when the logged-in user's `name`
+ * is absent from the `loggedInUsers` localStorage list (see
+ * MyDataPage.component.tsx). Seeding that list with the user's name before the
+ * first navigation means the banner never renders for the session, so no test
+ * has to dismiss it. `userName` must equal the app's `currentUser.name` — for a
+ * created UserClass that is `responseData.name`; the email local-part is the
+ * server-assigned fallback for a pure login (e.g. admin).
+ */
+export const suppressWelcomeScreen = async (page: Page, userName: string) => {
+  const name = userName.includes('@') ? userName.split('@')[0] : userName;
+  const seed = ({ key, value }: { key: string; value: string }) => {
+    const existing = (localStorage.getItem(key) ?? '')
+      .split(',')
+      .filter(Boolean);
+    if (!existing.includes(value)) {
+      localStorage.setItem(key, [...existing, value].join(','));
+    }
+  };
+  const arg = { key: LOGGED_IN_USERS_KEY, value: name };
+
+  await page.addInitScript(seed, arg);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate(seed, arg);
+  }
+};
+
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
@@ -126,29 +158,6 @@ export const redirectToExplorePage = async (page: Page) => {
   await page.goto('/explore');
   await page.waitForURL('**/explore');
   await waitForAllLoadersToDisappear(page);
-};
-
-export const removeLandingBanner = async (page: Page) => {
-  try {
-    const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
-    await welcomePageCloseButton
-      .waitFor({
-        state: 'visible',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Do nothing if the welcome banner does not exist
-        return;
-      });
-
-    // Close the welcome banner if it exists
-    if (await welcomePageCloseButton.isVisible()) {
-      await welcomePageCloseButton.click();
-    }
-  } catch {
-    // Do nothing if the welcome banner does not exist
-    return;
-  }
 };
 
 type CreateNewPageResult = {

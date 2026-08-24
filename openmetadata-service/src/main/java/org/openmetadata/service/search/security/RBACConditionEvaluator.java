@@ -2,7 +2,14 @@ package org.openmetadata.service.search.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.*;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
@@ -28,6 +35,8 @@ public class RBACConditionEvaluator {
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
+  private final Cache<String, SpelExpression> expressionCache =
+      Caffeine.newBuilder().maximumSize(512).build();
   private final StandardEvaluationContext spelContext;
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
@@ -120,14 +129,18 @@ public class RBACConditionEvaluator {
     }
 
     if (rule.getCondition() != null && !rule.getCondition().trim().isEmpty()) {
-      SpelExpression parsedExpression =
-          (SpelExpression) spelParser.parseExpression(rule.getCondition());
+      SpelExpression parsedExpression = parseCondition(rule.getCondition());
       preprocessExpression(parsedExpression.getAST(), ruleCollector);
     } else {
       ruleCollector.addMust(queryBuilderFactory.matchAllQuery());
     }
 
     return ruleCollector.buildFinalQuery();
+  }
+
+  SpelExpression parseCondition(String condition) {
+    return expressionCache.get(
+        condition, value -> (SpelExpression) spelParser.parseExpression(value));
   }
 
   private void preprocessExpression(SpelNode node, ConditionCollector collector) {
