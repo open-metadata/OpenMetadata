@@ -490,6 +490,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               name="profileSampleType">
               <Select
                 allowClear
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the first field when the settings modal opens
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"

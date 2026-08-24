@@ -51,6 +51,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
         allowUpload
         multiline
         acceptedFileTypes={schema.accept as string[] | undefined}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- RJSF-driven field autofocus
         autoFocus={autofocus}
         hint={hint}
         id={id}
@@ -77,6 +78,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
           : undefined
       }
       allowUpload={isInputTypeFileOrInput}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- RJSF-driven field autofocus
       autoFocus={autofocus}
       hint={hint}
       id={id}

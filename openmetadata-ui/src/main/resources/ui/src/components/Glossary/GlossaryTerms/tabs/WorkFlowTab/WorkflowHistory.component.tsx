@@ -36,6 +36,7 @@ import {
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
+import { handleKeyboardActivation } from '../../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
@@ -199,6 +200,8 @@ const WorkflowHistory = memo(
     );
 
     const workflowContent = useMemo(() => {
+      const workflowHistoryLabel = t('label.workflow-history');
+
       if (isLoading) {
         return (
           <div
@@ -220,7 +223,7 @@ const WorkflowHistory = memo(
               description={
                 <Text className="text-grey-muted">
                   {t('label.no-entity-available', {
-                    entity: t('label.workflow-history'),
+                    entity: workflowHistoryLabel,
                   })}
                 </Text>
               }
@@ -237,21 +240,15 @@ const WorkflowHistory = memo(
           })}
           data-testid="workflow-history-widget">
           <div
+            aria-label={workflowHistoryLabel}
             className=" cursor-pointer d-flex flex-col w-full gap-2"
             role="button"
             tabIndex={0}
             onClick={toggleCollapse}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggleCollapse();
-              }
-            }}>
+            onKeyDown={handleKeyboardActivation(toggleCollapse)}>
             <div className="workflow-header d-flex justify-between align-center w-full">
               <div className="d-flex align-center gap-2">
-                <Text className="workflow-title">
-                  {t('label.workflow-history')}
-                </Text>
+                <Text className="workflow-title">{workflowHistoryLabel}</Text>
               </div>
               <Text className="workflow-counter">
                 {completedSteps}/{totalSteps}
