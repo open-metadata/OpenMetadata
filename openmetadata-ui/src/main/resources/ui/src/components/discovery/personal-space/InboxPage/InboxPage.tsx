@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  FeaturedIcon,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import React, { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-header.svg';
 import { useIsClassicV1Mode } from '../../../../hooks/useAppMode';
 import HeaderShell from '../../../common/HeaderShell/HeaderShell.component';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-default.svg';
 
 type InboxPageTab = 'triage' | 'my-data';
 
@@ -86,7 +91,15 @@ const InboxPage: React.FC<InboxPageProps> = ({
             </Tabs.List>
           </Tabs>
         }
-        leading={<InboxIcon />}
+        leading={
+          <FeaturedIcon
+            color="brand"
+            icon={InboxIcon}
+            shape="square"
+            size="md"
+            theme="dark"
+          />
+        }
         padding="comfortable"
         subtitle={t('message.inbox-desc')}
         title={t('label.inbox')}
