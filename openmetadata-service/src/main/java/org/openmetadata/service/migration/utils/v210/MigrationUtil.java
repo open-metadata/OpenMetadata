@@ -14,7 +14,14 @@ package org.openmetadata.service.migration.utils.v210;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class MigrationUtil {
@@ -73,6 +80,48 @@ public class MigrationUtil {
               ? WIDEN_ACTIVITY_ID_MYSQL
               : WIDEN_ACTIVITY_ID_POSTGRES);
     }
+  }
+
+  /**
+   * Deploy stored workflow definitions that never reached Flowable.
+   *
+   * <p>A definition only reaches the engine through the create/update hooks on its repository, and
+   * boot-time seeding calls create only for entities that do not exist yet. When a migration
+   * created them first, seeding skips them and nothing deploys them — the definition sits in the
+   * database and the first attempt to run it fails with "Process Definition not found". Migration
+   * 1.13.1 used to cover this by redeploying everything on the way past; consolidating the pre-2.0
+   * migrations into the baseline removed the only step that guaranteed it.
+   *
+   * <p>Only the missing ones are deployed. Redeploying indiscriminately supersedes the process
+   * definition of every live workflow and resets the timer jobs behind periodic ones, which stops
+   * them firing — so an already-deployed workflow is left exactly as it is.
+   */
+  public static int deployMissingGovernanceWorkflows() {
+    int deployed = 0;
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowHandler handler = WorkflowHandler.getInstance();
+    for (WorkflowDefinition definition :
+        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter())) {
+      deployed += deployIfMissing(handler, definition);
+    }
+    LOG.info("Deployed {} previously undeployed governance workflow definition(s)", deployed);
+    return deployed;
+  }
+
+  /** One failure must not stop the rest: a single bad definition should not block the upgrade. */
+  private static int deployIfMissing(WorkflowHandler handler, WorkflowDefinition definition) {
+    int deployed = 0;
+    try {
+      if (!handler.isDeployed(definition)) {
+        handler.deploy(new Workflow(definition));
+        LOG.info("Deployed missing workflow '{}'", definition.getName());
+        deployed = 1;
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to deploy workflow '{}': {}", definition.getName(), e.getMessage());
+    }
+    return deployed;
   }
 
   private static Integer currentActivityIdLength(Handle handle, ConnectionType connectionType) {

@@ -13,6 +13,7 @@
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.deployMissingGovernanceWorkflows;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.widenFlowableActivityId;
 
 import lombok.SneakyThrows;
@@ -39,5 +40,6 @@ public class Migration extends MigrationProcessImpl {
       LOG.warn("WorkflowHandler initialization failed in v210: {}", e.getMessage());
     }
     widenFlowableActivityId(handle, MYSQL);
+    deployMissingGovernanceWorkflows();
   }
 }
