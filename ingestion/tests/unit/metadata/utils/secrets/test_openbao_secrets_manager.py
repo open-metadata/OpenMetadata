@@ -206,3 +206,27 @@ class TestOpenBaoAppRole:
         with pytest.raises(SecretsManagerConfigException):
             build_manager(address).get_string_value("/svc/password")
         assert not LOGIN_COUNT, "token auth has no login to repeat"
+
+    def test_missing_secret_id_is_named_before_the_login_request(self, address):
+        """Matches the Java client: name the parameter instead of a generic HTTP 400."""
+        credentials = OpenBaoCredentials(address=address, mount="openmetadata", authMethod="approle", roleId="role")
+        with (
+            patch.object(OpenBaoSecretsManager, "load_credentials", return_value=credentials),
+            pytest.raises(SecretsManagerConfigException) as error,
+        ):
+            OpenBaoSecretsManager(SecretsManagerClientLoader.env)
+        assert "secretId" in str(error.value)
+        assert not LOGIN_COUNT, "must fail before issuing the login request"
+
+    def test_timeouts_come_from_the_credentials(self, address):
+        credentials = OpenBaoCredentials(
+            address=address,
+            mount="openmetadata",
+            authMethod="token",
+            token="t0ken",
+            connectTimeoutMs=1500,
+            readTimeoutMs=2500,
+        )
+        with patch.object(OpenBaoSecretsManager, "load_credentials", return_value=credentials):
+            manager = OpenBaoSecretsManager(SecretsManagerClientLoader.env)
+        assert manager.timeout == (1.5, 2.5)

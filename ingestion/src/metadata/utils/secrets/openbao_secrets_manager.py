@@ -42,7 +42,9 @@ TOKEN_HEADER = "X-Vault-Token"
 NAMESPACE_HEADER = "X-Vault-Namespace"
 DEFAULT_MOUNT = "secret"
 DEFAULT_AUTH_PATH = "approle"
-DEFAULT_TIMEOUT_SECONDS = 10
+# Requests takes (connect, read) seconds; the schema carries milliseconds to match the Java side.
+DEFAULT_CONNECT_TIMEOUT_MS = 5000
+DEFAULT_READ_TIMEOUT_MS = 10000
 
 
 # pylint: disable=import-outside-toplevel
@@ -81,6 +83,8 @@ def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
         authPath=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_auth_path", fallback=DEFAULT_AUTH_PATH),
         caCertPath=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_ca_cert_path", fallback=None),
         skipTlsVerify=conf.getboolean(SECRET_MANAGER_AIRFLOW_CONF, "openbao_skip_tls_verify", fallback=False),
+        connectTimeoutMs=conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_connect_timeout_ms", fallback=5000),
+        readTimeoutMs=conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_read_timeout_ms", fallback=10000),
     )
 
 
@@ -105,6 +109,8 @@ def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
         authPath=os.getenv("OPENBAO_AUTH_PATH", DEFAULT_AUTH_PATH),
         caCertPath=os.getenv("OPENBAO_CA_CERT_PATH"),
         skipTlsVerify=os.getenv("OPENBAO_SKIP_TLS_VERIFY", "false").lower() == "true",
+        connectTimeoutMs=int(os.getenv("OPENBAO_CONNECT_TIMEOUT_MS", "5000")),
+        readTimeoutMs=int(os.getenv("OPENBAO_READ_TIMEOUT_MS", "10000")),
     )
 
 
@@ -130,6 +136,10 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
             self.session.verify = False
         elif self.credentials.caCertPath:
             self.session.verify = self.credentials.caCertPath
+        self.timeout = (
+            (self.credentials.connectTimeoutMs or DEFAULT_CONNECT_TIMEOUT_MS) / 1000,
+            (self.credentials.readTimeoutMs or DEFAULT_READ_TIMEOUT_MS) / 1000,
+        )
         self.token = self._authenticate()
 
     def _headers(self) -> dict:
@@ -152,6 +162,13 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
         return self._login_with_approle()
 
     def _login_with_approle(self) -> str:
+        # Validated before the request so a missing parameter is named, rather than surfacing as a
+        # generic HTTP 400 from the login endpoint. Mirrors the Java client's requireParameter.
+        for field, value in (("roleId", self.credentials.roleId), ("secretId", self.credentials.secretId)):
+            if not value:
+                raise SecretsManagerConfigException(
+                    f"OpenBao `authMethod` is `approle` but `{field}` is missing or empty. Review your configuration."
+                )
         auth_path = str(self.credentials.authPath or DEFAULT_AUTH_PATH).strip("/")
         url = f"{self.address}/v1/auth/{auth_path}/login"
         payload = {
@@ -162,7 +179,7 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
         # a namespaced deployment authenticates against the root namespace and fails.
         headers = {NAMESPACE_HEADER: self.namespace} if self.namespace else None
         try:
-            response = self.session.post(url, json=payload, headers=headers, timeout=DEFAULT_TIMEOUT_SECONDS)
+            response = self.session.post(url, json=payload, headers=headers, timeout=self.timeout)
         except requests.RequestException as exc:
             raise SecretsManagerConfigException(
                 f"Could not reach OpenBao at [{self.address}] to authenticate: {exc}"
@@ -188,7 +205,7 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
         path = secret_id.lstrip("/")
         url = f"{self.address}/v1/{self.mount}/data/{path}"
         try:
-            response = self.session.get(url, headers=self._headers(), timeout=DEFAULT_TIMEOUT_SECONDS)
+            response = self.session.get(url, headers=self._headers(), timeout=self.timeout)
         except requests.RequestException as exc:
             logger.debug(traceback.format_exc())
             raise SecretsManagerConfigException(
@@ -203,7 +220,7 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
         if response.status_code in (401, 403) and self._is_approle():
             logger.info("OpenBao rejected the token; re-authenticating once and retrying")
             self.token = self._authenticate()
-            response = self.session.get(url, headers=self._headers(), timeout=DEFAULT_TIMEOUT_SECONDS)
+            response = self.session.get(url, headers=self._headers(), timeout=self.timeout)
 
         if response.status_code == 200:
             value = response.json().get("data", {}).get("data", {}).get("value")

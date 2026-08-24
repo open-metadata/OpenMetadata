@@ -31,6 +31,10 @@ export interface OpenBaoCredentials {
      */
     caCertPath?: string;
     /**
+     * Connection timeout for requests to OpenBao
+     */
+    connectTimeoutMs?: number;
+    /**
      * Path of the KV v2 secrets engine mount
      */
     mount?: string;
@@ -39,6 +43,10 @@ export interface OpenBaoCredentials {
      * without namespaces.
      */
     namespace?: string;
+    /**
+     * Read timeout for requests to OpenBao
+     */
+    readTimeoutMs?: number;
     /**
      * AppRole role_id, used when authMethod is `approle`
      */

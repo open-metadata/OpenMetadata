@@ -30,7 +30,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
  * X-Vault-*} headers, so one implementation covers both. Only OpenBao is covered by automated tests.
  */
 @Slf4j
-public class OpenBaoSecretsManager extends ExternalSecretsManager {
+public class OpenBaoSecretsManager extends ExternalSecretsManager implements AutoCloseable {
 
   private static OpenBaoSecretsManager instance = null;
 
@@ -91,7 +91,28 @@ public class OpenBaoSecretsManager extends ExternalSecretsManager {
                 Boolean.parseBoolean(parameter(secretsConfig, SKIP_TLS_VERIFY, "false")),
                 intParameter(secretsConfig, CONNECT_TIMEOUT_MS, DEFAULT_CONNECT_TIMEOUT_MS),
                 intParameter(secretsConfig, READ_TIMEOUT_MS, DEFAULT_READ_TIMEOUT_MS)));
-    this.client.verifyMount();
+    verifyMountOrRelease();
+  }
+
+  /**
+   * Probes the mount, releasing the client's connection pool if the probe fails.
+   *
+   * <p>Without this a failed boot leaves an orphaned Jersey client - and its pool threads - behind
+   * with no reference able to close it, which matters most in tests that construct many managers.
+   */
+  private void verifyMountOrRelease() {
+    try {
+      client.verifyMount();
+    } catch (RuntimeException e) {
+      client.close();
+      throw e;
+    }
+  }
+
+  /** Releases the underlying client. The singleton lives for the process, so tests are the caller. */
+  @Override
+  public void close() {
+    client.close();
   }
 
   /**
@@ -253,6 +274,11 @@ public class OpenBaoSecretsManager extends ExternalSecretsManager {
     if (instance == null) {
       instance = new OpenBaoSecretsManager(secretsConfig);
     }
+    return instance;
+  }
+
+  @VisibleForTesting
+  static OpenBaoSecretsManager currentInstance() {
     return instance;
   }
 

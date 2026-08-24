@@ -173,7 +173,12 @@ class OpenBaoSecretsManagerContainerTest {
 
   @AfterEach
   void clearSingleton() {
-    // Leaving a live singleton behind would make sibling test classes depend on run order.
+    // Leaving a live singleton behind would make sibling test classes depend on run order, and
+    // leaving its client open leaks a Jersey connection pool per test.
+    OpenBaoSecretsManager manager = OpenBaoSecretsManager.currentInstance();
+    if (manager != null) {
+      manager.close();
+    }
     OpenBaoSecretsManager.resetInstance();
   }
 
