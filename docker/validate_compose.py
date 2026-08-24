@@ -256,11 +256,14 @@ def main() -> None:
 
     log(f"Waiting up to {timeout_seconds}s for the {DAG_ID} DAG (polling every {poll_interval_seconds}s).")
 
-    dag_run_id: str | None = None
-    state: str | None = None
+    last_observed_dag_run_id: str | None = None
+    last_observed_state: str | None = None
 
     while True:
         dag_run_id, state, polled = get_last_run_info()
+        if dag_run_id:
+            last_observed_dag_run_id = dag_run_id
+            last_observed_state = state
 
         if dag_run_id and state == "success":
             log(f"DAG run: [{dag_run_id}, {state}]")
@@ -287,10 +290,10 @@ def main() -> None:
         time.sleep(min(poll_interval_seconds, remaining))
 
     log(f"Timed out after {timeout_seconds}s waiting for the {DAG_ID} DAG.")
-    dump_diagnostics(dag_run_id)
+    dump_diagnostics(last_observed_dag_run_id)
     raise SystemExit(
         f"Sample data ingestion did not finish within {timeout_seconds}s "
-        f"(last observed run={dag_run_id}, state={state}). Raise "
+        f"(last observed run={last_observed_dag_run_id}, state={last_observed_state}). Raise "
         "VALIDATION_TIMEOUT_SECONDS if the run above was still making progress."
     )
 
