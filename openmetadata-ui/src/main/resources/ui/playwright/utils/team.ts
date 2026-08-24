@@ -99,42 +99,94 @@ export const visitTeamsPage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+interface TeamCleanupFailure {
+  teamName: string;
+  reason: string;
+}
+
 /**
- * Hard-delete a team created through the UI, children included.
+ * Hard-delete one team created through the UI, children included.
+ *
+ * Reports a failure rather than throwing so a caller cleaning up several teams
+ * still attempts the rest — a throw here would leave the remaining teams behind
+ * and recreate the accumulation this cleanup exists to prevent.
  *
  * Specs that build teams through the UI have no entity handle to call
- * `TeamClass.delete` on, so resolve the id by name first.
+ * `TeamClass.delete` on, so the id is resolved by name first. Delete-by-name is
+ * not an option: `TeamResource` pins that route to `recursive=false`, and these
+ * teams are nested by the time cleanup runs.
  *
- * 404 is the one tolerated outcome — the spec may have deleted the team as
- * part of what it asserts, and a recursive delete of its parent takes its
- * children with it. Every other failure is asserted rather than ignored: a
- * cleanup that fails quietly leaves the team behind, and the whole point of
- * calling this is to stop teams accumulating on long-lived deployments.
+ * 404 on the lookup is the one tolerated outcome — the spec may have deleted
+ * the team as part of what it asserts, and a recursive delete of its parent
+ * takes its children with it.
  */
-export const hardDeleteTeamByName = async (
+const hardDeleteTeamByName = async (
   apiContext: APIRequestContext,
   teamName: string
-) => {
-  const teamResponse = await apiContext.get(
-    `/api/v1/teams/name/${encodeURIComponent(teamName)}`
-  );
+): Promise<TeamCleanupFailure | undefined> => {
+  let failure: TeamCleanupFailure | undefined;
 
-  if (teamResponse.status() !== 404) {
-    expect(
-      teamResponse.ok(),
-      `Failed to look up team "${teamName}" for cleanup: ${teamResponse.status()} ${await teamResponse.text()}`
-    ).toBe(true);
-
-    const { id } = await teamResponse.json();
-    const deleteResponse = await apiContext.delete(
-      `/api/v1/teams/${id}?hardDelete=true&recursive=true`
+  try {
+    const teamResponse = await apiContext.get(
+      `/api/v1/teams/name/${encodeURIComponent(teamName)}`
     );
 
-    expect(
-      deleteResponse.ok(),
-      `Failed to clean up team "${teamName}": ${deleteResponse.status()} ${await deleteResponse.text()}`
-    ).toBe(true);
+    if (!teamResponse.ok()) {
+      if (teamResponse.status() !== 404) {
+        failure = {
+          teamName,
+          reason: `lookup returned ${teamResponse.status()} ${await teamResponse.text()}`,
+        };
+      }
+    } else {
+      const { id } = await teamResponse.json();
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/teams/${id}?hardDelete=true&recursive=true`
+      );
+
+      if (!deleteResponse.ok()) {
+        failure = {
+          teamName,
+          reason: `delete returned ${deleteResponse.status()} ${await deleteResponse.text()}`,
+        };
+      }
+    }
+  } catch (error) {
+    failure = { teamName, reason: (error as Error).message };
   }
+
+  return failure;
+};
+
+/**
+ * Hard-delete teams created through the UI, children included.
+ *
+ * Deletes are sequential: a recursive delete takes a team's children with it,
+ * so issuing them in parallel would race the ones already removed. Every name
+ * is attempted before anything is asserted, and the assertion then names every
+ * team that survived — cleanup that fails quietly is what lets teams pile up on
+ * a long-lived deployment in the first place.
+ */
+export const hardDeleteTeamsByName = async (
+  apiContext: APIRequestContext,
+  teamNames: string[]
+) => {
+  const failures: TeamCleanupFailure[] = [];
+
+  for (const teamName of teamNames) {
+    const failure = await hardDeleteTeamByName(apiContext, teamName);
+
+    if (failure) {
+      failures.push(failure);
+    }
+  }
+
+  expect(
+    failures,
+    `Failed to clean up teams: ${failures
+      .map(({ teamName, reason }) => `"${teamName}" (${reason})`)
+      .join(', ')}`
+  ).toEqual([]);
 };
 
 interface SearchTeamOptions {

@@ -25,7 +25,7 @@ import {
 } from '../../utils/dragDrop';
 import {
   addTeamHierarchy,
-  hardDeleteTeamByName,
+  hardDeleteTeamsByName,
   visitTeamsPage,
 } from '../../utils/team';
 
@@ -104,16 +104,16 @@ test.describe(
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      for (const teamName of [
-        teamNameBusiness,
-        teamNameDivision,
-        teamNameDepartment,
-        teamNameGroup,
-      ]) {
-        await hardDeleteTeamByName(apiContext, teamName);
+      try {
+        await hardDeleteTeamsByName(apiContext, [
+          teamNameBusiness,
+          teamNameDivision,
+          teamNameDepartment,
+          teamNameGroup,
+        ]);
+      } finally {
+        await afterAction();
       }
-
-      await afterAction();
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
