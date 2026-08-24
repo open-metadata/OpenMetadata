@@ -24,7 +24,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     onClick?: () => void;
   }) => (
-    <div data-testid="name-cell" onClick={onClick}>
+    <div data-testid="name-cell" role="presentation" onClick={onClick}>
       {children}
     </div>
   ),
@@ -59,7 +59,9 @@ describe('renderDomainNameCell', () => {
     const rowClick = jest.fn();
 
     render(
-      <div onClick={rowClick}>{renderDomainNameCell(DOMAIN, onClick)}</div>
+      <div role="presentation" onClick={rowClick}>
+        {renderDomainNameCell(DOMAIN, onClick)}
+      </div>
     );
     fireEvent.click(screen.getByText('Engineering'));
 
@@ -70,7 +72,11 @@ describe('renderDomainNameCell', () => {
   it('does not attach a click handler when no onClick is provided', () => {
     const rowClick = jest.fn();
 
-    render(<div onClick={rowClick}>{renderDomainNameCell(DOMAIN)}</div>);
+    render(
+      <div role="presentation" onClick={rowClick}>
+        {renderDomainNameCell(DOMAIN)}
+      </div>
+    );
     fireEvent.click(screen.getByText('Engineering'));
 
     // With no cell handler the click falls through to the row unchanged.
