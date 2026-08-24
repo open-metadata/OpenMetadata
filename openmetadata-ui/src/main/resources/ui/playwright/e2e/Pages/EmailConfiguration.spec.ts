@@ -17,13 +17,14 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
-const MASKED_PASSWORD = '*********';
+// Playwright keeps non-generated app constants local to avoid importing the app dependency graph.
+const MASKED_PASSWORD_VALUE = '*********';
 const EMAIL_SETTING = {
   config_type: 'emailConfiguration',
   config_value: {
     emailingEntity: 'OpenMetadata',
     enableSmtpServer: false,
-    password: MASKED_PASSWORD,
+    password: MASKED_PASSWORD_VALUE,
     senderMail: 'sender@example.com',
     serverEndpoint: 'smtp.example.com',
     serverPort: 587,
@@ -52,7 +53,7 @@ test.describe('Email configuration', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByRole('button', { exact: true, name: 'Edit' }).click();
 
     await expect(page.getByTestId('password-input')).toHaveValue(
-      MASKED_PASSWORD
+      MASKED_PASSWORD_VALUE
     );
     await page.getByTestId('emailing-entity-input').fill('Metadata Team');
 
