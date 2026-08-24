@@ -175,14 +175,11 @@ EXPOSE 8080
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
 
 
-# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
-# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
-# final pip install, or a later install restores the fixture.
-COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
-RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
-
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+COPY --chown=airflow:0 ingestion/scripts/image_post_install /tmp/image_post_install
+RUN bash /tmp/image_post_install/apply.sh && rm -rf /tmp/image_post_install
 
 # Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
 # That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their

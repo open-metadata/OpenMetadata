@@ -14,30 +14,21 @@
 #
 # teradatasql ships every platform it supports inside one wheel: seven Linux/AIX
 # .so variants, a Windows .dll pair and a macOS .dylib -- 337 MB, of which
-# exactly one file is ever dlopen()ed. All ten are Go shared libraries, so a
-# scanner reports the whole go/stdlib CVE set once per file against every image
-# carrying the teradata extra (CVE-2026-39821 Critical, plus CVE-2026-33818,
-# CVE-2026-46600, CVE-2026-56853, CVE-2026-56859, CVE-2026-56862 High and
-# CVE-2026-56858 Medium).
-#
-# This does not fix those CVEs. teradatasql 20.0.0.65 is the newest release on
-# PyPI and is built with go1.26.5; the fix is go1.26.6 and there is nothing to
-# upgrade to until Teradata rebuilds. What this does is cut the flagged
-# artifacts from ten to two and the package from 337 MB to 48 MB on arm64 or
-# 70 MB on amd64 -- both measured, the two differ because the x86 libraries are
-# larger -- so the remaining exposure is the code actually loadable on this image.
+# exactly one non-FIPS file is ever dlopen()ed. This persistent optimization cuts
+# the package to 48 MB on arm64 or 70 MB on amd64. Security version floors belong
+# in setup.py and the applicable constraints file, not in this cleanup.
 #
 # Two files are kept, not one: teradatasql selects the `fips` variant when the
 # host kernel reports /proc/sys/crypto/fips_enabled == 1. That is a property of
 # the node the container lands on, not of the build, so dropping it would turn a
 # FIPS-enabled node into a failure at connect() time.
 #
-# Run this after the final pip install of any image shipping the teradata extra;
-# a later install that replaces the teradatasql tree restores all ten files.
+# Run this after the final ingestion-extra install that can replace the
+# teradatasql tree; a later replacement restores all ten files.
 #
-# Unlike the spaCy fixture strip next door, deleting the wrong file here would
-# break the driver at runtime. So nothing is removed until the library this
-# platform actually loads has been found on disk and successfully dlopen()ed --
+# Deleting the wrong file here would break the driver at runtime. Nothing is
+# removed until the library this platform actually loads has been found on disk
+# and successfully dlopen()ed --
 # if that cannot be established the directory is left exactly as it is. The FIPS
 # variant is kept but never test-loaded; see primary_keeper_is_loadable below for
 # why testing it would risk skipping the strip for no safety gain. Every path
@@ -46,12 +37,12 @@
 
 set -uo pipefail
 
-# `python` first, not `python3`, for the same reason as the spaCy strip: pip
-# installs into whichever interpreter `python` resolves to in these images (in
+# `python` first, not `python3`: pip installs into whichever interpreter
+# `python` resolves to in these images (in
 # the airflow base that is ~/.local/bin/python, not the system one), so
 # preferring `python3` could scan a different site-packages than the one the
 # driver was installed into.
-PYTHON="$(command -v python || command -v python3 || true)"
+PYTHON="${IMAGE_POST_INSTALL_PYTHON:-$(command -v python || command -v python3 || true)}"
 if [ -z "${PYTHON}" ]; then
   echo "WARNING: no python interpreter on PATH; skipping teradatasql arch-lib strip" >&2
   exit 0

@@ -56,7 +56,7 @@ VERSIONS = {
     "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy>=3.8.2,<3.9",
+    "spacy": "spacy>=3.8.13,<3.9",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -67,6 +67,7 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy==20.0.0.2",
+    "teradatasql": "teradatasql>=20.0.0.66",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
@@ -425,7 +426,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
-    "teradata": {VERSIONS["teradata"]},
+    "teradata": {VERSIONS["teradata"], VERSIONS["teradatasql"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)

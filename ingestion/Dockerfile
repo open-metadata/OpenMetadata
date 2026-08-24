@@ -148,24 +148,13 @@ RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
 
 
-# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
-# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
-# final pip install, or a later install restores the fixture.
-COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
-RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
-
-# Drop the teradatasql driver libraries this platform cannot load. The wheel ships
-# all ten platform builds (337 MB of Go shared objects); only the two this
-# architecture can load are kept, taking the package to 48 MB (arm64) / 70 MB (amd64);
-# see ingestion/scripts/strip_teradatasql_arch_libs.sh. Same placement rule as the
-# spaCy strip -- after the final pip install, or a later install restores them.
-COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
-RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
-
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+COPY --chown=airflow:0 ingestion/scripts/image_post_install /tmp/image_post_install
+RUN bash /tmp/image_post_install/apply.sh && rm -rf /tmp/image_post_install
 
 # Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
 # That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their

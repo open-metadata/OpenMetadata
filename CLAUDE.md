@@ -130,6 +130,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `i18n.md` | UI `*.{ts,tsx}` + `src/locale/**` — no string literals, `yarn i18n`, translate placeholders |
 | `frontend-playwright.md` | UI `playwright/**` — E2E test constraints |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |
+| `image-post-install.md` | ingestion image Dockerfiles/dependencies — centralized post-install fixes, version guards, cleanup |
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
 | `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
 
