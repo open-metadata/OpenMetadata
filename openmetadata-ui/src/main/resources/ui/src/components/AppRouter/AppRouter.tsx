@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import { lazy } from 'react';
+import { lazy, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
@@ -29,7 +29,11 @@ const AuthenticatedApp = withPageSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AuthenticatedRoutes = withPageSuspenseFallback(
+// Exported so it can be registered with `useAppRoutesRegistry` under
+// `DEFAULT_APP_MODE` below — this is the actual "authenticated router" for
+// the default/Classic mode, symmetric with how a downstream plugin (e.g.
+// Collate's AI mode) registers its own routes component under its mode key.
+export const AuthenticatedRoutes = withPageSuspenseFallback(
   lazy(() =>
     import('./AuthenticatedRoutes').then((m) => ({
       default: m.AuthenticatedRoutes,
@@ -82,6 +86,27 @@ const AppRouter = () => {
 
   const appMode = useAppMode();
   const ModeRoutes = useAppRoutesRegistry((state) => state.routes[appMode]);
+
+  // Register the default mode's own routes/metadata so it shows up
+  // alongside any plugin-registered modes (e.g. Collate's AI mode) in
+  // registry-driven UIs — notably the tenant admin's default-app-mode
+  // picker, which lists its options from `useAppRoutesRegistry.metadata`.
+  // `DEFAULT_APP_MODE` is otherwise never routed through the registry
+  // (`isModeRoutesPending` and `useResolvedAppMode`'s `isModeRegistered`
+  // both special-case it as always-valid), so this registration is purely
+  // additive: `ModeRoutes` below resolves to the same `AuthenticatedRoutes`
+  // component whether or not this effect has run yet.
+  useEffect(() => {
+    useAppRoutesRegistry
+      .getState()
+      .registerRoutes(DEFAULT_APP_MODE, AuthenticatedRoutes, {
+        labelKey: 'label.default',
+      });
+
+    return () => {
+      useAppRoutesRegistry.getState().unregisterRoutes(DEFAULT_APP_MODE);
+    };
+  }, []);
 
   const isRegistrySettled = useResolvedAppMode();
 

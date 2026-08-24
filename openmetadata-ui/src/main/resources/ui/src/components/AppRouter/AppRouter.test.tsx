@@ -230,4 +230,40 @@ describe('AppRouter — App Mode routing integration', () => {
       screen.queryByTestId('default-authenticated-routes')
     ).not.toBeInTheDocument();
   });
+
+  it('registers DEFAULT_APP_MODE with the default authenticated routes and metadata on mount', async () => {
+    setAuthState({ isAuthenticated: true });
+
+    renderRouter();
+
+    await screen.findByTestId('default-authenticated-routes');
+
+    const { routes, metadata } = useAppRoutesRegistry.getState();
+
+    expect(routes[DEFAULT_APP_MODE]).toBeDefined();
+    expect(metadata[DEFAULT_APP_MODE]).toEqual(
+      expect.objectContaining({ labelKey: 'label.default' })
+    );
+  });
+
+  it('unregisters DEFAULT_APP_MODE on unmount', async () => {
+    setAuthState({ isAuthenticated: true });
+
+    const { unmount } = renderRouter();
+
+    await screen.findByTestId('default-authenticated-routes');
+
+    expect(
+      useAppRoutesRegistry.getState().routes[DEFAULT_APP_MODE]
+    ).toBeDefined();
+
+    unmount();
+
+    expect(
+      useAppRoutesRegistry.getState().routes[DEFAULT_APP_MODE]
+    ).toBeUndefined();
+    expect(
+      useAppRoutesRegistry.getState().metadata[DEFAULT_APP_MODE]
+    ).toBeUndefined();
+  });
 });
