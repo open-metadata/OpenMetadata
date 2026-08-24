@@ -32,7 +32,7 @@
  *   3. Run yarn icons:generate
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
 import { join, basename, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -188,6 +188,10 @@ async function main() {
   }
 
   console.log(`Processing ${svgFiles.length} SVG file(s)...`);
+
+  if (!existsSync(OUT_DIR)) {
+    mkdirSync(OUT_DIR, { recursive: true });
+  }
 
   const generatedNames = [];
 
