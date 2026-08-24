@@ -22,6 +22,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 
 public class ElasticSearchLineChartAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -200,6 +201,9 @@ public class ElasticSearchLineChartAggregator
     }
 
     SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
+    final Query sharedFilter =
+        ElasticSearchDynamicChartAggregatorInterface.queryFromJson(
+            DataInsightMetricFilter.hoistableQueryJson(lineChart));
 
     final long finalStartTime = startTime;
     if (!live) {
@@ -218,9 +222,15 @@ public class ElasticSearchLineChartAggregator
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
 
-      searchRequestBuilder.query(rangeQuery);
+      searchRequestBuilder.query(
+          sharedFilter == null
+              ? rangeQuery
+              : Query.of(q -> q.bool(b -> b.filter(rangeQuery, sharedFilter))));
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
+      if (sharedFilter != null) {
+        searchRequestBuilder.query(sharedFilter);
+      }
       searchRequestBuilder.index(
           DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
     }

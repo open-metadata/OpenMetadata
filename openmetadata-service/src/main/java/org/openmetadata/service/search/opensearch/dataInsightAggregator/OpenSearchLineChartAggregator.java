@@ -15,6 +15,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
@@ -197,6 +198,9 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
     }
 
     SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
+    final Query sharedFilter =
+        OpenSearchDynamicChartAggregatorInterface.queryFromJson(
+            DataInsightMetricFilter.hoistableQueryJson(lineChart));
 
     final long finalStartTime = startTime;
     if (!live) {
@@ -209,9 +213,15 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
                               .gte(JsonData.of(finalStartTime))
                               .lte(JsonData.of(end))));
 
-      searchRequestBuilder.query(rangeQuery);
+      searchRequestBuilder.query(
+          sharedFilter == null
+              ? rangeQuery
+              : Query.of(q -> q.bool(b -> b.filter(rangeQuery, sharedFilter))));
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
+      if (sharedFilter != null) {
+        searchRequestBuilder.query(sharedFilter);
+      }
       searchRequestBuilder.index(
           DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
     }
