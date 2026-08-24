@@ -13,15 +13,23 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
+import static org.openmetadata.csv.CsvUtil.addEntityReference;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,18 +37,27 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -243,6 +260,74 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     return daoCollection
         .tagUsageDAO()
         .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
+  }
+
+  /** Export a classification with all its tags as CSV */
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
+    return new ClassificationCsv(classification, user)
+        .exportCsv(listTagsForCsv(classification), callback);
+  }
+
+  private List<Tag> listTagsForCsv(Classification classification) {
+    TagRepository repository = (TagRepository) Entity.getEntityRepository(TAG);
+    List<Tag> tags =
+        repository.listAllForCSV(
+            repository.getFields("owners,reviewers,parent,domains"),
+            classification.getFullyQualifiedName());
+    tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return tags;
+  }
+
+  public static class ClassificationCsv extends EntityCsv<Tag> {
+    public static final CsvDocumentation DOCUMENTATION =
+        getCsvDocumentation(Entity.CLASSIFICATION, false);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final Classification classification;
+
+    ClassificationCsv(Classification classification, String user) {
+      super(TAG, HEADERS, user);
+      this.classification = classification;
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      // Import is not supported for classifications; this CSV handler is export-only.
+      throw new UnsupportedOperationException(
+          "CSV import is not supported for classifications and tags");
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Tag entity) {
+      List<String> recordList = new ArrayList<>();
+      addEntityReference(recordList, entity.getParent());
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addReviewers(recordList, entity.getReviewers());
+      addOwners(recordList, entity.getOwners());
+      addField(
+          recordList, entity.getEntityStatus() != null ? entity.getEntityStatus().value() : null);
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
+      addDomains(recordList, getDirectDomains(entity.getDomains()));
+      addField(recordList, entity.getMutuallyExclusive());
+      addRecord(csvFile, recordList);
+    }
+
+    private static List<EntityReference> getDirectDomains(List<EntityReference> domains) {
+      return listOrEmpty(domains).stream()
+          .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+          .toList();
+    }
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {

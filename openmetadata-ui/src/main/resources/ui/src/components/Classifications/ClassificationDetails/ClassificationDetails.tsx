@@ -31,9 +31,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -44,7 +46,7 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import { getTags } from '../../../rest/tagAPI';
+import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
   getClassificationExtraDropdownContent,
@@ -63,11 +65,13 @@ import AppBadge from '../../common/Badge/Badge.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import Loader from '../../common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -109,6 +113,7 @@ const ClassificationDetails = forwardRef(
   ) => {
     const { theme } = useApplicationStore();
     const { permissions } = usePermissionProvider();
+    const { showModal } = useEntityExportModalProvider();
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
@@ -267,12 +272,36 @@ const ClassificationDetails = forwardRef(
       [isVersionView, isClassificationDisabled, editClassificationPermission]
     );
 
+    const showExportOption = useMemo(
+      () => !isVersionView && classificationPermissions.ViewAll,
+      [isVersionView, classificationPermissions]
+    );
+
     const showManageButton = useMemo(
       () =>
         !isVersionView &&
-        (showEditOption || deletePermission || showDisableOption),
-      [showEditOption, deletePermission, showDisableOption, isVersionView]
+        (showEditOption ||
+          deletePermission ||
+          showDisableOption ||
+          showExportOption),
+      [
+        showEditOption,
+        deletePermission,
+        showDisableOption,
+        showExportOption,
+        isVersionView,
+      ]
     );
+
+    const handleClassificationExportClick = useCallback(() => {
+      if (currentClassification?.fullyQualifiedName) {
+        showModal({
+          name: currentClassification.fullyQualifiedName,
+          onExport: exportClassificationInCSVFormat,
+          exportTypes: [ExportTypes.CSV],
+        });
+      }
+    }, [currentClassification, showModal]);
 
     const handleUpdateDescription = async (updatedHTML: string) => {
       if (!isUndefined(currentClassification)) {
@@ -332,20 +361,41 @@ const ClassificationDetails = forwardRef(
     );
 
     const extraDropdownContent = useMemo(
-      () =>
-        getClassificationExtraDropdownContent(
+      () => [
+        ...getClassificationExtraDropdownContent(
           showDisableOption,
           isClassificationDisabled,
           handleEnableDisableClassificationClick,
           showEditOption,
           handleEditClassificationClick
         ),
+        ...(showExportOption
+          ? [
+              {
+                label: (
+                  <ManageButtonItemLabel
+                    description={t('message.export-entity-help', {
+                      entity: t('label.tag-lowercase-plural'),
+                    })}
+                    icon={ExportIcon}
+                    id="export-button"
+                    name={t('label.export')}
+                  />
+                ),
+                key: 'export-button',
+                onClick: handleClassificationExportClick,
+              },
+            ]
+          : []),
+      ],
       [
         isClassificationDisabled,
         showDisableOption,
         handleEnableDisableClassificationClick,
         showEditOption,
         handleEditClassificationClick,
+        showExportOption,
+        handleClassificationExportClick,
       ]
     );
 

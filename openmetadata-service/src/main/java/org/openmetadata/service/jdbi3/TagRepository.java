@@ -30,8 +30,10 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +45,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
@@ -151,6 +154,29 @@ public class TagRepository extends EntityRepository<Tag> {
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
     return getTagAssets(tag.getId(), limit, offset);
+  }
+
+  /** Export a tag with all its child tags as CSV */
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    Fields exportFields = getFields("classification,owners,reviewers,parent,domains");
+    Tag tag = getByName(null, name, exportFields);
+    Classification classification =
+        Entity.getEntity(tag.getClassification(), "", Include.NON_DELETED);
+    // Export the tag itself plus all its child tags (listAllForCSV returns only descendants).
+    List<Tag> tags = new ArrayList<>();
+    tags.add(tag);
+    tags.addAll(listAllForCSV(exportFields, tag.getFullyQualifiedName()));
+    tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return new ClassificationRepository.ClassificationCsv(classification, user)
+        .exportCsv(tags, callback);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {

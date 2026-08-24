@@ -32,6 +32,7 @@ import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -59,6 +60,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -78,6 +80,7 @@ import {
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -102,7 +105,7 @@ import {
   TAG_DEFAULT_FIELDS,
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
-import { deleteTag, patchTag } from '../../rest/tagAPI';
+import { deleteTag, exportTagInCSVFormat, patchTag } from '../../rest/tagAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -146,6 +149,7 @@ const TagPage = () => {
     tab?: string;
   }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.Tag
   );
@@ -582,6 +586,32 @@ const TagPage = () => {
             onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
               e.domEvent.stopPropagation();
               setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ]
+      : []),
+    ...(tagPermissions.ViewAll && tagItem?.fullyQualifiedName
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.export-entity-help', {
+                  entity: t('label.tag-lowercase-plural'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={t('label.export')}
+              />
+            ),
+            key: 'export-button',
+            onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
+              e.domEvent.stopPropagation();
+              showModal({
+                name: tagItem.fullyQualifiedName ?? '',
+                onExport: exportTagInCSVFormat,
+                exportTypes: [ExportTypes.CSV],
+              });
               setShowActions(false);
             },
           },

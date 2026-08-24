@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 
 @Slf4j
 @Path("/v1/classifications")
@@ -482,5 +484,54 @@ public class ClassificationResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportClassification",
+      summary = "Export classification in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with tags of the classification",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportClassification",
+      summary = "Export classification in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with tags of the classification",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the classification", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name, false);
   }
 }

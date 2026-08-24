@@ -195,3 +195,21 @@ export const getClassificationVersionData = async (
 
   return response.data;
 };
+
+export const exportClassificationInCSVFormat = async (
+  classificationName: string
+) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `${BASE_URL}/name/${getEncodedFqn(classificationName)}/exportAsync`
+  );
+
+  return response.data;
+};
+
+export const exportTagInCSVFormat = async (tagFqn: string) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `/tags/name/${getEncodedFqn(tagFqn)}/exportAsync`
+  );
+
+  return response.data;
+};
