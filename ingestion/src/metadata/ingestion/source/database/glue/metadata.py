@@ -52,6 +52,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -367,10 +368,31 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    # pylint: disable=too-many-locals
     def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
         """
-        Get columns from Glue.
+        Get columns from Glue, yielding each column name at most once.
+
+        Glue does not guarantee that PartitionKeys are absent from StorageDescriptor.Columns,
+        and distinct names longer than the 256 character limit collide once truncated. Either
+        way the server rejects the whole table with "Column name <name> is repeated", so the
+        table would be dropped entirely rather than losing a single column.
+        """
+        seen_column_names = set()
+        for column in self._iter_columns(column_data):
+            column_name = model_str(column.name)
+            if column_name in seen_column_names:
+                logger.warning(
+                    f"Table [{self.context.get().table_data.Name}]: dropping duplicate column "
+                    f"[{column_name}], keeping the first definition"
+                )
+                continue
+            seen_column_names.add(column_name)
+            yield column
+
+    # pylint: disable=too-many-locals
+    def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
+        """
+        Yield the raw Glue columns, regular ones first and partition keys last.
         """
         # Check if this is an Iceberg table
         table = self.context.get().table_data
