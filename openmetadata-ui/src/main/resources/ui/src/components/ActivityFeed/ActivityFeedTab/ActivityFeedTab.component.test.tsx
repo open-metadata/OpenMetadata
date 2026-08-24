@@ -36,6 +36,18 @@ let mockLoading = false;
 let mockTasks: { id: string }[] = [];
 let mockEntityPaging: { after?: string } = {};
 let mockIsInView = false;
+let mockLocation: { pathname: string; key: string; state: unknown } = {
+  pathname: '/',
+  key: 'initial',
+  state: null,
+};
+
+// Only useLocation is overridden; MemoryRouter and useNavigate stay real so the
+// component's own navigate('.', ...) call still works.
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: () => mockLocation,
+}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -209,6 +221,7 @@ describe('ActivityFeedTab', () => {
     mockTasks = [];
     mockEntityPaging = {};
     mockIsInView = false;
+    mockLocation = { pathname: '/', key: 'initial', state: null };
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
@@ -371,6 +384,65 @@ describe('ActivityFeedTab', () => {
           'data-loading',
           'true'
         )
+      );
+    });
+
+    it('brings the loader back when a task notification refreshes after paginating', async () => {
+      mockTasks = [{ id: 'stale-my-task' }];
+      mockEntityPaging = { after: 'cursor-1' };
+      mockIsInView = true;
+
+      const { rerender } = renderComponent(ActivityFeedTabs.TASKS);
+
+      // Paginating is what clears isFirstLoad and arms the defect.
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          'cursor-1',
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'false'
+        )
+      );
+
+      mockGetTaskData.mockClear();
+      mockLoading = true;
+      // Clicking a task notification for the same entity keeps the component
+      // mounted and only changes location.state.
+      mockLocation = {
+        pathname: '/',
+        key: 'after-notification',
+        state: { tasksRefreshKey: 1 },
+      };
+
+      rerender(
+        <MemoryRouter>
+          <ActivityFeedTab {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      // The refresh really did start a first-page fetch, and the provider clears
+      // the rows for it, so the loader must be on rather than the placeholder.
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          undefined,
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      expect(screen.getByTestId('task-list')).toHaveAttribute(
+        'data-loading',
+        'true'
       );
     });
 

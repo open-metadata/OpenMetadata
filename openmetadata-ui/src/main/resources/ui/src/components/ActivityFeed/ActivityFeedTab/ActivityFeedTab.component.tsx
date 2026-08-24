@@ -715,19 +715,21 @@ export const ActivityFeedTab = ({
       isTaskActiveTab
     ) {
       processedRefreshKeyRef.current = refreshKey;
-      getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
+      // Goes through handleFeedFetchFromFeedList rather than calling getTaskData
+      // directly so this first-page refetch switches the in-list loader back on.
+      // Without it, a notification click that arrives after the user has
+      // paginated leaves isFirstLoad false while the provider empties the rows,
+      // so the list renders its "no tasks" placeholder beside the spinner.
+      handleFeedFetchFromFeedList();
       navigate('.', { replace: true, state: {} });
     }
   }, [
-    entityType,
-    feedFilter,
     fqn,
-    getTaskData,
+    handleFeedFetchFromFeedList,
     isTaskActiveTab,
     location.key,
     location.state,
     navigate,
-    taskFilter,
   ]);
 
   useEffect(() => {
