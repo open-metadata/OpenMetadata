@@ -16,7 +16,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addCuratedAssetPlaceholder,
   CURATED_ASSETS_WIDGET_KEY,
@@ -101,7 +101,6 @@ test.describe('Curated Assets Widget', () => {
 
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await page.getByTestId('sidebar-toggle').click();
   });
@@ -188,7 +187,6 @@ test.describe('Curated Assets Widget', () => {
       ).toBeVisible();
 
       await redirectToHomePage(page);
-      await removeLandingBanner(page);
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -378,7 +376,6 @@ test.describe('Curated Assets Widget', () => {
     // Wait for auto-save to complete before navigating
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -493,7 +490,6 @@ test.describe('Curated Assets Widget', () => {
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -627,7 +623,6 @@ test.describe('Curated Assets Widget', () => {
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -666,7 +661,6 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="save-button"]').click();
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     // Verify placeholder is not visible when no widget is configured
     await expect(
