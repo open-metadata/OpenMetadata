@@ -140,7 +140,11 @@ jest.mock('../ActivityFeedList/TaskListV1.component', () =>
     .fn()
     .mockImplementation(({ emptyPlaceholderText, isLoading, onAfterClose }) => (
       <div data-loading={String(isLoading)} data-testid="task-list">
-        <button data-testid="task-after-close" onClick={onAfterClose} />
+        <button
+          aria-label="close task"
+          data-testid="task-after-close"
+          onClick={onAfterClose}
+        />
         {emptyPlaceholderText}
       </div>
     ))

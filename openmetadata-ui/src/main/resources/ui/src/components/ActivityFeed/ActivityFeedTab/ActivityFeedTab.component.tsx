@@ -96,6 +96,31 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
+/**
+ * The three task-count scopes: my own profile counts every task visible to me,
+ * another user's profile counts what is assigned to them, and an entity page
+ * counts what is about that entity.
+ */
+const getTaskCountParams = ({
+  isUserEntity,
+  isCurrentUserProfile,
+  fqn,
+  domain,
+}: {
+  isUserEntity: boolean;
+  isCurrentUserProfile: boolean;
+  fqn: string;
+  domain?: string;
+}) => {
+  if (!isUserEntity) {
+    return { aboutEntity: fqn, view: 'entity' as const, domain };
+  }
+
+  return isCurrentUserProfile
+    ? { view: 'visible' as const, domain }
+    : { assignee: fqn, domain };
+};
+
 export const ActivityFeedTab = ({
   owners = [],
   columns,
@@ -269,21 +294,25 @@ export const ActivityFeedTab = ({
         isUserEntity &&
         Boolean(fqn) &&
         [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn);
-      const taskCountParams = isUserEntity
-        ? isCurrentUserProfile
-          ? { view: 'visible' as const, domain }
-          : { assignee: fqn, domain }
-        : { aboutEntity: fqn, view: 'entity' as const, domain };
+      const taskCountParams = getTaskCountParams({
+        isUserEntity,
+        isCurrentUserProfile,
+        fqn,
+        domain,
+      });
 
-      const taskCounts = await getTaskCounts(taskCountParams);
+      // The task counts and the user's conversation counts are different
+      // endpoints with no data dependency, so issue them together.
+      const [taskCounts, userFeedCountRes] = await Promise.all([
+        getTaskCounts(taskCountParams),
+        isUserEntity ? getFeedCount(getEntityUserLink(fqn)) : undefined,
+      ]);
       const totalTasksCount = taskCounts.total ?? 0;
       const openTaskCount = taskCounts.open ?? 0;
 
       if (isUserEntity) {
-        // Also get feed counts for conversations and mentions
-        const res = await getFeedCount(getEntityUserLink(fqn));
         const { conversationCount, mentionCount } =
-          aggregateFeedCountResponse(res);
+          aggregateFeedCountResponse(userFeedCountRes);
         // The user profile has no entity-scoped activity stream, so the "All"
         // badge that would consume this is gated behind `!isUserEntity` below.
         const activityCount = 0;
@@ -334,7 +363,6 @@ export const ActivityFeedTab = ({
     isUserEntity,
     currentUser?.name,
     currentUser?.fullyQualifiedName,
-    currentUser?.id,
     handleFeedCount,
     t,
   ]);
@@ -619,7 +647,7 @@ export const ActivityFeedTab = ({
         },
       },
     ],
-    [taskFilter, handleUpdateTaskFilter, setActiveTask, countData]
+    [taskFilter, handleUpdateTaskFilter, setActiveTask, countData, t]
   );
 
   const TaskToggle = useCallback(() => {
@@ -650,7 +678,7 @@ export const ActivityFeedTab = ({
         onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
       />
     );
-  }, [t, handleTabChange]);
+  }, [t, activeTab, handleTabChange]);
 
   const handlePanelResize = useCallback((isFullWidth: boolean) => {
     setIsFullWidth(isFullWidth);
@@ -744,7 +772,7 @@ export const ActivityFeedTab = ({
         </Typography.Text>
       </div>
     );
-  }, [activeTab, selectedThread]);
+  }, [activeTab, selectedThread, t]);
 
   return (
     <div

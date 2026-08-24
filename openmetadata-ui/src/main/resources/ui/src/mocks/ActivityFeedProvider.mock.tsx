@@ -33,6 +33,7 @@ import { TaskStatusGroup } from '../rest/tasksAPI';
 
 const LOADING_LABEL = 'label.loading';
 const CHILDREN_LABEL = 'label.children';
+const ACTIVITY_ID = 'activity-123';
 
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
@@ -144,10 +145,12 @@ export const DummyTaskListStateComponent = () => {
   return (
     <div>
       <button
+        aria-label="fetch open tasks"
         data-testid="fetch-open"
         onClick={() => fetchTasks(TaskStatusGroup.Open)}
       />
       <button
+        aria-label="fetch closed tasks"
         data-testid="fetch-closed"
         onClick={() => fetchTasks(TaskStatusGroup.Closed)}
       />
@@ -287,7 +290,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleAddReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.ADD
     );
@@ -295,7 +298,7 @@ export const DummyActivityReactionComponent = () => {
 
   const handleRemoveReaction = () => {
     updateActivityReaction(
-      'activity-123',
+      ACTIVITY_ID,
       ReactionType.ThumbsUp,
       ReactionOperation.REMOVE
     );
@@ -338,7 +341,7 @@ export const DummyActivityReactionSyncComponent = () => {
         data-testid="react"
         onClick={() =>
           updateActivityReaction(
-            'activity-123',
+            ACTIVITY_ID,
             ReactionType.ThumbsUp,
             ReactionOperation.ADD
           )

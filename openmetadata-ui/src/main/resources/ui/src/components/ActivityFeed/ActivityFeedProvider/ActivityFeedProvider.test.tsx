@@ -355,7 +355,7 @@ describe('ActivityFeedProvider', () => {
       expect(screen.getByTestId('task-ids')).toHaveTextContent('task-open');
       expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-1');
 
-      let resolveClosed: (value: unknown) => void = () => undefined;
+      let resolveClosed!: (value: unknown) => void;
       (listTasks as jest.Mock).mockReturnValueOnce(
         new Promise((resolve) => {
           resolveClosed = resolve;
@@ -384,8 +384,8 @@ describe('ActivityFeedProvider', () => {
     });
 
     it('ignores a response that resolves after a newer request started', async () => {
-      let resolveFirst: (value: unknown) => void = () => undefined;
-      let resolveSecond: (value: unknown) => void = () => undefined;
+      let resolveFirst!: (value: unknown) => void;
+      let resolveSecond!: (value: unknown) => void;
 
       (listTasks as jest.Mock)
         .mockReturnValueOnce(
@@ -617,7 +617,7 @@ describe('ActivityFeedProvider', () => {
     });
 
     it('should ignore a superseded activity response when the filter changes', async () => {
-      let resolveSlowRequest: (value: unknown) => void = () => undefined;
+      let resolveSlowRequest!: (value: unknown) => void;
       (getMyActivityFeed as jest.Mock).mockImplementationOnce(
         () =>
           new Promise((resolve) => {

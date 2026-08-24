@@ -64,7 +64,7 @@ const TaskListV1 = ({
     } else {
       handlePanelResize?.(false);
     }
-  }, [taskList, isLoading]);
+  }, [taskList, isLoading, handlePanelResize]);
 
   const tasks = useMemo(
     () =>
