@@ -93,6 +93,7 @@ const TeamsHeadingLabel = ({
         // TeamDetailsV1 component collapsible panel
         <div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
+          role="presentation"
           onClick={(e) => e.stopPropagation()}>
           <Input
             className="flex-1 w-min-0"

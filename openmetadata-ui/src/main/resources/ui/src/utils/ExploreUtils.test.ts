@@ -917,7 +917,7 @@ describe('fetchEntityData', () => {
   });
 
   it('issues the results query without waiting for the count when a tab is selected', async () => {
-    let resolveCount: (value: unknown) => void = () => undefined;
+    let resolveCount: (value: unknown) => void = (_value) => undefined;
     mockSearchQuery
       .mockImplementationOnce(
         () =>

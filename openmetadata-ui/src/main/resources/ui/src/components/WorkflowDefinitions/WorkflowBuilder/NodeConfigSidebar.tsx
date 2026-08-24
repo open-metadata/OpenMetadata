@@ -175,8 +175,6 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
       if (key === 'description') {
         setLocalDescription(value as string);
-
-        return;
       }
     },
     [effectiveConfig]

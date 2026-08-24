@@ -76,11 +76,11 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ onClose }) => (
-        <div onClick={onClose}>WelcomeScreen</div>
-      ));
+    return jest.fn().mockImplementation(({ onClose }) => (
+      <div role="presentation" onClick={onClose}>
+        WelcomeScreen
+      </div>
+    ));
   }
 );
 
