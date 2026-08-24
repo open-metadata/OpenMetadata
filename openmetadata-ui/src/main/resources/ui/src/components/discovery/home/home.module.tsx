@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Home02 } from '@untitledui/icons';
+import { ReactComponent as HomeActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/home-active.svg';
+import { ReactComponent as HomeIcon } from '../../../assets/svg/ask-collate-nav-bar/home.svg';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -25,8 +26,8 @@ export const homeModule: AppModule = {
   id: 'home',
   navOrder: 0,
   labelKey: 'label.home',
-  icon: Home02,
-  activeIcon: Home02,
+  icon: HomeIcon,
+  activeIcon: HomeActiveIcon,
   prefix: ROUTES.MY_DATA,
   defaultPath: ROUTES.MY_DATA,
   routes: [],

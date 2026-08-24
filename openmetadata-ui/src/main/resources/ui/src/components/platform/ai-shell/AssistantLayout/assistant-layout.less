@@ -29,4 +29,13 @@
   position: relative;
   overflow: auto;
   background-color: var(--tw-color-bg-primary);
+
+  // Default-variant pages have no vertical padding of their own (tw:px-4
+  // only), so the shell gives them a 16px top inset. Compact pages already
+  // pad 8px on every side via tw:p-2 — leave them alone. PageLayoutV1 owns all
+  // other page padding/height; do not add per-page
+  // `[data-testid='page-layout-v1']` overrides here.
+  .page-layout-v1:not([data-variant='compact']) {
+    padding-top: 16px;
+  }
 }
