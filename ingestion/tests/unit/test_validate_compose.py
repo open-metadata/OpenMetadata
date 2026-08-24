@@ -223,7 +223,11 @@ def test_get_last_run_info_filters_by_trigger_logical_date(monkeypatch: pytest.M
 
     monkeypatch.setattr(validator, "airflow_get", airflow_get)
 
-    assert validator.get_last_run_info(None, "2026-08-24T00:00:00Z") == ("manual__target", "queued", True)
+    assert validator.get_last_run_info(None, "2026-08-24T00:00:00Z", 1) == (
+        "manual__target",
+        "queued",
+        True,
+    )
     query = parse_qs(urlparse(requested_paths[0]).query)
     assert query == {
         "limit": ["1"],
@@ -265,6 +269,9 @@ def test_timeout_keeps_last_observed_run_after_transient_poll_failure(
             ),
             None,
             FakeAirflowResponse(
+                {"dag_run_id": "run-1", "state": "running"}
+            ),
+            FakeAirflowResponse(
                 {
                     "task_instances": [
                         {
@@ -295,6 +302,54 @@ def test_timeout_keeps_last_observed_run_after_transient_poll_failure(
     assert "Task instances for run-1:" in output
     assert "ingest_using_recipe: state=running" in output
     assert "last observed run=run-1, state=running" in str(exit_info.value)
+
+
+def test_timeout_diagnoses_known_triggered_run_after_poll_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A known target still gets run and task diagnostics after transient poll failures."""
+    validator = load_validate_compose()
+    clock = FakeClock()
+    airflow_responses = iter(
+        [
+            None,
+            None,
+            FakeAirflowResponse(
+                {"dag_run_id": "manual__target", "state": "running"}
+            ),
+            FakeAirflowResponse(
+                {
+                    "task_instances": [
+                        {
+                            "task_id": "ingest_using_recipe",
+                            "state": "running",
+                            "try_number": 1,
+                            "start_date": "2026-08-24T00:00:00Z",
+                            "end_date": None,
+                            "duration": 1,
+                        }
+                    ]
+                }
+            ),
+            FakeAirflowResponse({}, text="last task log"),
+        ]
+    )
+
+    monkeypatch.setattr(validator, "time", clock)
+    monkeypatch.setattr(validator, "airflow_get", lambda _path, _timeout: next(airflow_responses))
+    monkeypatch.setenv("VALIDATE_COMPOSE_DAG_RUN_ID", "manual__target")
+    monkeypatch.setenv("VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS", "1")
+    monkeypatch.setenv("VALIDATE_COMPOSE_TIMEOUT_SECONDS", "1")
+    monkeypatch.delenv("VALIDATE_COMPOSE_MAX_RETRIES", raising=False)
+
+    with pytest.raises(SystemExit) as exit_info:
+        validator.main()
+
+    output = capsys.readouterr().out
+    assert "Diagnostic DAG run [manual__target] is running." in output
+    assert "Task instances for manual__target:" in output
+    assert "last observed run=manual__target, state=running" in str(exit_info.value)
 
 
 def test_airflow_get_uses_remaining_timeout_after_authentication(

@@ -163,6 +163,7 @@ def airflow_get(path: str, timeout: float) -> requests.Response | None:
 def get_last_run_info(
     target_dag_run_id: str | None,
     target_logical_date: str | None,
+    timeout: float,
 ) -> tuple[str | None, str | None, bool]:
     """
     Targeted sample_data DAG run id and state.
@@ -180,7 +181,7 @@ def get_last_run_info(
             query_params["logical_date_lte"] = target_logical_date
         path = f"/api/v2/dags/{DAG_ID}/dagRuns?{urlencode(query_params)}"
 
-    response = airflow_get(path, poll_request_timeout())
+    response = airflow_get(path, timeout)
     if response is None:
         return None, None, False
 
@@ -259,7 +260,10 @@ def print_task_instance_states(dag_run_id: str, timeout: float) -> None:
         )
 
 
-def dump_diagnostics(dag_run_id: str | None) -> None:
+def dump_diagnostics(
+    dag_run_id: str | None,
+    dag_run_state: str | None,
+) -> tuple[str | None, str | None]:
     """
     Best-effort failure detail, on a hard budget.
 
@@ -275,7 +279,27 @@ def dump_diagnostics(dag_run_id: str | None) -> None:
             return None
         return min(DIAGNOSTIC_REQUEST_TIMEOUT, left)
 
+    diagnostic_dag_run_id = dag_run_id
+    diagnostic_dag_run_state = dag_run_state
+
     if dag_run_id:
+        timeout = step_timeout()
+        if timeout is None:
+            log("Diagnostic budget exhausted; skipping DAG-run state.")
+        else:
+            observed_dag_run_id, observed_state, _ = get_last_run_info(
+                dag_run_id,
+                None,
+                timeout,
+            )
+            if observed_dag_run_id:
+                diagnostic_dag_run_id = observed_dag_run_id
+                diagnostic_dag_run_state = observed_state
+                log(
+                    f"Diagnostic DAG run [{observed_dag_run_id}] is "
+                    f"{observed_state or 'unknown'}."
+                )
+
         timeout = step_timeout()
         if timeout is None:
             log("Diagnostic budget exhausted; skipping task-instance states.")
@@ -285,8 +309,10 @@ def dump_diagnostics(dag_run_id: str | None) -> None:
     timeout = step_timeout()
     if timeout is None:
         log("Diagnostic budget exhausted; skipping task log fetch.")
-        return
-    print_last_run_logs(timeout)
+    else:
+        print_last_run_logs(timeout)
+
+    return diagnostic_dag_run_id, diagnostic_dag_run_state
 
 
 def main() -> None:
@@ -310,7 +336,11 @@ def main() -> None:
     last_observed_state: str | None = None
 
     while True:
-        dag_run_id, state, polled = get_last_run_info(target_dag_run_id, target_logical_date)
+        dag_run_id, state, polled = get_last_run_info(
+            target_dag_run_id,
+            target_logical_date,
+            poll_request_timeout(),
+        )
         if dag_run_id:
             last_observed_dag_run_id = dag_run_id
             last_observed_state = state
@@ -323,7 +353,7 @@ def main() -> None:
 
         if dag_run_id and state == "failed":
             log(f"DAG run [{dag_run_id}] FAILED!")
-            dump_diagnostics(dag_run_id)
+            dump_diagnostics(dag_run_id, state)
             raise SystemExit(f"Sample data ingestion failed. DAG run state: {state}")
 
         if dag_run_id:
@@ -340,7 +370,13 @@ def main() -> None:
         time.sleep(min(poll_interval_seconds, remaining))
 
     log(f"Timed out after {timeout_seconds}s waiting for the {DAG_ID} DAG.")
-    dump_diagnostics(last_observed_dag_run_id)
+    diagnostic_dag_run_id, diagnostic_dag_run_state = dump_diagnostics(
+        last_observed_dag_run_id or target_dag_run_id,
+        last_observed_state,
+    )
+    if diagnostic_dag_run_id:
+        last_observed_dag_run_id = diagnostic_dag_run_id
+        last_observed_state = diagnostic_dag_run_state
     raise SystemExit(
         f"Sample data ingestion did not finish within {timeout_seconds}s "
         f"(last observed run={last_observed_dag_run_id}, state={last_observed_state}). Raise "
