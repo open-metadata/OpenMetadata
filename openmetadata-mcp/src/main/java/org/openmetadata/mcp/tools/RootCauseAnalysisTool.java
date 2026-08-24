@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.mcp.tools.SearchMetadataTool.cleanSearchResponseObject;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
@@ -22,6 +23,8 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.EntityLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -114,43 +117,113 @@ public class RootCauseAnalysisTool implements McpTool {
                 request.queryFilter(),
                 request.includeDeleted());
     Map<String, Object> upstreamAnalysis =
-        buildUpstreamAnalysis(upstreamResponse.getEntity(), request.includeColumns());
+        buildUpstreamAnalysis(upstreamResponse.getEntity(), request);
     result.put("upstreamAnalysis", upstreamAnalysis);
 
     int failureCount =
         ((Number) upstreamAnalysis.getOrDefault("failingUpstreamNodesCount", 0)).intValue();
-    boolean hasFailures = failureCount > 0;
+    boolean rootFails = Boolean.TRUE.equals(upstreamAnalysis.get(ROOT_HAS_FAILING_TESTS));
+    boolean hasFailures = failureCount > 0 || rootFails;
     result.put(
         "downstreamAnalysis",
         hasFailures ? buildDownstreamAnalysis(request) : noFailuresDownstream());
     result.put("status", hasFailures ? "failed" : "success");
-    result.put(
-        "summary",
-        String.format(
-            "Analyzed upstream causes and downstream impacts for '%s'. Found %d upstream failure(s).",
-            request.fqn(), failureCount));
+    result.put("summary", summarize(request.fqn(), failureCount, rootFails));
     return enforceSizeBudget(result);
   }
 
-  private Map<String, Object> buildUpstreamAnalysis(Object upstreamEntity, boolean includeColumns) {
+  /**
+   * Distinguishes "the failures start here" from "the failures are inherited from upstream".
+   *
+   * <p>The DQ lineage walk returns the analysed entity among its own nodes when that entity has
+   * failing tests, so counting nodes reported an upstream failure that did not exist — a caller
+   * reading the old summary attributed a phantom root cause to a table with no failing upstream at
+   * all.
+   */
+  @VisibleForTesting
+  static String summarize(String fqn, int upstreamFailures, boolean rootFails) {
+    final String origin;
+    if (upstreamFailures > 0) {
+      origin =
+          String.format(
+              "Found %d failing upstream entity(ies) — the likely root cause is upstream.",
+              upstreamFailures);
+    } else if (rootFails) {
+      origin =
+          "No upstream entity has failing tests, so the failures originate on this asset itself.";
+    } else {
+      origin = "No failing tests found on this asset or upstream of it.";
+    }
+    return String.format(
+        "Analyzed upstream causes and downstream impacts for '%s'. %s", fqn, origin);
+  }
+
+  private Map<String, Object> buildUpstreamAnalysis(Object upstreamEntity, RcaRequest request) {
     Map<String, Object> upstreamAnalysis = new HashMap<>();
     if (!(upstreamEntity instanceof Map)) {
       return upstreamAnalysis;
     }
     Map<String, Object> upstreamLineageData = castMap(upstreamEntity);
     Set<?> rawEdges = asSet(upstreamLineageData.get("edges"));
-    List<Map<String, Object>> nodes = slimUpstreamNodes(asSet(upstreamLineageData.get("nodes")));
+    List<Map<String, Object>> allNodes = slimUpstreamNodes(asSet(upstreamLineageData.get("nodes")));
+    List<Map<String, Object>> nodes = new ArrayList<>();
+    boolean rootFails = false;
+    for (Map<String, Object> node : allNodes) {
+      if (request.fqn().equals(node.get("fullyQualifiedName"))) {
+        rootFails = true;
+      } else {
+        nodes.add(node);
+      }
+    }
 
+    upstreamAnalysis.put(ROOT_HAS_FAILING_TESTS, rootFails);
     upstreamAnalysis.put("failingUpstreamNodesCount", nodes.size());
     if (!nodes.isEmpty()) {
       nodes.forEach(node -> node.put("failingTestCases", addTestCaseResultForTestSuite(node)));
       upstreamAnalysis.put("failingUpstreamNodes", nodes);
     }
     upstreamAnalysis.put("failingUpstreamEdgesCount", rawEdges.size());
-    upstreamAnalysis.put("failingUpstreamEdges", slimEdges(rawEdges, includeColumns));
+    upstreamAnalysis.put("failingUpstreamEdges", slimEdges(rawEdges, request.includeColumns()));
     upstreamAnalysis.put(
         "description", "Upstream entities that may be causing data quality failures");
+    if (nodes.isEmpty()) {
+      addUpstreamProducers(upstreamAnalysis, request);
+    }
     return upstreamAnalysis;
+  }
+
+  /**
+   * When nothing upstream is failing, the DQ walk returns no upstream edges at all — so a caller
+   * asking "what could be causing this?" learned nothing about what even feeds the asset, and had to
+   * spend a second round trip on get_entity_lineage. The producers are cheap to resolve in-process
+   * and answer the question the tool exists for, so they are attached here instead.
+   */
+  private static void addUpstreamProducers(
+      Map<String, Object> upstreamAnalysis, RcaRequest request) {
+    try {
+      EntityLineage lineage =
+          Entity.getLineageRepository()
+              .getByName(request.entityType(), request.fqn(), request.upstreamDepth(), 0);
+      List<Map<String, Object>> producers = new ArrayList<>();
+      if (lineage != null && !nullOrEmpty(lineage.getNodes())) {
+        lineage.getNodes().forEach(node -> producers.add(producerOf(node)));
+      }
+      upstreamAnalysis.put("upstreamProducers", producers);
+      upstreamAnalysis.put(
+          "upstreamProducersNote",
+          "No upstream entity has failing tests. These are the assets that feed this one, so the"
+              + " cause is more likely to be local (a load, a transformation) than inherited.");
+    } catch (Exception e) {
+      // Producers are context, not the answer: a lineage lookup failure must not fail the analysis.
+      LOG.warn("Could not resolve upstream producers for {}: {}", request.fqn(), e.getMessage());
+    }
+  }
+
+  private static Map<String, Object> producerOf(EntityReference node) {
+    Map<String, Object> producer = new LinkedHashMap<>();
+    producer.put("fullyQualifiedName", node.getFullyQualifiedName());
+    producer.put("type", node.getType());
+    return producer;
   }
 
   private Map<String, Object> buildDownstreamAnalysis(RcaRequest request) {
@@ -326,6 +399,7 @@ public class RootCauseAnalysisTool implements McpTool {
   }
 
   private static final String UPSTREAM_ANALYSIS = "upstreamAnalysis";
+  private static final String ROOT_HAS_FAILING_TESTS = "rootHasFailingTests";
   private static final String DOWNSTREAM_ANALYSIS = "downstreamAnalysis";
   private static final String UPSTREAM_EDGES = "failingUpstreamEdges";
   private static final String DOWNSTREAM_EDGES = "downstreamEdges";
