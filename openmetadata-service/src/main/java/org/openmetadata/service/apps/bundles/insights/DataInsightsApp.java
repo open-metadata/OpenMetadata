@@ -10,6 +10,8 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -91,10 +93,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
    * produce the very name the alias already occupies.
    */
   public Set<String> getDataAssetTypes() {
-    return Arrays.stream(DataAssetType.values())
-        .map(DataAssetType::value)
-        .filter(dataAssetType -> !isAliasedFromLiveIndex(dataAssetType))
-        .collect(Collectors.toUnmodifiableSet());
+    return Collections.unmodifiableSet(
+        Arrays.stream(DataAssetType.values())
+            .map(DataAssetType::value)
+            .filter(dataAssetType -> !isAliasedFromLiveIndex(dataAssetType))
+            .collect(Collectors.<String, LinkedHashSet<String>>toCollection(LinkedHashSet::new)));
   }
 
   private boolean isAliasedFromLiveIndex(String dataAssetType) {

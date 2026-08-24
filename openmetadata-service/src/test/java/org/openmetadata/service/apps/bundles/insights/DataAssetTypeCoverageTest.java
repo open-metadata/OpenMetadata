@@ -1,17 +1,27 @@
 package org.openmetadata.service.apps.bundles.insights;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Data Insights covers an entity type in exactly one of two ways: the app ingests it into a
@@ -29,6 +39,17 @@ class DataAssetTypeCoverageTest {
   private static final String INDEX_MAPPING_PATH = "/elasticsearch/indexMapping.json";
   private static final String COMMON_KEY = "common";
 
+  @BeforeAll
+  static void giveTheRepositoryASearchClient() {
+    // DataInsightSystemChartRepository resolves a SearchClient in its static initializer, so the
+    // class cannot load without one and the order assertion below would error rather than fail.
+    if (Entity.getSearchRepository() == null) {
+      SearchRepository searchRepository = mock(SearchRepository.class);
+      when(searchRepository.getSearchClient()).thenReturn(mock(SearchClient.class));
+      Entity.setSearchRepository(searchRepository);
+    }
+  }
+
   @Test
   void everyDataAssetTypeIsEitherIngestedOrAliasedIn() {
     Set<String> ingested = ingestedTypes();
@@ -42,6 +63,18 @@ class DataAssetTypeCoverageTest {
               + CONFIG_PATH
               + " nor aliased in via dataInsightAliases, so nothing would ever populate it");
     }
+  }
+
+  @Test
+  void theCatalogTypeOrderIsTheEnumOrderNotASaltedOne() {
+    // The catalog appends records per type as it walks this set. Collectors.toUnmodifiableSet()
+    // backs onto ImmutableCollections$SetN, whose iteration order is salted per JVM start, so a
+    // consumer resolving a duplicated field name by first-record-wins would resolve it differently
+    // after a restart.
+    assertEquals(
+        Arrays.stream(DataAssetType.values()).map(DataAssetType::value).toList(),
+        List.copyOf(DataInsightSystemChartRepository.dataAssetTypes),
+        "the chart field catalog must enumerate types in a stable order");
   }
 
   @Test
