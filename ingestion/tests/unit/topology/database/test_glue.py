@@ -341,6 +341,22 @@ class GlueUnitTest(TestCase):
         assert len(source.status.warnings) == 1
         assert "more than one catalog" in str(source.status.warnings[0])
 
+    def test_schema_without_catalog_id_is_not_counted_as_another_catalog(self):
+        """A missing CatalogId is not a second catalog, so it must not warn about merging."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId=MOCK_DATABASE.name.root, Name="default"),
+                        GlueSchema(Name="schema_without_catalog"),
+                    ]
+                )
+            ]
+        )
+
+        assert ["default", "schema_without_catalog"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert source.status.warnings == []
+
     def test_tables_are_read_from_the_schema_own_catalog(self):
         """A schema from another catalog must not have its tables read from the caller's."""
         source = self._custom_db_name_source(

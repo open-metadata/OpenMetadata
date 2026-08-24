@@ -221,7 +221,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
                     if schema.CatalogId:
                         self.schema_catalog_id_map[schema.Name] = schema.CatalogId
-                    catalog_ids_seen.add(schema.CatalogId)
+                        catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:
                     self.status.failed(
@@ -235,7 +235,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             self.status.warning(
                 database_name,
                 "AWS returned Glue databases from more than one catalog "
-                f"({', '.join(sorted(str(catalog_id) for catalog_id in catalog_ids_seen))}), and all of them were "
+                f"({', '.join(sorted(catalog_ids_seen))}), and all of them were "
                 f"ingested into '{database_name}' because the 'Database Name' field is set on this service. "
                 "If two of those Glue databases share a name, one overwrites the other and its tables go missing. "
                 "Clear the 'Database Name' field to get one OpenMetadata database per AWS catalog instead.",
