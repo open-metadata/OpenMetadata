@@ -53,6 +53,8 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
+  private final DataRetentionExtensions extensions;
+
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
@@ -60,6 +62,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.extensions = DataRetentionExtensions.discover();
   }
 
   @Override
@@ -200,6 +203,26 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    LOG.info("Starting cleanup for registered retention extensions.");
+    cleanExtensions(config);
+  }
+
+  /** Runs every {@link DataRetentionExtension} on the classpath, after the built-in cleanups. */
+  private void cleanExtensions(DataRetentionConfiguration config) {
+    List<RetentionStep> steps = extensions.resolveSteps(config, this::recordExtensionFailure);
+
+    for (RetentionStep step : steps) {
+      LOG.info("Initiating extension cleanup: {}.", step.statsKey());
+      executeWithStatsTracking(step.statsKey(), () -> step.deleter().deleteBatch(BATCH_SIZE));
+    }
+
+    LOG.info("Extension cleanup complete for {} step(s).", steps.size());
+  }
+
+  private void recordExtensionFailure(RuntimeException ex) {
+    internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+    recordFirstFailure(ex);
   }
 
   @Transaction
