@@ -13,7 +13,7 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 import { SORT_ORDER } from '../../../src/enums/common.enum';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -113,8 +113,8 @@ const expectSortDelegatedToServer = async (
 };
 
 test.describe('Ingestion agent list Name column sorting', () => {
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.beforeAll(async () => {
+    const { apiContext, afterAction } = await createAdminApiContext();
 
     await service.create(apiContext);
 
@@ -145,8 +145,8 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.afterAll(async () => {
+    const { apiContext, afterAction } = await createAdminApiContext();
 
     await service.delete(apiContext);
 
