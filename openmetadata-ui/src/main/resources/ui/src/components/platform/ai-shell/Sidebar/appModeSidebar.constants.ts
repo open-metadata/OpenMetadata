@@ -17,7 +17,7 @@
  *  - the key under `document.data` in the persona doc-store document
  *  - the category key on the persona "Customize UI" tab
  */
-export const APP_MODE_SIDEBAR_CUSTOMIZATION_KEY = 'appModeSidebar';
+export const APP_MODE_SIDEBAR_CUSTOMIZATION_KEY = 'askCollateSidebar';
 
 /**
  * Number of nav items shown directly in the app-mode sidebar; the rest go
