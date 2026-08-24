@@ -288,3 +288,55 @@ class GlueUnitTest(TestCase):
         self.assertTrue(is_iceberg_1)
         self.assertFalse(is_iceberg_2)
         self.assertFalse(is_iceberg_3)
+
+    def _custom_db_name_source(self, pages):
+        """A source configured with a custom databaseName, reading the given catalog pages."""
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection",
+            return_value=False,
+        ):
+            source = GlueSource.create(
+                mock_glue_config_db_test["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database"] = MOCK_CUSTOM_DB_NAME
+        source._get_glue_database_and_schemas = lambda: pages
+        return source
+
+    def test_custom_db_name_still_discovers_schemas(self):
+        """databaseName names the OpenMetadata database, it does not select a Glue catalog.
+
+        The catalog check compares against a Glue CatalogId, so a custom name matched
+        nothing and every schema was dropped while the run still reported Success.
+        """
+        source = self._custom_db_name_source([DatabasePage(**mock_data.get("mock_database_paginator"))])
+
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(source.get_database_schema_names())  # noqa: SIM300
+        assert source.status.failures == []
+        assert source.status.warnings == []
+
+    def test_custom_db_name_merges_catalogs_and_warns(self):
+        """One name means one database, so catalogs merge. Say so, rather than dropping them."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(
+                            CatalogId=MOCK_DATABASE.name.root,
+                            Name="default",
+                            Description="current catalog schema",
+                        ),
+                        GlueSchema(
+                            CatalogId="different-catalog",
+                            Name="foreign_schema",
+                            Description="other catalog schema",
+                        ),
+                    ]
+                )
+            ]
+        )
+
+        assert ["default", "foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert len(source.status.warnings) == 1
+        assert "more than one catalog" in str(source.status.warnings[0])

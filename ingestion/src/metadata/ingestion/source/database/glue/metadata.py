@@ -183,12 +183,19 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
+
+        Without databaseName the OpenMetadata database is the Glue Catalog ID, so a
+        schema from another catalog belongs to a different database. databaseName only
+        labels the single database we create, so every visible Glue database is one of
+        its schemas.
         """
         database_name = self.context.get().database
+        custom_database_name = self.service_connection.databaseName
+        catalog_ids_seen = set()
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page.DatabaseList:
                 try:
-                    if schema.CatalogId != database_name:
+                    if not custom_database_name and schema.CatalogId != database_name:
                         continue
                     schema_fqn = fqn.build(
                         self.metadata,
@@ -205,6 +212,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         continue
                     if schema.Description:
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
+                    catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:
                     self.status.failed(
@@ -214,6 +222,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+        if len(catalog_ids_seen) > 1:
+            self.status.warning(
+                database_name,
+                "AWS returned Glue databases from more than one catalog "
+                f"({', '.join(sorted(str(catalog_id) for catalog_id in catalog_ids_seen))}), and all of them were "
+                f"ingested into '{database_name}' because the 'Database Name' field is set on this service. "
+                "If two of those Glue databases share a name, one overwrites the other and its tables go missing. "
+                "Clear the 'Database Name' field to get one OpenMetadata database per AWS catalog instead.",
+            )
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
