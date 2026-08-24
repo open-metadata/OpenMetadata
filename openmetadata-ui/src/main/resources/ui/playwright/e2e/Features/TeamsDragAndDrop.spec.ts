@@ -91,12 +91,14 @@ test.describe(
   'Teams drag and drop should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    // Every test re-enters Settings > Teams, and that landing waits on the
-    // hierarchy table's asset-count aggregation, which grows with the catalog.
-    // On a long-lived deployment the hook alone can outlast the 60s default.
-    test.slow(true);
-
     test.beforeEach(async ({ page }) => {
+      // Marked here rather than in each test body: hook time counts against the
+      // test timeout, and this hook re-enters Settings > Teams, whose landing
+      // waits on the hierarchy table's asset-count aggregation. That grows with
+      // the catalog, so on a long-lived deployment the hook alone can outlast
+      // the 60s default — by the time a test body ran, it would be too late.
+      test.slow();
+
       await redirectToHomePage(page);
       await visitTeamsPage(page);
     });
