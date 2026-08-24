@@ -32,6 +32,7 @@ const EndpointRow: FC<{
   onSelect: (node: GraphNode3D) => void;
 }> = ({ node, sublabel, onSelect }) => (
   <button
+    aria-label={node.name}
     className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-b tw:border-white/[0.08] tw:py-2 tw:text-left tw:transition hover:tw:opacity-80"
     type="button"
     onClick={() => onSelect(node)}>

@@ -729,7 +729,7 @@ describe('ColumnDetailPanel', () => {
 
     it('should show loader while fetch is in flight and hide sections', async () => {
       const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
-      let resolveFetch: (value: Column) => void = () => undefined;
+      let resolveFetch: (value: Column) => void = (_value) => undefined;
       mockGetColumnByFQN.mockImplementationOnce(
         () =>
           new Promise<Column>((resolve) => {
@@ -781,7 +781,7 @@ describe('ColumnDetailPanel', () => {
 
     it('should ignore stale response when active column FQN changed mid-flight', async () => {
       const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
-      let resolveStale: (value: Column) => void = () => undefined;
+      let resolveStale: (value: Column) => void = (_value) => undefined;
       mockGetColumnByFQN.mockImplementationOnce(
         () =>
           new Promise<Column>((resolve) => {

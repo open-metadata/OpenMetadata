@@ -44,6 +44,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onKeyDown?: (e: React.KeyboardEvent) => void;
     'data-testid'?: string;
   }) => (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Box mock forwards props
     <div
       className={className}
       data-testid={dataTestId}

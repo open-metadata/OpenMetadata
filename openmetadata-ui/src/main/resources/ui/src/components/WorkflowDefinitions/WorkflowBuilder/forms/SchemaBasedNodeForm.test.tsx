@@ -24,9 +24,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     isDisabled?: boolean;
   }) => (
     <div>
-      {props.label && <label>{props.label}</label>}
+      {props.label && <span>{props.label}</span>}
       <input
         readOnly
+        aria-label={props.label}
         disabled={props.isDisabled}
         value={props.value ?? ''}
         onChange={() => {
@@ -42,9 +43,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     isDisabled?: boolean;
   }) => (
     <div>
-      {props.label && <label>{props.label}</label>}
+      {props.label && <span>{props.label}</span>}
       <textarea
         readOnly
+        aria-label={props.label}
         disabled={props.isDisabled}
         value={props.value ?? ''}
         onChange={() => {
@@ -57,6 +59,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Toggle = (props: { isSelected?: boolean; isDisabled?: boolean }) => (
     <input
       readOnly
+      aria-label="toggle"
       checked={props.isSelected ?? false}
       data-testid="toggle"
       disabled={props.isDisabled}

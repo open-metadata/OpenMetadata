@@ -471,7 +471,14 @@ const CreateUser = ({
                           <div
                             className="w-8 h-7 flex-center cursor-pointer"
                             data-testid="password-generator"
-                            onClick={generateRandomPassword}>
+                            role="button"
+                            tabIndex={0}
+                            onClick={generateRandomPassword}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                generateRandomPassword();
+                              }
+                            }}>
                             {isPasswordGenerating ? (
                               <Loader size="small" type="default" />
                             ) : (

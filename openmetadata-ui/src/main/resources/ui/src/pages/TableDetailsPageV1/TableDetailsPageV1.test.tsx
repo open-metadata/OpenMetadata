@@ -747,6 +747,7 @@ describe('TestDetailsPageV1 component', () => {
       ).toBeTruthy();
 
       await act(async () => {
+        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
         resolveCount({ paging: { total: 7 } });
       });
 
