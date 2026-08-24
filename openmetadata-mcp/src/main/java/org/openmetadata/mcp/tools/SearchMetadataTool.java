@@ -474,10 +474,11 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    // Add any specifically requested additional fields
+    // Slim requested fields too: `fields=certification` previously bypassed slimField and
+    // returned the whole nested label, expiry buried in epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
-        result.put(field, source.get(field));
+        result.put(field, slimField(field, source.get(field)));
       }
     }
 

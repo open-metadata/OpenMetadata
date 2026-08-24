@@ -376,4 +376,18 @@ class GetLineageToolTest {
     }
     return columns;
   }
+
+  @Test
+  void lineageAlwaysStatesWhetherTheGraphIsComplete() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false));
+
+    assertEquals(
+        Boolean.FALSE,
+        response.get("edgesTruncated"),
+        "a complete graph must say so - silence is what forced a caller to probe with extra calls");
+    assertEquals(1, response.get("totalEdges"));
+    assertEquals(1, response.get("returnedEdges"));
+  }
 }

@@ -232,9 +232,10 @@ class McpResponseTrimTest {
     Map<String, Object> certification =
         Map.of("tagLabel", Map.of("tagFQN", "Certification.Bronze"));
     assertEquals(
-        "Certification.Bronze",
+        "Certification.Bronze (expiry unknown)",
         McpResponseTrim.slimCertification(certification, 1L),
-        "no expiry means no claim about validity - do not invent one");
+        "a bare label reads as a live badge; when the projection carries no expiry, say so rather "
+            + "than letting the caller assume validity");
     assertEquals(
         "not-a-map",
         McpResponseTrim.slimCertification("not-a-map", 1L),

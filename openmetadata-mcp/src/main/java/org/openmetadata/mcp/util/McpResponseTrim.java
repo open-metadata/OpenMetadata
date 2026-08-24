@@ -99,8 +99,29 @@ public final class McpResponseTrim {
       Object fqn = ref.get("fullyQualifiedName");
       Object name = fqn != null ? fqn : ref.get("name");
       if (name != null) {
-        result = name;
+        result = unquoteSegment(name.toString());
       }
+    }
+    return result;
+  }
+
+  /**
+   * Drops the quoting OpenMetadata adds around an FQN segment containing a dot.
+   *
+   * <p>A user named {@code vishnu.jain} has the FQN {@code "vishnu.jain"} — quotes included — so an
+   * owners list came back as {@code ["admin", "\"vishnu.jain\""]}, mixing quoted and unquoted
+   * entries in one array. The quotes only disambiguate segment boundaries inside a multi-part FQN;
+   * on a single segment they carry no information and make the value harder to compare or reuse.
+   */
+  private static String unquoteSegment(String fqn) {
+    String result = fqn;
+    boolean singleQuotedSegment =
+        fqn.length() > 1
+            && fqn.charAt(0) == '"'
+            && fqn.charAt(fqn.length() - 1) == '"'
+            && fqn.indexOf('"', 1) == fqn.length() - 1;
+    if (singleQuotedSegment) {
+      result = fqn.substring(1, fqn.length() - 1);
     }
     return result;
   }
@@ -166,6 +187,12 @@ public final class McpResponseTrim {
           millis.longValue() < nowMillis
               ? " (EXPIRED " + date + ")"
               : " (valid until " + date + ")";
+    } else {
+      // Search projections do not always carry expiryDate. Measured live, one table returned a bare
+      // "Certification.Gold" while its own test cases returned "(EXPIRED 2026-07-29)" — same badge,
+      // same expiry, opposite impression. A bare label reads as a live badge, which is the exact
+      // misread this method exists to prevent, so state that validity is unknown instead.
+      suffix = " (expiry unknown)";
     }
     return suffix;
   }

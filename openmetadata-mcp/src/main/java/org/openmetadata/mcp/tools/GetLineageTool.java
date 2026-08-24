@@ -266,13 +266,47 @@ public class GetLineageTool implements McpTool {
    * represented, and per-direction markers tell the caller how many edges were withheld.
    */
   @VisibleForTesting
+  /**
+   * Always states whether the graph is complete.
+   *
+   * <p>A caller doing impact analysis cannot act on a graph that might be silently clipped —
+   * "30 downstream" and "at least 30 downstream" are different answers to "what breaks if I
+   * deprecate this". Measured live, an agent spent five of ten calls reconstructing that confidence
+   * from probes because the response carried no signal either way, while {@code get_entity_details}
+   * has flagged the analogous column case with {@code columnsTruncated} all along.
+   */
   static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
+    int totalUpstream = slim.upstream() == null ? 0 : slim.upstream().size();
+    int totalDownstream = slim.downstream() == null ? 0 : slim.downstream().size();
     Map<String, Object> full = JsonUtils.getMap(slim);
     Map<String, Object> result = full;
     if (McpResponseTrim.serializedLength(full) > McpResponseTrim.MAX_RESPONSE_CHARS) {
       result = fitGraphToBudget(slim);
     }
+    annotateCompleteness(result, totalUpstream, totalDownstream);
     return result;
+  }
+
+  private static void annotateCompleteness(
+      Map<String, Object> result, int totalUpstream, int totalDownstream) {
+    int returnedUpstream = sizeOf(result.get("upstream"));
+    int returnedDownstream = sizeOf(result.get("downstream"));
+    boolean clipped = returnedUpstream < totalUpstream || returnedDownstream < totalDownstream;
+    result.put("totalEdges", totalUpstream + totalDownstream);
+    result.put("returnedEdges", returnedUpstream + returnedDownstream);
+    result.put("edgesTruncated", clipped);
+    if (clipped) {
+      result.put(
+          McpResponseTrim.MESSAGE_KEY,
+          String.format(
+              "Graph clipped to fit the response budget: %d of %d edges returned. Reduce"
+                  + " upstreamDepth/downstreamDepth for a complete graph at a shallower depth.",
+              returnedUpstream + returnedDownstream, totalUpstream + totalDownstream));
+    }
+  }
+
+  private static int sizeOf(Object edges) {
+    return edges instanceof List<?> list ? list.size() : 0;
   }
 
   private static Map<String, Object> fitGraphToBudget(SlimLineage slim) {
