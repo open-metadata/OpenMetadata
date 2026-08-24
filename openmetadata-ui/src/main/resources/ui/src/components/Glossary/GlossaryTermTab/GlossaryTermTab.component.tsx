@@ -56,7 +56,6 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -414,27 +413,44 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
-    const { data } = await getGlossaryTerms({
-      [key]: activeGlossary?.id || '',
-      limit: API_RES_MAX_SIZE,
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.PARENT,
-        TabSpecificField.CHILDREN,
-      ],
-    });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
-    const keys = data.reduce((prev, curr) => {
-      if (curr.children?.length) {
-        prev.push(curr.fullyQualifiedName ?? '');
-      }
+    const fields = [
+      TabSpecificField.OWNERS,
+      TabSpecificField.PARENT,
+      TabSpecificField.CHILDREN,
+    ];
 
-      return prev;
-    }, [] as string[]);
+    try {
+      let allData: GlossaryTerm[] = [];
+      let after: string | undefined;
 
-    setExpandedRowKeys(keys);
-    setIsTableLoading(false);
-    setIsExpandingAll(false);
+      do {
+        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+        const response = await getGlossaryTerms({
+          [key]: activeGlossary?.id || '',
+          limit: PAGE_SIZE_LARGE,
+          after,
+          fields,
+        });
+        allData = [...allData, ...response.data];
+        after = response.paging?.after;
+      } while (after);
+
+      setGlossaryChildTerms(buildTree(allData) as ModifiedGlossary[]);
+      const keys = allData.reduce((prev, curr) => {
+        if (curr.children?.length) {
+          prev.push(curr.fullyQualifiedName ?? '');
+        }
+
+        return prev;
+      }, [] as string[]);
+
+      setExpandedRowKeys(keys);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTableLoading(false);
+      setIsExpandingAll(false);
+    }
   };
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
@@ -442,17 +458,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     try {
-      const { data } = await listTasks({
-        status: TaskEntityStatus.Open,
-        category: TaskCategory.Approval,
-        type: TaskEntityType.RequestApproval,
-        limit: API_RES_MAX_SIZE,
-        fields: 'about,assignees',
-      });
+      let allData: Task[] = [];
+      let after: string | undefined;
+
+      do {
+        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+        const response = await listTasks({
+          status: TaskEntityStatus.Open,
+          category: TaskCategory.Approval,
+          type: TaskEntityType.RequestApproval,
+          limit: PAGE_SIZE_LARGE,
+          after,
+          fields: 'about,assignees',
+        });
+        allData = [...allData, ...response.data];
+        after = response.paging?.after;
+      } while (after);
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
-      const tasksByTerm = data.reduce(
+      const tasksByTerm = allData.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
           const isGlossaryTermTask =
