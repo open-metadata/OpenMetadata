@@ -1053,13 +1053,22 @@ export const waitForDeletionFromSearchIndex = async (
           )}&index=${searchIndex}&from=0&size=10`
         );
 
+        // This poll resolves on `false` ("entity gone"), the OPPOSITE
+        // polarity of verifyDomainPropagation — so a transient search error
+        // must read as "still present" (keep polling), never as an empty
+        // result set, or a single flaky 5xx would pass the gate against a
+        // stale index.
+        if (!response.ok()) {
+          return true;
+        }
+
         const hits: {
           _source?: {
             name?: string;
             displayName?: string;
             fullyQualifiedName?: string;
           };
-        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        }[] = (await response.json())?.hits?.hits ?? [];
 
         return hits.some((hit) =>
           matchNames.some(
