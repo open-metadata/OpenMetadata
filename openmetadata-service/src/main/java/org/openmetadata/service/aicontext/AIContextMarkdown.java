@@ -164,6 +164,10 @@ public final class AIContextMarkdown {
     if (dataQuality != null) {
       appendHeading(markdown, headingPrefix, "Data Quality");
       markdown.append('\n');
+      int executed =
+          orZero(dataQuality.getPassed())
+              + orZero(dataQuality.getFailed())
+              + orZero(dataQuality.getAborted());
       markdown
           .append("Tests — passed: ")
           .append(orZero(dataQuality.getPassed()))
@@ -172,6 +176,13 @@ public final class AIContextMarkdown {
           .append(", aborted: ")
           .append(orZero(dataQuality.getAborted()))
           .append('\n');
+      // An all-zero line is byte-identical whether the asset has no tests or has tests that have
+      // never run — and those are opposite trust verdicts. Say which one it is.
+      if (executed == 0) {
+        markdown.append(
+            "\n> No data-quality test has ever executed on this asset. This is NOT the same as"
+                + " passing: tests may be defined but never run. Treat quality here as unverified.\n");
+      }
       if (dataQuality.getFailed() != null && dataQuality.getFailed() > 0) {
         markdown
             .append("\n> ")
