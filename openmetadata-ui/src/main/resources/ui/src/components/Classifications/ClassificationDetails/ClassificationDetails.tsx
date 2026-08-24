@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
@@ -53,6 +54,7 @@ import {
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -272,9 +274,31 @@ const ClassificationDetails = forwardRef(
       [isVersionView, isClassificationDisabled, editClassificationPermission]
     );
 
+    // Import/export are not offered for system-generated classifications
+    // (e.g. Tier, Certification), whose tags are managed by the platform.
     const showExportOption = useMemo(
-      () => !isVersionView && classificationPermissions.ViewAll,
-      [isVersionView, classificationPermissions]
+      () =>
+        !isVersionView &&
+        !isSystemClassification &&
+        classificationPermissions.ViewAll,
+      [isVersionView, isSystemClassification, classificationPermissions]
+    );
+
+    // Import creates/updates tags, so it needs full EditAll access and is not
+    // available in version view, on a disabled classification, or on a
+    // system-generated classification.
+    const showImportOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isClassificationDisabled &&
+        !isSystemClassification &&
+        classificationPermissions.EditAll,
+      [
+        isVersionView,
+        isClassificationDisabled,
+        isSystemClassification,
+        classificationPermissions,
+      ]
     );
 
     const showManageButton = useMemo(
@@ -283,12 +307,14 @@ const ClassificationDetails = forwardRef(
         (showEditOption ||
           deletePermission ||
           showDisableOption ||
-          showExportOption),
+          showExportOption ||
+          showImportOption),
       [
         showEditOption,
         deletePermission,
         showDisableOption,
         showExportOption,
+        showImportOption,
         isVersionView,
       ]
     );
@@ -302,6 +328,17 @@ const ClassificationDetails = forwardRef(
         });
       }
     }, [currentClassification, showModal]);
+
+    const handleClassificationImportClick = useCallback(() => {
+      if (currentClassification?.fullyQualifiedName) {
+        navigate(
+          getEntityImportPath(
+            EntityType.CLASSIFICATION,
+            currentClassification.fullyQualifiedName
+          )
+        );
+      }
+    }, [currentClassification, navigate]);
 
     const handleUpdateDescription = async (updatedHTML: string) => {
       if (!isUndefined(currentClassification)) {
@@ -369,6 +406,24 @@ const ClassificationDetails = forwardRef(
           showEditOption,
           handleEditClassificationClick
         ),
+        ...(showImportOption
+          ? [
+              {
+                label: (
+                  <ManageButtonItemLabel
+                    description={t('message.import-entity-help', {
+                      entity: t('label.tag-lowercase-plural'),
+                    })}
+                    icon={ImportIcon}
+                    id="import-button"
+                    name={t('label.import')}
+                  />
+                ),
+                key: 'import-button',
+                onClick: handleClassificationImportClick,
+              },
+            ]
+          : []),
         ...(showExportOption
           ? [
               {
@@ -394,6 +449,8 @@ const ClassificationDetails = forwardRef(
         handleEnableDisableClassificationClick,
         showEditOption,
         handleEditClassificationClick,
+        showImportOption,
+        handleClassificationImportClick,
         showExportOption,
         handleClassificationExportClick,
       ]

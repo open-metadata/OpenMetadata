@@ -22,6 +22,7 @@ export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.GLOSSARY,
   ResourceEntity.METRIC,
   ResourceEntity.TEST_CASE,
+  ResourceEntity.CLASSIFICATION,
 ];
 
 export enum VALIDATION_STEP {

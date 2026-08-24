@@ -205,11 +205,3 @@ export const exportClassificationInCSVFormat = async (
 
   return response.data;
 };
-
-export const exportTagInCSVFormat = async (tagFqn: string) => {
-  const response = await APIClient.get<CSVExportResponse>(
-    `/tags/name/${getEncodedFqn(tagFqn)}/exportAsync`
-  );
-
-  return response.data;
-};

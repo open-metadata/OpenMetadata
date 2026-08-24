@@ -952,4 +952,34 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertTrue(csv.contains(firstTag.getName()), "Exported CSV must contain the first tag");
     assertTrue(csv.contains(secondTag.getName()), "Exported CSV must contain the second tag");
   }
+
+  @Test
+  void test_importClassificationCsv_createsTags(TestNamespace ns) throws Exception {
+    Classification classification = createEntity(createMinimalRequest(ns));
+
+    String tagName = ns.prefix("importedTag");
+    String csv =
+        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+            + ",%s,Imported Tag,An imported tag,,,,,,,\n".formatted(tagName);
+
+    String importResult =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/classifications/name/"
+                    + classification.getFullyQualifiedName()
+                    + "/import?dryRun=false",
+                csv);
+
+    assertNotNull(importResult);
+    assertTrue(importResult.contains(tagName), "Import result must reference the imported tag");
+
+    Tag importedTag =
+        SdkClients.adminClient()
+            .tags()
+            .getByName(classification.getFullyQualifiedName() + "." + tagName);
+    assertNotNull(importedTag, "Imported tag must be created");
+    assertEquals("An imported tag", importedTag.getDescription());
+  }
 }

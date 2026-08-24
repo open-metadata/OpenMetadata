@@ -77,7 +77,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.seeding.SeedDataGate;
-import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -914,54 +913,5 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getRecognizersOfTagByFQN(fqn, before, after, limitParam);
-  }
-
-  @GET
-  @Path("/name/{fqn}/exportAsync")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Valid
-  @Operation(
-      operationId = "exportTag",
-      summary = "Export a tag and its child tags in CSV format",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with child tags of the tag",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportResponse.class)))
-      })
-  public Response exportCsvAsync(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn) {
-    return exportCsvInternalAsync(securityContext, fqn, false);
-  }
-
-  @GET
-  @Path("/name/{fqn}/export")
-  @Produces(MediaType.TEXT_PLAIN)
-  @Valid
-  @Operation(
-      operationId = "exportTag",
-      summary = "Export a tag and its child tags in CSV format",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with child tags of the tag",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
-      })
-  public String exportCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn)
-      throws IOException {
-    return exportCsvInternal(securityContext, fqn, false);
   }
 }

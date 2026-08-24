@@ -1,5 +1,5 @@
 {
-  "summary": "Classification CSV file is used for exporting tags from an **existing** classification.",
+  "summary": "Classification CSV file is used for importing and exporting tags of an **existing** classification.",
   "headers": [
     {
       "name": "parent",
