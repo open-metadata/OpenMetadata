@@ -166,31 +166,37 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
-  const setActiveThread = useCallback((active?: Thread) => {
-    setSelectedThread(active);
-    active && fetchPostsFeed(active);
-  }, []);
+  const setActiveThread = useCallback(
+    (active?: Thread) => {
+      setSelectedThread(active);
+      active && fetchPostsFeed(active);
+    },
+    [fetchPostsFeed]
+  );
 
-  const setActiveTask = useCallback((active?: Task) => {
-    setSelectedTask(active);
+  const setActiveTask = useCallback(
+    (active?: Task) => {
+      setSelectedTask(active);
 
-    // Fetch TCRS records for this incident task to populate the timeline.
-    // In task-first mode the task UUID equals the TCRS stateId (see
-    // IncidentTcrsSyncHandler). The pre-task-first code read from
-    // payload.testCaseResolutionStatusId, but that field doesn't exist in the
-    // new task system, so we fall back to active.id.
-    if (active && active.type === TaskEntityType.TestCaseResolution) {
-      const stateId =
-        active.payload &&
-        typeof active.payload === 'object' &&
-        'testCaseResolutionStatusId' in active.payload
-          ? (active.payload.testCaseResolutionStatusId as string)
-          : active.id;
-      if (stateId) {
-        fetchTestCaseResolution(stateId);
+      // Fetch TCRS records for this incident task to populate the timeline.
+      // In task-first mode the task UUID equals the TCRS stateId (see
+      // IncidentTcrsSyncHandler). The pre-task-first code read from
+      // payload.testCaseResolutionStatusId, but that field doesn't exist in the
+      // new task system, so we fall back to active.id.
+      if (active && active.type === TaskEntityType.TestCaseResolution) {
+        const stateId =
+          active.payload &&
+          typeof active.payload === 'object' &&
+          'testCaseResolutionStatusId' in active.payload
+            ? (active.payload.testCaseResolutionStatusId as string)
+            : active.id;
+        if (stateId) {
+          fetchTestCaseResolution(stateId);
+        }
       }
-    }
-  }, []);
+    },
+    [fetchTestCaseResolution]
+  );
 
   const fetchUpdatedThread = useCallback(
     async (id: string, isTask?: boolean) => {
@@ -361,7 +367,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    [currentUser, activeDomain]
+    [currentUser, activeDomain, t]
   );
 
   const getFeedData = useCallback(
@@ -424,7 +430,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    [currentUser, user]
+    [currentUser, user, t]
   );
 
   // Here value is the post message and id can be thread id or post id.
@@ -469,32 +475,26 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
       }
     },
-    [currentUser]
+    [currentUser, setActiveTask, setActiveThread, t]
   );
 
   const refreshActivityFeed = useCallback((threads: Thread[]) => {
     setEntityThread([...threads]);
   }, []);
 
-  const updateEntityThread = useCallback(
-    (thread: Thread) => {
-      setEntityThread((prev) =>
-        prev.map((threadItem) =>
-          threadItem.id === thread.id ? thread : threadItem
-        )
-      );
-    },
-    [setEntityThread]
-  );
+  const updateEntityThread = useCallback((thread: Thread) => {
+    setEntityThread((prev) =>
+      prev.map((threadItem) =>
+        threadItem.id === thread.id ? thread : threadItem
+      )
+    );
+  }, []);
 
-  const updateTask = useCallback(
-    (task: Task) => {
-      setTasks((prev) =>
-        prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
-      );
-    },
-    [setTasks]
-  );
+  const updateTask = useCallback((task: Task) => {
+    setTasks((prev) =>
+      prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
+    );
+  }, []);
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -524,7 +524,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    []
+    [setActiveThread]
   );
 
   const updateThreadHandler = useCallback(
@@ -603,48 +603,51 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         });
       }
     },
-    []
+    [updateThreadHandler, updatePostHandler]
   );
 
-  const updateReactions = async (
-    post: Post,
-    feedId: string,
-    isThread: boolean,
-    reactionType: ReactionType,
-    reactionOperation: ReactionOperation
-  ) => {
-    let updatedReactions = post.reactions ?? [];
-    if (reactionOperation === ReactionOperation.ADD) {
-      const reactionObject = {
-        reactionType,
-        user: {
-          id: currentUser?.id as string,
-        },
-      };
+  const updateReactions = useCallback(
+    async (
+      post: Post,
+      feedId: string,
+      isThread: boolean,
+      reactionType: ReactionType,
+      reactionOperation: ReactionOperation
+    ) => {
+      let updatedReactions = post.reactions ?? [];
+      if (reactionOperation === ReactionOperation.ADD) {
+        const reactionObject = {
+          reactionType,
+          user: {
+            id: currentUser?.id as string,
+          },
+        };
 
-      updatedReactions = [...updatedReactions, reactionObject as Reaction];
-    } else {
-      updatedReactions = updatedReactions.filter(
-        (reaction) =>
-          !(
-            reaction.reactionType === reactionType &&
-            reaction.user.id === currentUser?.id
-          )
-      );
-    }
-
-    const patch = compare(
-      { ...post, reactions: [...(post.reactions ?? [])] },
-      {
-        ...post,
-        reactions: updatedReactions,
+        updatedReactions = [...updatedReactions, reactionObject as Reaction];
+      } else {
+        updatedReactions = updatedReactions.filter(
+          (reaction) =>
+            !(
+              reaction.reactionType === reactionType &&
+              reaction.user.id === currentUser?.id
+            )
+        );
       }
-    );
 
-    await updateFeed(feedId, post.id, isThread, patch).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
-  };
+      const patch = compare(
+        { ...post, reactions: [...(post.reactions ?? [])] },
+        {
+          ...post,
+          reactions: updatedReactions,
+        }
+      );
+
+      await updateFeed(feedId, post.id, isThread, patch).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+      });
+    },
+    [currentUser?.id, updateFeed]
+  );
 
   const updateActivityReaction = useCallback(
     async (
@@ -688,22 +691,28 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [activityEvents, currentUser?.id]
   );
 
-  const updateEditorFocus = (isFocused: boolean) => {
+  const updateEditorFocus = useCallback((isFocused: boolean) => {
     setFocusReplyEditor(isFocused);
-  };
-
-  const showDrawer = useCallback((thread: Thread) => {
-    setIsDrawerOpen(true);
-    setActiveThread(thread);
-    setSelectedTask(undefined);
   }, []);
 
-  const showTaskDrawer = useCallback((task: Task) => {
-    setIsDrawerOpen(true);
-    setActiveTask(task);
-    setSelectedThread(undefined);
-    setSelectedActivity(undefined);
-  }, []);
+  const showDrawer = useCallback(
+    (thread: Thread) => {
+      setIsDrawerOpen(true);
+      setActiveThread(thread);
+      setSelectedTask(undefined);
+    },
+    [setActiveThread]
+  );
+
+  const showTaskDrawer = useCallback(
+    (task: Task) => {
+      setIsDrawerOpen(true);
+      setActiveTask(task);
+      setSelectedThread(undefined);
+      setSelectedActivity(undefined);
+    },
+    [setActiveTask]
+  );
 
   // Change-event activities are read-only notifications with no discussion
   // thread of their own — selecting one just shows its change detail + reactions.
@@ -743,7 +752,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           .catch(() => {});
       }
     },
-    [setTestCaseResolutionStatus, selectedTask?.id]
+    [selectedTask?.id]
   );
 
   // Activity Events fetch methods.
