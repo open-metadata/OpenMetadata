@@ -26,6 +26,13 @@
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
  *
+ * Test contract — these hooks are stable and tests may rely on them:
+ *   data-row-key   on every row (AntD's rc-table emits it too, so a selector
+ *                  written against it survives the migration)
+ *   data-level     tree depth (TableV2 only; AntD uses .ant-table-row-level-N)
+ *   data-testid    table-toolbar, column-dropdown, expand-icon, filter-trigger,
+ *                  filter-dropdown, and the table root via the `data-testid` prop
+ *
  * Sorting:
  *  - sorter: (a, b) => number  → applied client-side on full dataset before pagination
  *  - sorter: true              → visual indicator only; parent must handle via onChange
@@ -1013,7 +1020,8 @@ const TableV2 = <T extends object>(
                               opens. */}
                             <AriaButton
                               aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center">
+                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+                              data-testid="filter-trigger">
                               {typeof colType.filterIcon === 'function'
                                 ? colType.filterIcon(
                                     Boolean(filterState[colKey]?.length)
@@ -1024,6 +1032,7 @@ const TableV2 = <T extends object>(
                               <Dialog className="tw:outline-none">
                                 <div
                                   className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
+                                  data-testid="filter-dropdown"
                                   style={{ minWidth: '200px' }}>
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({

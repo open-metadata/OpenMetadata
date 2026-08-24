@@ -103,7 +103,7 @@ describe('SampleDataTable with reserved column names', () => {
       render(<SampleDataTable {...mockProps} />)
     );
 
-    expect(container.querySelectorAll('tbody tr.ant-table-row')).toHaveLength(
+    expect(container.querySelectorAll('tbody tr[data-row-key]')).toHaveLength(
       SAMPLE_ROWS.length
     );
   });
@@ -114,7 +114,7 @@ describe('SampleDataTable with reserved column names', () => {
     );
 
     const rowKeys = Array.from(
-      container.querySelectorAll('tbody tr.ant-table-row')
+      container.querySelectorAll('tbody tr[data-row-key]')
     ).map((row) => row.getAttribute('data-row-key'));
 
     expect(rowKeys.length).toBeGreaterThan(1);
