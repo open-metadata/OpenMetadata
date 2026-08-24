@@ -73,6 +73,7 @@ public class CreateDataProductTool implements McpTool {
     final DataProductRepository repo =
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     repo.prepareInternal(entity, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.DATA_PRODUCT, entity);
 
     final String userName = CommonUtils.principal(securityContext);
     // createOrUpdate silently overwrites an existing data product with this name —

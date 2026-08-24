@@ -103,14 +103,24 @@ export const useLogAutoFollow = ({
     setFollow(isLive || follow);
   }, [open, isLive, follow, setFollow]);
 
-  const resumeFollowingTail = useCallback(() => {
-    forwardGestureAtRef.current = Date.now();
+  /**
+   * Starts following from a view that is already at the tail. Shared by every
+   * resume path: whoever gets back to the tail — the toolbar toggle or the user
+   * scrolling there — has to grant the catch-up the same grace, or the first
+   * append that reports an offset short of the tail reads as the user leaving.
+   */
+  const beginFollowingFromTail = useCallback(() => {
     upwardMovesRef.current = 0;
     caughtUpRef.current = false;
     viewerScrollAtRef.current = Date.now();
     setFollow(true);
+  }, [setFollow]);
+
+  const resumeFollowingTail = useCallback(() => {
+    forwardGestureAtRef.current = Date.now();
+    beginFollowingFromTail();
     scrollToEnd();
-  }, [scrollToEnd, setFollow]);
+  }, [beginFollowingFromTail, scrollToEnd]);
 
   const toggleFollow = useCallback(() => {
     if (followTailRef.current) {
@@ -163,8 +173,17 @@ export const useLogAutoFollow = ({
    * it resumes following.
    */
   const applyUserScrollIntent = useCallback(
-    (isBottom: boolean) => {
-      if (!isBottom) {
+    (facts: ScrollFacts) => {
+      if (!facts.isBottom) {
+        // A followed log whose offset moved *towards* the tail and stopped short
+        // of it is the viewer landing approximately — the library scrolls itself
+        // on every append and a virtualised list re-estimates its height as rows
+        // are measured. Nobody scrolls down in order to leave the tail, so only a
+        // move pulling away from it hands control over.
+        if (followTailRef.current && facts.movedTowardsTail) {
+          return;
+        }
+
         // Leaving the tail withdraws any earlier request to be at it.
         forwardGestureAtRef.current = 0;
         setFollow(false);
@@ -179,10 +198,10 @@ export const useLogAutoFollow = ({
         Date.now() - forwardGestureAtRef.current < FORWARD_GESTURE_GRACE_MS;
 
       if (askedToFollow) {
-        setFollow(true);
+        beginFollowingFromTail();
       }
     },
-    [setFollow]
+    [beginFollowingFromTail, setFollow]
   );
 
   const trackScroll = useCallback(
@@ -210,7 +229,7 @@ export const useLogAutoFollow = ({
         facts.userMovedTheView &&
         !viewerOwnsThisScroll
       ) {
-        applyUserScrollIntent(facts.isBottom);
+        applyUserScrollIntent(facts);
       }
 
       return facts;

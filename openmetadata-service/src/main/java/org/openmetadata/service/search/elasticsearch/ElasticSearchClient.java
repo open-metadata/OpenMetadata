@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.SortOptions;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.FiltersBucket;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
@@ -102,6 +103,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private volatile boolean isClientAvailable;
   private static final long HEALTH_CHECK_CACHE_MS = 5000;
+  private static final String SORT_ORDER_DESC = "desc";
   private final AtomicLong lastHealthCheckAt = new AtomicLong();
 
   private volatile boolean isNewClientAvailable;
@@ -588,6 +590,17 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
+  }
+
+  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
@@ -935,6 +948,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
+  }
+
+  @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
     genericManager.deleteIndexTemplate(templateName);
   }
@@ -1169,20 +1188,44 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchy(
-      String parentFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchyForActivePage(
-      String activeFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+  }
+
+  private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
+    List<SortOptions> sortOptions = new ArrayList<>();
+    if (sortFilter != null
+        && sortFilter.getSortField() != null
+        && !Entity.FIELD_FULLY_QUALIFIED_NAME.equals(sortFilter.getSortField())) {
+      String field = sortFilter.getSortField();
+      SortOrder order =
+          SORT_ORDER_DESC.equalsIgnoreCase(sortFilter.getSortType())
+              ? SortOrder.Desc
+              : SortOrder.Asc;
+      sortOptions.add(SortOptions.of(so -> so.field(f -> f.field(field).order(order))));
+    }
+    // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is not unique.
+    // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
+    // indices.id_field_data.enabled=true at the cluster level.
+    sortOptions.add(
+        SortOptions.of(
+            so -> so.field(f -> f.field(Entity.FIELD_FULLY_QUALIFIED_NAME).order(SortOrder.Asc))));
+    return sortOptions;
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearch(
-      String parentFqn, String pageType, int offset, int limit) throws IOException {
+      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
     Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
         es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
@@ -1192,13 +1235,7 @@ public class ElasticSearchClient implements SearchClient {
                             .getIndexOrAliasName(
                                 KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort so from/size pagination cannot miss/duplicate hits.
-                    // fullyQualifiedName is a keyword field with doc_values and is unique per
-                    // page (name is unique within a parent's children), so no tiebreaker is
-                    // needed. _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x
-                    // without setting indices.id_field_data.enabled=true at the cluster level.
-                    .sort(
-                        sort -> sort.field(f -> f.field("fullyQualifiedName").order(SortOrder.Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 
@@ -1214,8 +1251,10 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
-      String activeFqn, String pageType, int offset, int limit) throws IOException {
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
+      throws IOException {
     Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+    List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
         es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
@@ -1225,9 +1264,7 @@ public class ElasticSearchClient implements SearchClient {
                             .getIndexOrAliasName(
                                 KnowledgePageRepository.KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort by fqn (keyword, unique per page). See note above on _id.
-                    .sort(
-                        sort -> sort.field(f -> f.field("fullyQualifiedName").order(SortOrder.Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 
