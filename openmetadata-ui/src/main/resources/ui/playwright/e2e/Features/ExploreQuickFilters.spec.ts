@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { APIRequestContext, expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -47,6 +47,38 @@ const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
 let user: UserClass;
+
+// Adding an asset to a data product updates the asset's search document
+// asynchronously, and the Data Products dropdown reads its options from that
+// aggregation — so the option only exists once the table doc carries the link.
+const waitForDataProductOnAsset = async (
+  apiContext: APIRequestContext,
+  assetFqn: string,
+  dataProductName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            `"${assetFqn}"`
+          )}&index=table&from=0&size=1`
+        );
+
+        if (!response.ok()) {
+          return false;
+        }
+
+        const data = await response.json();
+        const dataProducts: { name?: string }[] =
+          data?.hits?.hits?.[0]?._source?.dataProducts ?? [];
+
+        return dataProducts.some((product) => product.name === dataProductName);
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -103,6 +135,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataProduct.addAssets(apiContext, [
     { id: table.entityResponseData.id, type: 'table' },
   ]);
+  await waitForDataProductOnAsset(
+    apiContext,
+    table.entityResponseData.fullyQualifiedName,
+    dataProduct.data.name
+  );
 
   await afterAction();
 });
