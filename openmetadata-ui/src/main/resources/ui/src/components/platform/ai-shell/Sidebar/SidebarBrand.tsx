@@ -28,7 +28,7 @@ export interface SidebarBrandProps {
 }
 
 /**
- * Brand chrome for the ClassicV1 sidebar header. Uses `brandClassBase`, which a
+ * Brand chrome for the AI sidebar header. Uses `brandClassBase`, which a
  * downstream build overrides via the class-replacement plugin — so this shows
  * the OpenMetadata mark by default and the Collate mark in Collate, always (no
  * plugin-install gate). The expanded panel shows the full wordmark

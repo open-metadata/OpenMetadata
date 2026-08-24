@@ -55,7 +55,7 @@ export const EXTENSION_POINTS = {
   // A plugin contributes AI-exclusive chrome through these points so OSS
   // core never imports plugin code. Read via the typed helpers in
   // `components/platform/ai-shell/appModeExtensions.ts`. Modules (nav +
-  // owned routes) are NOT contributed here — ClassicV1 is an app layout, so
+  // owned routes) are NOT contributed here — AI is an app layout, so
   // its modules come from `LeftSidebarClassBase.getAppModeModules()` (a
   // downstream build overrides that), read via `sharedAppModules.ts`.
   APP_MODE_ROUTES_FALLBACK: 'app-mode.routes.fallback',

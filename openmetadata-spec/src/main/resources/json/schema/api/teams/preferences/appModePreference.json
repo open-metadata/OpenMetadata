@@ -12,7 +12,7 @@
       "properties": {
         "value": {
           "type": ["string", "null"],
-          "enum": ["ai", "classic", "classicV1", null]
+          "enum": ["ai", "classic", null]
         }
       },
       "required": ["value"],

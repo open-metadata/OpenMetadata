@@ -14,9 +14,9 @@
 import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { useRef } from 'react';
+import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
 import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
-import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 
 export interface UserProfileCardProps {
   /**
@@ -28,8 +28,8 @@ export interface UserProfileCardProps {
 }
 
 /**
- * User chrome for the ClassicV1 sidebar footer — the AI user menu (avatar,
- * name, profile dropdown), the inbox launcher, and the Classic/ClassicV1
+ * User chrome for the AI sidebar footer — the AI user menu (avatar,
+ * name, profile dropdown), the inbox launcher, and the Classic/AI
  * `AppModeSwitcher`. `cardRef` lets the switcher popover treat clicks inside
  * the card as "inside" and not self-close. In the collapsed rail the card
  * mirrors the compact profile: inbox, user menu, mode switcher — no full-width

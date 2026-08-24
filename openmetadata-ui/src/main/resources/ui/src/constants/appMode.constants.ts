@@ -16,8 +16,8 @@
  *
  * The active mode is a string, tracked via `sessionStorage`/`localStorage`
  * and resolved through the precedence chain in `useAppMode.ts`. OSS
- * `AppRouter` renders the ClassicV1 shell directly when the resolved mode
- * matches `CLASSIC_V1_APP_MODE` (see below) — there is no runtime
+ * `AppRouter` renders the AI shell directly when the resolved mode
+ * matches `AI_APP_MODE` (see below) — there is no runtime
  * registry or plugin-registration step in between.
  *
  * The active mode is scoped to a tab via `sessionStorage`, keyed by the
@@ -59,10 +59,10 @@ export const APP_MODE_HINT_TTL_MS = 60_000;
 export const DEFAULT_APP_MODE = 'default';
 
 /**
- * Runtime mode key for the ClassicV1 app-mode shell. `AppRouter` renders
+ * Runtime mode key for the AI app-mode shell. `AppRouter` renders
  * `AppModeRoutes` directly whenever the resolved mode equals this value,
  * and falls back to the default mode's routes otherwise. This identifier
  * also lets the persona-scoped App Mode preference translate the
  * admin-facing `AppMode` enum value into the runtime mode string.
  */
-export const CLASSIC_V1_APP_MODE = 'classicV1';
+export const AI_APP_MODE = 'ai';

@@ -17,7 +17,7 @@ import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
- * Home module — the ClassicV1 sidebar's landing entry. Owns no routes of its
+ * Home module — the AI sidebar's landing entry. Owns no routes of its
  * own: the My Data page is served by the shell's page-table fallback
  * (`applicationRoutesClass.getRouteElements()`); this module exists purely to
  * surface the sidebar icon and point it at `/my-data`.

@@ -92,7 +92,7 @@ import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
-import { useIsClassicV1Mode } from '../../hooks/useAppMode';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -140,8 +140,8 @@ const TagPage = () => {
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isClassicV1Mode = useIsClassicV1Mode();
-  const showAiHeader = isClassicV1Mode;
+  const isAiMode = useIsAiMode();
+  const showAiHeader = isAiMode;
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab?: string;
   }>();
@@ -882,7 +882,7 @@ const TagPage = () => {
   return (
     <PageLayoutV1
       pageTitle={tagItem.name}
-      variant={isClassicV1Mode ? 'compact' : 'default'}>
+      variant={isAiMode ? 'compact' : 'default'}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           {showAiHeader ? (

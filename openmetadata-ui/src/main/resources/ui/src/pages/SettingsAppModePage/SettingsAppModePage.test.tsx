@@ -146,7 +146,7 @@ describe('SettingsAppModePage', () => {
     expect(classicOption.checked).toBe(true);
   });
 
-  it('never shows the unavailable placeholder (ClassicV1 always available in OSS)', () => {
+  it('never shows the unavailable placeholder (AI always available in OSS)', () => {
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
     expect(

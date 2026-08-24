@@ -17,7 +17,7 @@ import { useApplicationsProvider } from '../../Settings/Applications/Application
 import { AppModule } from './AppModule.types';
 
 /**
- * The base modules backing the ClassicV1 app-mode shell, owned by
+ * The base modules backing the AI app-mode shell, owned by
  * `LeftSidebarClassBase` (a downstream build overrides `getAppModeModules()` to
  * append its own). Re-exported here for consumers/tests that want the raw,
  * unsorted list. These are always present; install-gated modules come from

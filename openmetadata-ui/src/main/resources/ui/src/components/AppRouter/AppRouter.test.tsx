@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { CLASSIC_V1_APP_MODE } from '../../constants/appMode.constants';
+import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
 import AppRouter from './AppRouter';
@@ -112,9 +112,9 @@ describe('AppRouter — mode-based shell selection', () => {
     mockUseAppMode.mockReset();
   });
 
-  it('renders the ClassicV1 shell in classicV1 mode', async () => {
+  it('renders the AI shell in ai mode', async () => {
     setAuthState({ isAuthenticated: true });
-    mockUseAppMode.mockReturnValue(CLASSIC_V1_APP_MODE);
+    mockUseAppMode.mockReturnValue(AI_APP_MODE);
 
     renderRouter();
 

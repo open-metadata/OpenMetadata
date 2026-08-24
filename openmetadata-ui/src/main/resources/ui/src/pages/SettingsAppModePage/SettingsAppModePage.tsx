@@ -46,7 +46,7 @@ const labelFor = (t: (key: string) => string, mode: AppMode): string => {
 export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
   const { t } = useTranslation();
   const { document } = useCustomizeStore();
-  // ClassicV1 is always available in OSS — the shell ships in-tree, no
+  // AI is always available in OSS — the shell ships in-tree, no
   // install-gate.
   const hasNonDefaultMode = true;
 

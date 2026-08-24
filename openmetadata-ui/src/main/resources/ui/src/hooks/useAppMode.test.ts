@@ -14,10 +14,10 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
-  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { Document } from '../generated/entity/docStore/document';
@@ -39,7 +39,7 @@ import {
   translateWireMode,
   useAppMode,
   useAppModeStore,
-  useIsClassicV1Mode,
+  useIsAiMode,
   writeAppMode,
 } from './useAppMode';
 
@@ -99,17 +99,17 @@ describe('useAppMode hook', () => {
   });
 });
 
-describe('useIsClassicV1Mode', () => {
+describe('useIsAiMode', () => {
   beforeEach(resetStore);
 
-  it('is true only in classicV1 mode', () => {
-    writeAppMode(CLASSIC_V1_APP_MODE);
+  it('is true only in ai mode', () => {
+    writeAppMode(AI_APP_MODE);
 
-    expect(renderHook(() => useIsClassicV1Mode()).result.current).toBe(true);
+    expect(renderHook(() => useIsAiMode()).result.current).toBe(true);
 
     writeAppMode(DEFAULT_APP_MODE);
 
-    expect(renderHook(() => useIsClassicV1Mode()).result.current).toBe(false);
+    expect(renderHook(() => useIsAiMode()).result.current).toBe(false);
   });
 });
 
@@ -463,14 +463,14 @@ describe('resolveInitialAppMode', () => {
   });
 
   // #31906 follow-up: `pref.appMode` holds the preference's WIRE token
-  // ("classic" / "classicV1" / legacy "ai"), not the runtime mode string.
+  // ("classic" / "ai" / legacy "ai"), not the runtime mode string.
   // `resolveInitialAppMode` must translate before comparing/returning.
-  it('translates a stored "classicV1" preference to CLASSIC_V1_APP_MODE', () => {
+  it('translates a stored "ai" preference to AI_APP_MODE', () => {
     usePersistentStorage
       .getState()
-      .setUserPreference(TEST_USER, { appMode: CLASSIC_V1_APP_MODE });
+      .setUserPreference(TEST_USER, { appMode: AI_APP_MODE });
 
-    expect(resolveInitialAppMode(TEST_USER)).toBe(CLASSIC_V1_APP_MODE);
+    expect(resolveInitialAppMode(TEST_USER)).toBe(AI_APP_MODE);
   });
 
   it('translates a stored "classic" preference to DEFAULT_APP_MODE (falls through to default)', () => {
@@ -481,14 +481,14 @@ describe('resolveInitialAppMode', () => {
     expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
   });
 
-  it('translates the legacy "ai" preference wire token to CLASSIC_V1_APP_MODE', () => {
+  it('translates the legacy "ai" preference wire token to AI_APP_MODE', () => {
     // Rows written before this translation existed may still hold the
-    // tenant-config wire value ("ai") instead of "classicV1".
+    // tenant-config wire value ("ai") instead of "ai".
     usePersistentStorage
       .getState()
       .setUserPreference(TEST_USER, { appMode: 'ai' });
 
-    expect(resolveInitialAppMode(TEST_USER)).toBe(CLASSIC_V1_APP_MODE);
+    expect(resolveInitialAppMode(TEST_USER)).toBe(AI_APP_MODE);
   });
 
   it('ignores a DEFAULT-valued preference (falls through to default)', () => {
@@ -601,9 +601,9 @@ describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
     expect(translateWireMode('classic')).toBe(DEFAULT_APP_MODE);
   });
 
-  it('maps the wire "ai" value to CLASSIC_V1_APP_MODE', () => {
-    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(CLASSIC_V1_APP_MODE);
-    expect(translateWireMode('ai')).toBe(CLASSIC_V1_APP_MODE);
+  it('maps the wire "ai" value to AI_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
+    expect(translateWireMode('ai')).toBe(AI_APP_MODE);
   });
 
   it('returns null for a null/undefined wire value', () => {
@@ -621,10 +621,8 @@ describe('RUNTIME_TO_PREFERENCE_WIRE / PREFERENCE_MODE_TO_RUNTIME / translatePre
     expect(RUNTIME_TO_PREFERENCE_WIRE[DEFAULT_APP_MODE]).toBe('classic');
   });
 
-  it('maps CLASSIC_V1_APP_MODE to itself (identity)', () => {
-    expect(RUNTIME_TO_PREFERENCE_WIRE[CLASSIC_V1_APP_MODE]).toBe(
-      CLASSIC_V1_APP_MODE
-    );
+  it('maps AI_APP_MODE to itself (identity)', () => {
+    expect(RUNTIME_TO_PREFERENCE_WIRE[AI_APP_MODE]).toBe(AI_APP_MODE);
   });
 
   it('maps the "classic" wire token back to DEFAULT_APP_MODE', () => {
@@ -632,18 +630,14 @@ describe('RUNTIME_TO_PREFERENCE_WIRE / PREFERENCE_MODE_TO_RUNTIME / translatePre
     expect(translatePreferenceMode('classic')).toBe(DEFAULT_APP_MODE);
   });
 
-  it('maps the "classicV1" wire token back to CLASSIC_V1_APP_MODE', () => {
-    expect(PREFERENCE_MODE_TO_RUNTIME[CLASSIC_V1_APP_MODE]).toBe(
-      CLASSIC_V1_APP_MODE
-    );
-    expect(translatePreferenceMode(CLASSIC_V1_APP_MODE)).toBe(
-      CLASSIC_V1_APP_MODE
-    );
+  it('maps the "ai" wire token back to AI_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME[AI_APP_MODE]).toBe(AI_APP_MODE);
+    expect(translatePreferenceMode(AI_APP_MODE)).toBe(AI_APP_MODE);
   });
 
-  it('maps the legacy "ai" wire token to CLASSIC_V1_APP_MODE', () => {
-    expect(PREFERENCE_MODE_TO_RUNTIME.ai).toBe(CLASSIC_V1_APP_MODE);
-    expect(translatePreferenceMode('ai')).toBe(CLASSIC_V1_APP_MODE);
+  it('maps the legacy "ai" wire token to AI_APP_MODE', () => {
+    expect(PREFERENCE_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
+    expect(translatePreferenceMode('ai')).toBe(AI_APP_MODE);
   });
 
   it('returns null for a null/undefined wire value', () => {
@@ -660,7 +654,7 @@ describe('RUNTIME_TO_PREFERENCE_WIRE / PREFERENCE_MODE_TO_RUNTIME / translatePre
     // (RUNTIME_TO_PREFERENCE_WIRE) followed by a read
     // (PREFERENCE_MODE_TO_RUNTIME) unchanged — this is the invariant the
     // #31906 fix depends on.
-    for (const mode of [DEFAULT_APP_MODE, CLASSIC_V1_APP_MODE]) {
+    for (const mode of [DEFAULT_APP_MODE, AI_APP_MODE]) {
       const wireToken = RUNTIME_TO_PREFERENCE_WIRE[mode];
 
       expect(PREFERENCE_MODE_TO_RUNTIME[wireToken]).toBe(mode);
@@ -678,9 +672,9 @@ describe('setAppDefaultMode / getAppDefaultMode', () => {
   });
 
   it('stores and returns whatever was set', () => {
-    setAppDefaultMode(CLASSIC_V1_APP_MODE);
+    setAppDefaultMode(AI_APP_MODE);
 
-    expect(getAppDefaultMode()).toBe(CLASSIC_V1_APP_MODE);
+    expect(getAppDefaultMode()).toBe(AI_APP_MODE);
   });
 });
 
@@ -706,22 +700,18 @@ describe('resolvePersonaAppMode', () => {
     );
   });
 
-  it('maps a persona "classicV1" appMode to CLASSIC_V1_APP_MODE', () => {
-    expect(
-      resolvePersonaAppMode(buildDoc(CLASSIC_V1_APP_MODE), PERSONA_ID)
-    ).toBe(CLASSIC_V1_APP_MODE);
-  });
-
-  it('maps the persona legacy uppercase "AI" appMode to CLASSIC_V1_APP_MODE', () => {
-    expect(resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID)).toBe(
-      CLASSIC_V1_APP_MODE
+  it('maps a persona "ai" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc(AI_APP_MODE), PERSONA_ID)).toBe(
+      AI_APP_MODE
     );
   });
 
-  it('maps the persona legacy lowercase "ai" appMode to CLASSIC_V1_APP_MODE', () => {
-    expect(resolvePersonaAppMode(buildDoc('ai'), PERSONA_ID)).toBe(
-      CLASSIC_V1_APP_MODE
-    );
+  it('maps the persona legacy uppercase "AI" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID)).toBe(AI_APP_MODE);
+  });
+
+  it('maps the persona legacy lowercase "ai" appMode to AI_APP_MODE', () => {
+    expect(resolvePersonaAppMode(buildDoc('ai'), PERSONA_ID)).toBe(AI_APP_MODE);
   });
 
   it('returns null when the persona entry has no appMode set', () => {
@@ -755,20 +745,20 @@ describe('boot resolution: persona forces the runtime mode', () => {
     // there is no sticky session/hint: userPref is absent, so the
     // persona-forced mode must win over the tenant default.
     const personaMode = resolvePersonaAppMode(
-      buildDoc(CLASSIC_V1_APP_MODE),
+      buildDoc(AI_APP_MODE),
       PERSONA_ID
     );
 
     expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
-      CLASSIC_V1_APP_MODE
+      AI_APP_MODE
     );
   });
 
-  it('resolves a persona legacy "AI" mode to CLASSIC_V1 over the default at boot', () => {
+  it('resolves a persona "AI" mode to AI_APP_MODE over the default at boot', () => {
     const personaMode = resolvePersonaAppMode(buildDoc('AI'), PERSONA_ID);
 
     expect(resolveEffectiveAppMode(null, personaMode, DEFAULT_APP_MODE)).toBe(
-      CLASSIC_V1_APP_MODE
+      AI_APP_MODE
     );
   });
 

@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { useIsClassicV1Mode } from '../../hooks/useAppMode';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -52,7 +52,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -97,7 +97,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isClassicV1Mode;
+  const showHeaderSearch = isAiMode;
 
   const { searchInputProps } = useListSearchInput({
     searchQuery: domainListing.urlState.searchQuery,
@@ -116,7 +116,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
-    variant: isClassicV1Mode ? 'search' : undefined,
+    variant: isAiMode ? 'search' : undefined,
     search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
@@ -280,10 +280,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   return (
     <Box
       className={classNames('tw:min-h-0 tw:flex-1', {
-        'tw:h-[var(--om-page-height)]': isTreeView && !isClassicV1Mode,
+        'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
       })}
       direction="col">
-      {!renderPageHeader && !isClassicV1Mode && (
+      {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
       )}
       {renderPageHeader
@@ -298,9 +298,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
-          'tw:mb-5': !isClassicV1Mode,
+          'tw:mb-5': !isAiMode,
         })}
-        variant={isClassicV1Mode ? 'default' : 'elevated'}>
+        variant={isAiMode ? 'default' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -330,14 +330,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 };
 
 const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
 
   return (
     <PageLayoutV1
-      className={isClassicV1Mode ? 'tw:h-auto!' : undefined}
-      fullHeight={isClassicV1Mode}
+      className={isAiMode ? 'tw:h-auto!' : undefined}
+      fullHeight={isAiMode}
       pageTitle={props.pageTitle}
-      variant={isClassicV1Mode ? 'compact' : 'default'}>
+      variant={isAiMode ? 'compact' : 'default'}>
       <DomainListPage {...props} />
     </PageLayoutV1>
   );

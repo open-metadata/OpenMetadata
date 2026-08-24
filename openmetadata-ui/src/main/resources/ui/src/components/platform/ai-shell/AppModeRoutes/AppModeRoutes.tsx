@@ -26,14 +26,14 @@ import { useSyncActiveModule } from '../state/useActiveModule';
  * Top-level routes component for app mode.
  *
  * OSS `AppRouter` renders this shell directly whenever the active
- * `useAppMode()` is the ClassicV1 mode, in place of OM's default
+ * `useAppMode()` is the AI mode, in place of OM's default
  * `AuthenticatedRoutes` — there is no runtime registry/plugin-registration
  * step in between. Auth, permissions, applications and `BrowserRouter` are
  * all supplied above by `AuthenticatedApp`/`AppRoot`.
  *
  * The route table is the flat union of every module's `routes` (from
  * `useAllAppModules()` — OSS's `sharedAppModules` merged with the modules
- * every installed `AppPlugin` returns from `getModeModules('classicV1')`)
+ * every installed `AppPlugin` returns from `getModeModules('ai')`)
  * followed by the `app-mode.routes.fallback` contribution mounted last as
  * the catch-all. Modules arrive via the plugin-native `getModeModules`
  * method; fallback and other chrome (banners, overlays, sidebar slots)
@@ -52,7 +52,7 @@ export const AppModeRoutes = () => {
   // The catch-all page route table. Mirrors how the classic `AppContainer`
   // renders its content: the same `applicationRoutesClass.getRouteElements()`
   // (OSS `AuthenticatedAppRouter`, or `CollateRouter` in Collate), just wrapped
-  // in the ClassicV1 `AppShell` chrome instead of the classic sidebar. So every
+  // in the AI `AppShell` chrome instead of the classic sidebar. So every
   // canonical page (Explore, Glossary, Settings, entity details…) renders
   // inside the shell, and `/` redirects to `/my-data` via that table's own
   // ROUTES.HOME rule. A plugin-contributed fallback still takes precedence.

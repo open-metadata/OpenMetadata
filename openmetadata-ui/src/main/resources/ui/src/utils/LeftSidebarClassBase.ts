@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { contextCenterModule } from '../components/discovery/context-center/contextCenter.module';
 import { entityModule } from '../components/discovery/entity/entity.module';
 import { exploreModule } from '../components/discovery/explore/explore.module';
@@ -18,6 +17,7 @@ import { homeModule } from '../components/discovery/home/home.module';
 import { personalSpaceModule } from '../components/discovery/personal-space/personalSpace.module';
 import { governModule } from '../components/governance/govern/govern.module';
 import { marketplaceModule } from '../components/governance/marketplace/marketplace.module';
+import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { observabilityModule } from '../components/observability/ObservabilityModule/observability.module';
 import { AppModule } from '../components/platform/ai-shell/AppModule.types';
 import {
@@ -26,7 +26,7 @@ import {
 } from '../constants/LeftSidebar.constants';
 
 /**
- * OSS modules for the ClassicV1 app-mode shell — the sidebar entries, their
+ * OSS modules for the AI app-mode shell — the sidebar entries, their
  * owned routes and sub-navs that appear for every consumer. Ordered by
  * `navOrder` for readability; `useAllAppModules` sorts regardless.
  */
@@ -66,10 +66,10 @@ class LeftSidebarClassBase {
   }
 
   /**
-   * The modules backing the ClassicV1 app-mode sidebar and its route table.
-   * This is the sibling of `getSidebarItems()` for the ClassicV1 layout — a
+   * The modules backing the AI app-mode sidebar and its route table.
+   * This is the sibling of `getSidebarItems()` for the AI layout — a
    * downstream build (Collate) overrides it to append its own modules, the
-   * same way it extends the Classic sidebar via `getSidebarItems()`. ClassicV1
+   * same way it extends the Classic sidebar via `getSidebarItems()`. AI
    * is an app layout, so its modules are owned here rather than contributed by
    * an installed plugin.
    */

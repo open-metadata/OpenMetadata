@@ -85,7 +85,7 @@ export const PersonaDetailsPage = () => {
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  // ClassicV1 is always available in OSS — the shell ships in-tree, no
+  // AI is always available in OSS — the shell ships in-tree, no
   // install-gate.
   const hasNonDefaultMode = true;
 

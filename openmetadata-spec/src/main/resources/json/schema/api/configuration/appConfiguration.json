@@ -9,7 +9,7 @@
     "defaultAppMode": {
       "description": "Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have not chosen one; user preference and persona-level app mode still win over this default. Null means no tenant default is configured.",
       "type": ["string", "null"],
-      "enum": ["ai", "classic", "classicV1", null],
+      "enum": ["ai", "classic", null],
       "default": null
     }
   },

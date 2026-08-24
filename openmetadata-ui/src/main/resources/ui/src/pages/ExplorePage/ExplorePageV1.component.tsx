@@ -50,7 +50,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useIsClassicV1Mode } from '../../hooks/useAppMode';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -687,9 +687,9 @@ const ExploreSearchCard = withSuspenseFallback(
 const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
   pageTitle = '',
 }) => {
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
 
-  if (!isClassicV1Mode) {
+  if (!isAiMode) {
     return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
   }
 

@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { CLASSIC_V1_APP_MODE } from '../../constants/appMode.constants';
+import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
@@ -98,7 +98,7 @@ const AppRouter = () => {
 
   if (isAuthenticated) {
     const AuthenticatedRoutesComponent =
-      appMode === CLASSIC_V1_APP_MODE ? AppModeRoutes : AuthenticatedRoutes;
+      appMode === AI_APP_MODE ? AppModeRoutes : AuthenticatedRoutes;
 
     return (
       <AuthenticatedApp>

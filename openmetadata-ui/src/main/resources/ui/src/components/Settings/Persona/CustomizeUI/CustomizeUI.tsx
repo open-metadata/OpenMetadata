@@ -25,7 +25,7 @@ import {
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
-  // ClassicV1 is always available in OSS — the shell ships in-tree, no
+  // AI is always available in OSS — the shell ships in-tree, no
   // install-gate.
   const hasNonDefaultMode = true;
   const categories = useMemo(

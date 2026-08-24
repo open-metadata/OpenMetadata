@@ -19,27 +19,27 @@ import {
 } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { useIsClassicV1Mode } from '../../hooks/useAppMode';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
 
   const breadcrumbItems = [
-    isClassicV1Mode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+    isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
     { label: t('label.column-bulk-operations') },
   ];
 
   return (
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
-      variant={isClassicV1Mode ? 'compact' : 'default'}>
+      variant={isAiMode ? 'compact' : 'default'}>
       <div
         className={classNames('tw:flex tw:flex-col', {
-          'tw:gap-4': isClassicV1Mode,
+          'tw:gap-4': isAiMode,
         })}>
-        {isClassicV1Mode ? (
+        {isAiMode ? (
           <HeaderShell
             breadcrumb={
               <HeaderBreadcrumb

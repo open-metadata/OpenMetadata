@@ -196,7 +196,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   }
 
   // `appMode` off the wire is the preference's WIRE token ("classic" /
-  // "classicV1" / legacy "ai"), not the runtime mode string — translate
+  // "ai" / legacy "ai"), not the runtime mode string — translate
   // before feeding it into the resolver. See `translatePreferenceMode` in
   // `useAppMode.ts` (#31906 follow-up: the switcher's remember checkbox
   // writes the wire token, so the boot read must undo that translation).

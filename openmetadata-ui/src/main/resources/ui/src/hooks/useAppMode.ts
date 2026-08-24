@@ -14,10 +14,10 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
-  CLASSIC_V1_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
@@ -387,26 +387,23 @@ export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
   isHintFresh(hint);
 
 /**
- * True when the active app mode is `CLASSIC_V1_APP_MODE`. OM core stays
+ * True when the active app mode is `AI_APP_MODE`. OM core stays
  * mode-agnostic elsewhere, but this hook names the one specific mode a
- * plugin registers under `'classicV1'` so ClassicV1-only layouts can gate
- * on it directly. False for every other mode, including the default.
+ * plugin registers under `'ai'` so AI-only layouts can gate on it directly.
+ * False for every other mode, including the default.
  */
-export const useIsClassicV1Mode = (): boolean =>
-  useAppMode() === CLASSIC_V1_APP_MODE;
+export const useIsAiMode = (): boolean => useAppMode() === AI_APP_MODE;
 
 /**
  * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
  * ("ai" | "classic") into the runtime mode string consumed by `useAppMode`.
- * Core has always used `DEFAULT_APP_MODE` ("default")
- * for Classic, while the plugin registers its routes under
- * `CLASSIC_V1_APP_MODE` ("classicV1"). The wire value stays the readable
- * "ai"/"classic" pair for admins; this map is the only place that needs to
- * know the runtime strings differ.
+ * Core uses `DEFAULT_APP_MODE` ("default") for Classic, while the plugin
+ * registers its routes under `AI_APP_MODE` ("ai"); the "classic" wire value
+ * is the only one whose runtime string differs from the wire token.
  */
 export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
   [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
-  [DefaultAppMode.AI]: CLASSIC_V1_APP_MODE,
+  [DefaultAppMode.AI]: AI_APP_MODE,
 };
 
 /**
@@ -419,38 +416,28 @@ export const translateWireMode = (
   wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
 
 /**
- * Translates the runtime mode string (`DEFAULT_APP_MODE` / `CLASSIC_V1_APP_MODE`)
+ * Translates the runtime mode string (`DEFAULT_APP_MODE` / `AI_APP_MODE`)
  * into the wire token persisted in the user's "remember this mode on login"
  * preference (`AppModePreference.config.value`, enum
- * `["ai", "classic", "classicV1", null]` — see
+ * `["ai", "classic", null]` — see
  * `openmetadata-spec/.../api/teams/preferences/appModePreference.json`).
- *
- * This is a DIFFERENT wire vocabulary from {@link CONFIG_MODE_TO_RUNTIME}
- * above, which translates the tenant-wide `appConfiguration.defaultAppMode`
- * setting and still only speaks the legacy `["ai", "classic"]` pair. The
- * preference enum is richer — it has a first-class `"classicV1"` — so
- * `CLASSIC_V1_APP_MODE` maps to itself here rather than to the legacy `"ai"`
- * token. Single source of truth for both directions of this translation;
+ * Single source of truth for both directions of this translation;
  * {@link PREFERENCE_MODE_TO_RUNTIME} below is its inverse. Consumed by
  * `AppModeSwitcher`'s remember checkbox.
  */
 export const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
   [DEFAULT_APP_MODE]: 'classic',
-  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
+  [AI_APP_MODE]: 'ai',
 };
 
 /**
  * Inverse of {@link RUNTIME_TO_PREFERENCE_WIRE}: translates the stored
- * `appMode` preference wire token back into the runtime mode string
- * consumed by `useAppMode`/`writeAppMode`. Also accepts the legacy `"ai"`
- * token — preference rows written before this translation existed may still
- * hold the tenant-config wire value instead of `"classicV1"` — and maps it
- * to `CLASSIC_V1_APP_MODE` the same as `"classicV1"` does.
+ * `appMode` preference wire token (`"ai"` | `"classic"`) back into the
+ * runtime mode string consumed by `useAppMode`/`writeAppMode`.
  */
 export const PREFERENCE_MODE_TO_RUNTIME: Record<string, string> = {
   classic: DEFAULT_APP_MODE,
-  [CLASSIC_V1_APP_MODE]: CLASSIC_V1_APP_MODE,
-  ai: CLASSIC_V1_APP_MODE,
+  ai: AI_APP_MODE,
 };
 
 /**
@@ -468,17 +455,15 @@ export const translatePreferenceMode = (
  * Resolve the runtime app mode a persona forces on login from its
  * UICustomization document. Looks up the `personaPreferences` entry for
  * `personaId` and translates its admin-facing `appMode` (the
- * personaPreferences AppMode enum, `"classic" | "AI" | "classicV1"`)
- * into the runtime mode string consumed by `useAppMode`:
+ * personaPreferences AppMode enum, `"classic" | "AI"`) into the runtime
+ * mode string consumed by `useAppMode`:
  *
- *   - `"classic"`   -> `DEFAULT_APP_MODE`
- *   - `"classicV1"` -> `CLASSIC_V1_APP_MODE`
- *   - legacy `"AI"` / `"ai"` -> `CLASSIC_V1_APP_MODE`
+ *   - `"classic"` -> `DEFAULT_APP_MODE`
+ *   - `"AI"`      -> `AI_APP_MODE`
  *
- * Reuses {@link translatePreferenceMode} (the persona field shares the
- * richer `classic | classicV1 | ai` runtime vocabulary), normalising the
- * enum's uppercase legacy `"AI"` to the lowercase `"ai"` token that map
- * understands. Returns `null` when there is no doc, no persona, or the
+ * Reuses {@link translatePreferenceMode}, normalising the enum's uppercase
+ * `"AI"` to the lowercase `"ai"` wire token that map understands. Returns
+ * `null` when there is no doc, no persona, or the
  * persona has no `appMode` set — callers fall through to the next
  * precedence signal (user pref / tenant default).
  *
@@ -543,7 +528,7 @@ export const resolveInitialAppMode = (userName?: string): string => {
   if (userName) {
     const pref = usePersistentStorage.getState().getUserPreference(userName);
     // `pref.appMode` holds the preference's WIRE token ("classic" /
-    // "classicV1" / legacy "ai"), not the runtime mode string — translate
+    // "ai" / legacy "ai"), not the runtime mode string — translate
     // before comparing/returning. See `translatePreferenceMode` and its
     // #31906 follow-up doc comment above.
     const runtimeMode = translatePreferenceMode(pref?.appMode ?? null);

@@ -17,17 +17,17 @@ import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import appModeClassicV1Icon from '../../assets/svg/app-mode-classic-v1.svg';
+import appModeAIIcon from '../../assets/svg/app-mode-ai.svg';
 import { ReactComponent as AppModeClassicIcon } from '../../assets/svg/app-mode-classic.svg';
 import {
-  CLASSIC_V1_APP_MODE,
+  AI_APP_MODE,
   DEFAULT_APP_MODE,
 } from '../../constants/appMode.constants';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import {
   RUNTIME_TO_PREFERENCE_WIRE,
   useAppMode,
-  useIsClassicV1Mode,
+  useIsAiMode,
   writeAppMode,
 } from '../../hooks/useAppMode';
 
@@ -52,12 +52,10 @@ const AppModeSwitcher: React.FC<{
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const currentMode = useAppMode();
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
   const { preferences, setPreference } = useCurrentUserPreferences();
 
-  const modeLabel = isClassicV1Mode
-    ? t('label.classic-v1')
-    : t('label.classic');
+  const modeLabel = isAiMode ? t('label.ai') : t('label.classic');
 
   const handleClassicClick = () => {
     writeAppMode(DEFAULT_APP_MODE);
@@ -65,8 +63,8 @@ const AppModeSwitcher: React.FC<{
     setIsOpen(false);
   };
 
-  const handleClassicV1Click = () => {
-    writeAppMode(CLASSIC_V1_APP_MODE);
+  const handleAIClick = () => {
+    writeAppMode(AI_APP_MODE);
     navigate(aiHref);
     setIsOpen(false);
   };
@@ -94,12 +92,12 @@ const AppModeSwitcher: React.FC<{
           ref={triggerRef}
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}>
-          {isClassicV1Mode ? (
+          {isAiMode ? (
             <img
-              alt={t('label.classic-v1')}
-              data-testid="app-mode-trigger-icon-classic-v1"
+              alt={t('label.ai')}
+              data-testid="app-mode-trigger-icon-ai"
               height={12}
-              src={appModeClassicV1Icon}
+              src={appModeAIIcon}
               width={12}
             />
           ) : (
@@ -130,12 +128,12 @@ const AppModeSwitcher: React.FC<{
           ref={triggerRef}
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}>
-          {isClassicV1Mode ? (
+          {isAiMode ? (
             <img
-              alt={t('label.classic-v1')}
-              data-testid="app-mode-trigger-icon-classic-v1"
+              alt={t('label.ai')}
+              data-testid="app-mode-trigger-icon-ai"
               height={16}
-              src={appModeClassicV1Icon}
+              src={appModeAIIcon}
               width={16}
             />
           ) : (
@@ -181,8 +179,8 @@ const AppModeSwitcher: React.FC<{
             className={classNames(
               'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': !isClassicV1Mode,
-                'tw:border-transparent tw:hover:bg-blue-50': isClassicV1Mode,
+                'tw:bg-blue-50 tw:border-blue-200': !isAiMode,
+                'tw:border-transparent tw:hover:bg-blue-50': isAiMode,
               }
             )}
             data-testid="app-mode-option-classic"
@@ -199,7 +197,7 @@ const AppModeSwitcher: React.FC<{
                 {t('label.classic')}
               </Typography>
             </Box>
-            {!isClassicV1Mode && (
+            {!isAiMode && (
               <span className={BADGE_CLASS} data-testid="classic-current-badge">
                 <Check height={12} width={12} />
                 {t('label.current')}
@@ -211,28 +209,26 @@ const AppModeSwitcher: React.FC<{
             className={classNames(
               'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': isClassicV1Mode,
-                'tw:border-transparent tw:hover:bg-blue-50': !isClassicV1Mode,
+                'tw:bg-blue-50 tw:border-blue-200': isAiMode,
+                'tw:border-transparent tw:hover:bg-blue-50': !isAiMode,
               }
             )}
-            data-testid="app-mode-option-classic-v1"
+            data-testid="app-mode-option-ai"
             type="button"
-            onClick={handleClassicV1Click}>
+            onClick={handleAIClick}>
             <Box align="center" className={OPTION_ICON_BOX} justify="center">
-              <img alt="" height={30} src={appModeClassicV1Icon} width={30} />
+              <img alt="" height={30} src={appModeAIIcon} width={30} />
             </Box>
             <Box className="tw:flex-1 tw:min-w-0" direction="col">
               <Typography
                 className="tw:text-primary"
                 size="text-sm"
                 weight="semibold">
-                {t('label.classic-v1')}
+                {t('label.ai')}
               </Typography>
             </Box>
-            {isClassicV1Mode && (
-              <span
-                className={BADGE_CLASS}
-                data-testid="classic-v1-current-badge">
+            {isAiMode && (
+              <span className={BADGE_CLASS} data-testid="ai-current-badge">
                 <Check height={12} width={12} />
                 {t('label.current')}
               </span>

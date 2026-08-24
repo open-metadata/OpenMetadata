@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useIsClassicV1Mode } from '../../../../hooks/useAppMode';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import DataMarketplacePage from '../../../../pages/DataMarketplacePage/DataMarketplacePage.component';
 import MarketplaceOverviewHeader from '../MarketplaceOverviewHeader/MarketplaceOverviewHeader';
 
@@ -21,12 +21,12 @@ import MarketplaceOverviewHeader from '../MarketplaceOverviewHeader/MarketplaceO
  * subtitle, search + Add New); classic mode keeps the default overview chrome.
  */
 const MarketplaceOverviewPage = () => {
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
 
   return (
     <DataMarketplacePage
       renderPageHeader={
-        isClassicV1Mode ? () => <MarketplaceOverviewHeader /> : undefined
+        isAiMode ? () => <MarketplaceOverviewHeader /> : undefined
       }
     />
   );

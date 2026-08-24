@@ -16,7 +16,7 @@ import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
- * Explore module — the ClassicV1 sidebar's data-discovery entry. The Explore
+ * Explore module — the AI sidebar's data-discovery entry. The Explore
  * page (`ExplorePageV1`) is served by the shell's page-table fallback, which
  * picks its presentation from the active app mode; this module only surfaces
  * the sidebar icon and points it at `/explore`.

@@ -84,10 +84,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('../../hooks/useAppMode', () => ({
   useAppMode: () => currentMode,
-  useIsClassicV1Mode: () => currentMode === 'classicV1',
+  useIsAiMode: () => currentMode === 'ai',
   writeAppMode: (mode: string, personaAppMode?: string | null) =>
     mockWriteAppMode(mode, personaAppMode),
-  RUNTIME_TO_PREFERENCE_WIRE: { default: 'classic', classicV1: 'classicV1' },
+  RUNTIME_TO_PREFERENCE_WIRE: { default: 'classic', ai: 'ai' },
 }));
 
 jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
@@ -98,7 +98,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 }));
 
 jest.mock('../../constants/appMode.constants', () => ({
-  CLASSIC_V1_APP_MODE: 'classicV1',
+  AI_APP_MODE: 'ai',
   DEFAULT_APP_MODE: 'default',
 }));
 
@@ -122,7 +122,7 @@ describe('AppModeSwitcher', () => {
     expect(getTrigger()).toHaveTextContent('label.classic mode');
   });
 
-  it('renders both Classic and ClassicV1 options', () => {
+  it('renders both Classic and AI options', () => {
     render(<AppModeSwitcher />);
 
     expect(getCard()).not.toBeInTheDocument();
@@ -131,21 +131,19 @@ describe('AppModeSwitcher', () => {
 
     expect(getCard()).toBeInTheDocument();
     expect(screen.getByTestId('app-mode-option-classic')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('app-mode-option-classic-v1')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
   });
 
-  it('both options are always enabled (Classic and ClassicV1 both ship in-tree, no install-gate)', () => {
+  it('both options are always enabled (Classic and AI both ship in-tree, no install-gate)', () => {
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());
 
     expect(screen.getByTestId('app-mode-option-classic')).not.toBeDisabled();
-    expect(screen.getByTestId('app-mode-option-classic-v1')).not.toBeDisabled();
+    expect(screen.getByTestId('app-mode-option-ai')).not.toBeDisabled();
   });
 
   it('clicking Classic writes DEFAULT_APP_MODE and navigates to /', () => {
-    currentMode = 'classicV1';
+    currentMode = 'ai';
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());
     fireEvent.click(screen.getByTestId('app-mode-option-classic'));
@@ -155,18 +153,18 @@ describe('AppModeSwitcher', () => {
     expect(getCard()).not.toBeInTheDocument();
   });
 
-  it('clicking ClassicV1 writes CLASSIC_V1_APP_MODE and navigates to / (default aiHref)', () => {
+  it('clicking AI writes AI_APP_MODE and navigates to / (default aiHref)', () => {
     currentMode = 'default';
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());
-    fireEvent.click(screen.getByTestId('app-mode-option-classic-v1'));
+    fireEvent.click(screen.getByTestId('app-mode-option-ai'));
 
-    expect(mockWriteAppMode).toHaveBeenCalledWith('classicV1', undefined);
+    expect(mockWriteAppMode).toHaveBeenCalledWith('ai', undefined);
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('respects classicHref prop for Classic navigation', () => {
-    currentMode = 'classicV1';
+    currentMode = 'ai';
     render(<AppModeSwitcher classicHref="/classic-home" />);
     fireEvent.click(getTrigger());
     fireEvent.click(screen.getByTestId('app-mode-option-classic'));
@@ -174,11 +172,11 @@ describe('AppModeSwitcher', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/classic-home');
   });
 
-  it('respects aiHref prop for ClassicV1 navigation', () => {
+  it('respects aiHref prop for AI navigation', () => {
     currentMode = 'default';
     render(<AppModeSwitcher aiHref="/ai-home" />);
     fireEvent.click(getTrigger());
-    fireEvent.click(screen.getByTestId('app-mode-option-classic-v1'));
+    fireEvent.click(screen.getByTestId('app-mode-option-ai'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/ai-home');
   });
@@ -193,14 +191,14 @@ describe('AppModeSwitcher', () => {
     expect(mockSetPreference).toHaveBeenCalledWith({ appMode: 'classic' });
   });
 
-  it('remember checkbox writes the wire token "classicV1" when currentMode is ClassicV1', () => {
-    currentMode = 'classicV1';
+  it('remember checkbox writes the wire token "ai" when currentMode is AI', () => {
+    currentMode = 'ai';
     preferenceMode = null;
     render(<AppModeSwitcher />);
     fireEvent.click(getTrigger());
     fireEvent.click(screen.getByTestId('app-mode-remember-toggle'));
 
-    expect(mockSetPreference).toHaveBeenCalledWith({ appMode: 'classicV1' });
+    expect(mockSetPreference).toHaveBeenCalledWith({ appMode: 'ai' });
   });
 
   it('remember checkbox writes preferences.appMode = null when currently remembered (wire token match)', () => {

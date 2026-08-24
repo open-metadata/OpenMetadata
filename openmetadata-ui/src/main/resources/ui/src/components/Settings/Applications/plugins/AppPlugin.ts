@@ -138,7 +138,7 @@ export interface AppPlugin {
   contributeExtensions?(registry: ExtensionPointRegistry): void;
 
   /**
-   * Install-gated ClassicV1 modules. `useAllAppModules` merges these with the
+   * Install-gated AI modules. `useAllAppModules` merges these with the
    * base modules from `LeftSidebarClassBase.getAppModeModules()`. Because the
    * `ApplicationsProvider` only exposes INSTALLED plugins, anything returned
    * here appears only when this app is installed — use it for surfaces that

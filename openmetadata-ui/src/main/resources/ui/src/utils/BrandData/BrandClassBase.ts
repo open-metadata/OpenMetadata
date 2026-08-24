@@ -26,7 +26,7 @@ class BrandClassBase {
   }
 
   /**
-   * Brand logo for the expanded app-mode (ClassicV1) sidebar header. Defaults
+   * Brand logo for the expanded app-mode (AI) sidebar header. Defaults
    * to the standard wordmark; a downstream build (e.g. Collate) overrides this
    * to show its sidebar-specific full logo without affecting the NavBar/login
    * brand from `getLogo()`.
@@ -36,7 +36,7 @@ class BrandClassBase {
   }
 
   /**
-   * Compact brand mark for the collapsed app-mode (ClassicV1) sidebar rail.
+   * Compact brand mark for the collapsed app-mode (AI) sidebar rail.
    * Defaults to the standard monogram; overridable per build independently of
    * `getMonogram()`.
    */

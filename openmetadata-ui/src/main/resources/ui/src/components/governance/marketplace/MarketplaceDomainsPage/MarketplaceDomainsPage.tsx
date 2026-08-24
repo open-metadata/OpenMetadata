@@ -13,7 +13,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainsIcon } from '../../../../assets/svg/domains-default.svg';
-import { useIsClassicV1Mode } from '../../../../hooks/useAppMode';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { createListPageHeaderRenderer } from '../../../common/ListPageHeader/ListPageHeader';
 import DomainListPage from '../../../DomainListing/DomainListPage';
 
@@ -31,12 +31,12 @@ const renderDomainsListHeader = createListPageHeaderRenderer({
  */
 const MarketplaceDomainsPage = () => {
   const { t } = useTranslation();
-  const isClassicV1Mode = useIsClassicV1Mode();
+  const isAiMode = useIsAiMode();
 
   return (
     <DomainListPage
       pageTitle={t('label.domain-plural')}
-      renderPageHeader={isClassicV1Mode ? renderDomainsListHeader : undefined}
+      renderPageHeader={isAiMode ? renderDomainsListHeader : undefined}
     />
   );
 };
