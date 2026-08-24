@@ -98,13 +98,13 @@ PREFECT_STATE_MAP = {
 }
 
 
-def _parse_timestamp(ts_str: str | None) -> Timestamp | None:
+def _parse_timestamp(ts_str: str | None) -> int | None:
     """Convert an ISO timestamp string to a Unix timestamp in milliseconds."""
     if not ts_str:
         return None
     try:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        return Timestamp(int(dt.timestamp() * 1000))
+        return int(dt.timestamp() * 1000)
     except Exception:
         logger.debug("Failed to parse timestamp %r", ts_str, exc_info=True)
         return None

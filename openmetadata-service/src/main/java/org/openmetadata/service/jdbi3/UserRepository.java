@@ -1330,8 +1330,10 @@ public class UserRepository extends EntityRepository<User> {
       BotTokenCache.invalidateToken(entity.getName());
     }
     revokeLiveSessions(entity);
-    // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
-    userPreferencesRepository.delete(entity.getId());
+    if (hardDelete) {
+      // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
+      userPreferencesRepository.delete(entity.getId());
+    }
     deleteSuggestionTasksForUser(entity);
 
     AsyncService.getInstance()

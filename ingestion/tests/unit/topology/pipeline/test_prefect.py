@@ -334,7 +334,10 @@ class TestSplitLineageTagIdentifier:
 
 class TestParseTimestamp:
     def test_parses_iso_string_with_z_suffix(self):
-        assert _parse_timestamp("2024-04-19T10:00:00Z").root == 1713520800000
+        timestamp = _parse_timestamp("2024-04-19T10:00:00Z")
+
+        assert timestamp == 1713520800000
+        assert isinstance(timestamp, int)
 
     def test_none_when_input_is_none_or_empty(self):
         assert _parse_timestamp(None) is None
