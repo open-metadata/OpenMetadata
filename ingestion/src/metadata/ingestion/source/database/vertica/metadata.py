@@ -251,9 +251,9 @@ def get_table_comment(
 
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
-VerticaDialect.get_view_definition = get_view_definition
+VerticaDialect.get_view_definition = get_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect.get_all_table_comments = get_all_table_comments
-VerticaDialect.get_table_comment = get_table_comment
+VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class VerticaSource(CommonDbSourceService, MultiDBSource):
