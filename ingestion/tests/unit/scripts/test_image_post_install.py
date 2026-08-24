@@ -14,6 +14,7 @@
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -29,9 +30,20 @@ DOCKERFILES = (
 )
 
 
-def run_script(script: Path, site_packages: Path) -> subprocess.CompletedProcess[str]:
+def isolated_python(directory: Path) -> Path:
+    directory.mkdir()
+    executable = directory / "python"
+    executable.write_text(
+        f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} -S "$@"\n',
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+    return executable
+
+
+def run_script(script: Path, site_packages: Path, python: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["IMAGE_POST_INSTALL_PYTHON"] = sys.executable
+    env["IMAGE_POST_INSTALL_PYTHON"] = str(python)
     env["PYTHONPATH"] = str(site_packages)
     return subprocess.run(
         ["bash", str(script)],
@@ -43,7 +55,7 @@ def run_script(script: Path, site_packages: Path) -> subprocess.CompletedProcess
 
 
 def test_apply_is_a_noop_when_optional_packages_are_absent(tmp_path: Path) -> None:
-    result = run_script(POST_INSTALL_DIR / "apply.sh", tmp_path)
+    result = run_script(POST_INSTALL_DIR / "apply.sh", tmp_path, isolated_python(tmp_path / "venv"))
 
     assert result.returncode == 0, result.stderr
     assert "adbc-driver-flightsql not installed" in result.stdout
@@ -60,7 +72,11 @@ def test_flightsql_override_rejects_an_unreviewed_wrapper_version(
         encoding="utf-8",
     )
 
-    result = run_script(POST_INSTALL_DIR / "install_flightsql_registry_override.sh", tmp_path)
+    result = run_script(
+        POST_INSTALL_DIR / "install_flightsql_registry_override.sh",
+        tmp_path,
+        isolated_python(tmp_path / "venv"),
+    )
 
     assert result.returncode != 0
     assert "expected adbc-driver-flightsql 1.12.0, found 1.12.1" in result.stderr
@@ -83,7 +99,11 @@ def test_teradata_pruner_keeps_runtime_libraries(tmp_path: Path) -> None:
     (package_dir / "teradatasql.arm.so").write_bytes(b"arm")
     (package_dir / "teradatasql.aix.so").write_bytes(b"aix")
 
-    result = run_script(POST_INSTALL_DIR / "prune_teradatasql_platform_libs.sh", tmp_path)
+    result = run_script(
+        POST_INSTALL_DIR / "prune_teradatasql_platform_libs.sh",
+        tmp_path,
+        isolated_python(tmp_path / "venv"),
+    )
 
     assert result.returncode == 0, result.stderr
     assert (package_dir / "teradatasql.so").exists()
