@@ -25,7 +25,7 @@ const systemClassification = new ClassificationClass({ provider: 'system' });
 const userTag = new TagClass({ classification: userClassification.data.name });
 const exportUser = new UserClass(undefined, true);
 
-test.describe('Classification Import Export', () => {
+test.describe('Classification Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('Setup classifications and a tag', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await userClassification.create(apiContext);
