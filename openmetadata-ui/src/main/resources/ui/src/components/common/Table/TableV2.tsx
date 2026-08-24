@@ -264,13 +264,8 @@ type RowInteractionProps = Pick<
   | 'onDrop'
 >;
 
-/** What AntD's `onRow` hands back. */
-type AntdRowHandlers = React.HTMLAttributes<HTMLElement> & {
-  draggable?: boolean;
-};
-
 const getRowInteractionProps = (
-  rowHandlers: AntdRowHandlers,
+  rowHandlers: RowInteractionProps,
   hasAriaDragAndDrop: boolean
 ): RowInteractionProps => {
   const activation = {
@@ -1082,8 +1077,11 @@ const TableV2 = <T extends object>(
                 {flatRows.flatMap((flatRow) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =
                     flatRow;
+                  // AntD types `onRow`'s return as HTMLAttributes<any>, while
+                  // React Aria's Row types several of the same handlers itself.
+                  // This is the boundary between the two, narrowed once.
                   const rowHandlers = (rest.onRow?.(record, actualIndex) ??
-                    {}) as AntdRowHandlers;
+                    {}) as RowInteractionProps;
                   const isExpanded = expandedKeys.has(rowKey);
                   const detailRow = buildExpandedDetailRow(
                     rest.expandable,
