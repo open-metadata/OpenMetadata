@@ -28,15 +28,17 @@ export interface SidebarBrandProps {
 }
 
 /**
- * Default brand chrome for the ClassicV1 sidebar header — the OpenMetadata
- * monogram, navigating home on click. Rendered by `MainPanel`/`Rail` only when
- * no plugin contributes an `app-mode.sidebar.header` slot, so a downstream
- * (Collate) brand still overrides it. Uses `brandClassBase.getMonogram()` so it
- * honours white-label branding, the same source the classic NavBar logo uses.
+ * Brand chrome for the ClassicV1 sidebar header. Uses `brandClassBase`, which a
+ * downstream build overrides via the class-replacement plugin — so this shows
+ * the OpenMetadata mark by default and the Collate mark in Collate, always (no
+ * plugin-install gate). The expanded panel shows the full wordmark
+ * (`getLogo()`); the collapsed 32px rail shows the compact monogram
+ * (`getMonogram()`).
  */
 const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const Logo = brandClassBase.getLogo().svg;
   const Monogram = brandClassBase.getMonogram().svg;
 
   return (
@@ -49,10 +51,15 @@ const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
       data-testid="ask-logo-btn"
       type="button"
       onClick={() => navigate(ROUTES.MY_DATA)}>
-      {/* Monogram viewBox is 53x64 (the database-cylinder mark, taller than
-          wide) — keep that aspect so it isn't squished into an oval, and size
-          it to fill the header so the cylinder body reads, not just the top. */}
-      <Monogram height={28} width={23} />
+      {variant === 'rail' ? (
+        // Collapsed rail: the compact monogram, kept to its 53x64 aspect so it
+        // doesn't squish into an oval.
+        <Monogram height={28} width={23} />
+      ) : (
+        // Expanded panel: the full wordmark. The `__logo-btn svg` rule height-
+        // constrains it; width follows the logo's own aspect.
+        <Logo />
+      )}
     </button>
   );
 };

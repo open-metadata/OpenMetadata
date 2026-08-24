@@ -231,8 +231,11 @@
     padding: 0 0 0 8px;
     cursor: pointer;
 
+    // Height-constrain the wordmark; width follows its own aspect (works for
+    // any brand logo) and is capped so a very wide mark can't overflow.
     svg {
-      flex: 0 1 120px;
+      height: 24px;
+      width: auto;
       max-width: 100%;
     }
   }

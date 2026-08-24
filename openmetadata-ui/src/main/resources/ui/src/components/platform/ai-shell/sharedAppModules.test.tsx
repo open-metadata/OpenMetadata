@@ -16,6 +16,15 @@ import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { AppModule } from './AppModule.types';
 import { useAllAppModules } from './sharedAppModules';
 
+const mockUseApplicationsProvider = jest.fn();
+
+jest.mock(
+  '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => mockUseApplicationsProvider(),
+  })
+);
+
 const buildModule = (id: string, navOrder: number): AppModule => ({
   id,
   navOrder,
@@ -28,8 +37,13 @@ const buildModule = (id: string, navOrder: number): AppModule => ({
 describe('useAllAppModules', () => {
   const originalModules = leftSidebarClassBase.getAppModeModules();
 
+  beforeEach(() => {
+    mockUseApplicationsProvider.mockReturnValue({ plugins: [] });
+  });
+
   afterEach(() => {
     leftSidebarClassBase.setAppModeModules(originalModules);
+    mockUseApplicationsProvider.mockReset();
   });
 
   it('returns the LeftSidebarClassBase app-mode modules sorted by navOrder', () => {
@@ -71,5 +85,25 @@ describe('useAllAppModules', () => {
     const { result } = renderHook(() => useAllAppModules());
 
     expect(result.current.map((m) => m.id)).toContain('collate-only');
+  });
+
+  it('merges install-gated modules from installed plugins, sorted by navOrder', () => {
+    leftSidebarClassBase.setAppModeModules([buildModule('base', 10)]);
+    mockUseApplicationsProvider.mockReturnValue({
+      plugins: [{ getModeModules: () => [buildModule('ai-studio', 5)] }],
+    });
+
+    const { result } = renderHook(() => useAllAppModules());
+
+    expect(result.current.map((m) => m.id)).toEqual(['ai-studio', 'base']);
+  });
+
+  it('omits plugin modules when no plugin is installed', () => {
+    leftSidebarClassBase.setAppModeModules([buildModule('base', 10)]);
+    mockUseApplicationsProvider.mockReturnValue({ plugins: [] });
+
+    const { result } = renderHook(() => useAllAppModules());
+
+    expect(result.current.map((m) => m.id)).toEqual(['base']);
   });
 });
