@@ -33,6 +33,47 @@ import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
+const ADD_TEAM_MODAL = '[role="dialog"].ant-modal';
+// A success toast self-dismisses after 3.5s; give it a beat past that.
+const TOAST_DISMISS_TIMEOUT = 6_000;
+const MODAL_OPEN_TIMEOUT = 10_000;
+const MODAL_RETRY_TIMEOUT = 60_000;
+
+type AddTeamTrigger = 'add-team' | 'add-placeholder-button';
+
+/**
+ * Click an add-team trigger and return the modal it opens.
+ *
+ * The backend fans async-delete/job notifications out to every socket of the
+ * logged-in user, so a parallel worker's toast can drop over the button in the
+ * window between Playwright's hit-target check and the dispatched click — the
+ * toast swallows the click and the modal never opens. Success toasts carry no
+ * close button, so let them expire and click again; clicking with `force` only
+ * dispatches INTO the toast.
+ */
+export const openAddTeamModal = async (
+  page: Page,
+  trigger: AddTeamTrigger = 'add-team'
+) => {
+  const addButton = page.getByTestId(trigger);
+  const addTeamModal = page.locator(ADD_TEAM_MODAL).last();
+
+  await expect(async () => {
+    await page
+      .getByTestId('alert-bar')
+      .first()
+      .waitFor({ state: 'detached', timeout: TOAST_DISMISS_TIMEOUT })
+      .catch(() => undefined);
+
+    await expect(addButton).toBeEnabled();
+    await addButton.click();
+
+    await expect(addTeamModal).toBeVisible({ timeout: MODAL_OPEN_TIMEOUT });
+  }).toPass({ timeout: MODAL_RETRY_TIMEOUT, intervals: [1_000] });
+
+  return addTeamModal;
+};
+
 interface SearchTeamOptions {
   expectEmptyResults?: boolean;
   expectNotFound?: boolean;
@@ -252,16 +293,12 @@ export const addTeamHierarchy = async (
   index?: number,
   isHierarchy = false
 ) => {
-  const getTeamsResponse = page.waitForResponse('/api/v1/teams*');
+  const addTeamModal = await openAddTeamModal(
+    page,
+    index && index > 0 ? 'add-placeholder-button' : 'add-team'
+  );
 
-  // Fetching the add button and clicking on it
-  if (index && index > 0) {
-    await page.click('[data-testid="add-placeholder-button"]');
-  } else {
-    await page.click('[data-testid="add-team"]');
-  }
-
-  await getTeamsResponse;
+  await expect(page.locator('[data-testid="name"]')).toBeVisible();
 
   // Entering team details
   await validateFormNameFieldInput({
@@ -285,9 +322,30 @@ export const addTeamHierarchy = async (
   await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
-  const saveTeamResponse = page.waitForResponse('/api/v1/teams');
+  const saveTeamResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams') &&
+      response.request().method() === 'POST' &&
+      response.ok()
+  );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.url().includes('fields=') &&
+      response.request().method() === 'GET'
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  const teamsListResponseResult = await teamsListResponse;
+
+  expect(teamsListResponseResult.status()).toBe(200);
+  await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.locator(`[data-row-key="${teamDetails.name}"]`)
+  ).toBeVisible({
+    timeout: 60000,
+  });
 };
 
 export const removeOrganizationPolicyAndRole = async (
@@ -592,7 +650,7 @@ export const executionOnOwnerTeam = async (
 
   await addEmailTeam(page, data.email);
 
-  await page.getByTestId('add-placeholder-button').click();
+  await openAddTeamModal(page, 'add-placeholder-button');
 
   const newTeamData = await createTeam(page);
 
