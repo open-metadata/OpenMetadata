@@ -3,6 +3,8 @@ package org.openmetadata.mcp.util;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -172,6 +174,57 @@ public final class McpResponseTrim {
     envelope.put(MAX_RESPONSE_CHARS_KEY, MAX_RESPONSE_CHARS);
     envelope.put(MESSAGE_KEY, advice);
     return envelope;
+  }
+
+  /** A backend message longer than this is summarised; the full text stays in the server log. */
+  public static final int FAILURE_MESSAGE_MAX_LENGTH = 400;
+
+  /** Matches the useful half of a search-backend error: the first concrete cause type it names. */
+  private static final Pattern ROOT_CAUSE_TYPE = Pattern.compile("\"type\"\\s*:\\s*\"([a-z_]+)\"");
+
+  /**
+   * Compresses a backend failure into something a model can act on.
+   *
+   * <p>An OpenSearch {@code ResponseException} stringifies to its entire response body. Measured
+   * live, one failing {@code search_metadata} call put ~4,000 characters in front of the model — 24
+   * repetitions of {@code {"type":"null_pointer_exception","reason":null}} plus every shard name —
+   * which cost more context than several successful calls combined. Two agents independently lost a
+   * call to it: the payload named the internal index and host but never said whether the caller
+   * could do anything, so one retried an unretryable failure and the other could not tell a
+   * transient outage from a permanent one.
+   *
+   * <p>So: keep the first line, name the underlying cause once, and say explicitly whether the
+   * arguments were at fault. The operator-facing detail is already logged by the dispatch layer.
+   */
+  public static String summarizeFailure(Throwable t, boolean serverFault) {
+    String message = safeMessage(t);
+    String summary = message;
+    if (message.length() > FAILURE_MESSAGE_MAX_LENGTH) {
+      summary = firstLine(message) + causeSuffix(message);
+      summary = truncate(summary, FAILURE_MESSAGE_MAX_LENGTH);
+    }
+    if (serverFault) {
+      summary +=
+          " [This is a backend fault, not a problem with the arguments you sent. Retrying the same"
+              + " call will not help; try a different tool or a narrower request.]";
+    }
+    return summary;
+  }
+
+  private static String firstLine(String message) {
+    int newline = message.indexOf('\n');
+    String line = newline > 0 ? message.substring(0, newline) : message;
+    return truncate(line, FAILURE_MESSAGE_MAX_LENGTH / 2);
+  }
+
+  /** Names the underlying cause once, rather than letting it repeat per failed shard. */
+  private static String causeSuffix(String message) {
+    Matcher matcher = ROOT_CAUSE_TYPE.matcher(message);
+    String suffix = "";
+    if (matcher.find()) {
+      suffix = " (cause: " + matcher.group(1) + ")";
+    }
+    return suffix;
   }
 
   /**

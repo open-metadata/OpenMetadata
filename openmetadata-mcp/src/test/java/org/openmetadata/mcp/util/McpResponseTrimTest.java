@@ -15,6 +15,7 @@ package org.openmetadata.mcp.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
@@ -155,5 +156,52 @@ class McpResponseTrimTest {
             + after
             + " vs "
             + before);
+  }
+
+  @Test
+  void summarizesAFourKilobyteSearchBackendFailure() {
+    // Shape taken from a real failing search_metadata call: one status line, then a shard-failure
+    // body that repeats the same null_pointer_exception once per shard.
+    String shardFailure =
+        "{\"shard\":0,\"index\":\"table_search_index_rebuild_1787425808482\","
+            + "\"node\":\"BJKMp72iTySSK0CbcFTzFg\",\"reason\":{\"type\":\"null_pointer_exception\","
+            + "\"reason\":null,\"suppressed\":[{\"type\":\"null_pointer_exception\",\"reason\":null},"
+            + "{\"type\":\"null_pointer_exception\",\"reason\":null}]}},";
+    String repeated = shardFailure.repeat(24);
+    String raw =
+        "method [POST], host [http://localhost:9200], URI [/dataAsset/_search], status line "
+            + "[HTTP/1.1 500 Internal Server Error]\n"
+            + "{\"error\":{\"root_cause\":["
+            + repeated
+            + "],\"type\":\"search_phase_execution_exception\",\"reason\":\"all shards failed\"}}";
+    assertTrue(raw.length() > 1500, "fixture must be big enough to be worth summarising");
+
+    String summary = McpResponseTrim.summarizeFailure(new RuntimeException(raw), true);
+
+    assertTrue(
+        summary.length() < raw.length() / 3,
+        "a backend failure must not cost more context than a successful call: " + summary.length());
+    assertTrue(summary.contains("null_pointer_exception"), "the cause is named once: " + summary);
+    assertFalse(
+        summary.contains("\"reason\":null},{\"type\""),
+        "the per-shard repetition must not survive: " + summary);
+    assertTrue(
+        summary.contains("not a problem with the arguments"),
+        "a 5xx must tell the caller retrying the same call will not help: " + summary);
+  }
+
+  @Test
+  void leavesAShortActionableMessageAlone() {
+    String actionable =
+        "Parameter 'metricExpressionLanguage' is required and must be a non-blank string. "
+            + "Valid values are: SQL, Java, JavaScript, Python, External. Received: null";
+
+    String summary = McpResponseTrim.summarizeFailure(new RuntimeException(actionable), false);
+
+    assertEquals(
+        actionable,
+        summary,
+        "a 4xx that already names the field and its valid values is exactly what we want the model "
+            + "to read - summarising it would remove the fix");
   }
 }

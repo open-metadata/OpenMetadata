@@ -176,7 +176,9 @@ public class DefaultToolContext {
       logToolFailure(toolName, ex, statusCode);
       Map<String, Object> error =
           errorPayload(
-              String.format("Error executing tool: %s", McpResponseTrim.safeMessage(ex)),
+              String.format(
+                  "Error executing tool: %s",
+                  McpResponseTrim.summarizeFailure(ex, isServerFault(statusCode))),
               statusCode);
       return new CallToolOutcome(errorResult(error), elapsedMs(startNanos), classifyException(ex));
     }
