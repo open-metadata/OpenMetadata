@@ -29,6 +29,10 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
@@ -55,6 +59,10 @@ jest.mock('../../rest/DocStoreAPI', () => ({
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => null)
+);
 
 jest.mock('../../utils/DataMarketplace/DataMarketplaceClassBase', () => ({
   __esModule: true,

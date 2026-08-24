@@ -160,11 +160,9 @@ export function getUpstreamDownstreamNodesEdges(
       const toNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
       );
-      if (!isUndefined(toNode)) {
-        if (!downstreamNodes.includes(toNode)) {
-          downstreamNodes.push(toNode);
-          findDownstream(toNode);
-        }
+      if (!isUndefined(toNode) && !downstreamNodes.includes(toNode)) {
+        downstreamNodes.push(toNode);
+        findDownstream(toNode);
       }
     });
   }
@@ -178,11 +176,9 @@ export function getUpstreamDownstreamNodesEdges(
       const fromNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
       );
-      if (!isUndefined(fromNode)) {
-        if (!upstreamNodes.includes(fromNode)) {
-          upstreamNodes.push(fromNode);
-          findUpstream(fromNode);
-        }
+      if (!isUndefined(fromNode) && !upstreamNodes.includes(fromNode)) {
+        upstreamNodes.push(fromNode);
+        findUpstream(fromNode);
       }
     });
   }

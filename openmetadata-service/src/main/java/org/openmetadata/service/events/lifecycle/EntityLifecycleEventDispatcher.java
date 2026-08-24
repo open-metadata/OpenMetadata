@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -37,11 +38,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  */
 @Slf4j
 public class EntityLifecycleEventDispatcher {
-
-  private static final String OP_CREATED = "onEntityCreated";
-  private static final String OP_UPDATED = "onEntityUpdated";
-  private static final String OP_DELETED = "onEntityDeleted";
-  private static final String OP_SOFT_DELETE_RESTORE = "onEntitySoftDeletedOrRestored";
 
   private static volatile EntityLifecycleEventDispatcher instance;
   private final List<EntityLifecycleEventHandler> handlers;
@@ -121,10 +117,15 @@ public class EntityLifecycleEventDispatcher {
     String entityType = entity.getEntityReference().getType();
     LOG.debug("Dispatching entity created event for {} {}", entityType, entity.getId());
 
-    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_CREATED);
+    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, EventType.ENTITY_CREATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          entity, snapshot, OP_CREATED, e -> handler.onEntityCreated(e, subjectContext), handler);
+          entity,
+          snapshot,
+          EventType.ENTITY_CREATED,
+          null,
+          e -> handler.onEntityCreated(e, subjectContext),
+          handler);
     }
   }
 
@@ -145,7 +146,8 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug(
         "Dispatching bulk entity created event for {} {} entities", entityType, entities.size());
 
-    Map<UUID, Supplier<EntityInterface>> snapshots = buildSnapshots(entities, OP_CREATED);
+    Map<UUID, Supplier<EntityInterface>> snapshots =
+        buildSnapshots(entities, EventType.ENTITY_CREATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       dispatchBulkCreate(handler, entities, snapshots, subjectContext);
     }
@@ -167,11 +169,12 @@ public class EntityLifecycleEventDispatcher {
         executeHandler(
             entity,
             snapshots.get(entity.getId()),
-            OP_CREATED,
+            EventType.ENTITY_CREATED,
+            null,
             e -> handler.onEntityCreated(e, subjectContext),
             handler);
       }
-    } else {
+    } else if (shouldProcess(handler, EventType.ENTITY_CREATED, null)) {
       runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
     }
   }
@@ -186,12 +189,13 @@ public class EntityLifecycleEventDispatcher {
     String entityType = entity.getEntityReference().getType();
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entity.getId());
 
-    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_UPDATED);
+    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, EventType.ENTITY_UPDATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
           entity,
           snapshot,
-          OP_UPDATED,
+          EventType.ENTITY_UPDATED,
+          changeDescription,
           e -> handler.onEntityUpdated(e, changeDescription, subjectContext),
           handler);
     }
@@ -223,7 +227,8 @@ public class EntityLifecycleEventDispatcher {
     String entityType = entities.getFirst().getEntityReference().getType();
     LOG.debug(
         "Dispatching bulk entity updated event for {} ({} entities)", entityType, entities.size());
-    Map<UUID, Supplier<EntityInterface>> snapshots = buildSnapshots(entities, OP_UPDATED);
+    Map<UUID, Supplier<EntityInterface>> snapshots =
+        buildSnapshots(entities, EventType.ENTITY_UPDATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       dispatchBulkUpdate(
           handler,
@@ -257,13 +262,14 @@ public class EntityLifecycleEventDispatcher {
         executeHandler(
             entity,
             snapshots.get(entity.getId()),
-            OP_UPDATED,
+            EventType.ENTITY_UPDATED,
+            change,
             e ->
                 handler.onEntityUpdated(
                     e, change, subjectContext, updateContext.forEntity(entity.getId())),
             handler);
       }
-    } else {
+    } else if (shouldProcess(handler, EventType.ENTITY_UPDATED, changeDescription)) {
       runInline(
           () ->
               handler.onEntitiesUpdated(entities, changeDescription, subjectContext, updateContext),
@@ -281,9 +287,12 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entityReference.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+      if (!shouldProcess(handler, EventType.ENTITY_UPDATED, null)) {
+        continue;
+      }
       executeHandler(
           entityReference,
-          OP_UPDATED,
+          EventType.ENTITY_UPDATED,
           () -> handler.onEntityUpdated(entityReference, subjectContext),
           handler);
     }
@@ -298,10 +307,15 @@ public class EntityLifecycleEventDispatcher {
     String entityType = entity.getEntityReference().getType();
     LOG.debug("Dispatching entity deleted event for {} {}", entityType, entity.getId());
 
-    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_DELETED);
+    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, EventType.ENTITY_DELETED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          entity, snapshot, OP_DELETED, e -> handler.onEntityDeleted(e, subjectContext), handler);
+          entity,
+          snapshot,
+          EventType.ENTITY_DELETED,
+          null,
+          e -> handler.onEntityDeleted(e, subjectContext),
+          handler);
     }
   }
 
@@ -319,12 +333,14 @@ public class EntityLifecycleEventDispatcher {
         entity.getId(),
         isDeleted);
 
-    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_SOFT_DELETE_RESTORE);
+    EventType eventType = isDeleted ? EventType.ENTITY_SOFT_DELETED : EventType.ENTITY_RESTORED;
+    Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, eventType);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
           entity,
           snapshot,
-          OP_SOFT_DELETE_RESTORE,
+          eventType,
+          null,
           e -> handler.onEntitySoftDeletedOrRestored(e, isDeleted, subjectContext),
           handler);
     }
@@ -343,14 +359,18 @@ public class EntityLifecycleEventDispatcher {
   private void executeHandler(
       EntityInterface entity,
       Supplier<EntityInterface> snapshotSupplier,
-      String operation,
+      EventType eventType,
+      ChangeDescription changeDescription,
       Consumer<EntityInterface> handlerCall,
       EntityLifecycleEventHandler handler) {
+    if (!shouldProcess(handler, eventType, changeDescription)) {
+      return;
+    }
     if (handler.isAsync()) {
       EntityInterface snapshot = snapshotSupplier.get();
       if (snapshot != null) {
         orderedLaneExecutor.submit(
-            entity.getId(), laneTask(entity, operation, () -> handlerCall.accept(snapshot)));
+            entity.getId(), laneTask(entity, eventType, () -> handlerCall.accept(snapshot)));
       }
     } else {
       runInline(() -> handlerCall.accept(entity), handler);
@@ -358,12 +378,28 @@ public class EntityLifecycleEventDispatcher {
   }
 
   private Map<UUID, Supplier<EntityInterface>> buildSnapshots(
-      List<? extends EntityInterface> entities, String operation) {
+      List<? extends EntityInterface> entities, EventType eventType) {
     Map<UUID, Supplier<EntityInterface>> snapshots = new HashMap<>();
     for (EntityInterface entity : entities) {
-      snapshots.computeIfAbsent(entity.getId(), id -> new LazyEntitySnapshot(entity, operation));
+      snapshots.computeIfAbsent(entity.getId(), id -> new LazyEntitySnapshot(entity, eventType));
     }
     return snapshots;
+  }
+
+  private boolean shouldProcess(
+      EntityLifecycleEventHandler handler,
+      EventType eventType,
+      ChangeDescription changeDescription) {
+    try {
+      return handler.shouldProcess(eventType, changeDescription);
+    } catch (Throwable failure) {
+      LOG.error(
+          "Entity lifecycle handler '{}' failed while filtering '{}'; processing the event",
+          handler.getHandlerName(),
+          eventType,
+          failure);
+      return true;
+    }
   }
 
   /**
@@ -377,17 +413,17 @@ public class EntityLifecycleEventDispatcher {
    * #enqueueLaneFailureRetry}, so even a pathological serialization error still lands in the outbox
    * instead of escaping to the post-commit request thread.
    */
-  private EntityInterface snapshotOrEnqueueRetry(EntityInterface entity, String operation) {
+  private EntityInterface snapshotOrEnqueueRetry(EntityInterface entity, EventType eventType) {
     EntityInterface snapshot;
     try {
-      snapshot = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
+      snapshot = JsonUtils.deepCopy(entity, entity.getClass());
     } catch (Throwable serializationFailure) {
       LOG.error(
           "Snapshot serialization failed for {} '{}'; routing to durable search-index retry outbox",
-          operation,
+          eventType,
           entity.getId(),
           serializationFailure);
-      enqueueLaneFailureRetry(laneTask(entity, operation, () -> {}), serializationFailure);
+      enqueueLaneFailureRetry(laneTask(entity, eventType, () -> {}), serializationFailure);
       snapshot = null;
     }
     return snapshot;
@@ -400,19 +436,19 @@ public class EntityLifecycleEventDispatcher {
    */
   private final class LazyEntitySnapshot implements Supplier<EntityInterface> {
     private final EntityInterface entity;
-    private final String operation;
+    private final EventType eventType;
     private boolean computed;
     private EntityInterface snapshot;
 
-    private LazyEntitySnapshot(EntityInterface entity, String operation) {
+    private LazyEntitySnapshot(EntityInterface entity, EventType eventType) {
       this.entity = entity;
-      this.operation = operation;
+      this.eventType = eventType;
     }
 
     @Override
     public EntityInterface get() {
       if (!computed) {
-        snapshot = snapshotOrEnqueueRetry(entity, operation);
+        snapshot = snapshotOrEnqueueRetry(entity, eventType);
         computed = true;
       }
       return snapshot;
@@ -421,12 +457,12 @@ public class EntityLifecycleEventDispatcher {
 
   private void executeHandler(
       EntityReference reference,
-      String operation,
+      EventType eventType,
       Runnable handlerExecution,
       EntityLifecycleEventHandler handler) {
     if (handler.isAsync()) {
       orderedLaneExecutor.submit(
-          reference.getId(), laneTask(reference, operation, handlerExecution));
+          reference.getId(), laneTask(reference, eventType, handlerExecution));
     } else {
       runInline(handlerExecution, handler);
     }
@@ -439,21 +475,21 @@ public class EntityLifecycleEventDispatcher {
    * of only logging — and so a lane-queue-full shed routes the same locator to the outbox.
    */
   private OrderedLaneTask laneTask(
-      EntityInterface entity, String operation, Runnable handlerExecution) {
+      EntityInterface entity, EventType eventType, Runnable handlerExecution) {
     EntityReference reference = entity.getEntityReference();
     return new OrderedLaneTask(
         handlerExecution,
-        operation,
+        eventType.value(),
         entity.getId() != null ? entity.getId().toString() : null,
         entity.getFullyQualifiedName(),
         reference != null ? reference.getType() : null);
   }
 
   private OrderedLaneTask laneTask(
-      EntityReference reference, String operation, Runnable handlerExecution) {
+      EntityReference reference, EventType eventType, Runnable handlerExecution) {
     return new OrderedLaneTask(
         handlerExecution,
-        operation,
+        eventType.value(),
         reference.getId() != null ? reference.getId().toString() : null,
         reference.getFullyQualifiedName(),
         reference.getType());
