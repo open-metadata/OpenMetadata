@@ -721,13 +721,13 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Required to create lineage between two assets. Identify each endpoint by 'fqn' (preferred) or 'id', plus its 'type'.",
       "parameters": {
         "description": "Required to create lineage between two assets.",
         "type": "object",
         "properties": {
           "fromEntity": {
-            "description": "Source Entity.",
+            "description": "Source entity. Identify it by 'fqn' (preferred - this is what search results return) or by 'id'.",
             "type": "object",
             "properties": {
               "type": {
@@ -736,16 +736,19 @@
               },
               "id": {
                 "type": "string",
-                "description": "Id of the entity"
+                "description": "Id of the entity. Only needed when you do not have its fqn."
+              },
+              "fqn": {
+                "type": "string",
+                "description": "Fully qualified name of the entity, exactly as returned by search_metadata or semantic_search."
               }
             },
             "required": [
-              "type",
-              "id"
+              "type"
             ]
           },
           "toEntity": {
-            "description": "Destination Entity.",
+            "description": "Destination entity. Identify it by 'fqn' (preferred - this is what search results return) or by 'id'.",
             "type": "object",
             "properties": {
               "type": {
@@ -754,12 +757,15 @@
               },
               "id": {
                 "type": "string",
-                "description": "Id of the entity"
+                "description": "Id of the entity. Only needed when you do not have its fqn."
+              },
+              "fqn": {
+                "type": "string",
+                "description": "Fully qualified name of the entity, exactly as returned by search_metadata or semantic_search."
               }
             },
             "required": [
-              "type",
-              "id"
+              "type"
             ]
           }
         },
