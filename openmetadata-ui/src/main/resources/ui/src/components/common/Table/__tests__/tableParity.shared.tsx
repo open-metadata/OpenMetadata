@@ -433,6 +433,22 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — duplicate column keys`, () => {
+    // AntD renders both columns; React Aria uses the key as a collection id, so
+    // a duplicate used to collapse the column and throw on the cell count.
+    it('renders every column even when two share a key', () => {
+      renderTable({
+        columns: [
+          nameColumn,
+          { ...countColumn, key: 'name' },
+        ],
+      });
+      const cells = screen.getAllByRole('row')[1].querySelectorAll('td, th');
+
+      expect(cells).toHaveLength(2);
+    });
+  });
+
   describe(`${suiteName} — container`, () => {
     it('applies containerClassName to the outer container', () => {
       const { container } = renderTable({ containerClassName: 'outer-marker' });
