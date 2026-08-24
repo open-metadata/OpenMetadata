@@ -310,68 +310,56 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
-      // The app builds the aggregate value as
-      // `.*${escapeESReservedCharacters(value)}.*`, so reserved characters in
-      // the entity name — notably the dashes in `pw-table-<uuid>` — arrive as
-      // "\-" (URL-encoded "%5C-"). Matching the raw `searchData` substring (or
-      // encodeURIComponent(searchData), which leaves dashes bare) therefore
-      // never matches. Decode the `value` param and strip the ES escaping
-      // before comparing, so the predicate holds whether or not the name
-      // contains reserved characters.
-      const aggregateRes2 = page.waitForResponse((response) => {
-        if (!response.url().includes('/api/v1/search/aggregate')) {
-          return false;
-        }
-        const value = new URL(response.url()).searchParams.get('value') ?? '';
-
-        return value.replace(/\\/g, '').includes(searchData);
-      });
-
-      await dropdownInput.fill(searchData);
-
-      await aggregateRes2;
-
-      // Scope the popup to THIS combobox via aria-controls.
-      // [role="listbox"]:visible is a global match that can race: the API
-      // response arrives before the popup renders, so count() returns 0 and
-      // we fall through to Enter which selects nothing. Waiting for
-      // aria-controls ensures the popup is truly open before querying it.
-      await expect(async () => {
+      const countMatchingOptions = async () => {
         const listboxId = await dropdownInput.getAttribute('aria-controls');
         if (!listboxId) {
-          throw new Error(
-            'Value combobox popup not open (aria-controls missing)'
-          );
+          return 0;
         }
-        const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
-        const exactMatch = dropdown
-          .getByRole('option', {
-            name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
-          })
-          .first();
-        const partialMatch = dropdown
-          .getByRole('option')
-          .filter({
-            hasText: new RegExp(escapeRegex(searchData), 'i'),
-          })
-          .first();
 
-        if (await exactMatch.count()) {
-          await exactMatch.click();
-        } else if (await partialMatch.count()) {
-          await partialMatch.click();
-        } else {
-          // Do NOT re-fill here. The Autocomplete asyncFetch runs behind a
-          // 300 ms debounce; re-filling on every ~100 ms retry resets that
-          // debounce each time, so the API call never fires and options never
-          // appear. The popup stays open while the input is focused
-          // (menuTrigger="focus"), so just retry and let React render the
-          // items once the debounce completes.
-          throw new Error(
-            `No option matching "${searchData}" in the listbox yet`
-          );
-        }
-      }).toPass({ timeout: 15000 });
+        return page
+          .locator(`[role="listbox"][id="${listboxId}"]`)
+          .getByRole('option')
+          .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+          .count();
+      };
+
+      await expect
+        .poll(
+          async () => {
+            await dropdownInput.fill('');
+            await dropdownInput.fill(searchData);
+
+            await page
+              .waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/search/aggregate'),
+                { timeout: 5_000 }
+              )
+              .catch(() => null);
+
+            return countMatchingOptions();
+          },
+          { timeout: 30_000, intervals: [1_000, 2_000, 3_000] }
+        )
+        .toBeGreaterThan(0);
+
+      const listboxId = await dropdownInput.getAttribute('aria-controls');
+      const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
+      const exactMatch = dropdown
+        .getByRole('option', {
+          name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+        })
+        .first();
+
+      if (await exactMatch.count()) {
+        await exactMatch.click();
+      } else {
+        await dropdown
+          .getByRole('option')
+          .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+          .first()
+          .click();
+      }
     }
 
     await clickOutside(page);
