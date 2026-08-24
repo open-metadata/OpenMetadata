@@ -152,8 +152,11 @@
   }
 }
 
+// Puts a column's filter icon before its title. Both wrappers are matched so
+// the class keeps working as call sites move from AntD to TableV2.
 .align-table-filter-left {
-  .ant-table-filter-column {
+  .ant-table-filter-column,
+  [data-testid='column-header-content'] {
     flex-direction: row-reverse;
     gap: var(--om-space-8);
   }

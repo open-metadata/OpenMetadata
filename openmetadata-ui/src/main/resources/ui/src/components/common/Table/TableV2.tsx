@@ -31,7 +31,8 @@
  *                  written against it survives the migration)
  *   data-level     tree depth (TableV2 only; AntD uses .ant-table-row-level-N)
  *   data-testid    table-toolbar, column-dropdown, expand-icon, filter-trigger,
- *                  filter-dropdown, and the table root via the `data-testid` prop
+ *                  filter-dropdown, column-header-content, and the table root
+ *                  via the `data-testid` prop
  *
  * Sorting:
  *  - sorter: (a, b) => number  → applied client-side on full dataset before pagination
@@ -1003,7 +1004,9 @@ const TableV2 = <T extends object>(
                           : {}),
                         ...stickyStyle,
                       }}>
-                      <div className="tw:flex tw:items-center tw:gap-1">
+                      <div
+                        className="tw:flex tw:items-center tw:gap-1"
+                        data-testid="column-header-content">
                         {resolveColumnTitle(colType, propsColumns)}
                         {Boolean(colType.filters || colType.filterDropdown) && (
                           <DialogTrigger
