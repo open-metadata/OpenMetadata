@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import Table from '../../common/Table/Table';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';

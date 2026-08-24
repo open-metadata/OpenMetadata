@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Tabs, Typography } from 'antd';
+import Table from '../../common/Table/Table';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';

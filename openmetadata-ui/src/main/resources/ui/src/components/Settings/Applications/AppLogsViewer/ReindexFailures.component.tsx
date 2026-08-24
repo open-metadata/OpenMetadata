@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
+import { Drawer, Select, Space, Tooltip, Typography } from 'antd';
+import Table from '../../../common/Table/Table';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
