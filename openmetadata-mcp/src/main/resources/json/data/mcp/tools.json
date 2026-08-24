@@ -673,7 +673,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), and the transformation SQL in full — response size is controlled by returning fewer edges, never by cutting SQL. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. The default response is table-level and small: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql). Transformation SQL is NOT included by default because it dominates response size; an edge that has SQL is marked with 'hasSql': true, so re-call with includeSql=true only for the specific question that needs the transformation text. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -700,6 +700,11 @@
             "type": "boolean",
             "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
             "default": false
+          },
+          "includeSql": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include each edge's full transformation SQL. Defaults to false: SQL is typically over 90% of a lineage response, so it is omitted unless asked for. Edges that have SQL are flagged with 'hasSql': true — request it only for those you care about."
           }
         },
         "required": [

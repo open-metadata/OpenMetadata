@@ -47,6 +47,8 @@ public class GetLineageTool implements McpTool {
   // Maximum depth to prevent exponential response growth (lineage graphs can explode)
   private static final int MAX_DEPTH = 10;
   private static final String RELATIONSHIP_SQL = "sql";
+  private static final String PARAM_INCLUDE_COLUMN_LINEAGE = "includeColumnLineage";
+  private static final String PARAM_INCLUDE_SQL = "includeSql";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   record SlimEdge(
@@ -64,6 +66,7 @@ public class GetLineageTool implements McpTool {
       Integer assetEdges,
       String sqlQuery,
       Boolean sqlTruncated,
+      Boolean hasSql,
       List<TempLineageTable> tempLineageTables,
       Long updatedAt,
       String updatedBy,
@@ -77,7 +80,10 @@ public class GetLineageTool implements McpTool {
       List<SlimEdge> upstream,
       List<SlimEdge> downstream) {}
 
-  private record SqlText(String value, Boolean truncated) {}
+  private record SqlText(String value, Boolean truncated, Boolean present) {}
+
+  /** What an edge should carry. Grouped so the slimming chain keeps a small, stable signature. */
+  record EdgeOptions(boolean includeColumnLineage, boolean includeSql) {}
 
   @Override
   public Map<String, Object> execute(
@@ -92,7 +98,10 @@ public class GetLineageTool implements McpTool {
         new ResourceContext<>(entityType));
     int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
     int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
-    boolean includeColumnLineage = McpParams.getBoolean(params, "includeColumnLineage", false);
+    EdgeOptions options =
+        new EdgeOptions(
+            McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false),
+            McpParams.getBoolean(params, PARAM_INCLUDE_SQL, false));
     LOG.info(
         "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}, "
             + "includeColumnLineage: {}",
@@ -100,10 +109,10 @@ public class GetLineageTool implements McpTool {
         fqn,
         upstreamDepth,
         downstreamDepth,
-        includeColumnLineage);
+        options.includeColumnLineage());
     EntityLineage lineage =
         Entity.getLineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth);
-    return enforceSizeBudget(toSlim(lineage, includeColumnLineage));
+    return enforceSizeBudget(toSlim(lineage, options));
   }
 
   private static void validateParams(Map<String, Object> params) {
@@ -119,11 +128,13 @@ public class GetLineageTool implements McpTool {
 
   @VisibleForTesting
   static SlimLineage toSlim(EntityLineage lineage, boolean includeColumnLineage) {
+    return toSlim(lineage, new EdgeOptions(includeColumnLineage, true));
+  }
+
+  static SlimLineage toSlim(EntityLineage lineage, EdgeOptions options) {
     Map<UUID, EntityReference> nodeIndex = buildNodeIndex(lineage);
-    List<SlimEdge> upstream =
-        slimEdges(lineage.getUpstreamEdges(), nodeIndex, includeColumnLineage);
-    List<SlimEdge> downstream =
-        slimEdges(lineage.getDownstreamEdges(), nodeIndex, includeColumnLineage);
+    List<SlimEdge> upstream = slimEdges(lineage.getUpstreamEdges(), nodeIndex, options);
+    List<SlimEdge> downstream = slimEdges(lineage.getDownstreamEdges(), nodeIndex, options);
     EntityReference root = lineage.getEntity();
     return new SlimLineage(
         refFqn(root),
@@ -145,19 +156,19 @@ public class GetLineageTool implements McpTool {
   }
 
   private static List<SlimEdge> slimEdges(
-      List<Edge> edges, Map<UUID, EntityReference> nodeIndex, boolean includeColumnLineage) {
+      List<Edge> edges, Map<UUID, EntityReference> nodeIndex, EdgeOptions options) {
     // The repository dedups nodes but not edges: a node reachable via multiple paths has its
     // upstream/downstream edges re-added on each recursion. Identical slim edges carry no extra
     // information, so collapse them with a LinkedHashSet (record equality), preserving order.
     Set<SlimEdge> deduped = new LinkedHashSet<>();
     if (!nullOrEmpty(edges)) {
-      edges.forEach(edge -> deduped.add(buildSlimEdge(edge, nodeIndex, includeColumnLineage)));
+      edges.forEach(edge -> deduped.add(buildSlimEdge(edge, nodeIndex, options)));
     }
     return new ArrayList<>(deduped);
   }
 
   private static SlimEdge buildSlimEdge(
-      Edge edge, Map<UUID, EntityReference> nodeIndex, boolean includeColumns) {
+      Edge edge, Map<UUID, EntityReference> nodeIndex, EdgeOptions options) {
     // computeLineage adds every edge endpoint to nodes (or it is the root), so nodeIndex
     // resolves both ends. If that invariant ever breaks (a partial/cached graph), the endpoint
     // fields come back null and identical anonymous edges dedup-collapse — warn instead of
@@ -172,7 +183,7 @@ public class GetLineageTool implements McpTool {
     }
     LineageDetails details = edge.getLineageDetails();
     EntityReference pipeline = details != null ? details.getPipeline() : null;
-    SqlText sql = fullSqlQuery(details);
+    SqlText sql = sqlText(details, options.includeSql());
     return new SlimEdge(
         refFqn(from),
         refFqn(to),
@@ -188,10 +199,11 @@ public class GetLineageTool implements McpTool {
         details != null ? details.getAssetEdges() : null,
         sql.value(),
         sql.truncated(),
+        sql.present(),
         details != null ? details.getTempLineageTables() : null,
         details != null ? details.getUpdatedAt() : null,
         details != null ? details.getUpdatedBy() : null,
-        columnsLineageOf(details, includeColumns));
+        columnsLineageOf(details, options.includeColumnLineage()));
   }
 
   private static List<ColumnLineage> columnsLineageOf(
@@ -212,14 +224,22 @@ public class GetLineageTool implements McpTool {
   }
 
   /**
-   * Edge SQL is returned in full. Size is controlled by returning fewer edges (see {@link
-   * #enforceSizeBudget}), never by cutting the transformation SQL, which is exactly the metadata a
-   * lineage caller needs. The {@code sqlTruncated} marker stays in the record for wire compatibility
-   * and is always null now.
+   * Edge SQL is opt-in. Measured on a live 18-edge graph, {@code sqlQuery} was 93.8% of a 33,038
+   * token response (30,996 tokens) while the next-largest field, {@code toFQN}, was 1.1% — so a
+   * caller asking "what feeds this table?" paid ~31k tokens of SQL to learn 18 table names.
+   *
+   * <p>When SQL is not requested the text is omitted and {@code hasSql} is set instead, so the
+   * caller still sees that a transformation exists and can re-request with {@code includeSql=true}.
+   * Dropping the field silently would hide that the SQL was ever there.
+   *
+   * <p>When SQL <em>is</em> requested it is returned in full and never cut — size is then controlled
+   * by returning fewer edges (see {@link #enforceSizeBudget}), which stays correct for a caller who
+   * explicitly asked for transformations.
    */
-  private static SqlText fullSqlQuery(LineageDetails details) {
-    String sql = details != null ? details.getSqlQuery() : null;
-    return new SqlText(sql, null);
+  private static SqlText sqlText(LineageDetails details, boolean includeSql) {
+    final String sql = details != null ? details.getSqlQuery() : null;
+    final Boolean present = nullOrEmpty(sql) ? null : Boolean.TRUE;
+    return new SqlText(includeSql ? sql : null, null, present);
   }
 
   private static String refFqn(EntityReference ref) {
@@ -309,8 +329,19 @@ public class GetLineageTool implements McpTool {
    * could overwhelm LLM context. Parsing is delegated to {@link McpParams}; the valid range is
    * specific to this tool, so the clamp stays here.
    */
+  /**
+   * Zero is a meaningful request, not a mistake: "upstream only" is how a caller avoids paying for a
+   * direction it already has. {@code LineageRepository.getUpstreamLineage} short-circuits on 0, so
+   * the repository honours it — clamping the floor to 1 here silently overrode the caller and
+   * returned the very edges they asked to omit.
+   */
   private static int clampDepth(int depth) {
-    return Math.min(Math.max(depth, 1), MAX_DEPTH);
+    return Math.min(Math.max(depth, 0), MAX_DEPTH);
+  }
+
+  @VisibleForTesting
+  static int clampDepthForTest(int depth) {
+    return clampDepth(depth);
   }
 
   @Override
