@@ -296,18 +296,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-
-    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
-
-    String userName = securityContext.getUserPrincipal().getName();
-    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-
-    List<ActivityEvent> events =
-        activityStreamRepository.listByFollowers(
-            userRef.getId().toString(), domainIds, afterTimestamp, limit);
-
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
   }
 
   @GET

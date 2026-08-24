@@ -141,6 +141,17 @@ public class ActivityStreamRepository {
             limit));
   }
 
+  public ResultList<ActivityEvent> getFollowingFeed(
+      SecurityContext securityContext, String domain, int days, int limit) {
+    EntityReference user = currentUser(securityContext);
+    return result(
+        listByFollowers(
+            user.getId().toString(),
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
   public ResultList<ActivityEvent> getActivityByEntityLink(
       SecurityContext securityContext, String entityLink, String domain, int days, int limit) {
     return result(

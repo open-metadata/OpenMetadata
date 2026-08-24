@@ -45,7 +45,7 @@ public class DomainSyncHandler implements EntityLifecycleEventHandler {
   public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
     return eventType == EventType.ENTITY_UPDATED
         && changeDescription != null
-        && (findDomainsChange(changeDescription) != null || hasDomainsRemoved(changeDescription));
+        && hasDomainsChange(changeDescription);
   }
 
   @Override
