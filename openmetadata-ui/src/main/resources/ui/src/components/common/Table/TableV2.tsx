@@ -245,12 +245,26 @@ const buildExpandedDetailRow = <T extends object>(
  * interactive so the call site's handler still receives a real MouseEvent,
  * without adding a second activation path that would fire it twice.
  */
+interface RowInteractionProps
+  extends Pick<
+    React.HTMLAttributes<HTMLElement>,
+    | 'onClick'
+    | 'onDoubleClick'
+    | 'onDragEnd'
+    | 'onDragEnter'
+    | 'onDragLeave'
+    | 'onDragOver'
+    | 'onDragStart'
+    | 'onDrop'
+  > {
+  onAction?: () => void;
+  draggable?: boolean;
+}
+
 const getRowInteractionProps = (
-  rowHandlers: React.HTMLAttributes<HTMLTableRowElement> & {
-    draggable?: boolean;
-  },
+  rowHandlers: React.HTMLAttributes<HTMLElement> & { draggable?: boolean },
   hasAriaDragAndDrop: boolean
-) => {
+): RowInteractionProps => {
   const activation = {
     onAction: rowHandlers.onClick ? noop : undefined,
     onClick: rowHandlers.onClick,

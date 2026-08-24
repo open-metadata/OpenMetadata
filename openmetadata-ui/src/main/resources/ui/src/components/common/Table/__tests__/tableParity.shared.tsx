@@ -138,7 +138,11 @@ export const runTableParitySuite = (
   // without the reset one spec's selection leaks into the next.
   beforeEach(() => {
     useApplicationStore.setState({
-      currentUser: { id: 'parity-user-id', name: 'parity-user' },
+      currentUser: {
+        email: 'parity-user@open-metadata.org',
+        id: 'parity-user-id',
+        name: 'parity-user',
+      },
     });
     usePersistentStorage.setState({ preferences: {} });
   });
