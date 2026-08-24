@@ -91,84 +91,98 @@ public final class GlossaryTermRelationSettingsUtil {
     }
   }
 
+  /**
+   * Enforces the immutability contract for seeded (system-defined) relation types on the generic
+   * settings-update path. System-defined types cannot be removed or downgraded, no new type may be
+   * flagged as system-defined (create/promote), and an existing system-defined type's fields cannot
+   * be edited. Custom relation types are unaffected. The dedicated relationTypes endpoint and the UI
+   * already enforce this; this covers the remaining generic {@code PUT /system/settings} path.
+   */
   public static void validateSystemDefinedRelationTypesPreserved(
       GlossaryTermRelationSettings current, GlossaryTermRelationSettings updated) {
     if (current == null || current.getRelationTypes() == null) {
       return;
     }
 
-    Set<String> updatedSystemDefinedNames = new HashSet<>();
-    if (updated != null && updated.getRelationTypes() != null) {
-      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
-        if (relationType != null && Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
-          updatedSystemDefinedNames.add(relationType.getName());
-        }
+    Map<String, GlossaryTermRelationType> updatedByName = indexByName(updated);
+    validateNoSystemDefinedRemoved(current, updatedByName);
+    validateNoUnsanctionedSystemDefined(current, updated);
+    validateSystemDefinedUnmodified(current, updatedByName);
+  }
+
+  private static Map<String, GlossaryTermRelationType> indexByName(
+      GlossaryTermRelationSettings settings) {
+    Map<String, GlossaryTermRelationType> byName = new HashMap<>();
+    if (settings == null || settings.getRelationTypes() == null) {
+      return byName;
+    }
+    for (GlossaryTermRelationType relationType : settings.getRelationTypes()) {
+      if (relationType != null && relationType.getName() != null) {
+        byName.put(relationType.getName(), relationType);
       }
     }
+    return byName;
+  }
 
-    List<String> missingSystemDefinedNames =
-        current.getRelationTypes().stream()
-            .filter(relationType -> Boolean.TRUE.equals(relationType.getIsSystemDefined()))
-            .map(GlossaryTermRelationType::getName)
-            .filter(name -> !updatedSystemDefinedNames.contains(name))
-            .toList();
-    if (!missingSystemDefinedNames.isEmpty()) {
-      throw new SystemSettingsException(
-          "Cannot delete system-defined relation types: "
-              + String.join(", ", missingSystemDefinedNames));
+  private static void validateNoSystemDefinedRemoved(
+      GlossaryTermRelationSettings current, Map<String, GlossaryTermRelationType> updatedByName) {
+    List<String> removed = new ArrayList<>();
+    for (GlossaryTermRelationType currentType : current.getRelationTypes()) {
+      if (!Boolean.TRUE.equals(currentType.getIsSystemDefined())) {
+        continue;
+      }
+      GlossaryTermRelationType updatedType = updatedByName.get(currentType.getName());
+      if (updatedType == null || !Boolean.TRUE.equals(updatedType.getIsSystemDefined())) {
+        removed.add(currentType.getName());
+      }
     }
+    if (!removed.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot delete system-defined relation types: " + String.join(", ", removed));
+    }
+  }
 
-    // system-defined is a seeded classification: a settings update must not create a new
-    // system-defined type or promote a custom type to system-defined. Only names already seeded
-    // as system-defined may carry isSystemDefined=true.
+  private static void validateNoUnsanctionedSystemDefined(
+      GlossaryTermRelationSettings current, GlossaryTermRelationSettings updated) {
+    if (updated == null || updated.getRelationTypes() == null) {
+      return;
+    }
     Set<String> currentSystemDefinedNames = new HashSet<>();
     for (GlossaryTermRelationType relationType : current.getRelationTypes()) {
       if (Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
         currentSystemDefinedNames.add(relationType.getName());
       }
     }
-    List<String> illegallySystemDefinedNames = new ArrayList<>();
-    if (updated != null && updated.getRelationTypes() != null) {
-      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
-        if (relationType != null
-            && Boolean.TRUE.equals(relationType.getIsSystemDefined())
-            && !currentSystemDefinedNames.contains(relationType.getName())) {
-          illegallySystemDefinedNames.add(relationType.getName());
-        }
+    List<String> unsanctioned = new ArrayList<>();
+    for (GlossaryTermRelationType updatedType : updated.getRelationTypes()) {
+      if (updatedType != null
+          && Boolean.TRUE.equals(updatedType.getIsSystemDefined())
+          && !currentSystemDefinedNames.contains(updatedType.getName())) {
+        unsanctioned.add(updatedType.getName());
       }
     }
-    if (!illegallySystemDefinedNames.isEmpty()) {
+    if (!unsanctioned.isEmpty()) {
       throw new SystemSettingsException(
           "Cannot create or promote system-defined relation types: "
-              + String.join(", ", illegallySystemDefinedNames));
+              + String.join(", ", unsanctioned));
     }
+  }
 
-    // System-defined relation types are immutable: their fields (e.g. isTransitive, color,
-    // category) must not be edited. The dedicated relationTypes endpoint and the UI already
-    // enforce this; the generic settings PUT is the remaining path that must too.
-    Map<String, GlossaryTermRelationType> updatedByName = new HashMap<>();
-    if (updated != null && updated.getRelationTypes() != null) {
-      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
-        if (relationType != null && relationType.getName() != null) {
-          updatedByName.put(relationType.getName(), relationType);
-        }
-      }
-    }
-
-    List<String> modifiedSystemDefinedNames = new ArrayList<>();
+  private static void validateSystemDefinedUnmodified(
+      GlossaryTermRelationSettings current, Map<String, GlossaryTermRelationType> updatedByName) {
+    List<String> modified = new ArrayList<>();
     for (GlossaryTermRelationType currentType : current.getRelationTypes()) {
       if (!Boolean.TRUE.equals(currentType.getIsSystemDefined())) {
         continue;
       }
       GlossaryTermRelationType updatedType = updatedByName.get(currentType.getName());
       if (updatedType != null && isRelationTypeModified(currentType, updatedType)) {
-        modifiedSystemDefinedNames.add(currentType.getName());
+        modified.add(currentType.getName());
       }
     }
-    if (!modifiedSystemDefinedNames.isEmpty()) {
+    if (!modified.isEmpty()) {
       throw new SystemSettingsException(
-          "Cannot modify system-defined relation types: "
-              + String.join(", ", modifiedSystemDefinedNames));
+          "Cannot modify system-defined relation types: " + String.join(", ", modified));
     }
   }
 
