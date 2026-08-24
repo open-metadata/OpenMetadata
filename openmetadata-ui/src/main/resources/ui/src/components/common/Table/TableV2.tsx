@@ -245,24 +245,32 @@ const buildExpandedDetailRow = <T extends object>(
  * interactive so the call site's handler still receives a real MouseEvent,
  * without adding a second activation path that would fire it twice.
  */
-interface RowInteractionProps
-  extends Pick<
-    React.HTMLAttributes<HTMLElement>,
-    | 'onClick'
-    | 'onDoubleClick'
-    | 'onDragEnd'
-    | 'onDragEnter'
-    | 'onDragLeave'
-    | 'onDragOver'
-    | 'onDragStart'
-    | 'onDrop'
-  > {
-  onAction?: () => void;
+/**
+ * Derived from the row component's own props rather than from
+ * `HTMLAttributes`: React Aria's Row types several of these itself, so a
+ * hand-written shape drifts from what the component actually accepts.
+ */
+type RowInteractionProps = Pick<
+  React.ComponentProps<typeof UntitledTable.Row>,
+  | 'draggable'
+  | 'onAction'
+  | 'onClick'
+  | 'onDoubleClick'
+  | 'onDragEnd'
+  | 'onDragEnter'
+  | 'onDragLeave'
+  | 'onDragOver'
+  | 'onDragStart'
+  | 'onDrop'
+>;
+
+/** What AntD's `onRow` hands back. */
+type AntdRowHandlers = React.HTMLAttributes<HTMLElement> & {
   draggable?: boolean;
-}
+};
 
 const getRowInteractionProps = (
-  rowHandlers: React.HTMLAttributes<HTMLElement> & { draggable?: boolean },
+  rowHandlers: AntdRowHandlers,
   hasAriaDragAndDrop: boolean
 ): RowInteractionProps => {
   const activation = {
@@ -1074,7 +1082,8 @@ const TableV2 = <T extends object>(
                 {flatRows.flatMap((flatRow) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =
                     flatRow;
-                  const rowHandlers = rest.onRow?.(record, actualIndex) ?? {};
+                  const rowHandlers = (rest.onRow?.(record, actualIndex) ??
+                    {}) as AntdRowHandlers;
                   const isExpanded = expandedKeys.has(rowKey);
                   const detailRow = buildExpandedDetailRow(
                     rest.expandable,
