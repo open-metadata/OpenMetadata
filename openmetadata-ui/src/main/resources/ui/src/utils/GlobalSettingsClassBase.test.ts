@@ -517,6 +517,7 @@ describe('GlobalSettingsClassBase', () => {
         'preferences.lineageConfig',
         'preferences.om-url-config',
         'preferences.dataAssetRules',
+        'preferences.appMode',
       ];
 
       preferenceKeys.forEach((key) => {
@@ -552,6 +553,41 @@ describe('GlobalSettingsClassBase', () => {
 
       expect(dataAssetRules).toBeDefined();
       expect(dataAssetRules?.isBeta).toBe(true);
+    });
+
+    it('should gate the default app mode entry on admin only', () => {
+      (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(false);
+
+      const resultAdmin =
+        globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+          mockNoPermissions,
+          true
+        );
+
+      const preferencesCategoryAdmin = resultAdmin.find(
+        (item) => item.key === 'preferences'
+      );
+      const appModeItemAdmin = preferencesCategoryAdmin?.items?.find(
+        (item) => item.key === 'preferences.appMode'
+      );
+
+      expect(appModeItemAdmin).toBeDefined();
+      expect(appModeItemAdmin?.isProtected).toBe(true);
+
+      const resultNonAdmin =
+        globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+          mockNoPermissions,
+          false
+        );
+
+      const preferencesCategoryNonAdmin = resultNonAdmin.find(
+        (item) => item.key === 'preferences'
+      );
+      const appModeItemNonAdmin = preferencesCategoryNonAdmin?.items?.find(
+        (item) => item.key === 'preferences.appMode'
+      );
+
+      expect(appModeItemNonAdmin?.isProtected).toBe(false);
     });
 
     it('should call userPermissions.hasViewPermissions with correct arguments', () => {

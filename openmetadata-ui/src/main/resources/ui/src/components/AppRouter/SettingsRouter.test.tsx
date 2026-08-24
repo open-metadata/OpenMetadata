@@ -36,6 +36,11 @@ jest.mock('../../pages/BotsPageV1/BotsPageV1.component', () => ({
   default: jest.fn().mockReturnValue(<div>BotsPageV1</div>),
 }));
 
+jest.mock('../../pages/Settings/DefaultAppModePage/DefaultAppModePage', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<div>DefaultAppModePage</div>),
+}));
+
 jest.mock(
   '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage',
   () => ({
@@ -539,5 +544,11 @@ describe('SettingsRouter services routes', () => {
 
     expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
     expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+
+  it('renders DefaultAppModePage for the preferences app mode route', async () => {
+    renderAt('/settings/preferences/appMode');
+
+    expect(await screen.findByText('DefaultAppModePage')).toBeInTheDocument();
   });
 });
