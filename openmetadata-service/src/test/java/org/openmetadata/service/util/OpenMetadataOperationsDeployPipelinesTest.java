@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import picocli.CommandLine;
+import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.ParseResult;
 
 class OpenMetadataOperationsDeployPipelinesTest {
 
@@ -66,6 +69,37 @@ class OpenMetadataOperationsDeployPipelinesTest {
   void nonPositiveSecondsPerPipelineIsRejected() {
     assertFalse(OpenMetadataOperations.isValidDeployOptions(20, 0));
     assertFalse(OpenMetadataOperations.isValidDeployOptions(20, -5));
+  }
+
+  private static ParseResult parseDeployPipelines(String... args) {
+    String[] argv = new String[args.length + 3];
+    argv[0] = "-c";
+    argv[1] = "unused.yaml";
+    argv[2] = "deploy-pipelines";
+    System.arraycopy(args, 0, argv, 3, args.length);
+
+    return new CommandLine(new OpenMetadataOperations()).parseArgs(argv);
+  }
+
+  private static int optionValue(ParseResult parsed, String option, int fallback) {
+    return parsed.subcommand().matchedOptionValue(option, fallback);
+  }
+
+  @Test
+  void chunkSizeAndBudgetOptionsAreBound() {
+    ParseResult parsed = parseDeployPipelines("--chunk-size", "5", "--seconds-per-pipeline", "45");
+
+    assertEquals(5, optionValue(parsed, "--chunk-size", -1));
+    assertEquals(45, optionValue(parsed, "--seconds-per-pipeline", -1));
+    assertEquals(Duration.ofSeconds(225), OpenMetadataOperations.deployChunkTimeout(5, 45));
+  }
+
+  @Test
+  void omittedOptionsFallBackToTheDocumentedDefaults() {
+    CommandSpec spec = parseDeployPipelines().subcommand().commandSpec();
+
+    assertEquals("20", spec.findOption("--chunk-size").defaultValue());
+    assertEquals("30", spec.findOption("--seconds-per-pipeline").defaultValue());
   }
 
   @Test
