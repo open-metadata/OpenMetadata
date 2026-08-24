@@ -72,21 +72,24 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
    * unfiltered.
    */
   private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
-    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      return query;
+    Query result = query;
+    if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQueryBuilder == null) {
+        // Fail closed: policies had to be applied for this caller (access control on, not
+        // admin/bot) but produced no query. Returning the unfiltered query would leak; match
+        // nothing instead.
+        result = Query.of(qb -> qb.matchNone(m -> m));
+      } else {
+        Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
+        final Query existingQuery = query;
+        result =
+            existingQuery == null
+                ? rbacQuery
+                : Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+      }
     }
-    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-    if (rbacQueryBuilder == null) {
-      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
-      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
-      return Query.of(qb -> qb.matchNone(m -> m));
-    }
-    Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
-    if (query == null) {
-      return rbacQuery;
-    }
-    final Query existingQuery = query;
-    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+    return result;
   }
 
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
