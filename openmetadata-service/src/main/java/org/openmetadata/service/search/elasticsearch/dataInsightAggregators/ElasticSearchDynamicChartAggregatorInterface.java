@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CardinalityAggregate;
@@ -30,12 +28,12 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 import org.openmetadata.service.util.DataInsightFormulaEvaluator;
 
 public interface ElasticSearchDynamicChartAggregatorInterface {
 
   long MILLISECONDS_IN_DAY = 24L * 60 * 60 * 1000;
-  ObjectMapper mapper = new ObjectMapper();
 
   private static Aggregation getSubAggregationsByFunction(
       Function function, String field, int index) {
@@ -186,6 +184,23 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     return finalList;
   }
 
+  /**
+   * Engine query for a filter's extracted query text, or null when there is none. Unlike the
+   * OpenSearch wrapper this parses client side, so a filter the typed client cannot map is dropped
+   * here rather than rejected by the cluster.
+   */
+  static Query queryFromJson(String queryJson) {
+    if (queryJson == null) {
+      return null;
+    }
+    try {
+      return Query.of(q -> q.withJson(new StringReader(queryJson)));
+    } catch (RuntimeException e) {
+      Log.error("Ignoring a Data Insight metric filter the client cannot map: {}", e.getMessage());
+      return null;
+    }
+  }
+
   default void populateDateHistogram(
       Function function,
       String formula,
@@ -198,42 +213,21 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       throw new IllegalArgumentException(
           "Data Insight chart metric must define either a function or a formula");
     }
+    Query queryFilter = queryFromJson(DataInsightMetricFilter.queryJson(filter));
     if (formula != null) {
-      if (filter != null && !filter.equals("{}")) {
-        try {
-          JsonNode rootNode = mapper.readTree(filter);
-          JsonNode queryNode = rootNode.get("query");
-
-          Query queryFilter = Query.of(q -> q.withJson(new StringReader(queryNode.toString())));
-          getDateHistogramByFormula(formula, queryFilter, aggregationsMap, parentAggName, formulas);
-        } catch (Exception e) {
-          Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
-          getDateHistogramByFormula(formula, null, aggregationsMap, parentAggName, formulas);
-        }
-      } else {
-        getDateHistogramByFormula(formula, null, aggregationsMap, parentAggName, formulas);
-      }
+      getDateHistogramByFormula(formula, queryFilter, aggregationsMap, parentAggName, formulas);
       return;
     }
 
     Aggregation subAgg = getSubAggregationsByFunction(function, field, 0);
-    if (filter != null && !filter.equals("{}")) {
-      try {
-        JsonNode rootNode = mapper.readTree(filter);
-        JsonNode queryNode = rootNode.get("query");
-
-        Query queryFilter = Query.of(q -> q.withJson(new StringReader(queryNode.toString())));
-        Map<String, Aggregation> subAggMap = new HashMap<>();
-        subAggMap.put(field + "0", subAgg);
-        aggregationsMap.put(
-            "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
-      } catch (Exception e) {
-        Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
-        aggregationsMap.put(field + "0", subAgg);
-      }
-    } else {
+    if (queryFilter == null) {
       aggregationsMap.put(field + "0", subAgg);
+      return;
     }
+    Map<String, Aggregation> subAggMap = new HashMap<>();
+    subAggMap.put(field + "0", subAgg);
+    aggregationsMap.put(
+        "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
   }
 
   SearchRequest prepareSearchRequest(
