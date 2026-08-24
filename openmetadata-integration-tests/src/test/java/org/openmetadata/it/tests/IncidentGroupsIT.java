@@ -10,9 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.db.DataSourceFactory;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -69,6 +72,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -94,6 +99,7 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
   private static final String MAX_LIMIT = "1000";
+  private static final String INCIDENT_SUMMARY_BACKFILL_PREFIX = "INSERT INTO test_case_incident";
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -977,20 +983,16 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
-      syncIncidentSummary(connection, postgres, fqnHash);
+      syncIncidentSummary(connection, postgres);
     }
   }
 
-  // Direct SQL seeding bypasses the repository's write path, so the summary projection the
-  // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
-  // the 2.1.0 backfill. The shipped migration file is executed verbatim (no hand copy that
-  // could drift from it) — safe unscoped because the upsert is idempotent, and it is exactly
-  // its MAX(id) tie-break that testDuplicateMaxTimestampTieBreak pins.
-  private void syncIncidentSummary(Connection connection, boolean postgres, String fqnHash)
-      throws Exception {
-    java.nio.file.Path migrationFile =
-        java.nio.file.Path.of(
-            "..",
+  // Direct SQL seeding bypasses the repository's write path, so sync the summary projection with
+  // the shipped 2.1.0 backfill. Parsing the migration and selecting its target statement keeps this
+  // fixture aligned with production without executing unrelated post-migration statements.
+  private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
+    Path migrationFile =
+        Path.of(
             "bootstrap",
             "sql",
             "migrations",
@@ -998,11 +1000,20 @@ public class IncidentGroupsIT {
             "2.1.0",
             postgres ? "postgres" : "mysql",
             "postDataMigrationSQLScript.sql");
-    if (!java.nio.file.Files.exists(migrationFile)) {
-      migrationFile = java.nio.file.Path.of("bootstrap").resolve(migrationFile.subpath(1, 8));
+    if (!Files.exists(migrationFile)) {
+      migrationFile = Path.of("..").resolve(migrationFile);
     }
-    String backfill = java.nio.file.Files.readString(migrationFile);
-    try (java.sql.Statement statement = connection.createStatement()) {
+    Path resolvedMigrationFile = migrationFile;
+    ConnectionType connectionType = postgres ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
+    String backfill =
+        MigrationFile.parseSQLFile(resolvedMigrationFile.toFile(), connectionType).stream()
+            .filter(sql -> sql.contains(INCIDENT_SUMMARY_BACKFILL_PREFIX))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Incident summary backfill is missing from " + resolvedMigrationFile));
+    try (Statement statement = connection.createStatement()) {
       statement.executeUpdate(backfill);
     }
   }
