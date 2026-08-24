@@ -511,6 +511,13 @@
   background: @ask-bg-card;
   border-radius: @ask-user-card-radius;
   gap: 8px;
+
+  // Collapsed rail: drop the card box so the inbox / avatar / switcher become
+  // direct children of `.ask-rail__profile` (which centers + gaps them). Avoids
+  // a nested bordered card crammed into the 65px rail.
+  &--compact {
+    display: contents;
+  }
 }
 
 .ask-profile-trigger {

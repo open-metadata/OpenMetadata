@@ -49,7 +49,10 @@ const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
       data-testid="ask-logo-btn"
       type="button"
       onClick={() => navigate(ROUTES.MY_DATA)}>
-      <Monogram height={24} width={24} />
+      {/* Monogram viewBox is 53x64 (the database-cylinder mark, taller than
+          wide) — keep that aspect so it isn't squished into an oval, and size
+          it to fill the header so the cylinder body reads, not just the top. */}
+      <Monogram height={28} width={23} />
     </button>
   );
 };

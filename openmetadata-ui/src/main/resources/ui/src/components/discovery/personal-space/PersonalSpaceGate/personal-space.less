@@ -21,6 +21,8 @@
 }
 
 .assistant-content:has(.personal-space) {
-  background: var(--color-bg-primary);
+  // Only pin scrolling — the shell already paints `--tw-color-bg-primary`; the
+  // earlier `background: var(--color-bg-primary)` here referenced an undefined
+  // token and knocked out the panel background.
   overflow: hidden;
 }

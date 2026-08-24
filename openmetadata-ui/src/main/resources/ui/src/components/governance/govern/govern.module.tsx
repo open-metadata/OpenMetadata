@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as ClassificationActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-active.svg';
+import { ReactComponent as ClassificationIcon } from '../../../assets/svg/ask-collate-nav-bar/classification-default.svg';
+import { ReactComponent as GlossaryActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-active.svg';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/ask-collate-nav-bar/glossary-default.svg';
 import { ReactComponent as GovernActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/governance-active.svg';
 import { ReactComponent as GovernIcon } from '../../../assets/svg/ask-collate-nav-bar/governanace-default.svg';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import { ReactComponent as MetricsIcon } from '../../../assets/svg/metric.svg';
-import { ReactComponent as OntologyIcon } from '../../../assets/svg/ic-governance.svg';
-import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/workflow.svg';
+import { ReactComponent as MetricsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-active.svg';
+import { ReactComponent as MetricsIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-default.svg';
+import { ReactComponent as OntologyActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/ontology-active.svg';
+import { ReactComponent as OntologyIcon } from '../../../assets/svg/ask-collate-nav-bar/ontology-default.svg';
+import { ReactComponent as WorkflowsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-active.svg';
+import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-default.svg';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -53,30 +58,35 @@ export const governModule: AppModule = {
           {
             key: 'glossary',
             icon: GlossaryIcon,
+            activeIcon: GlossaryActiveIcon,
             labelKey: 'label.glossary',
             path: ROUTES.GLOSSARY,
           },
           {
             key: 'ontology-explorer',
             icon: OntologyIcon,
+            activeIcon: OntologyActiveIcon,
             labelKey: 'label.ontology-explorer',
             path: ROUTES.ONTOLOGY_EXPLORER,
           },
           {
             key: 'tags',
             icon: ClassificationIcon,
+            activeIcon: ClassificationActiveIcon,
             labelKey: 'label.classification',
             path: ROUTES.TAGS,
           },
           {
             key: 'metrics',
             icon: MetricsIcon,
+            activeIcon: MetricsActiveIcon,
             labelKey: 'label.metric-plural',
             path: ROUTES.METRICS,
           },
           {
             key: 'workflows',
             icon: WorkflowsIcon,
+            activeIcon: WorkflowsActiveIcon,
             labelKey: 'label.workflow-plural',
             path: ROUTES.WORKFLOWS,
           },

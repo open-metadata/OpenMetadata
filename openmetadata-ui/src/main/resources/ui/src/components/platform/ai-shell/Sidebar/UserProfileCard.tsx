@@ -45,6 +45,10 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
       className={classNames('ask-user-card', {
         'tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-2 tw:bg-primary tw:rounded-md':
           !compact,
+        // Collapsed rail: no card box — `.ask-rail__profile` already stacks and
+        // centers inbox / avatar / switcher. `display: contents` lets them be
+        // its direct flex children (matching the old SidebarRailProfile).
+        'ask-user-card--compact': compact,
       })}
       data-testid="ask-user-card"
       ref={cardRef}>
