@@ -69,4 +69,3 @@ def test_thick_client_deprecation_warning(client_version, expects_deprecation_wa
         _ = OracleConnection(connection).client
 
     assert ("older than 19 are deprecated" in caplog.text) is expects_deprecation_warning
-    assert ("https://github.com/open-metadata/OpenMetadata/issues/31966" in caplog.text) is expects_deprecation_warning

@@ -85,9 +85,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                     logger.warning(
                         "Oracle Client versions older than %s are deprecated and "
                         "will not be supported in a future OpenMetadata release. "
-                        "Upgrade to Oracle Client %s or newer. "
-                        "See https://github.com/open-metadata/OpenMetadata/issues/31966 "
-                        "for migration details.",
+                        "Upgrade to Oracle Client %s or newer.",
                         MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
                         MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,
                     )
