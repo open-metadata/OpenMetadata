@@ -316,13 +316,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             : SORT_ORDER.DESC,
       });
     } else if (
-      descriptor.column === 'table' ||
-      descriptor.column === 'column'
+      (descriptor.column === 'table' || descriptor.column === 'column') &&
+      isApiSortingEnabled.current
     ) {
-      if (isApiSortingEnabled.current) {
-        isApiSortingEnabled.current = false;
-        fetchTestCases?.(undefined);
-      }
+      isApiSortingEnabled.current = false;
+      fetchTestCases?.(undefined);
     }
   };
 
