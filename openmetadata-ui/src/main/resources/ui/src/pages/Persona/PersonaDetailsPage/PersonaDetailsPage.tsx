@@ -103,7 +103,11 @@ export const PersonaDetailsPage = () => {
 
     if (activeCategory) {
       const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
+        .filter(
+          (item) =>
+            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
+            hasNonDefaultMode
+        )
         .find((category) => category.key === activeCategory);
 
       if (category) {
