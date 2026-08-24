@@ -1024,7 +1024,7 @@ test.describe(
 
         await clickMetricAction(page, 'Export');
         const response = await exportResponse;
-        expect(response.status()).toBe(200);
+        expect(response.status()).toBe(202);
         // Verify exactly one export request was fired (no duplicate calls).
         await expect.poll(() => exportRequestCount).toBe(1);
         await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
