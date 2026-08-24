@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';

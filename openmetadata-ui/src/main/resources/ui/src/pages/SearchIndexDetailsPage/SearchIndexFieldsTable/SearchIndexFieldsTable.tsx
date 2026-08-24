@@ -12,8 +12,7 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnsType, ExpandableConfig } from '../../../components/common/Table/Table.interface';
 import {
   cloneDeep,
   groupBy,

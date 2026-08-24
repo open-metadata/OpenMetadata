@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import React, { ReactNode } from 'react';
 import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';

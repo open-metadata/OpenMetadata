@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';

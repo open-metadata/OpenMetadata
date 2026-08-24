@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';

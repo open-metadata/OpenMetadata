@@ -12,8 +12,7 @@
  */
 
 import { Button, Col, Modal, Row, Typography } from 'antd';
-import { ColumnType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnType, ExpandableConfig } from '../../common/Table/Table.interface';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

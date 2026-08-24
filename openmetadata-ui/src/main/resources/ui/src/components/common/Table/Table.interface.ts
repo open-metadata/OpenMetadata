@@ -28,6 +28,7 @@ export type {
   FilterDropdownProps,
   FilterValue,
   SorterResult,
+  SortOrder,
   TableCurrentDataSource,
   TablePaginationConfig,
   TableRowSelection,

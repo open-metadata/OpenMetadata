@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

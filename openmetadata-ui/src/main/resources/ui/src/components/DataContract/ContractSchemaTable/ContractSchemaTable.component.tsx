@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
-import { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/lib/table';
+import { ColumnsType, ColumnType, TablePaginationConfig } from '../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

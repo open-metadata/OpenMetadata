@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

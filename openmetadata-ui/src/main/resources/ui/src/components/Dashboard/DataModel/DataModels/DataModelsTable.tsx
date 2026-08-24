@@ -12,7 +12,7 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';

@@ -15,7 +15,7 @@ import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {

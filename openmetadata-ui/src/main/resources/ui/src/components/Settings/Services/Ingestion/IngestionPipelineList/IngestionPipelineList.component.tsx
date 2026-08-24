@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Row } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { TableRowSelection } from 'antd/lib/table/interface';
+import { ColumnsType, TableProps, TableRowSelection } from '../../../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';

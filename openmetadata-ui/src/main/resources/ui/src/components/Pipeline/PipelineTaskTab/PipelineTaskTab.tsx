@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Card, Segmented, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {

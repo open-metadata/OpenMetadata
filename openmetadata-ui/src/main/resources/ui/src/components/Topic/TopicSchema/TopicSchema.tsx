@@ -12,12 +12,11 @@
  */
 
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { Key } from 'antd/lib/table/interface';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,

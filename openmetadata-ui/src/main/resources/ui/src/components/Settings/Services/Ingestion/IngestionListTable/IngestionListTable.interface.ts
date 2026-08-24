@@ -12,7 +12,7 @@
  */
 
 import { TableProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import { ReactNode } from 'react';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { SORT_ORDER } from '../../../../../enums/common.enum';

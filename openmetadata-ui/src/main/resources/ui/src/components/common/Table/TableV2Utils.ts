@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ColumnsType } from 'antd/es/table/interface';
-import type {
-  ColumnType,
-  FilterValue,
-  SortOrder,
-} from 'antd/lib/table/interface';
+import type { ColumnType, FilterValue, SortOrder, ColumnsType } from './Table.interface';
 import { isEmpty } from 'lodash';
 import React, { ReactNode } from 'react';
 import type { FlatRow } from './TableV2.interface';

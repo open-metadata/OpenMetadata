@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import {
   cloneDeep,
   groupBy,

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

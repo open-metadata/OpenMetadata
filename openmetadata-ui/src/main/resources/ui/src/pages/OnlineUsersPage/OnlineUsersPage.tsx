@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Select, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';

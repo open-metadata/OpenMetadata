@@ -12,7 +12,7 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, isUndefined, uniqBy } from 'lodash';

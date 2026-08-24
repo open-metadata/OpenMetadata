@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

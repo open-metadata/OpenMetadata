@@ -13,7 +13,7 @@
 
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Dropdown, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';

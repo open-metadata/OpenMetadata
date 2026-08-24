@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import { Space, Tooltip, Typography } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { Fragment } from 'react';

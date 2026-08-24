@@ -77,9 +77,13 @@ module.exports = function transformer(file, api, options) {
   // path's current node, so a declaration already handled by one pass (e.g.
   // replaced in place) is correctly skipped by the other.
   ['type', 'value'].forEach((kind) => {
-    const fromImportsOfKind = fromImports.filter(
-      (path) => importKindOf(path.node) === kind
-    );
+    // Re-query rather than filtering the collection captured above: the first
+    // pass may have removed a declaration (when every specifier moved into an
+    // existing target), after which the stale paths resolve to whatever shifted
+    // into their slot — a `function` node has no `specifiers` and blows up.
+    const fromImportsOfKind = root
+      .find(j.ImportDeclaration, { source: { value: from } })
+      .filter((path) => importKindOf(path.node) === kind);
     if (!fromImportsOfKind.size()) {
       return;
     }

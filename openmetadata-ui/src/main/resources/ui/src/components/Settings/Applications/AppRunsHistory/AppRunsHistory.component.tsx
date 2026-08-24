@@ -12,7 +12,7 @@
  */
 import validator from '@rjsf/validator-ajv8';
 import { Button, Modal, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {

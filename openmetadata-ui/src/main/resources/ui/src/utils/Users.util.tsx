@@ -12,7 +12,7 @@
  */
 
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';

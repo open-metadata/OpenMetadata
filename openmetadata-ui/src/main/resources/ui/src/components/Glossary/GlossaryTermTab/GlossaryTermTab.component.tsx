@@ -32,7 +32,7 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnsType, ExpandableConfig } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

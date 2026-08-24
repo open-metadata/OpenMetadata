@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FilterValue } from 'antd/lib/table/interface';
+import { FilterValue } from '../components/common/Table/Table.interface';
 import { isEmpty } from 'lodash';
 import { TagsData } from 'Models';
 import { useCallback, useMemo, useState } from 'react';

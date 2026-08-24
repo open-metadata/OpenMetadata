@@ -12,7 +12,7 @@
  */
 
 import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

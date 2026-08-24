@@ -14,7 +14,7 @@
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
-import { ColumnsType, TableProps } from 'antd/lib/table';
+import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

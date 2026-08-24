@@ -23,8 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnsType, ExpandableConfig } from '../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';

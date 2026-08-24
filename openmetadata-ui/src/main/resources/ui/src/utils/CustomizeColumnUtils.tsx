@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnType } from 'antd/lib/table';
-import { TableColumnDropdownList } from '../components/common/Table/Table.interface';
+import { TableColumnDropdownList, ColumnType } from '../components/common/Table/Table.interface';
 
 /**
  * Get customizable column details for table dropdown

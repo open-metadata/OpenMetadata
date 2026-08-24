@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ColumnsType, ColumnType } from 'antd/lib/table';
+import { ColumnsType, ColumnType } from '../components/common/Table/Table.interface';
 import classNames from 'classnames';
 import { lazy } from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';

@@ -12,8 +12,7 @@
  */
 
 import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
-import { ColumnsType, TableProps } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnsType, TableProps, ExpandableConfig } from '../../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

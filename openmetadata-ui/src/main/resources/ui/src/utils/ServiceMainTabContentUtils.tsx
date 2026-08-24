@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';

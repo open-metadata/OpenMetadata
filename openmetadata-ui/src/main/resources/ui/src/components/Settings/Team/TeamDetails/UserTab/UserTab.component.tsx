@@ -12,7 +12,7 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';

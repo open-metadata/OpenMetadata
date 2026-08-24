@@ -12,7 +12,7 @@
  */
 import { Menu } from 'antd';
 import Checkbox, { CheckboxChangeEvent } from 'antd/lib/checkbox/Checkbox';
-import { FilterDropdownProps } from 'antd/lib/table/interface';
+import { FilterDropdownProps } from '../../common/Table/Table.interface';
 import { startCase } from 'lodash';
 import React from 'react';
 

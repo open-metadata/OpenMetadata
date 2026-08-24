@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

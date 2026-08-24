@@ -141,3 +141,14 @@ defineToPathTest(
   `import type { ColumnsType } from 'antd/lib/table';`,
   `import type { ColumnsType } from './Table.interface';`
 );
+
+// Regression: when every specifier of a type-only import moves into a target
+// that already has a type-only import, the declaration is removed. The second
+// pass of the kind loop used to re-filter a stale collection, whose paths then
+// resolved to the next statement — `path.node.specifiers is not iterable`.
+defineToPathTest(
+  'survives a full type-only move into an existing type-only target',
+  'src/components/common/Table/TableV2Utils.ts',
+  `import type { ColumnsType } from 'antd/lib/table';\nimport type { ColumnType } from './Table.interface';\n\nexport function noop() {}`,
+  `import type { ColumnType, ColumnsType } from './Table.interface';\n\nexport function noop() {}`
+);

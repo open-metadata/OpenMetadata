@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

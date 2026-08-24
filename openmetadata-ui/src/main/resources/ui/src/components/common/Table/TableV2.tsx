@@ -41,14 +41,14 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
-import type { ColumnsType } from 'antd/es/table/interface';
 import type {
   ColumnType,
   FilterValue,
   SorterResult,
   TableCurrentDataSource,
   TablePaginationConfig,
-} from 'antd/lib/table/interface';
+  ColumnsType,
+} from './Table.interface';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import React, {
