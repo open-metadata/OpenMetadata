@@ -16,12 +16,17 @@ import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { IconComponent } from '../AppModule.types';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
 } from '../appModeExtensions';
+import MoreNavPopover from './MoreNavPopover';
+import { MainNavItem } from './navConfig';
+import { MainNavNode } from './sidebarCustomization';
 import SidebarBrand from './SidebarBrand';
+import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 
@@ -53,7 +58,11 @@ interface RailIconState {
 }
 
 export interface RailProps {
-  items: RailItem[];
+  /**
+   * Ordered top-level render nodes — regular items plus the "More" overflow
+   * group — after the persona's sidebar customization has been applied.
+   */
+  nodes: MainNavNode[];
   onToggle: () => void;
 }
 
@@ -122,10 +131,24 @@ const RailNavButton: React.FC<{ item: RailItem }> = ({ item }) => {
   );
 };
 
-const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
+const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const activeNavKey = useActiveNavKey();
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarRailFooter();
+
+  const toRailItem = (item: MainNavItem): RailItem => ({
+    key: item.key,
+    icon: item.collapsedIcon ?? item.icon,
+    activeIcon: item.activeIcon,
+    hoverIcon: item.hoverIcon,
+    pressedIcon: item.pressedIcon,
+    label: t(item.labelKey),
+    href: item.action.path,
+    onClick: () => navigate(item.action.path),
+    isActive: activeNavKey === item.key,
+  });
 
   return (
     <div className="ask-rail" data-testid="ask-rail">
@@ -148,9 +171,16 @@ const Rail: React.FC<RailProps> = ({ items, onToggle }) => {
       </div>
 
       <nav className="ask-rail__nav">
-        {items.map((item) => (
-          <RailNavButton item={item} key={item.key} />
-        ))}
+        {nodes.map((node) =>
+          node.type === 'more' ? (
+            <MoreNavPopover items={node.children} key="more" variant="rail" />
+          ) : (
+            <RailNavButton
+              item={toRailItem(node.item)}
+              key={node.item.key}
+            />
+          )
+        )}
       </nav>
 
       <div className="ask-rail__profile">

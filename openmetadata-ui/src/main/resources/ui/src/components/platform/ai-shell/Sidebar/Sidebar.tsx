@@ -29,7 +29,7 @@ import { buildMainNavItems, resolveActiveSubNavKey } from './navConfig';
 import Rail, { RailItem } from './Rail';
 import SubPanel from './SubPanel';
 import SubRail from './SubRail';
-import { useActiveNavKey } from './useActiveNavKey';
+import { useCustomizedMainNav } from './useCustomizedMainNav';
 import './sidebar.less';
 
 const Sidebar: React.FC = () => {
@@ -37,15 +37,15 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { pathname, state } = useLocation();
   const modules = useAllAppModules();
-  const activeNavKey = useActiveNavKey();
 
   const [collapsed, setCollapsed] = useState(false);
   const [subCollapsed, setSubCollapsed] = useState(false);
 
-  const mainNavItems = useMemo(
-    () => buildMainNavItems(modules),
-    [modules]
-  );
+  const mainNavItems = useMemo(() => buildMainNavItems(modules), [modules]);
+
+  // Apply the selected persona's sidebar customization (order + visibility +
+  // top-level/More split) to the module-derived nav items.
+  const { nodes: mainNavNodes } = useCustomizedMainNav(mainNavItems);
 
   const activeSubNav: SubNavConfig | null = useMemo(() => {
     const moduleId = matchModuleByPathname(pathname, modules);
@@ -93,22 +93,6 @@ const Sidebar: React.FC = () => {
     });
   }, []);
 
-  const railItems: RailItem[] = useMemo(
-    () =>
-      mainNavItems.map((item) => ({
-        key: item.key,
-        icon: item.collapsedIcon ?? item.icon,
-        activeIcon: item.activeIcon,
-        hoverIcon: item.hoverIcon,
-        pressedIcon: item.pressedIcon,
-        label: t(item.labelKey),
-        href: item.action.path,
-        onClick: () => navigate(item.action.path),
-        isActive: activeNavKey === item.key,
-      })),
-    [mainNavItems, activeNavKey, navigate, t]
-  );
-
   const subRailItems: RailItem[] = useMemo(() => {
     if (!activeSubNav) {
       return [];
@@ -149,9 +133,9 @@ const Sidebar: React.FC = () => {
         'ask-sidebar--sub-collapsed': subCollapsed,
       })}
       data-testid="ask-sidebar">
-      <MainPanel items={mainNavItems} onCollapse={handleToggleMain} />
+      <MainPanel nodes={mainNavNodes} onCollapse={handleToggleMain} />
       {showRail ? (
-        <Rail items={railItems} onToggle={handleToggleMain} />
+        <Rail nodes={mainNavNodes} onToggle={handleToggleMain} />
       ) : null}
       {showSubPanel && activeSubNav ? (
         <SubPanel config={activeSubNav} onCollapse={handleToggleSub} />

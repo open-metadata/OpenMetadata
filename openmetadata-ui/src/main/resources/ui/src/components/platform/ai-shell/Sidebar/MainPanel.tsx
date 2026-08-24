@@ -20,7 +20,9 @@ import {
   useAppModeSidebarMainFooter,
 } from '../appModeExtensions';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
+import MoreNavPopover from './MoreNavPopover';
 import NavItem from './NavItem';
+import { MainNavNode } from './sidebarCustomization';
 import SidebarBrand from './SidebarBrand';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
@@ -28,11 +30,14 @@ import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/coll
 
 export interface MainPanelProps {
   onCollapse: () => void;
-  /** Ordered top-level nav items derived from the merged module list. */
-  items: MainNavItem[];
+  /**
+   * Ordered top-level render nodes — regular items plus the "More" overflow
+   * group — after the persona's sidebar customization has been applied.
+   */
+  nodes: MainNavNode[];
 }
 
-const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, items }) => {
+const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const activeItemKey = useActiveNavKey();
@@ -69,7 +74,18 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, items }) => {
       </header>
 
       <nav className="ask-main-panel__nav">
-        {items.map((item) => {
+        {nodes.map((node) => {
+          if (node.type === 'more') {
+            return (
+              <MoreNavPopover
+                items={node.children}
+                key="more"
+                variant="panel"
+              />
+            );
+          }
+
+          const { item } = node;
           // Navigable items render as anchors (href) so the browser's
           // open-in-new-tab affordances work; action-only items keep their
           // click handler.

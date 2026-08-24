@@ -25,6 +25,16 @@ export { Intent } from '../AppModule.types';
 export type NavAction = { kind: 'navigate'; path: string };
 
 /**
+ * Synthetic key for the "More" overflow node in a customized nav. Never a real
+ * module id, so it can't collide with one; the customize editor and the
+ * runtime split both address the overflow group by this key.
+ */
+export const MORE_NAV_KEY = 'more';
+
+/** i18n key for the "More" overflow node's label. */
+export const MORE_NAV_LABEL_KEY = 'label.more';
+
+/**
  * Destination URL for a nav item. Navigable items render as real anchors
  * (`<a href>`) so cmd/ctrl-click, middle-click, and the native right-click
  * "open in new tab" menu all work.
