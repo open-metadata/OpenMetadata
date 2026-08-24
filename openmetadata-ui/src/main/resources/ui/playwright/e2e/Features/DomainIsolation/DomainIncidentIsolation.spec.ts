@@ -91,7 +91,13 @@ const openIncidentManager = async (page: Page): Promise<string[]> => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('incident-filter-bar')).toBeVisible();
+  // Confirms the page actually rendered the incident table rather than stalling on a loader
+  // or error state. `incident-filter-bar` (used for this on main) doesn't exist in 1.13's
+  // IncidentManager.component.tsx, so this asserts on the table itself instead — the same
+  // testid the per-row assertions below already rely on.
+  await expect(
+    page.getByTestId('test-case-incident-manager-table')
+  ).toBeVisible();
 
   const body = await response.json();
 
