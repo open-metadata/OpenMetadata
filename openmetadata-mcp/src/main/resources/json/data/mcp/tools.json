@@ -649,6 +649,86 @@
       }
     },
     {
+      "name": "update_entity",
+      "title": "Update Entity",
+      "description": "Update an entity's governance fields without writing a JSON Patch. Give the fields you want changed and the server fetches the entity, applies them, and computes the patch itself — so you do NOT need to read the entity first to find out whether a field already has a value. Prefer this over patch_entity for description, displayName, owners and tags. Array fields take an explicit mode so nothing is clobbered by accident: 'set' replaces the list, 'add' merges into it, 'remove' subtracts from it. For description, 'append' adds to the existing text instead of replacing it. Use patch_entity when you need a field this tool does not expose.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Type of entity, e.g. table, dashboard, glossaryTerm."
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity to update."
+          },
+          "description": {
+            "type": "string",
+            "description": "New description in Markdown."
+          },
+          "descriptionMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "append"
+            ],
+            "default": "set",
+            "description": "'set' replaces the description; 'append' adds to the existing text after a blank line. Use 'append' when adding a note to curated text you do not want to lose."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name."
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "User or team names. Unresolvable names fail the call rather than being dropped."
+          },
+          "ownersMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "add",
+              "remove"
+            ],
+            "default": "set",
+            "description": "'set' replaces the owner list, 'add' merges, 'remove' subtracts."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tag FQNs such as 'PII.Sensitive' or 'Tier.Tier1'."
+          },
+          "tagsMode": {
+            "type": "string",
+            "enum": [
+              "set",
+              "add",
+              "remove"
+            ],
+            "default": "set",
+            "description": "'set' replaces the tag list, 'add' merges, 'remove' subtracts."
+          }
+        },
+        "required": [
+          "entityType",
+          "fqn"
+        ]
+      },
+      "annotations": {
+        "title": "Update Entity",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "name": "patch_entity",
       "title": "Patch Entity",
       "annotations": {
@@ -656,7 +736,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Patches an existing Entity based on a JSONPatch. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "Low-level JSON Patch escape hatch. For description, displayName, owners or tags prefer update_entity, which takes typed fields and does not require you to read the entity first. Use this tool for fields update_entity does not expose. Patches an existing Entity based on a JSONPatch. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {

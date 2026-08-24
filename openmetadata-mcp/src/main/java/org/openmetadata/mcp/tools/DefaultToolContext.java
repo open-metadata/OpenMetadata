@@ -118,6 +118,10 @@ public class DefaultToolContext {
           tool = new GlossaryTermTool();
           result = tool.execute(authorizer, limits, securityContext, params);
           break;
+        case "update_entity":
+          tool = new UpdateEntityTool();
+          result = tool.execute(authorizer, securityContext, params);
+          break;
         case "patch_entity":
           tool = new PatchEntityTool();
           result = tool.execute(authorizer, securityContext, params);

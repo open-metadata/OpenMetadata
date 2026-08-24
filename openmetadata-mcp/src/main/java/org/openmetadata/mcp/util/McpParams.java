@@ -80,6 +80,16 @@ public final class McpParams {
    * others {@code "lineage"} — and a model writing the call by hand does both. Accepting either
    * costs one branch and removes a class of retry the caller cannot diagnose from a type error.
    */
+  /** A string parameter, or {@code fallback} when absent or blank. */
+  public static String getString(Map<String, Object> params, String key, String fallback) {
+    Object raw = params == null ? null : params.get(key);
+    String value = fallback;
+    if (raw != null && !raw.toString().isBlank()) {
+      value = raw.toString();
+    }
+    return value;
+  }
+
   public static List<String> getStringList(Map<String, Object> params, String key) {
     Object raw = params == null ? null : params.get(key);
     List<String> values = new ArrayList<>();
