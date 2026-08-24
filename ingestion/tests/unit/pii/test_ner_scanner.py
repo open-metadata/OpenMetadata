@@ -80,8 +80,8 @@ def test_get_highest_score_label(scanner):
     ) == ("PII.Sensitive", 1.0)
 
     # Equal weighted totals (0.3 * 5 == 0.5 * 3) must resolve to the higher confidence,
-    # not to whichever entity was recorded first. A dashed US SSN matches the weak
-    # driving-license pattern on every row while US_SSN only matches a subset.
+    # not to whichever entity was recorded first: a weak pattern matching every row
+    # reaches the same total as a strong one matching a subset.
     assert scanner.get_highest_score_label(
         {
             "US_DRIVER_LICENSE": StringAnalysis(score=0.3, appearances=5),
