@@ -303,9 +303,7 @@ def test_timeout_keeps_last_observed_run_after_transient_poll_failure(
                 }
             ),
             None,
-            FakeAirflowResponse(
-                {"dag_run_id": "run-1", "state": "running"}
-            ),
+            FakeAirflowResponse({"dag_run_id": "run-1", "state": "running"}),
             FakeAirflowResponse(
                 {
                     "task_instances": [
@@ -351,9 +349,7 @@ def test_timeout_diagnoses_known_triggered_run_after_poll_failures(
         get_responses=[
             requests.exceptions.ConnectionError("first poll failed"),
             requests.exceptions.ConnectionError("second poll failed"),
-            FakeAirflowResponse(
-                {"dag_run_id": "manual__target", "state": "running"}
-            ),
+            FakeAirflowResponse({"dag_run_id": "manual__target", "state": "running"}),
             FakeAirflowResponse(
                 {
                     "task_instances": [
@@ -454,17 +450,13 @@ def test_task_diagnostics_encode_run_ids_and_paginate(
         get_responses=[
             FakeAirflowResponse(
                 {
-                    "task_instances": [
-                        {"task_id": "first-task", "state": "running"}
-                    ],
+                    "task_instances": [{"task_id": "first-task", "state": "running"}],
                     "total_entries": 2,
                 }
             ),
             FakeAirflowResponse(
                 {
-                    "task_instances": [
-                        {"task_id": "second-task", "state": "queued"}
-                    ],
+                    "task_instances": [{"task_id": "second-task", "state": "queued"}],
                     "total_entries": 2,
                 }
             ),
