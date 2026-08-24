@@ -18,7 +18,12 @@ export interface IconProps {
   iconValue: string | undefined;
   size?: number;
   className?: string;
-  style?: React.CSSProperties;
+  /** Layout/positioning styles (e.g. margin, flexShrink). Applied to the element
+   * occupying space in the caller's layout, regardless of loading state. */
+  wrapperStyle?: React.CSSProperties;
+  /** Cosmetic styles for the rendered icon/image itself (e.g. borderRadius). Never
+   * applied to the loading skeleton. */
+  imageStyle?: React.CSSProperties;
   strokeWidth?: number;
   alt?: string;
   fallback?: ReactNode;
@@ -37,7 +42,8 @@ export const Icon: FC<IconProps> = ({
   fallback = null,
   size = 24,
   className = '',
-  style = {},
+  wrapperStyle,
+  imageStyle = {},
   strokeWidth = 1.5,
   alt = 'icon',
 }) => {
@@ -57,7 +63,7 @@ export const Icon: FC<IconProps> = ({
       <IconComponent
         className={className}
         size={size}
-        style={{ strokeWidth, ...style }}
+        style={{ strokeWidth, ...wrapperStyle, ...imageStyle }}
       />
     );
   }
@@ -67,19 +73,13 @@ export const Icon: FC<IconProps> = ({
   }
 
   return (
-    <>
+    <span className={className} style={wrapperStyle}>
       {loadState === 'loading' && (
-        <Skeleton
-          className={className}
-          height={size}
-          variant="circular"
-          width={size}
-        />
+        <Skeleton height={size} variant="circular" width={size} />
       )}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
-        className={className}
         data-testid="icon-image"
         src={getTagImageSrc(iconValue)}
         style={{
@@ -87,11 +87,11 @@ export const Icon: FC<IconProps> = ({
           height: size,
           objectFit: 'contain',
           display: loadState === 'loading' ? 'none' : undefined,
-          ...style,
+          ...imageStyle,
         }}
         onError={() => setLoadState('error')}
         onLoad={() => setLoadState('loaded')}
       />
-    </>
+    </span>
   );
 };

@@ -150,7 +150,7 @@ const TagsV1 = ({
         fallback={startIcon}
         iconValue={tag.style?.iconURL}
         size={12}
-        style={{ marginRight: 4, flexShrink: 0 }}
+        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
       />
     );
   }, [hideIcon, tag.style?.iconURL, startIcon]);

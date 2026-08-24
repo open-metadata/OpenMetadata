@@ -124,6 +124,36 @@ describe('Icon', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should apply wrapperStyle to the wrapper regardless of loading state', () => {
+      const { container, getByTestId } = render(
+        <Icon
+          iconValue="http://example.com/image.png"
+          wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
+        />
+      );
+
+      const wrapper = container.firstChild;
+
+      expect(wrapper).toHaveStyle({ marginRight: '4px', flexShrink: 0 });
+
+      fireEvent.load(getByTestId('icon-image'));
+
+      expect(wrapper).toHaveStyle({ marginRight: '4px', flexShrink: 0 });
+    });
+
+    it('should not apply wrapperStyle to the loading skeleton itself', () => {
+      const { container } = render(
+        <Icon
+          iconValue="http://example.com/image.png"
+          wrapperStyle={{ marginRight: 4 }}
+        />
+      );
+
+      expect(
+        container.querySelector('[aria-hidden="true"]')
+      ).not.toHaveStyle({ marginRight: '4px' });
+    });
+
     it('should render the img element with the resolved src', () => {
       const { getByTestId } = render(
         <Icon iconValue="http://example.com/image.png" />
@@ -161,20 +191,23 @@ describe('Icon', () => {
       expect(getByTestId('icon-image')).toHaveAttribute('alt', 'icon');
     });
 
-    it('should apply custom className to img element', () => {
-      const { getByTestId } = render(
+    it('should apply custom className to the wrapper element', () => {
+      const { container } = render(
         <Icon className="custom-class" iconValue="icon.png" />
       );
 
-      expect(getByTestId('icon-image')).toHaveClass('custom-class');
+      expect(container.firstChild).toHaveClass('custom-class');
     });
 
-    it('should apply custom styles to img element', () => {
-      const { getByTestId } = render(
-        <Icon iconValue="icon.png" style={{ borderRadius: '50%' }} />
+    it('should apply imageStyle to the img element only', () => {
+      const { container, getByTestId } = render(
+        <Icon iconValue="icon.png" imageStyle={{ borderRadius: '50%' }} />
       );
 
       expect(getByTestId('icon-image')).toHaveStyle({ borderRadius: '50%' });
+      expect(
+        container.querySelector('[aria-hidden="true"]')
+      ).not.toHaveStyle({ borderRadius: '50%' });
     });
 
     it('should fall back to fallback content when the image fails to load', () => {

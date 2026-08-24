@@ -94,7 +94,7 @@ const TagChip: FC<TagChipProps> = ({
         fallback={<Tag01 size={sizeStyles[size].icon} />}
         iconValue={icon}
         size={12}
-        style={{ marginRight: 4, flexShrink: 0 }}
+        wrapperStyle={{ marginRight: 4, flexShrink: 0 }}
       />
     ),
     [icon, size]
