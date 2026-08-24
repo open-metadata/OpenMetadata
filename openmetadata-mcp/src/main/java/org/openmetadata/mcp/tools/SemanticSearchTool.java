@@ -287,7 +287,11 @@ public class SemanticSearchTool implements McpTool {
     copySlim(hit, cleaned, "tier", McpResponseTrim::slimTag);
     copySlim(hit, cleaned, "tags", McpResponseTrim::slimTag);
     copyColumnNames(hit, cleaned);
-    copyIfPresent(hit, cleaned, "certification");
+    copySlim(
+        hit,
+        cleaned,
+        "certification",
+        value -> McpResponseTrim.slimCertification(value, System.currentTimeMillis()));
     // Metric facts: a metric summary without its expression, granularity, type and unit cannot be
     // told apart from a similarly named metric, which forced a per-result get_entity_details call.
     copyMetricExpression(hit, cleaned);

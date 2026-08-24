@@ -39,6 +39,7 @@ public class SearchMetadataTool implements McpTool {
       Set.of("service", "database", "databaseSchema");
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
+  private static final String CERTIFICATION_FIELD = "certification";
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -533,6 +534,8 @@ public class SearchMetadataTool implements McpTool {
       result = McpResponseTrim.slimRefs(value);
     } else if (TAG_FIELDS.contains(field)) {
       result = McpResponseTrim.slimTag(value);
+    } else if (CERTIFICATION_FIELD.equals(field)) {
+      result = McpResponseTrim.slimCertification(value, System.currentTimeMillis());
     }
     return result;
   }

@@ -129,6 +129,58 @@ public final class McpResponseTrim {
     return result;
   }
 
+  /**
+   * Collapses a certification to its FQN plus a resolved validity, e.g. {@code
+   * "Certification.Gold (EXPIRED 2026-07-29)"}.
+   *
+   * <p>Two problems in one field. Size: the nested label carries a description, a style colour and
+   * an {@code iconURL}, repeated verbatim on every certified hit — measured at 32.2% of one live
+   * search response. Correctness, which matters more: expiry ships only as raw epoch millis nested
+   * under {@code tagLabel.metadata.expiryDate}, with {@code state: "Confirmed"} beside it. An agent
+   * asked "which of this is trustworthy" reads Gold + Confirmed and reports a lapsed badge as a
+   * live trust signal unless it does epoch arithmetic. Resolving it here means it cannot.
+   */
+  public static Object slimCertification(Object value, long nowMillis) {
+    Object result = value;
+    if (value instanceof Map<?, ?> certification) {
+      Object label = certification.get("tagLabel");
+      Map<?, ?> tag = label instanceof Map<?, ?> inner ? inner : certification;
+      Object fqn = tag.get("tagFQN");
+      if (fqn != null) {
+        result = fqn + expirySuffix(certification, tag, nowMillis);
+      }
+    }
+    return result;
+  }
+
+  private static String expirySuffix(Map<?, ?> certification, Map<?, ?> tag, long nowMillis) {
+    Object expiry = expiryOf(certification, tag);
+    String suffix = "";
+    if (expiry instanceof Number millis) {
+      String date =
+          java.time.Instant.ofEpochMilli(millis.longValue())
+              .atZone(java.time.ZoneOffset.UTC)
+              .toLocalDate()
+              .toString();
+      suffix =
+          millis.longValue() < nowMillis
+              ? " (EXPIRED " + date + ")"
+              : " (valid until " + date + ")";
+    }
+    return suffix;
+  }
+
+  private static Object expiryOf(Map<?, ?> certification, Map<?, ?> tag) {
+    Object expiry = certification.get("expiryDate");
+    if (expiry == null && tag.get("metadata") instanceof Map<?, ?> metadata) {
+      expiry = metadata.get("expiryDate");
+    }
+    if (expiry == null) {
+      expiry = tag.get("expiryDate");
+    }
+    return expiry;
+  }
+
   /** Cuts {@code value} to {@code maxLength} characters plus an ellipsis when it is longer. */
   public static String truncate(String value, int maxLength) {
     String result = value;

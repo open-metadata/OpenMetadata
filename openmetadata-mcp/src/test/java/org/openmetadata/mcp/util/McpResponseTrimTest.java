@@ -204,4 +204,40 @@ class McpResponseTrimTest {
         "a 4xx that already names the field and its valid values is exactly what we want the model "
             + "to read - summarising it would remove the fix");
   }
+
+  @Test
+  void slimCertificationResolvesExpiryInsteadOfShippingEpochMillis() {
+    long now = 1_756_000_000_000L;
+    Map<String, Object> label = new LinkedHashMap<>();
+    label.put("tagFQN", "Certification.Gold");
+    label.put("state", "Confirmed");
+    label.put("description", "Gold certified Data Asset.");
+    label.put("iconURL", "GoldCertification.svg");
+    Map<String, Object> certification = new LinkedHashMap<>();
+    certification.put("tagLabel", label);
+    certification.put("expiryDate", 1_785_312_839_519L);
+
+    Object lapsed = McpResponseTrim.slimCertification(certification, 1_790_000_000_000L);
+    assertEquals(
+        "Certification.Gold (EXPIRED 2026-07-29)",
+        lapsed,
+        "a lapsed badge beside state=Confirmed reads as trustworthy unless expiry is resolved here");
+
+    Object live = McpResponseTrim.slimCertification(certification, now);
+    assertTrue(live.toString().startsWith("Certification.Gold (valid until "), live.toString());
+  }
+
+  @Test
+  void slimCertificationKeepsTheLabelWhenThereIsNoExpiry() {
+    Map<String, Object> certification =
+        Map.of("tagLabel", Map.of("tagFQN", "Certification.Bronze"));
+    assertEquals(
+        "Certification.Bronze",
+        McpResponseTrim.slimCertification(certification, 1L),
+        "no expiry means no claim about validity - do not invent one");
+    assertEquals(
+        "not-a-map",
+        McpResponseTrim.slimCertification("not-a-map", 1L),
+        "an unrecognised shape passes through rather than being emptied");
+  }
 }
