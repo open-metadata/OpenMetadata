@@ -54,6 +54,7 @@ import org.openmetadata.service.notifications.template.testing.EntityFixtureLoad
 import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
 import org.openmetadata.service.notifications.template.testing.MockChangeEventRegistry;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -194,6 +195,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   }
 
   public void initOrUpdateSeedDataFromResources() throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<NotificationTemplate> seedTemplates = getEntitiesFromSeedData();
 
     for (NotificationTemplate seedTemplate : seedTemplates) {

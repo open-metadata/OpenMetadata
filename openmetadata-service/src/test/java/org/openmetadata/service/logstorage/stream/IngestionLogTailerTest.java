@@ -208,6 +208,29 @@ class IngestionLogTailerTest {
   }
 
   @Test
+  void aPersistentSourceFailureEndsTheStreamWithAnErrorEvent() {
+    IngestionLogTailer tailer = newTailer();
+    RecordingSseEventSink sink = attach(tailer);
+
+    source.failNext(new LogSourceUnavailableException("Kubernetes pod status could not be parsed"));
+    tailer.poll();
+
+    assertTrue(
+        tailer.isTerminated(),
+        "a failure that will not resolve on a later poll must end the stream, not be retried");
+    assertTrue(sink.isClosed());
+    LogStreamEvent errorEvent =
+        sink.events().stream()
+            .filter(event -> event.getEventType() == LogStreamEventType.ERROR)
+            .findFirst()
+            .orElse(null);
+    assertEquals(
+        "Kubernetes pod status could not be parsed",
+        errorEvent == null ? null : errorEvent.getMessage(),
+        "the viewer must see why the stream ended rather than an empty stream until idle timeout");
+  }
+
+  @Test
   void aRunWithNoStatusRowIsGivenTimeToStartWritingBeforeTheStreamCloses() {
     runState.set(RunState.UNKNOWN);
     IngestionLogTailer tailer = newTailer();
