@@ -74,6 +74,55 @@ export const openAddTeamModal = async (
   return addTeamModal;
 };
 
+/**
+ * Land on Settings > Teams with the hierarchy table settled.
+ *
+ * The table spins on its own child-teams fetch plus the per-team asset-count
+ * aggregation, so navigation alone is not enough — a caller that acts right
+ * after the click drags rows that are still being repainted. Wait on the two
+ * calls that gate the first paint, then on the table itself.
+ */
+export const visitTeamsPage = async (page: Page) => {
+  const organizationResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') && response.ok()
+  );
+  const permissionResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/permissions/team/name/') && response.ok()
+  );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+  await Promise.all([permissionResponse, organizationResponse]);
+
+  await expect(page.getByTestId('team-hierarchy-table')).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Hard-delete a team created through the UI, children included.
+ *
+ * Specs that build teams through the UI have no entity handle to call
+ * `TeamClass.delete` on, so resolve the id by name first. A missing team is not
+ * an error — the spec may have deleted it as part of what it asserts.
+ */
+export const hardDeleteTeamByName = async (
+  apiContext: APIRequestContext,
+  teamName: string
+) => {
+  const teamResponse = await apiContext.get(
+    `/api/v1/teams/name/${encodeURIComponent(teamName)}`
+  );
+
+  if (teamResponse.ok()) {
+    const { id } = await teamResponse.json();
+
+    await apiContext.delete(
+      `/api/v1/teams/${id}?hardDelete=true&recursive=true`
+    );
+  }
+};
+
 interface SearchTeamOptions {
   expectEmptyResults?: boolean;
   expectNotFound?: boolean;
