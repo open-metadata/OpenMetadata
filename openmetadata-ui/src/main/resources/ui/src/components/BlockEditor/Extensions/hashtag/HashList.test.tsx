@@ -248,5 +248,18 @@ describe('HashList', () => {
 
       expect(result).toBe(false);
     });
+
+    it('should wire the breadcrumb text into a tooltip trigger inside the suggestion menu wrapper', () => {
+      render(<HashList {...mockProps} />);
+
+      const breadcrumbTrigger = screen
+        .getAllByText('Database/Schema')[0]
+        .closest('[data-rac]');
+
+      expect(breadcrumbTrigger).not.toBeNull();
+      expect(document.getElementById('hashtag-viewport')).toContainElement(
+        breadcrumbTrigger as HTMLElement
+      );
+    });
   });
 });
