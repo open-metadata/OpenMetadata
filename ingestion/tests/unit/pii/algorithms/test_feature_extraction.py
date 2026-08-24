@@ -10,6 +10,8 @@
 #  limitations under the License.
 from typing import Mapping, Optional  # noqa: UP035
 
+import pytest
+
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
     extract_pii_from_column_names,
@@ -232,12 +234,38 @@ def test_aadhaar_extraction(analyzer):
         "0249-3285-1294",
     ]
     context = ["aadhaar", "govt id", "uidai"]
-    extracted = extract_pii_tags(analyzer, samples, context=context)
+    extracted = extract_pii_tags(
+        analyzer,
+        samples,
+        context=context,
+        recognizer_result_patcher=date_time_patcher,
+    )
     assert get_top_pii_tag(extracted) == PIITag.IN_AADHAAR, (
         PIITag.IN_AADHAAR,
         samples,
         extracted,
     )
+
+
+@pytest.mark.parametrize("sample", ["2161 6729 3627", "8384-2795-9970"])
+def test_aadhaar_extraction_accepts_supported_separators(analyzer, sample):
+    extracted = extract_pii_tags(
+        analyzer,
+        [sample],
+        context=["aadhaar", "govt id", "uidai"],
+    )
+
+    assert get_top_pii_tag(extracted) == PIITag.IN_AADHAAR, extracted
+
+
+def test_aadhaar_extraction_does_not_match_dashed_credit_card(analyzer):
+    extracted = extract_pii_tags(
+        analyzer,
+        ["5105-1051-0510-5100"],
+        context=["card", "number"],
+    )
+
+    assert PIITag.IN_AADHAAR not in extracted
 
 
 def test_indian_passport_extraction(analyzer):
