@@ -13,6 +13,7 @@
 
 import { ComponentType } from 'react';
 import { create } from 'zustand';
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 
 /**
  * Runtime registry of authenticated-routes components keyed by AppMode.
@@ -31,9 +32,21 @@ import { create } from 'zustand';
  * fallback that runs whenever no other mode is active or registered.
  */
 
+export interface AppModeMetadata {
+  /** i18n key for the human-readable label. */
+  labelKey: string;
+  /** Optional SVG component for pickers. */
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+}
+
 interface AppRoutesRegistryStore {
   routes: Record<string, ComponentType>;
-  registerRoutes: (mode: string, component: ComponentType) => void;
+  metadata: Record<string, AppModeMetadata>;
+  registerRoutes: (
+    mode: string,
+    component: ComponentType,
+    metadata?: AppModeMetadata
+  ) => void;
   /**
    * Remove a previously-registered mode. Use when the source plugin
    * becomes unavailable mid-session (e.g., admin uninstalls the app)
@@ -44,18 +57,36 @@ interface AppRoutesRegistryStore {
   unregisterRoutes: (mode: string) => void;
 }
 
+// Fallback so callers that predate the metadata arg still yield a
+// sensible label. Explicit metadata always wins.
+const FALLBACK_METADATA: Record<string, AppModeMetadata> = {
+  [DEFAULT_APP_MODE]: { labelKey: 'label.default' },
+  [AI_APP_MODE]: { labelKey: 'label.ai' },
+};
+
+const GENERIC_METADATA: AppModeMetadata = { labelKey: 'label.app-mode' };
+
 export const useAppRoutesRegistry = create<AppRoutesRegistryStore>((set) => ({
   routes: {},
-  registerRoutes: (mode, component) =>
-    set((state) => ({ routes: { ...state.routes, [mode]: component } })),
+  metadata: {},
+  registerRoutes: (mode, component, metadata) =>
+    set((state) => ({
+      routes: { ...state.routes, [mode]: component },
+      metadata: {
+        ...state.metadata,
+        [mode]: metadata ?? FALLBACK_METADATA[mode] ?? GENERIC_METADATA,
+      },
+    })),
   unregisterRoutes: (mode) =>
     set((state) => {
-      if (!(mode in state.routes)) {
+      if (!(mode in state.routes) && !(mode in state.metadata)) {
         return state;
       }
-      const next = { ...state.routes };
-      delete next[mode];
+      const nextRoutes = { ...state.routes };
+      delete nextRoutes[mode];
+      const nextMetadata = { ...state.metadata };
+      delete nextMetadata[mode];
 
-      return { routes: next };
+      return { routes: nextRoutes, metadata: nextMetadata };
     }),
 }));

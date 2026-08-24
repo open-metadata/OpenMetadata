@@ -12,6 +12,7 @@
  */
 
 import { act, ComponentType } from 'react';
+import { DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 
 const FakeRoutes: ComponentType = () => null;
@@ -85,5 +86,49 @@ describe('useAppRoutesRegistry', () => {
     // Reference identity should be preserved so consumers don't
     // re-render on a no-op unregister.
     expect(useAppRoutesRegistry.getState().routes).toBe(before);
+  });
+});
+
+describe('metadata', () => {
+  const Component = () => null;
+
+  beforeEach(() => {
+    useAppRoutesRegistry.setState({ routes: {}, metadata: {} });
+  });
+
+  it('registerRoutes stores explicit metadata', () => {
+    useAppRoutesRegistry.getState().registerRoutes('ai', Component, {
+      labelKey: 'label.ai',
+    });
+
+    expect(useAppRoutesRegistry.getState().metadata.ai).toEqual({
+      labelKey: 'label.ai',
+    });
+  });
+
+  it('registerRoutes falls back to the mode-keyed default when metadata omitted', () => {
+    useAppRoutesRegistry.getState().registerRoutes(DEFAULT_APP_MODE, Component);
+
+    expect(useAppRoutesRegistry.getState().metadata[DEFAULT_APP_MODE]).toEqual({
+      labelKey: 'label.default',
+    });
+  });
+
+  it('registerRoutes falls back to a generic metadata for unknown modes when metadata omitted', () => {
+    useAppRoutesRegistry.getState().registerRoutes('custom-mode', Component);
+
+    expect(useAppRoutesRegistry.getState().metadata['custom-mode']).toEqual({
+      labelKey: 'label.app-mode',
+    });
+  });
+
+  it('unregisterRoutes removes both routes and metadata', () => {
+    useAppRoutesRegistry.getState().registerRoutes('ai', Component, {
+      labelKey: 'label.ai',
+    });
+    useAppRoutesRegistry.getState().unregisterRoutes('ai');
+
+    expect(useAppRoutesRegistry.getState().routes.ai).toBeUndefined();
+    expect(useAppRoutesRegistry.getState().metadata.ai).toBeUndefined();
   });
 });
