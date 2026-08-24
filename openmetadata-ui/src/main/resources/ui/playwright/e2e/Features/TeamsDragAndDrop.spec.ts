@@ -92,13 +92,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.beforeEach(async ({ page }) => {
-      // Marked here rather than in each test body: hook time counts against the
-      // test timeout, and this hook re-enters Settings > Teams, whose landing
-      // waits on the hierarchy table's asset-count aggregation. That grows with
-      // the catalog, so on a long-lived deployment the hook alone can outlast
-      // the 60s default — by the time a test body ran, it would be too late.
-      test.slow();
-
       await redirectToHomePage(page);
       await visitTeamsPage(page);
     });
@@ -119,6 +112,7 @@ test.describe(
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
+      test.slow(true);
       for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
         await addTeamHierarchy(page, teamDetails);
 
@@ -166,6 +160,7 @@ test.describe(
       test(`Should drag and drop on ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, async ({
         page,
       }) => {
+        test.slow(true);
         // Nested team will be shown once anything is moved under it
         if (index !== 0) {
           await openDragDropDropdown(page, teams[index - 1]);
@@ -189,6 +184,7 @@ test.describe(
     }
 
     test(`Should drag and drop team on table level`, async ({ page }) => {
+      test.slow(true);
       // Open department team dropdown as it is moved under it from last test
       await openDragDropDropdown(page, teamNameDepartment);
 
