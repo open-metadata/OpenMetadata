@@ -30,7 +30,7 @@ import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
-import { Transi18next } from './i18next/LocalUtil';
+import { t, Transi18next } from './i18next/LocalUtil';
 
 const MetadataAgentsWidgetLazy = React.lazy(
   () =>
@@ -186,6 +186,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
           i18nKey={localizationKey}
           renderElement={
             <a
+              aria-label={t('label.learn-more')}
               href={docsLink}
               rel="noreferrer"
               style={{ color: theme.primaryColor }}

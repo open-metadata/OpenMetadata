@@ -85,10 +85,15 @@ jest.mock(
         visible ? (
           <div data-testid="edit-modal">
             <button
+              aria-label="Save"
               data-testid="modal-save"
               onClick={() => onSave('Updated description')}
             />
-            <button data-testid="modal-cancel" onClick={onCancel} />
+            <button
+              aria-label="Cancel"
+              data-testid="modal-cancel"
+              onClick={onCancel}
+            />
           </div>
         ) : null
       ),

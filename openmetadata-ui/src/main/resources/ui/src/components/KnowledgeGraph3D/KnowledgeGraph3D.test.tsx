@@ -72,9 +72,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label?: string;
     onChange?: (checked: boolean) => void;
   }) => (
-    <label>
+    <label htmlFor={label}>
       <input
+        aria-label={label}
         checked={Boolean(isSelected)}
+        id={label}
         type="checkbox"
         onChange={(event) => onChange?.(event.target.checked)}
       />
