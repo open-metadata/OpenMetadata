@@ -43,6 +43,7 @@ public class GlossaryTermTool implements McpTool {
     if (params.containsKey("reviewers")) {
       createGlossaryTerm.setReviewers(CommonUtils.getTeamsOrUsers(params.get("reviewers")));
     }
+    createGlossaryTerm.setExtension(CommonUtils.extension(params));
 
     GlossaryTerm glossaryTerm =
         glossaryTermMapper.createToEntity(
@@ -59,6 +60,7 @@ public class GlossaryTermTool implements McpTool {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     glossaryTermRepository.prepareInternal(glossaryTerm, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.GLOSSARY_TERM, glossaryTerm);
 
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 

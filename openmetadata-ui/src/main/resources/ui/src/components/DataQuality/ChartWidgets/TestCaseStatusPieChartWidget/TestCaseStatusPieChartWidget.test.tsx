@@ -14,6 +14,7 @@ import '@testing-library/jest-dom/extend-expect';
 import { act, render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
 
@@ -39,12 +40,16 @@ jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
 }));
 
-jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
-  getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
-    pathname: '/data-quality/test-cases',
-    search: `testCaseStatus=${status}`,
-  })),
-}));
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => {
+  const actual = jest.requireActual(
+    '../../../../utils/DataQuality/DataQualityPureUtils'
+  ) as typeof import('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  return {
+    ...actual,
+    getTestCaseTabPath: jest.fn(actual.getTestCaseTabPath),
+  };
+});
 
 jest.mock('../../../../constants/TestSuite.constant', () => ({
   INITIAL_TEST_SUMMARY: {
@@ -229,9 +234,18 @@ describe('TestCaseStatusPieChartWidget', () => {
       failedSegment.click();
     });
 
+    const expectedTitle = encodeURIComponent(
+      `${formatDate(100, true)} -> ${formatDate(200, true)}`
+    );
+
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/observability/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Failed}`,
+      search:
+        `testCaseStatus=${TestCaseStatus.Failed}` +
+        '&lastRunRange%5BstartTs%5D=100' +
+        '&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        `&lastRunRange%5Btitle%5D=${expectedTitle}`,
     });
 
     const { getTestCaseTabPath } = jest.requireMock(

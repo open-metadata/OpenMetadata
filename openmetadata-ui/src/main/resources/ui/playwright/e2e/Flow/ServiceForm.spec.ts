@@ -18,6 +18,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SERVICE_TYPE } from '../../constant/service';
 import {
   CERT_FILE,
+  COLLATE_SAAS_RUNNER,
   lookerFormDetails,
   supersetFormDetails1,
   supersetFormDetails2,
@@ -32,6 +33,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   fillSupersetFormDetails,
+  selectIngestionRunnerFromDropdown,
   selectOneOfOption,
 } from '../../utils/serviceFormUtils';
 import {
@@ -315,6 +317,7 @@ test.describe(
         await page.locator('#service-name').click();
         await page.locator('#service-name').fill(`${SERVICE_NAMES.service2}`);
         await advanceToServiceConnectionStep(page);
+        await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 
         await page.locator(String.raw`#root\/clientId`).clear();
         await page.fill(

@@ -18,12 +18,16 @@ import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
+import { Operation } from '../generated/entity/policies/policy';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { DriveServiceType } from '../generated/entity/services/driveService';
@@ -32,6 +36,7 @@ import { MessagingServiceType } from '../generated/entity/services/messagingServ
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { t } from './i18next/LocalUtil';
+import { checkPermission } from './PermissionsUtils';
 import { replaceAllSpacialCharWith_ } from './StringUtils';
 
 export const getIngestionName = (
@@ -179,10 +184,25 @@ export const getResourceEntityFromServiceCategory = (
     case 'worksheets':
     case ServiceCategory.DRIVE_SERVICES:
       return ResourceEntity.DRIVE_SERVICE;
+
+    case ServiceCategory.SECURITY_SERVICES:
+      return ResourceEntity.SECURITY_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
 };
+
+// Used to decide whether a category-agnostic "Add New Service" entry point (the All Connections
+// tab, the /settings/services landing page) should be shown at all — the user may not be able to
+// create every category, but the button should still appear if they can create at least one.
+export const canCreateAnyServiceCategory = (permissions: UIPermission) =>
+  Object.values(ServiceCategory).some((category) =>
+    checkPermission(
+      Operation.Create,
+      getResourceEntityFromServiceCategory(category),
+      permissions
+    )
+  );
 
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {

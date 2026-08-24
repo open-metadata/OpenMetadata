@@ -157,5 +157,5 @@ def test_scan_entities(scanner):
     ]
     assert scanner.scan(ssn_numbers).tag_fqn == "PII.Sensitive"
 
-    nif_numbers = ["12345678A", "87654321B", "23456789C", "98765432D", "34567890E"]
+    nif_numbers = ["12345678Z", "87654321X", "23456789D", "98765432M", "34567890V"]
     assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"

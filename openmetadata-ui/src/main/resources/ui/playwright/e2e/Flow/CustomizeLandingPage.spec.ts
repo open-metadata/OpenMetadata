@@ -15,50 +15,90 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  redirectToHomePage,
-  removeLandingBanner,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
   openAddCustomizeWidgetModal,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
-  setUserDefaultPersona,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
-const persona2 = new PersonaClass();
+type LandingPageTestFixtures = {
+  adminPage: Page;
+  testUser: UserClass;
+  persona: PersonaClass;
+};
 
-const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, use) => {
+// Issue #31407 (same class of bug as CustomizeWidgets). Every test here rewrites
+// the whole `persona.<name>` layout document, and the landing page resolves its
+// layout from `currentUser.defaultPersona`. Under `fullyParallel` this file's
+// tests run in different workers, so both the persona and the user have to be
+// per test: a shared persona makes layout saves last-write-wins across tests,
+// and previously only one test set the default persona, leaving the others to
+// assert the persona layout against a session that rendered the stock layout.
+const test = base.extend<LandingPageTestFixtures>({
+  testUser: async ({ browser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const user = new UserClass();
+    await user.create(apiContext);
+    await user.setAdminRole(apiContext);
+    await afterAction();
+
+    await use(user);
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await user.delete(cleanupContext);
+    await cleanupAfterAction();
+  },
+
+  persona: async ({ browser, testUser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const testPersona = new PersonaClass();
+    await testPersona.create(apiContext, [testUser.responseData.id]);
+
+    const personaReference = {
+      id: testPersona.responseData.id,
+      type: 'persona',
+      name: testPersona.responseData.name,
+      fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
+      description: testPersona.responseData.description,
+      displayName: testPersona.responseData.displayName,
+    };
+
+    await apiContext.patch(`/api/v1/users/${testUser.responseData.id}`, {
+      data: [
+        { op: 'add', path: '/personas/0', value: personaReference },
+        { op: 'add', path: '/defaultPersona', value: personaReference },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
+    await afterAction();
+
+    await use(testPersona);
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await testPersona.delete(cleanupContext);
+    await cleanupAfterAction();
+  },
+
+  adminPage: async ({ browser, testUser, persona }, use) => {
+    // `persona` is depended on for its side effect - the default persona has to
+    // be attached to the user before login, otherwise the session starts with
+    // the stock layout instead of the persona's customizable one.
+    void persona;
+
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await testUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
-});
-
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  await persona2.create(apiContext);
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await persona.delete(apiContext);
-  await persona2.delete(apiContext);
-  await afterAction();
 });
 
 test.describe(
@@ -72,11 +112,11 @@ test.describe(
 
     test('Add, Remove and Reset widget should work properly', async ({
       adminPage,
+      persona,
     }) => {
       test.slow(true);
 
       await redirectToHomePage(adminPage);
-      await setUserDefaultPersona(adminPage, persona.responseData.displayName);
 
       await test.step('Remove widget', async () => {
         test.slow(true);
@@ -267,7 +307,7 @@ test.describe(
       });
     });
 
-    test('Widget drag and drop reordering', async ({ adminPage }) => {
+    test('Widget drag and drop reordering', async ({ adminPage, persona }) => {
       test.slow(true);
 
       await navigateToCustomizeLandingPage(adminPage, {
@@ -295,7 +335,6 @@ test.describe(
 
           await saveCustomizeLayoutPage(adminPage);
           await redirectToHomePage(adminPage, false);
-          await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
           await waitForLandingPageWidget(adminPage, 'KnowledgePanel.MyData');
@@ -309,6 +348,7 @@ test.describe(
     // Discard twice. A single Discard click must exit the customize page.
     test('Cancel button should show a single confirmation modal and Discard should exit the customize landing page', async ({
       adminPage,
+      persona,
     }) => {
       test.slow();
 

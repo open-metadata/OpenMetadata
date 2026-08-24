@@ -35,6 +35,9 @@ and Docker infrastructure.
   In a Claude Code **worktree** the venv is NOT copied — create one
   (`python3.11 -m venv env && source env/bin/activate && cd ingestion && make install_dev`) or
   symlink the main repo's (`ln -s /path/to/main-repo/env env`).
+- **One-call setup (macOS + Linux)**: `make dev_setup` (or `./scripts/dev_setup.sh`) does everything
+  below — toolchain, venv, generation, UI deps, pre-commit — and is idempotent. `make dev_check`
+  diagnoses an existing checkout without changing it. See the `dev-setup` skill.
 - **First-time bootstrap** (from the **repo root** — `make generate` is a root-only target; it does
   not exist under `ingestion/`):
   ```bash
@@ -99,8 +102,11 @@ for boundaries (HTTP clients, third-party APIs), not internals. Ask "what breaks
 but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes
 (API responses, DB state), not internal `verify()` calls.
 
-**Apache-2.0 license header** on every new source file (Java, Python, TS). UI files:
-`yarn license-header-fix`. CI enforces it.
+**License headers are per-module — copy one from a sibling file, never assume Apache.** UI TS/TSX:
+Apache-2.0 (`yarn license-header-fix`). Python: `ingestion/` is **Collate Community License 1.0** (`ingestion/LICENSE`); `openmetadata-airflow-apis/` Python files use the same Collate header template.
+Java: Apache-2.0, most files carry none.
+Only the UI is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; spotless
+and `py_format_check` never look at headers, so a wrong Python or Java header ships silently.
 
 **Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated
 code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema, then regenerate — never
@@ -133,11 +139,17 @@ on functionality over education. Do not add unnecessary blank lines between pros
   for repositories, Factory/Registry for dispatch, Strategy/Adapter/Observer, the ingestion
   Source→Sink pipeline, …) with the canonical class to copy each from. Extend the established pattern
   rather than inventing a parallel one.
+- `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` — **the UI folder structure and file
+  naming spec.** Read before creating any new file under `openmetadata-ui/.../ui/src/`. Layers stay
+  top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
+  `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
+  `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
 
 ### Skills (invoke by name; procedures, not rules)
 
 | Skill | Reach for it when… |
 |---|---|
+| `dev-setup` | setting up / repairing a dev environment, a fresh clone, or a new worktree |
 | `planning` | starting any non-trivial, multi-file feature or refactor |
 | `tdd` | implementing a feature or bug fix (RED→GREEN→REFACTOR) |
 | `systematic-debugging` | a failing test/build/runtime issue whose cause isn't obvious |

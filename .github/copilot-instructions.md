@@ -568,12 +568,27 @@ make unit_ingestion_dev_env  # For Python changes
 
 **IMPORTANT: When reviewing UI pull requests, you MUST follow the comprehensive guidelines in [/openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) and [/openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md](../openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md)**
 
+**Folder structure and file naming are specified in
+[/openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md](../openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md)**
+— consult it for any newly added file under `ui/src/`.
+
+#### Structure & Naming
+- ✅ **REQUIRE**: new files placed as `<layer>/<domain>/<feature>/` — layers are `components/`,
+  `pages/`, `rest/`, `utils/`, `hooks/`; domains are `discovery`, `governance`, `observability`,
+  `insights`, `platform`. Cross-cutting features (`lineage`, `data-contract`, `entity`,
+  `activity-feed`) sit at the domain level.
+- ✅ **REQUIRE**: new files named with one stem + role suffix — `GlossaryList.tsx`, `.types.ts`,
+  `.utils.ts`, `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`
+- ❌ **REJECT**: an `index.ts` barrel inside a component folder (`no-internal-barrel-imports`)
+- ⚠️ **DO NOT** ask for existing `.component.tsx` / `.interface.ts` files to be renamed — the suffix
+  marks migration status
+
 ### Critical UI Standards to Enforce
 
 #### Type Safety (Zero Tolerance)
 - ❌ **REJECT**: Any use of `any` type in TypeScript
 - ✅ **REQUIRE**: Proper type imports from `generated/` or `@rjsf/utils`
-- ✅ **REQUIRE**: Defined interfaces for all component props in `.interface.ts` files
+- ✅ **REQUIRE**: Defined types for all component props — `.types.ts` for new files, `.interface.ts` in legacy ones
 
 #### Internationalization (Zero Tolerance)
 - ❌ **REJECT**: Any hardcoded string literals in UI components
@@ -599,9 +614,12 @@ make unit_ingestion_dev_env  # For Python changes
 - ✅ **REQUIRE**: Navigation with `useNavigate`, not direct history manipulation
 
 #### File Naming (Must Follow)
-- ✅ **REQUIRE**: Components named as `ComponentName.component.tsx`
-- ✅ **REQUIRE**: Interfaces named as `ComponentName.interface.ts`
-- ✅ **REQUIRE**: Custom hooks prefixed with `use` and placed in `src/hooks/`
+- ✅ **REQUIRE**: new files use one stem + role suffix — `GlossaryList.tsx`, `GlossaryList.types.ts`,
+  `GlossaryList.utils.ts`, `GlossaryList.constants.ts`, `GlossaryList.style.less`,
+  `GlossaryList.test.tsx`, `GlossaryList.mock.ts`
+- ⚠️ **DO NOT** ask for existing `.component.tsx` / `.interface.ts` files to be renamed — the suffix
+  marks migration status
+- ✅ **REQUIRE**: Custom hooks prefixed with `use` and placed in `src/hooks/<domain>/`
 
 ### PR Review Checklist
 
