@@ -31,16 +31,24 @@ import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.cache.Invalidatable;
 
 /** Two-level cache and distributed single-flight coordinator for persona context documents. */
 @Slf4j
-public class PersonaContextCache {
+public class PersonaContextCache implements Invalidatable {
   public static final String CACHE_HEADER = "X-Cache";
   private static final int MAX_CACHEABLE_CHARS = 8_000_000;
+  // The local Caffeine entry is a front for the shared Redis copy, so it must not outlive the
+  // cluster's view of the document by much. Nothing invalidates when a *referenced* asset changes
+  // (a retagged table, an edited KB article), and that drift has no entity to key an invalidation
+  // off — this cap is what bounds it, and it also bounds any pub/sub message that gets dropped.
+  private static final long LOCAL_TTL_CAP_SECONDS = 60;
   private static final Duration BUILD_LEASE = Duration.ofSeconds(120);
   private static final int POLL_ATTEMPTS = 30;
   private static final long POLL_MILLIS = 500;
@@ -62,6 +70,11 @@ public class PersonaContextCache {
           },
           new ThreadPoolExecutor.AbortPolicy());
   private static volatile PersonaContextCache instance;
+  // Registered with CacheBundle instead of the instance itself: getInstance() swaps the singleton
+  // whenever the cache provider changes, and a registration holding the old object would silently
+  // stop invalidating anything. This delegate resolves the current instance on every call.
+  private static final Invalidatable INVALIDATOR =
+      (type, id, fqn) -> getInstance().invalidate(type, id, fqn);
 
   private final CacheProvider provider;
   private final CacheKeys keys;
@@ -97,6 +110,11 @@ public class PersonaContextCache {
       }
     }
     return current;
+  }
+
+  /** The {@link Invalidatable} to register with {@code CacheBundle} for this cache. */
+  public static Invalidatable invalidator() {
+    return INVALIDATOR;
   }
 
   public CachedResult get(Persona persona, boolean refresh) {
@@ -197,10 +215,28 @@ public class PersonaContextCache {
     generationStates.remove(original.getId());
   }
 
+  /**
+   * Drop this pod's local copy of a persona's context. Called for a local entity write through
+   * {@code CacheBundle.invalidateEntity} and for a remote one through the pub/sub subscriber.
+   *
+   * <p>Local only, deliberately: the pod that published already wrote the authoritative Redis
+   * copy (or deleted it). A peer deleting those keys here would throw away a document that was
+   * just rebuilt and make every pod re-run the ES-heavy build.
+   */
+  @Override
+  public void invalidate(String type, UUID id, String fqn) {
+    boolean persona =
+        Entity.PERSONA.equals(type) || CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(type);
+    if (persona && id != null) {
+      invalidateLocal(id);
+    }
+  }
+
   public CachedResult refresh(Persona persona) {
     try {
       CachedResult result = get(persona, true);
       markFresh(persona);
+      publishRefresh(persona);
       return result;
     } catch (RuntimeException exception) {
       markFailed(persona, exception);
@@ -267,6 +303,34 @@ public class PersonaContextCache {
         keys.personaContextMarkdown(personaId, definitionHash),
         keys.personaContextJson(personaId, definitionHash));
     local.invalidate(localKey(personaId, definitionHash));
+  }
+
+  /**
+   * Drop every local entry for a persona. Peers receiving an invalidation don't know the
+   * definition hash the entry is keyed by, so match on the {@code personaId:} prefix.
+   */
+  private void invalidateLocal(UUID personaId) {
+    String prefix = personaId + ":";
+    local.asMap().keySet().removeIf(key -> key.startsWith(prefix));
+    generationStates.remove(personaId);
+  }
+
+  /**
+   * A refresh rewrites Redis but mutates no entity, so nothing else broadcasts it — without this
+   * an admin regenerate is silently a no-op on every pod but the one that served the request.
+   */
+  private void publishRefresh(Persona persona) {
+    if (persona == null || persona.getId() == null) {
+      return;
+    }
+    CacheInvalidationPubSub pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(
+          CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT,
+          persona.getId(),
+          persona.getFullyQualifiedName(),
+          "refresh");
+    }
   }
 
   protected PersonaContextBuilder.MaterializedPersonaContext build(Persona persona) {
@@ -353,8 +417,18 @@ public class PersonaContextCache {
       String key, PersonaContextBuilder.MaterializedPersonaContext value, int ttlSeconds) {
     local.put(
         key,
-        new LocalEntry(
-            value, System.nanoTime() + TimeUnit.SECONDS.toNanos(Math.max(1, ttlSeconds))));
+        new LocalEntry(value, System.nanoTime() + TimeUnit.SECONDS.toNanos(localTtl(ttlSeconds))));
+  }
+
+  /**
+   * With Redis up, expiring the local entry costs one {@code mget} of the shared copy, so the cap
+   * is cheap insurance against drift the invalidation path cannot see. With Redis down the local
+   * entry <em>is</em> the cache — capping there would make every pod re-run the build every minute,
+   * so the definition's TTL stands.
+   */
+  private long localTtl(int ttlSeconds) {
+    long ttl = Math.max(1, ttlSeconds);
+    return provider.available() ? Math.min(ttl, LOCAL_TTL_CAP_SECONDS) : ttl;
   }
 
   private void markFresh(Persona persona) {

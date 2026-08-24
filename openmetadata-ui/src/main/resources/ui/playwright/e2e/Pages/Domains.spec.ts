@@ -3630,13 +3630,15 @@ test.describe('Domain assets — glossary and inherited glossary term', () => {
       await assetGlossary.patch(apiContext, [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: assetDomain.responseData.id,
-            type: 'domain',
-            name: assetDomain.responseData.name,
-            displayName: assetDomain.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: assetDomain.responseData.id,
+              type: 'domain',
+              name: assetDomain.responseData.name,
+              displayName: assetDomain.responseData.displayName,
+            },
+          ],
         },
       ]);
 

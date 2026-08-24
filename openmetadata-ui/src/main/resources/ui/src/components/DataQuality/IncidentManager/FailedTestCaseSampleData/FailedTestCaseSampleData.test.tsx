@@ -292,7 +292,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
   });
 
   it('should not restore stale sample when a late response resolves after a status change', async () => {
-    let resolveFetch: (value: unknown) => void = () => undefined;
+    let resolveFetch: (value: unknown) => void = (_value) => undefined;
     (getTestCaseFailedSampleData as jest.Mock).mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFetch = resolve;

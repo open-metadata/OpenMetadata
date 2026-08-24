@@ -20,7 +20,9 @@ import {
 } from '../../utils/entity';
 import {
   addSampleDataViaApi,
+  buildReservedNameColumns,
   navigateToSampleDataTab,
+  RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
 import { test } from '../fixtures/pages';
 
@@ -28,17 +30,22 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
   const tableWithData = new TableClass();
   const tableForDelete = new TableClass();
   const tableEmpty = new TableClass();
+  const tableWithReservedColumns = new TableClass();
 
   test.beforeAll('Setup tables with sample data', async ({ browser }) => {
     test.slow();
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
+    tableWithReservedColumns.entity.columns = buildReservedNameColumns();
+
     await tableWithData.create(apiContext);
     await tableForDelete.create(apiContext);
     await tableEmpty.create(apiContext);
+    await tableWithReservedColumns.create(apiContext);
 
     await addSampleDataViaApi(apiContext, tableWithData);
     await addSampleDataViaApi(apiContext, tableForDelete);
+    await addSampleDataViaApi(apiContext, tableWithReservedColumns);
 
     await afterAction();
   });
@@ -50,6 +57,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     await tableWithData.delete(apiContext);
     await tableForDelete.delete(apiContext);
     await tableEmpty.delete(apiContext);
+    await tableWithReservedColumns.delete(apiContext);
 
     await afterAction();
   });
@@ -73,6 +81,46 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(
         page.getByTestId('sample-data-table').getByRole('row').nth(1)
       ).toBeVisible();
+    });
+  });
+
+  test('should render sample data for columns with reserved names', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Navigate to sample data tab', async () => {
+      await navigateToSampleDataTab(page, tableWithReservedColumns);
+    });
+
+    await test.step('Verify the tab renders instead of crashing', async () => {
+      await expect(page.getByTestId('sample-data')).toBeVisible();
+      await expect(page.getByTestId('sample-data-table')).toBeVisible();
+    });
+
+    await test.step('Verify every reserved column header is rendered in order', async () => {
+      const headers = page.getByTestId('sample-data-table').locator('thead th');
+
+      for (const [
+        index,
+        columnName,
+      ] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        await expect(headers.nth(index)).toContainText(columnName);
+      }
+    });
+
+    await test.step('Verify each cell value sits under its own column', async () => {
+      const rows = page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr.ant-table-row');
+
+      for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        for (const rowIndex of [0, 2]) {
+          await expect(
+            rows.nth(rowIndex).locator('td').nth(columnIndex)
+          ).toContainText(`sample_value_${columnIndex}_${rowIndex}`);
+        }
+      }
     });
   });
 

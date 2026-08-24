@@ -32,6 +32,7 @@ jest.mock('react-aria-components', () => ({
       <div
         data-testid={testId}
         role="menuitem"
+        tabIndex={0}
         onClick={onAction}
         onKeyDown={undefined}>
         {typeof children === 'function' ? children() : children}

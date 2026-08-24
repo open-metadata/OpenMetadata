@@ -41,6 +41,7 @@ import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/datab
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
@@ -516,6 +517,7 @@ const ContextCenterMemoriesPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
+      <DocumentTitle title={t('label.memory-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={headerActions}
@@ -751,6 +753,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Popover>
                     <div className="tw:p-2 tw:border-b tw:border-secondary">
                       <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                         autoFocus
                         className="tw:w-full"
                         icon={SearchLg}

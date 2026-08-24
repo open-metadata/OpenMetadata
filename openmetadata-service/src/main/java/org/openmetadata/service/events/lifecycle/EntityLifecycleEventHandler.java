@@ -19,6 +19,7 @@ import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -27,6 +28,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * This allows for extensible behavior without modifying core repository logic.
  */
 public interface EntityLifecycleEventHandler {
+
+  /**
+   * Returns whether this handler needs the event. The dispatcher evaluates this before creating an
+   * asynchronous entity snapshot.
+   */
+  default boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return true;
+  }
 
   /**
    * Called after an entity is successfully created.

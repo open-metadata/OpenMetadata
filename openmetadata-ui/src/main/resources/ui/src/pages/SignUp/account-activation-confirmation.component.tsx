@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { confirmRegistration } from '../../rest/auth-API';
@@ -55,6 +56,7 @@ const AccountActivationConfirmation = () => {
 
   return (
     <Card>
+      <DocumentTitle title={t('label.sign-up')} />
       {isAccountVerified ? (
         <div className="mt-12 w-16">
           <Space align="center" direction="vertical">
@@ -63,7 +65,16 @@ const AccountActivationConfirmation = () => {
               message={t('message.user-verified-successfully')}
               type="success"
             />
-            <div className="mt-12" onClick={handleBackToLogin}>
+            <div
+              className="mt-12"
+              role="button"
+              tabIndex={0}
+              onClick={handleBackToLogin}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleBackToLogin();
+                }
+              }}>
               <Typography.Link underline>
                 {t('label.back-to-login-lowercase')}
               </Typography.Link>

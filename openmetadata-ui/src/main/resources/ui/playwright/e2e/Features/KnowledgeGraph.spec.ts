@@ -181,13 +181,15 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain1.responseData.name,
-            displayName: EntityDataClass.domain1.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain1.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain1.responseData.name,
+              displayName: EntityDataClass.domain1.responseData.displayName,
+            },
+          ],
         },
       ],
     });

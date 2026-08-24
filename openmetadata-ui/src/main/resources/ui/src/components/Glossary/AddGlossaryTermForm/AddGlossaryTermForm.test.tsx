@@ -89,6 +89,7 @@ jest.mock('../../../utils/formUtils', () => {
     value?: unknown;
   }) => (
     <input
+      aria-label="input"
       data-testid={dataTestId}
       value={
         typeof value === 'string' || typeof value === 'number' ? value : ''
@@ -130,6 +131,7 @@ jest.mock(
 
       return (
         <input
+          aria-label="input"
           data-testid={props['data-testid'] as string}
           value=""
           onChange={() => undefined}
@@ -139,18 +141,18 @@ jest.mock(
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockReturnValue(<textarea />)
+  jest.fn().mockReturnValue(<textarea aria-label="editor" />)
 );
 
 jest.mock('../../common/DatePicker/DatePicker', () =>
-  jest.fn().mockReturnValue(<input />)
+  jest.fn().mockReturnValue(<input aria-label="date-picker" />)
 );
 
 jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
   jest
     .fn()
     .mockImplementation(({ 'data-testid': dataTestId }) => (
-      <textarea data-testid={dataTestId} />
+      <textarea aria-label="editor" data-testid={dataTestId} />
     ))
 );
 
@@ -361,8 +363,9 @@ describe('AddGlossaryTermForm intake fields', () => {
   it('waits for custom-property definitions before rendering intake fields', async () => {
     const requiredFields = [createRequiredField('summary')];
     const customProperties = [createCustomProperty('summary', 'string')];
-    let resolveCustomProperties: (properties: CustomProperty[]) => void = () =>
-      undefined;
+    let resolveCustomProperties: (properties: CustomProperty[]) => void = (
+      _properties
+    ) => undefined;
     const customPropertiesRequest = new Promise<CustomProperty[]>((resolve) => {
       resolveCustomProperties = resolve;
     });
