@@ -32,10 +32,8 @@ export const authenticateAdminPage = async (page: Page) => {
 };
 
 export const performAdminLogin = async (browser: Browser) => {
-  const admin = new AdminClass();
   const page = await browser.newPage();
-  await admin.login(page);
-  await redirectToHomePage(page);
+  await authenticateAdminPage(page);
 
   const token = await getToken(page);
   const apiContext = await getAuthContext(token);
