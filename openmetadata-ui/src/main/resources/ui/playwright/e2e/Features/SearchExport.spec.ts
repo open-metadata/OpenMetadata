@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -27,7 +27,6 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
-import { test } from '../fixtures/pages';
 
 // Dedicated admin user so that completed search-export background jobs
 // accumulate in this user's tray instead of the shared admin session,
