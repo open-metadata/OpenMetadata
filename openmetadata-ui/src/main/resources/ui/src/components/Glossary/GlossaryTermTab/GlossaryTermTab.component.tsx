@@ -418,6 +418,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       TabSpecificField.PARENT,
       TabSpecificField.CHILDREN,
     ];
+    const fetchedForFQN = activeGlossary?.fullyQualifiedName;
 
     try {
       let allData: GlossaryTerm[] = [];
@@ -434,6 +435,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         allData = [...allData, ...response.data];
         after = response.paging?.after;
       } while (after);
+
+      // Discard results if the user navigated to a different glossary while
+      // the paginated expand-all was in flight.
+      if (
+        fetchedForFQN !==
+        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName
+      ) {
+        return;
+      }
 
       setGlossaryChildTerms(buildTree(allData) as ModifiedGlossary[]);
       const keys = allData.reduce((prev, curr) => {
@@ -457,6 +467,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
+    const fetchedForFQN = activeGlossary.fullyQualifiedName;
+
     try {
       let allData: Task[] = [];
       let after: string | undefined;
@@ -474,6 +486,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         allData = [...allData, ...response.data];
         after = response.paging?.after;
       } while (after);
+
+      // Discard results if the user navigated to a different glossary while
+      // the paginated task fetch was in flight.
+      if (
+        fetchedForFQN !==
+        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName
+      ) {
+        return;
+      }
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
