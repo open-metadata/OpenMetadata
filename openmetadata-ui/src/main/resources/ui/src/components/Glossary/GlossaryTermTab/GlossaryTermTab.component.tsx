@@ -141,6 +141,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const fetchRequestSeqRef = useRef(0);
+  const expandTreeSeqRef = useRef(0);
+  const fetchTasksSeqRef = useRef(0);
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -410,6 +412,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchExpadedTree = async () => {
+    const seq = ++expandTreeSeqRef.current;
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
@@ -418,7 +421,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       TabSpecificField.PARENT,
       TabSpecificField.CHILDREN,
     ];
-    const fetchedForFQN = activeGlossary?.fullyQualifiedName;
 
     try {
       let allData: GlossaryTerm[] = [];
@@ -436,12 +438,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         after = response.paging?.after;
       } while (after);
 
-      // Discard results if the user navigated to a different glossary while
-      // the paginated expand-all was in flight.
-      if (
-        fetchedForFQN !==
-        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName
-      ) {
+      // Discard results if a newer expand-all was triggered while this one
+      // was paginating (covers both glossary-switch and same-glossary re-trigger).
+      if (seq !== expandTreeSeqRef.current) {
         return;
       }
 
@@ -458,8 +457,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsTableLoading(false);
-      setIsExpandingAll(false);
+      // Only reset loading flags if this invocation is still the latest one;
+      // an older expand-all must not clear the spinner of a newer request.
+      if (seq === expandTreeSeqRef.current) {
+        setIsTableLoading(false);
+        setIsExpandingAll(false);
+      }
     }
   };
   const fetchAllTasks = useCallback(async () => {
@@ -467,7 +470,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
-    const fetchedForFQN = activeGlossary.fullyQualifiedName;
+    const seq = ++fetchTasksSeqRef.current;
 
     try {
       let allData: Task[] = [];
@@ -487,12 +490,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         after = response.paging?.after;
       } while (after);
 
-      // Discard results if the user navigated to a different glossary while
-      // the paginated task fetch was in flight.
-      if (
-        fetchedForFQN !==
-        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName
-      ) {
+      // Discard results if a newer task fetch was triggered while this one
+      // was paginating (covers both glossary-switch and A→B→A races).
+      if (seq !== fetchTasksSeqRef.current) {
         return;
       }
 
