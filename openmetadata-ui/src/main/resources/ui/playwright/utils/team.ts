@@ -104,7 +104,12 @@ export const visitTeamsPage = async (page: Page) => {
  *
  * Specs that build teams through the UI have no entity handle to call
  * `TeamClass.delete` on, so resolve the id by name first. A missing team is not
- * an error — the spec may have deleted it as part of what it asserts.
+ * an error — the spec may have deleted it as part of what it asserts, and a
+ * recursive delete of its parent may already have taken it.
+ *
+ * A delete that comes back non-ok is asserted rather than ignored: a cleanup
+ * that fails quietly leaves the team behind, and the whole point of calling
+ * this is to stop teams accumulating on long-lived deployments.
  */
 export const hardDeleteTeamByName = async (
   apiContext: APIRequestContext,
@@ -116,10 +121,14 @@ export const hardDeleteTeamByName = async (
 
   if (teamResponse.ok()) {
     const { id } = await teamResponse.json();
-
-    await apiContext.delete(
+    const deleteResponse = await apiContext.delete(
       `/api/v1/teams/${id}?hardDelete=true&recursive=true`
     );
+
+    expect(
+      deleteResponse.ok(),
+      `Failed to clean up team "${teamName}": ${deleteResponse.status()} ${await deleteResponse.text()}`
+    ).toBe(true);
   }
 };
 
