@@ -249,17 +249,20 @@ describe('HashList', () => {
       expect(result).toBe(false);
     });
 
-    it('should wire the breadcrumb text into a tooltip trigger inside the suggestion menu wrapper', () => {
+    it('should open the breadcrumb tooltip with the full breadcrumb text on focus', () => {
       render(<HashList {...mockProps} />);
 
-      const breadcrumbTrigger = screen
+      const trigger = screen
         .getAllByText('Database/Schema')[0]
-        .closest('[data-rac]');
+        .closest('button') as HTMLElement;
 
-      expect(breadcrumbTrigger).not.toBeNull();
-      expect(document.getElementById('hashtag-viewport')).toContainElement(
-        breadcrumbTrigger as HTMLElement
-      );
+      act(() => {
+        trigger.focus();
+      });
+
+      const tooltip = screen.getByRole('tooltip');
+
+      expect(tooltip).toHaveTextContent('Database/Schema');
     });
   });
 });
