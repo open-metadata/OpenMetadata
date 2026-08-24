@@ -876,11 +876,8 @@ export const isDataAssetsWithServiceField = (
 };
 
 export const getEntityExtraInfoLength = (element: ReactNode): number => {
-  if (React.isValidElement(element)) {
-    if (isArray(element.props.children)) {
-      return element.props.children?.filter((child?: ReactNode) => child)
-        .length;
-    }
+  if (React.isValidElement(element) && isArray(element.props.children)) {
+    return element.props.children?.filter((child?: ReactNode) => child).length;
   }
 
   return 0;

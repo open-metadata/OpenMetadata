@@ -131,6 +131,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       defaultValue?: string;
     }) => (
       <input
+        aria-label={inputDataTestId ?? tid}
         data-testid={inputDataTestId ?? tid}
         defaultValue={defaultValue}
         value={value ?? ''}

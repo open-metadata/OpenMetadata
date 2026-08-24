@@ -25,6 +25,7 @@ const ForeignKeyConstraint = () => {
       className="constraint-foreign-key"
       data-testid={`${ConstraintType.ForeignKey}-icon`}>
       <img
+        alt=""
         className="foreign-key-section-line"
         src={SectionLine}
         width="100%"

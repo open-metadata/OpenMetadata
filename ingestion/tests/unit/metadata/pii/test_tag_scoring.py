@@ -24,6 +24,7 @@ from _openmetadata_testutils.factories.metadata.generated.schema.entity.classifi
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
     PatternRecognizerFactory,
+    PredefinedRecognizerFactory,
     RecognizerFactory,
 )
 from metadata.generated.schema.entity.classification.classification import (
@@ -35,7 +36,10 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.piiEntity import PIIEntity
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
@@ -317,6 +321,40 @@ class TestTagAnalyzer:
     def tag_analyzer(self, email_tag, column, nlp_engine):
         """Create a TagAnalyzer instance"""
         return TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+
+    @pytest.fixture
+    def date_tag_analyzer(self, column: Column) -> TagAnalyzer:
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.DATE_TIME],
+            ),
+            target=Target.content,
+        )
+        date_tag = TagFactory.create(
+            tag_name="Date",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Date field",
+        )
+        return TagAnalyzer(
+            tag=date_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+    def test_analyze_content_rejects_epoch_timestamp_as_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["1760000000123"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_preserves_textual_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["2025-01-15"])
+
+        assert analysis.score > 0.0
+        assert [result.entity_type for result in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
 
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""

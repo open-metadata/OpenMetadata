@@ -244,7 +244,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           disabled: true,
           className: 'load-more-node',
           title: (
-            <div onClick={(e) => e.stopPropagation()}>
+            <div role="presentation" onClick={(e) => e.stopPropagation()}>
               <Button
                 color="link-color"
                 iconLeading={isLoadingMore ? undefined : Plus}
@@ -659,6 +659,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       <div
         className="custom-domain-edit-select tw:flex tw:cursor-text tw:flex-col tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:px-2.5 tw:py-1.5 tw:focus-within:border-brand"
         data-testid="domain-search-input-wrapper"
+        role="presentation"
         onClick={handleBoxClick}>
         {selectedTagItems.length > 0 && (
           <div className="tw:flex tw:flex-nowrap tw:items-center tw:gap-1 tw:overflow-hidden">
