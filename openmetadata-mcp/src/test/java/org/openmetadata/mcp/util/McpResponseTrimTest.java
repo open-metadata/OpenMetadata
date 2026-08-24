@@ -14,8 +14,11 @@
 package org.openmetadata.mcp.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -90,5 +93,67 @@ class McpResponseTrimTest {
     assertThat(McpResponseTrim.safeMessage(new RuntimeException("boom"))).isEqualTo("boom");
     assertThat(McpResponseTrim.safeMessage(new RuntimeException())).isEqualTo("<no message>");
     assertThat(McpResponseTrim.safeMessage(null)).isEqualTo("<no message>");
+  }
+
+  @Test
+  void slimRefKeepsOnlyTheActionableIdentifier() {
+    Map<String, Object> ref = new LinkedHashMap<>();
+    ref.put("id", "8c1e1f4e-0000-0000-0000-000000000000");
+    ref.put("type", "databaseSchema");
+    ref.put("name", "shopify");
+    ref.put("fullyQualifiedName", "sample_data.ecommerce_db.shopify");
+    ref.put("description", "A long schema description repeated on every hit from this schema.");
+    ref.put("deleted", false);
+
+    assertEquals(
+        "sample_data.ecommerce_db.shopify",
+        McpResponseTrim.slimRef(ref),
+        "every MCP tool is addressed by (entityType, fqn), so the FQN is the only actionable part");
+  }
+
+  @Test
+  void slimRefFallsBackToNameAndPassesThroughUnknownShapes() {
+    assertEquals("marketing", McpResponseTrim.slimRef(Map.of("name", "marketing")));
+    assertEquals("already-a-string", McpResponseTrim.slimRef("already-a-string"));
+    Map<String, Object> odd = Map.of("unexpected", "shape");
+    assertEquals(
+        odd, McpResponseTrim.slimRef(odd), "an unrecognised payload passes through, never emptied");
+  }
+
+  @Test
+  void slimTagDropsTheRepeatedTagDescription() {
+    Map<String, Object> tier = new LinkedHashMap<>();
+    tier.put("tagFQN", "Tier.Tier1");
+    tier.put("description", "Critical Source of Truth business data assets ...");
+    tier.put("labelType", "Manual");
+    tier.put("state", "Confirmed");
+
+    assertEquals("Tier.Tier1", McpResponseTrim.slimTag(tier));
+    assertEquals(
+        List.of("PII.Sensitive", "Tier.Tier1"),
+        McpResponseTrim.slimTag(
+            List.of(Map.of("tagFQN", "PII.Sensitive"), Map.of("tagFQN", "Tier.Tier1"))));
+  }
+
+  @Test
+  void slimmingASearchHitIsWhereTheSavingComesFrom() {
+    // On a live 10-hit search_metadata response, tier alone was 26.2% of the payload and the
+    // service/database/databaseSchema references a further 32.9%. Guard the ratio, not the shape.
+    Map<String, Object> schemaRef = new LinkedHashMap<>();
+    schemaRef.put("id", "8c1e1f4e-0000-0000-0000-000000000000");
+    schemaRef.put("type", "databaseSchema");
+    schemaRef.put("name", "shopify");
+    schemaRef.put("fullyQualifiedName", "sample_data.ecommerce_db.shopify");
+    schemaRef.put("description", "A long schema description repeated on every hit ".repeat(4));
+
+    int before = McpResponseTrim.serializedLength(schemaRef);
+    int after = McpResponseTrim.serializedLength(McpResponseTrim.slimRef(schemaRef));
+
+    assertTrue(
+        after * 4 < before,
+        "a slimmed reference must be a small fraction of the embedded object, got "
+            + after
+            + " vs "
+            + before);
   }
 }

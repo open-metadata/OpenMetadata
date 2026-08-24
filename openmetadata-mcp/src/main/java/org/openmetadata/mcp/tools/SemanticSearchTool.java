@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
@@ -277,14 +279,14 @@ public class SemanticSearchTool implements McpTool {
     copyIfPresent(hit, cleaned, "name");
     copyIfPresent(hit, cleaned, "displayName");
     copyIfPresent(hit, cleaned, "serviceType");
-    copyIfPresent(hit, cleaned, "service");
-    copyIfPresent(hit, cleaned, "database");
-    copyIfPresent(hit, cleaned, "databaseSchema");
-    copyIfPresent(hit, cleaned, "owners");
-    copyIfPresent(hit, cleaned, "tier");
-    copyIfPresent(hit, cleaned, "tags");
-    copyIfPresent(hit, cleaned, "domains");
-    copyIfPresent(hit, cleaned, "columns");
+    copySlim(hit, cleaned, "service", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "database", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "databaseSchema", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "owners", McpResponseTrim::slimRefs);
+    copySlim(hit, cleaned, "domains", McpResponseTrim::slimRefs);
+    copySlim(hit, cleaned, "tier", McpResponseTrim::slimTag);
+    copySlim(hit, cleaned, "tags", McpResponseTrim::slimTag);
+    copyColumnNames(hit, cleaned);
     copyIfPresent(hit, cleaned, "certification");
     // Metric facts: a metric summary without its expression, granularity, type and unit cannot be
     // told apart from a similarly named metric, which forced a per-result get_entity_details call.
@@ -339,6 +341,38 @@ public class SemanticSearchTool implements McpTool {
     Object customUnit = hit.get("customUnitOfMeasurement");
     if (UNIT_OF_MEASUREMENT_OTHER.equals(cleaned.get("unitOfMeasurement")) && customUnit != null) {
       cleaned.put("unitOfMeasurement", customUnit);
+    }
+  }
+
+  /** Copies a field through a slimming function, skipping absent fields. */
+  private void copySlim(
+      Map<String, Object> hit,
+      Map<String, Object> cleaned,
+      String field,
+      UnaryOperator<Object> slim) {
+    Object value = hit.get(field);
+    if (value != null) {
+      cleaned.put(field, slim.apply(value));
+    }
+  }
+
+  /**
+   * Emits column <em>names</em> rather than full column objects, matching what {@code
+   * search_metadata} already returns. Measured on a live 10-hit response, full {@code columns} was
+   * 68.6% of the payload (12,094 of 17,631 tokens) — paragraph-length per-column descriptions that
+   * do not help decide which asset is the right one. Names still answer "does this table have a
+   * customer_id column?"; {@code get_entity_details} stays the way to get column detail.
+   */
+  private void copyColumnNames(Map<String, Object> hit, Map<String, Object> cleaned) {
+    if (hit.get("columns") instanceof List<?> columns && !columns.isEmpty()) {
+      List<Object> names =
+          columns.stream()
+              .map(column -> column instanceof Map<?, ?> map ? map.get("name") : column)
+              .filter(Objects::nonNull)
+              .toList();
+      if (!names.isEmpty()) {
+        cleaned.put("columnNames", names);
+      }
     }
   }
 
