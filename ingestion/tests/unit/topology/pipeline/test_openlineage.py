@@ -667,7 +667,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
-            "hive:///schema.input_table": "database.schema.input_table",
+            "hive://schema.input_table": "database.schema.input_table",
         }
         inputs = [{"name": "schema.input_table", "facets": {}, "namespace": "hive://"}]
         outputs = [
@@ -1210,13 +1210,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 # dst of table lineage
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 # pipeline
                 z = Mock()
@@ -1289,7 +1289,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"glueService.{table_details.schema}.{table_details.name}"
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             ids = {
                 "glueService.store_of_value.src_table": src_uuid,
                 "glueService.store_of_value.gsheet_recon_stats_notes": dst_uuid,
@@ -1352,7 +1352,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             "glueService.silver-stagingdb.recon_stats": dst_uuid,
         }
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             # Any FQN still carrying the backticks resolves to this sentinel id,
             # so a leaked quote shows up as a wrong edge rather than no edge.
             return Mock(id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")))
@@ -1496,11 +1496,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
         to_table_id = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root=from_table_id))
+                return Mock(id=Mock(root=from_table_id), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root=to_table_id))
+                return Mock(id=Mock(root=to_table_id), columns=[])
             elif "openlineage_source" in fqn:  # Pipeline entity
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             return None
@@ -1695,11 +1695,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
