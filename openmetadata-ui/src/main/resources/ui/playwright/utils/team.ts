@@ -74,6 +74,121 @@ export const openAddTeamModal = async (
   return addTeamModal;
 };
 
+/**
+ * Land on Settings > Teams with the hierarchy table settled.
+ *
+ * The table spins on its own child-teams fetch plus the per-team asset-count
+ * aggregation, so navigation alone is not enough — a caller that acts right
+ * after the click drags rows that are still being repainted. Wait on the two
+ * calls that gate the first paint, then on the table itself.
+ */
+export const visitTeamsPage = async (page: Page) => {
+  const organizationResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') && response.ok()
+  );
+  const permissionResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/permissions/team/name/') && response.ok()
+  );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+  await Promise.all([permissionResponse, organizationResponse]);
+
+  await expect(page.getByTestId('team-hierarchy-table')).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+};
+
+interface TeamCleanupFailure {
+  teamName: string;
+  reason: string;
+}
+
+/**
+ * Hard-delete one team created through the UI, children included.
+ *
+ * Reports a failure rather than throwing so a caller cleaning up several teams
+ * still attempts the rest — a throw here would leave the remaining teams behind
+ * and recreate the accumulation this cleanup exists to prevent.
+ *
+ * Specs that build teams through the UI have no entity handle to call
+ * `TeamClass.delete` on, so the id is resolved by name first. Delete-by-name is
+ * not an option: `TeamResource` pins that route to `recursive=false`, and these
+ * teams are nested by the time cleanup runs.
+ *
+ * 404 on the lookup is the one tolerated outcome — the spec may have deleted
+ * the team as part of what it asserts, and a recursive delete of its parent
+ * takes its children with it.
+ */
+const hardDeleteTeamByName = async (
+  apiContext: APIRequestContext,
+  teamName: string
+): Promise<TeamCleanupFailure | undefined> => {
+  let failure: TeamCleanupFailure | undefined;
+
+  try {
+    const teamResponse = await apiContext.get(
+      `/api/v1/teams/name/${encodeURIComponent(teamName)}`
+    );
+
+    if (!teamResponse.ok()) {
+      if (teamResponse.status() !== 404) {
+        failure = {
+          teamName,
+          reason: `lookup returned ${teamResponse.status()} ${await teamResponse.text()}`,
+        };
+      }
+    } else {
+      const { id } = await teamResponse.json();
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/teams/${id}?hardDelete=true&recursive=true`
+      );
+
+      if (!deleteResponse.ok()) {
+        failure = {
+          teamName,
+          reason: `delete returned ${deleteResponse.status()} ${await deleteResponse.text()}`,
+        };
+      }
+    }
+  } catch (error) {
+    failure = { teamName, reason: (error as Error).message };
+  }
+
+  return failure;
+};
+
+/**
+ * Hard-delete teams created through the UI, children included.
+ *
+ * Deletes are sequential: a recursive delete takes a team's children with it,
+ * so issuing them in parallel would race the ones already removed. Every name
+ * is attempted before anything is asserted, and the assertion then names every
+ * team that survived — cleanup that fails quietly is what lets teams pile up on
+ * a long-lived deployment in the first place.
+ */
+export const hardDeleteTeamsByName = async (
+  apiContext: APIRequestContext,
+  teamNames: string[]
+) => {
+  const failures: TeamCleanupFailure[] = [];
+
+  for (const teamName of teamNames) {
+    const failure = await hardDeleteTeamByName(apiContext, teamName);
+
+    if (failure) {
+      failures.push(failure);
+    }
+  }
+
+  expect(
+    failures,
+    `Failed to clean up teams: ${failures
+      .map(({ teamName, reason }) => `"${teamName}" (${reason})`)
+      .join(', ')}`
+  ).toEqual([]);
+};
+
 interface SearchTeamOptions {
   expectEmptyResults?: boolean;
   expectNotFound?: boolean;
