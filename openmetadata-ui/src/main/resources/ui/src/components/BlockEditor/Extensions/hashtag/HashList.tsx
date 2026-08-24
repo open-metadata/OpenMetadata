@@ -132,10 +132,10 @@ export default forwardRef<
             <div className="d-flex flex-wrap">
               <Tooltip
                 getPopupContainer={(triggerNode) =>
-                  triggerNode.closest('.suggestion-menu-wrapper') || document.body
+                  triggerNode.closest('.suggestion-menu-wrapper') ||
+                  document.body
                 }
-                title={breadcrumbsData}
-              >
+                title={breadcrumbsData}>
                 <span className="text-grey-muted truncate w-max-200 text-xss">
                   {breadcrumbsData}
                 </span>
