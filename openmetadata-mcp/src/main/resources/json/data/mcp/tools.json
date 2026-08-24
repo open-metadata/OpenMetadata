@@ -298,7 +298,7 @@
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
+            "description": "Fully qualified name of the entity. Use the exact 'fullyQualifiedName' from a search result when you have one, or a known-good FQN the user supplied. Do not assemble an FQN from parts you are guessing at."
           },
           "columnOffset": {
             "type": "integer",
@@ -630,7 +630,7 @@
           },
           "reviewers": {
             "type": "array",
-            "description": "Glossary Term owner. This could be an OpenMetadata User or Team. If you don't know who the owner is, you can leave this empty, but let the user know that they can add owners later.",
+            "description": "Users or teams who review changes to terms in this glossary. Setting reviewers turns on the approval workflow: new terms enter as Draft and stay there until a reviewer approves them. Leave empty for terms to be created already Approved.",
             "items": {
               "type": "string"
             }
@@ -670,7 +670,7 @@
           },
           "patch": {
             "type": "string",
-            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' (add/remove/replace), 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
+            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' — use 'replace' to change a field that already has a value, 'add' only for a field that is absent or to append to an array, 'remove' to clear one, 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
           }
         },
         "required": [

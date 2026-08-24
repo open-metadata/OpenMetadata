@@ -255,7 +255,11 @@ public class RootCauseAnalysisTool implements McpTool {
   private static void addDownstreamNodes(
       Map<String, Object> downstreamAnalysis, SearchLineageResult result) {
     if (result.getNodes() != null) {
-      downstreamAnalysis.put("downstreamImpactedNodesCount", result.getNodes().size());
+      // The traversal includes the analysed asset itself at nodeDepth 0. Counting it as impacted
+      // overstates the blast radius by one on every call, and a caller quoting the number is then
+      // wrong in a way nothing in the payload contradicts.
+      downstreamAnalysis.put(
+          "downstreamImpactedNodesCount", Math.max(0, result.getNodes().size() - 1));
       downstreamAnalysis.put("downstreamNodes", slimDownstreamNodes(result.getNodes()));
     }
   }
@@ -299,11 +303,25 @@ public class RootCauseAnalysisTool implements McpTool {
     if (info != null) {
       Object entity = info.get("entity");
       if (entity instanceof Map) {
-        slim.put("entity", slimNodeEntity(castMap(entity)));
+        slim.put("entity", withoutBulkFields(slimNodeEntity(castMap(entity))));
       }
       putIfPresent(slim, "nodeDepth", info.get("nodeDepth"));
     }
     return slim;
+  }
+
+  /**
+   * Strips the per-node bulk that impact analysis never reads.
+   *
+   * <p>Measured on a live call: a single downstream node carried ~80 generated column names twice
+   * over — once as {@code columnNames}, again as full objects inside {@code aiContext.table.columns}
+   * — which was the majority of a 28,000 character response. A downstream node answers "what else
+   * breaks", so it needs identity: FQN, name, type, owners, tier. Column detail for any of them is a
+   * {@code get_entity_details} call away, and only for the one the caller cares about.
+   */
+  private static Map<String, Object> withoutBulkFields(Map<String, Object> entity) {
+    NODE_BULK_FIELDS.forEach(entity::remove);
+    return entity;
   }
 
   /**
@@ -397,6 +415,9 @@ public class RootCauseAnalysisTool implements McpTool {
       slim.put("sqlQuery", sql);
     }
   }
+
+  private static final Set<String> NODE_BULK_FIELDS =
+      Set.of("aiContext", "columnNames", "columns", "schemaDefinition", "sampleData", "profile");
 
   private static final String UPSTREAM_ANALYSIS = "upstreamAnalysis";
   private static final String ROOT_HAS_FAILING_TESTS = "rootHasFailingTests";
