@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -23,6 +24,11 @@ import {
   openExportScopeModal,
 } from '../../utils/explore';
 import { test } from '../fixtures/pages';
+
+// Dedicated admin user so that completed search-export background jobs
+// accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
   const exportAsyncPromise = page.waitForResponse(
@@ -111,12 +117,24 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
+      }
 
+      searchExportUser = new UserClass(undefined, true);
+      await searchExportUser.create(apiContext);
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      if (searchExportUser) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await searchExportUser.delete(apiContext);
         await afterAction();
       }
     });
 
     test.beforeEach(async ({ page }) => {
+      await searchExportUser.login(page);
       await redirectToExplorePage(page);
     });
 

@@ -183,6 +183,10 @@ let viewOnlyRole: RolesClass;
 let metricEditorUser: UserClass;
 let metricEditorPolicy: PolicyClass;
 let metricEditorRole: RolesClass;
+// Dedicated admin user for export/import tests so that completed background
+// jobs accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let metricExportUser: UserClass;
 let metricTypeId: string | undefined;
 let metricCustomPropertyName: string;
 
@@ -973,6 +977,9 @@ test.describe(
           },
         ],
       });
+
+      metricExportUser = new UserClass(undefined, true);
+      await metricExportUser.create(apiContext);
     });
 
     test.afterAll(async () => {
@@ -984,6 +991,7 @@ test.describe(
         metricEditorUser?.delete(apiContext),
         metricEditorRole?.delete(apiContext),
         metricEditorPolicy?.delete(apiContext),
+        metricExportUser?.delete(apiContext),
       ]);
       await cleanupFixtures();
       await cleanupMetricCustomProperty();
@@ -991,8 +999,11 @@ test.describe(
     });
 
     test('Admin starts exactly one async export job from the metrics listing', async ({
-      page,
+      browser,
     }) => {
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
       await filterMetrics(page, fixtures.prefix);
@@ -1021,22 +1032,26 @@ test.describe(
       });
       await page.locator('.csv-jobs-tray-launcher').click();
       await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
-      // Verify the export job appears in the tray. Parallel workers share the
-      // admin identity and may have their own active jobs; checking an exact
-      // count is fragile. Instead, assert that a tray item carrying the export
-      // label is visible — the exportRequestCount check above already guarantees
-      // exactly one export request was sent.
+      // Verify the export job appears in the tray. Each test uses a dedicated
+      // user session so only this test's own job is visible — checking the
+      // label is sufficient.
       await expect(
         page
           .locator('.csv-jobs-tray-item')
           .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
       ).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin imports a metric CSV through preview and async apply', async ({
-      page,
+      browser,
     }) => {
       test.slow();
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
       const importedMetricName = `${fixtures.prefix}_imported`;
       fixtures.metrics.push({
         id: '',
@@ -1069,6 +1084,9 @@ test.describe(
       });
 
       await expectImportedMetricComplexFields(importedMetricName);
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin sees metric CSV validation failures for missing names and invalid references', async ({
@@ -1096,9 +1114,12 @@ test.describe(
     });
 
     test('Admin imports a CSV update for an existing metric', async ({
-      page,
+      browser,
     }) => {
       test.slow();
+      const page = await browser.newPage();
+      await metricExportUser.login(page);
+      try {
       const existingMetricName = fixtures.metrics[1].name;
       const updatedDisplayName = `${fixtures.prefix} Import Updated`;
       const csv = createCsv([
@@ -1158,6 +1179,9 @@ test.describe(
       expect(updatedMetric.extension).toMatchObject({
         [metricCustomPropertyName]: 'updated custom value',
       });
+      } finally {
+        await page.close();
+      }
     });
 
     test('Admin bulk edits filtered metrics from the listing API without export jobs', async ({
