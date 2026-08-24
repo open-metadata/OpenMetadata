@@ -33,7 +33,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -281,6 +283,35 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
+  void handlersReceiveRepositoryEventTypes() {
+    List<EventType> receivedEventTypes = new ArrayList<>();
+    TestHandler eventTypeHandler =
+        new TestHandler("EventTypeHandler", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            receivedEventTypes.add(eventType);
+            return true;
+          }
+        };
+    dispatcher.registerHandler(eventTypeHandler);
+
+    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
+    dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext);
+    dispatcher.onEntityDeleted(mockEntity, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, true, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, false, mockSubjectContext);
+
+    assertEquals(
+        List.of(
+            EventType.ENTITY_CREATED,
+            EventType.ENTITY_UPDATED,
+            EventType.ENTITY_DELETED,
+            EventType.ENTITY_SOFT_DELETED,
+            EventType.ENTITY_RESTORED),
+        receivedEventTypes);
+  }
+
+  @Test
   void testOnEntitiesUpdatedUsesEntitySpecificChangeDescriptions() {
     TestHandler allEntitiesHandler = new TestHandler("AllEntitiesHandler", 100, false, Set.of());
     dispatcher.registerHandler(allEntitiesHandler);
@@ -396,6 +427,57 @@ class EntityLifecycleEventDispatcherTest {
         asyncOne.lastCreatedEntity,
         asyncTwo.lastCreatedEntity,
         "Entity is serialized once; the snapshot is shared across async handlers");
+  }
+
+  @Test
+  void decliningAsyncHandlersDoNotCreateEntitySnapshot() {
+    AtomicInteger columnsReadCount = new AtomicInteger();
+    AtomicInteger shouldProcessCount = new AtomicInteger();
+    Table entity =
+        new Table() {
+          @Override
+          public List<Column> getColumns() {
+            columnsReadCount.incrementAndGet();
+            return super.getColumns();
+          }
+        };
+    entity.setId(UUID.randomUUID());
+    entity.setName("declined_table");
+    entity.setFullyQualifiedName("service.db.schema.declined_table");
+    entity.setColumns(new ArrayList<>());
+
+    TestHandler decliningHandler =
+        new TestHandler("DecliningHandler", 100, true, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            shouldProcessCount.incrementAndGet();
+            return false;
+          }
+        };
+    dispatcher.registerHandler(decliningHandler);
+
+    dispatcher.onEntityUpdated(entity, mockChangeDescription, mockSubjectContext);
+
+    assertEquals(1, shouldProcessCount.get());
+    assertEquals(0, columnsReadCount.get(), "Declined handlers must not serialize the entity");
+    assertFalse(decliningHandler.updatedCalled);
+  }
+
+  @Test
+  void failingHandlerFilterDoesNotEscapeTheCommittedWritePath() {
+    TestHandler handler =
+        new TestHandler("FailingFilter", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            throw new IllegalStateException("filter failed");
+          }
+        };
+    dispatcher.registerHandler(handler);
+
+    assertDoesNotThrow(
+        () -> dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext));
+    assertTrue(
+        handler.updatedCalled, "A failed filter must preserve the previous dispatch behavior");
   }
 
   @Test
