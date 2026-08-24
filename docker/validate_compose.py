@@ -44,14 +44,42 @@ MIN_REQUEST_TIMEOUT = 5
 # capped hard: total wall clock and per request.
 DIAGNOSTIC_BUDGET_SECONDS = 20
 DIAGNOSTIC_REQUEST_TIMEOUT = 8
+TASK_INSTANCE_PAGE_SIZE = 100
 
 _access_token: str | None = None
+_http_session: requests.Session | None = None
 _last_dag_logs_supported: bool | None = None
 _deadline: float | None = None
 
 
 def log(message: str) -> None:
     print(message, flush=True)
+
+
+def get_http_session() -> requests.Session:
+    """Return the HTTP session shared by this validator invocation."""
+    global _http_session
+
+    if _http_session is None:
+        _http_session = requests.Session()
+    return _http_session
+
+
+def get_json_object(
+    response: requests.Response, response_name: str
+) -> dict[str, object] | None:
+    """Parse an Airflow JSON object without turning a proxy error into a validator crash."""
+    try:
+        payload = response.json()
+    except ValueError:
+        log(f"Airflow returned invalid JSON for {response_name}.")
+        return None
+
+    if not isinstance(payload, dict):
+        log(f"Airflow returned an invalid {response_name} response.")
+        return None
+
+    return payload
 
 
 def get_env_int(name: str, default: int) -> int:
@@ -103,7 +131,7 @@ def get_access_token(timeout: float) -> str | None:
         return _access_token
 
     try:
-        response = requests.post(
+        response = get_http_session().post(
             f"{AIRFLOW_URL}/auth/token",
             headers={"Content-Type": "application/json"},
             json={"username": USERNAME, "password": PASSWORD},
@@ -113,12 +141,21 @@ def get_access_token(timeout: float) -> str | None:
         log(f"Could not reach the Airflow token endpoint: {exc}")
         return None
 
-    if response.status_code == 201:
-        _access_token = response.json().get("access_token")
-        return _access_token
+    if response.status_code != 201:
+        log(f"Failed to get access token: {response.status_code} - {response.text}")
+        return None
 
-    log(f"Failed to get access token: {response.status_code} - {response.text}")
-    return None
+    payload = get_json_object(response, "access-token")
+    if payload is None:
+        return None
+
+    access_token = payload.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        log("Airflow access-token response did not contain an access token.")
+        return None
+
+    _access_token = access_token
+    return _access_token
 
 
 def airflow_get(path: str, timeout: float) -> requests.Response | None:
@@ -134,30 +171,40 @@ def airflow_get(path: str, timeout: float) -> requests.Response | None:
     # Authentication shares this endpoint's budget; otherwise a token refresh can
     # double the duration of a poll issued close to the validation deadline.
     request_deadline = time.monotonic() + timeout
-    token = get_access_token(timeout)
-    if not token:
-        return None
+    for request_attempt in range(2):
+        remaining = request_deadline - time.monotonic()
+        if remaining <= 0:
+            log(f"No time left to call {path} after authentication.")
+            return None
 
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    remaining = request_deadline - time.monotonic()
-    if remaining <= 0:
-        log(f"No time left to call {path} after authentication.")
-        return None
+        token = get_access_token(remaining)
+        if not token:
+            return None
 
-    try:
-        response = requests.get(
-            f"{AIRFLOW_URL}{path}", headers=headers, timeout=remaining
-        )
-    except requests.exceptions.RequestException as exc:
-        log(f"Error calling {path}: {exc}")
-        return None
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        remaining = request_deadline - time.monotonic()
+        if remaining <= 0:
+            log(f"No time left to call {path} after authentication.")
+            return None
 
-    if response.status_code == 401:
+        try:
+            response = get_http_session().get(
+                f"{AIRFLOW_URL}{path}", headers=headers, timeout=remaining
+            )
+        except requests.exceptions.RequestException as exc:
+            log(f"Error calling {path}: {exc}")
+            return None
+
+        if response.status_code != 401:
+            return response
+
         _access_token = None
-        log(f"Airflow token rejected on {path}; will re-authenticate.")
-        return None
+        if request_attempt == 0:
+            log(f"Airflow token rejected on {path}; refreshing it once.")
+        else:
+            log(f"Airflow token rejected after refresh on {path}.")
 
-    return response
+    return None
 
 
 def get_last_run_info(
@@ -189,30 +236,43 @@ def get_last_run_info(
         log(f"Error getting DAG runs: {response.status_code} - {response.text}")
         return None, None, False
 
-    payload = response.json()
-    if target_dag_run_id:
-        if not isinstance(payload, dict):
-            log("Airflow returned an invalid DAG-run response.")
-            return None, None, False
+    payload = get_json_object(response, "DAG-run" if target_dag_run_id else "DAG-runs")
+    if payload is None:
+        return None, None, False
 
+    if target_dag_run_id:
         dag_run_id = payload.get("dag_run_id")
         if not isinstance(dag_run_id, str) or not dag_run_id:
             log("Airflow DAG-run response did not contain a dag_run_id.")
             return None, None, False
 
-        return dag_run_id, (payload.get("state") or "").lower(), True
+        state = payload.get("state")
+        return dag_run_id, state.lower() if isinstance(state, str) else "", True
 
-    if not isinstance(payload, dict):
-        log("Airflow returned an invalid DAG-runs response.")
+    dag_runs = payload.get("dag_runs")
+    if not isinstance(dag_runs, list):
+        log("Airflow DAG-runs response did not contain a list of dag_runs.")
         return None, None, False
-
-    dag_runs = payload.get("dag_runs") or []
     if not dag_runs:
         return None, None, True
 
-    dag_run = sorted(dag_runs, key=lambda run: run.get("logical_date") or "", reverse=True)[0]
+    if not all(isinstance(run, dict) for run in dag_runs):
+        log("Airflow DAG-runs response contained an invalid DAG run.")
+        return None, None, False
 
-    return dag_run.get("dag_run_id"), (dag_run.get("state") or "").lower(), True
+    dag_run = max(
+        dag_runs,
+        key=lambda run: run.get("logical_date")
+        if isinstance(run.get("logical_date"), str)
+        else "",
+    )
+    dag_run_id = dag_run.get("dag_run_id")
+    if not isinstance(dag_run_id, str) or not dag_run_id:
+        log("Airflow DAG-runs response did not contain a dag_run_id.")
+        return None, None, False
+
+    state = dag_run.get("state")
+    return dag_run_id, state.lower() if isinstance(state, str) else "", True
 
 
 def print_last_run_logs(timeout: float) -> None:
@@ -247,17 +307,61 @@ def print_task_instance_states(dag_run_id: str, timeout: float) -> None:
     stuck or dead" when the deadline is hit — without it the failure is
     indistinguishable from a hang.
     """
-    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns/{dag_run_id}/taskInstances", timeout)
-    if response is None or response.status_code != 200:
-        return
+    request_deadline = time.monotonic() + timeout
+    offset = 0
+    task_instances_path = (
+        f"/api/v2/dags/{DAG_ID}/dagRuns/{quote(dag_run_id, safe='')}/taskInstances"
+    )
 
-    log(f"Task instances for {dag_run_id}:")
-    for task in response.json().get("task_instances") or []:
-        log(
-            f"  - {task.get('task_id')}: state={task.get('state')} "
-            f"try={task.get('try_number')} start={task.get('start_date')} "
-            f"end={task.get('end_date')} duration={task.get('duration')}"
-        )
+    while True:
+        remaining = request_deadline - time.monotonic()
+        if remaining <= 0:
+            log("Diagnostic request budget exhausted while fetching task-instance states.")
+            return
+
+        query_params = {"limit": TASK_INSTANCE_PAGE_SIZE, "offset": offset}
+        path = f"{task_instances_path}?{urlencode(query_params)}"
+        response = airflow_get(path, remaining)
+        if response is None:
+            return
+        if response.status_code != 200:
+            log(f"Could not fetch task instances: {response.status_code} - {response.text}")
+            return
+
+        payload = get_json_object(response, "task-instances")
+        if payload is None:
+            return
+
+        task_instances = payload.get("task_instances")
+        if not isinstance(task_instances, list):
+            log("Airflow task-instances response did not contain a list of task_instances.")
+            return
+
+        if offset == 0:
+            log(f"Task instances for {dag_run_id}:")
+        for task in task_instances:
+            if not isinstance(task, dict):
+                log("Airflow task-instances response contained an invalid task instance.")
+                continue
+            log(
+                f"  - {task.get('task_id')}: state={task.get('state')} "
+                f"try={task.get('try_number')} start={task.get('start_date')} "
+                f"end={task.get('end_date')} duration={task.get('duration')}"
+            )
+
+        offset += len(task_instances)
+        total_entries = payload.get("total_entries")
+        if total_entries is not None:
+            if type(total_entries) is not int:
+                log("Airflow task-instances response contained an invalid total_entries value.")
+                return
+            if offset >= total_entries:
+                return
+            if not task_instances:
+                log("Airflow task-instances response ended before total_entries.")
+                return
+        elif len(task_instances) < TASK_INSTANCE_PAGE_SIZE:
+            return
 
 
 def dump_diagnostics(

@@ -17,6 +17,7 @@ from types import ModuleType
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
 
 VALIDATE_COMPOSE_PATH = Path(__file__).resolve().parents[3] / "docker" / "validate_compose.py"
 RUN_LOCAL_DOCKER_COMMON_PATH = Path(__file__).resolve().parents[3] / "docker" / "run_local_docker_common.sh"
@@ -38,12 +39,21 @@ class FakeClock:
 class FakeAirflowResponse:
     """Minimal response returned by the Airflow HTTP boundary."""
 
-    def __init__(self, payload: dict[str, object], text: str = "", status_code: int = 200) -> None:
+    def __init__(
+        self,
+        payload: object,
+        text: str = "",
+        status_code: int = 200,
+        json_error: ValueError | None = None,
+    ) -> None:
         self.payload = payload
         self.text = text
         self.status_code = status_code
+        self.json_error = json_error
 
-    def json(self) -> dict[str, object]:
+    def json(self) -> object:
+        if self.json_error:
+            raise self.json_error
         return self.payload
 
 
@@ -54,6 +64,31 @@ class FakeTokenResponse:
 
     def json(self) -> dict[str, str]:
         return {"access_token": "token"}
+
+
+class FakeHttpSession:
+    """Scriptable HTTP boundary for the container-side Airflow client."""
+
+    def __init__(
+        self,
+        post_responses: list[FakeAirflowResponse | FakeTokenResponse],
+        get_responses: list[FakeAirflowResponse | requests.exceptions.RequestException],
+    ) -> None:
+        self.post_responses = post_responses
+        self.get_responses = get_responses
+        self.post_calls: list[dict[str, object]] = []
+        self.get_calls: list[dict[str, object]] = []
+
+    def post(self, url: str, **kwargs: object) -> FakeAirflowResponse | FakeTokenResponse:
+        self.post_calls.append({"url": url, **kwargs})
+        return self.post_responses.pop(0)
+
+    def get(self, url: str, **kwargs: object) -> FakeAirflowResponse:
+        self.get_calls.append({"url": url, **kwargs})
+        response = self.get_responses.pop(0)
+        if isinstance(response, requests.exceptions.RequestException):
+            raise response
+        return response
 
 
 def load_validate_compose() -> ModuleType:
@@ -311,10 +346,11 @@ def test_timeout_diagnoses_known_triggered_run_after_poll_failures(
     """A known target still gets run and task diagnostics after transient poll failures."""
     validator = load_validate_compose()
     clock = FakeClock()
-    airflow_responses = iter(
-        [
-            None,
-            None,
+    session = FakeHttpSession(
+        post_responses=[FakeTokenResponse()],
+        get_responses=[
+            requests.exceptions.ConnectionError("first poll failed"),
+            requests.exceptions.ConnectionError("second poll failed"),
             FakeAirflowResponse(
                 {"dag_run_id": "manual__target", "state": "running"}
             ),
@@ -333,11 +369,11 @@ def test_timeout_diagnoses_known_triggered_run_after_poll_failures(
                 }
             ),
             FakeAirflowResponse({}, text="last task log"),
-        ]
+        ],
     )
 
     monkeypatch.setattr(validator, "time", clock)
-    monkeypatch.setattr(validator, "airflow_get", lambda _path, _timeout: next(airflow_responses))
+    monkeypatch.setattr(validator, "get_http_session", lambda: session)
     monkeypatch.setenv("VALIDATE_COMPOSE_DAG_RUN_ID", "manual__target")
     monkeypatch.setenv("VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS", "1")
     monkeypatch.setenv("VALIDATE_COMPOSE_TIMEOUT_SECONDS", "1")
@@ -350,6 +386,107 @@ def test_timeout_diagnoses_known_triggered_run_after_poll_failures(
     assert "Diagnostic DAG run [manual__target] is running." in output
     assert "Task instances for manual__target:" in output
     assert "last observed run=manual__target, state=running" in str(exit_info.value)
+
+
+def test_airflow_get_reauthenticates_once_within_the_caller_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A rejected cached token is refreshed before diagnostic requests give up."""
+    validator = load_validate_compose()
+    session = FakeHttpSession(
+        post_responses=[FakeTokenResponse()],
+        get_responses=[
+            FakeAirflowResponse({}, status_code=401),
+            FakeAirflowResponse({"dag_run_id": "manual__target", "state": "running"}),
+        ],
+    )
+    validator._access_token = "stale-token"
+
+    monkeypatch.setattr(validator, "get_http_session", lambda: session)
+
+    response = validator.airflow_get("/api/v2/dags/sample_data/dagRuns/manual__target", 10)
+
+    assert response is not None
+    assert response.status_code == 200
+    assert [call["headers"]["Authorization"] for call in session.get_calls] == [
+        "Bearer stale-token",
+        "Bearer token",
+    ]
+    assert len(session.post_calls) == 1
+    assert session.post_calls[0]["timeout"] <= 10
+
+
+def test_get_last_run_info_treats_malformed_airflow_responses_as_transient(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Bad JSON and malformed DAG-run lists keep validation alive for diagnostics."""
+    validator = load_validate_compose()
+    session = FakeHttpSession(
+        post_responses=[FakeTokenResponse()],
+        get_responses=[
+            FakeAirflowResponse(None, json_error=ValueError("invalid JSON")),
+            FakeAirflowResponse({"dag_runs": {"not": "a list"}}),
+        ],
+    )
+
+    monkeypatch.setattr(validator, "get_http_session", lambda: session)
+
+    assert validator.get_last_run_info("manual__target", None, 10) == (None, None, False)
+    assert validator.get_last_run_info(None, "2026-08-24T00:00:00Z", 10) == (
+        None,
+        None,
+        False,
+    )
+    output = capsys.readouterr().out
+    assert "Airflow returned invalid JSON for DAG-run." in output
+    assert "Airflow DAG-runs response did not contain a list of dag_runs." in output
+
+
+def test_task_diagnostics_encode_run_ids_and_paginate(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Timeout diagnostics report every task from the correctly encoded target route."""
+    validator = load_validate_compose()
+    session = FakeHttpSession(
+        post_responses=[FakeTokenResponse()],
+        get_responses=[
+            FakeAirflowResponse(
+                {
+                    "task_instances": [
+                        {"task_id": "first-task", "state": "running"}
+                    ],
+                    "total_entries": 2,
+                }
+            ),
+            FakeAirflowResponse(
+                {
+                    "task_instances": [
+                        {"task_id": "second-task", "state": "queued"}
+                    ],
+                    "total_entries": 2,
+                }
+            ),
+        ],
+    )
+
+    monkeypatch.setattr(validator, "get_http_session", lambda: session)
+
+    validator.print_task_instance_states("manual/a?b", 8)
+
+    output = capsys.readouterr().out
+    assert "Task instances for manual/a?b:" in output
+    assert "first-task: state=running" in output
+    assert "second-task: state=queued" in output
+    assert [urlparse(call["url"]).path for call in session.get_calls] == [
+        "/api/v2/dags/sample_data/dagRuns/manual%2Fa%3Fb/taskInstances",
+        "/api/v2/dags/sample_data/dagRuns/manual%2Fa%3Fb/taskInstances",
+    ]
+    assert [parse_qs(urlparse(call["url"]).query) for call in session.get_calls] == [
+        {"limit": ["100"], "offset": ["0"]},
+        {"limit": ["100"], "offset": ["1"]},
+    ]
 
 
 def test_airflow_get_uses_remaining_timeout_after_authentication(
@@ -370,9 +507,11 @@ def test_airflow_get_uses_remaining_timeout_after_authentication(
         get_timeouts.append(kwargs["timeout"])
         return FakeAirflowResponse({})
 
+    session = FakeHttpSession([], [])
     monkeypatch.setattr(validator, "time", clock)
-    monkeypatch.setattr(validator.requests, "post", post)
-    monkeypatch.setattr(validator.requests, "get", get)
+    monkeypatch.setattr(session, "post", post)
+    monkeypatch.setattr(session, "get", get)
+    monkeypatch.setattr(validator, "get_http_session", lambda: session)
 
     response = validator.airflow_get("/api/v2/dags/sample_data/dagRuns", timeout=10)
 
