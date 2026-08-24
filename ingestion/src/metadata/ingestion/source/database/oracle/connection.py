@@ -81,8 +81,10 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
                 oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
         except DatabaseError as err:
-            logger.info(
-                "Could not initialize Oracle thick client; continuing with the current driver mode: %s",
+            logger.warning(
+                "Could not initialize Oracle thick client. "
+                "Verify that Oracle Client 19 or newer is installed and available; "
+                "continuing with the current driver mode: %s",
                 err,
             )
 
