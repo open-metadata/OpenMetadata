@@ -25,6 +25,11 @@ on:
           - okta
           - keycloak-azure-saml
           - all
+      send_slack_notification:
+        description: "Send Slack notification with test results"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -124,7 +129,7 @@ jobs:
           retention-days: 5
 
       - name: Send Slack Notification
-        if: always()
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"
