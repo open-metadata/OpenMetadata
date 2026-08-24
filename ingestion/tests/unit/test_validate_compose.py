@@ -11,6 +11,7 @@
 """Regression coverage for sample-data DAG validation."""
 
 import importlib.util
+import subprocess
 from pathlib import Path
 from types import ModuleType
 from urllib.parse import parse_qs, urlparse
@@ -18,6 +19,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 VALIDATE_COMPOSE_PATH = Path(__file__).resolve().parents[3] / "docker" / "validate_compose.py"
+RUN_LOCAL_DOCKER_COMMON_PATH = Path(__file__).resolve().parents[3] / "docker" / "run_local_docker_common.sh"
 
 
 class FakeClock:
@@ -63,6 +65,103 @@ def load_validate_compose() -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def prepare_sample_data_validation_env(
+    trigger_succeeded: str,
+    logical_date: str,
+    dag_run_id: str,
+    max_retries: str,
+) -> tuple[int, list[str]]:
+    """Run the shell's validation environment builder and return its outcome."""
+    command = """
+source "$1"
+prepare_sample_data_validation_env "$2" "$3" "$4" "$5" "$6" "$7"
+status=$?
+printf '%s\\n' "${validate_compose_env[@]}"
+exit "$status"
+"""
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            command,
+            "bash",
+            str(RUN_LOCAL_DOCKER_COMMON_PATH),
+            trigger_succeeded,
+            "240",
+            "10",
+            logical_date,
+            dag_run_id,
+            max_retries,
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    return result.returncode, result.stdout.splitlines()
+
+
+def test_failed_trigger_does_not_prepare_a_validation_target() -> None:
+    """A failed POST cannot safely be validated as an unrelated scheduled DAG run."""
+    exit_code, environment = prepare_sample_data_validation_env(
+        "false",
+        "2026-08-24T00:00:00Z",
+        "",
+        "",
+    )
+
+    assert exit_code == 1
+    assert environment == [
+        "-e",
+        "VALIDATE_COMPOSE_TIMEOUT_SECONDS=240",
+        "-e",
+        "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=10",
+    ]
+
+
+def test_successful_trigger_preserves_its_validation_target() -> None:
+    """A successful trigger keeps both its logical date and explicit run identity."""
+    exit_code, environment = prepare_sample_data_validation_env(
+        "true",
+        "2026-08-24T00:00:00Z",
+        "manual__target",
+        "7",
+    )
+
+    assert exit_code == 0
+    assert environment == [
+        "-e",
+        "VALIDATE_COMPOSE_TIMEOUT_SECONDS=240",
+        "-e",
+        "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=10",
+        "-e",
+        "VALIDATE_COMPOSE_LOGICAL_DATE=2026-08-24T00:00:00Z",
+        "-e",
+        "VALIDATE_COMPOSE_DAG_RUN_ID=manual__target",
+        "-e",
+        "VALIDATE_COMPOSE_MAX_RETRIES=7",
+    ]
+
+
+def test_successful_trigger_without_run_id_targets_its_logical_date() -> None:
+    """A successful POST can safely use its submitted logical date as a fallback target."""
+    exit_code, environment = prepare_sample_data_validation_env(
+        "true",
+        "2026-08-24T00:00:00Z",
+        "",
+        "",
+    )
+
+    assert exit_code == 0
+    assert environment == [
+        "-e",
+        "VALIDATE_COMPOSE_TIMEOUT_SECONDS=240",
+        "-e",
+        "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=10",
+        "-e",
+        "VALIDATE_COMPOSE_LOGICAL_DATE=2026-08-24T00:00:00Z",
+    ]
 
 
 def test_main_does_not_accept_historical_success_for_triggered_run(
