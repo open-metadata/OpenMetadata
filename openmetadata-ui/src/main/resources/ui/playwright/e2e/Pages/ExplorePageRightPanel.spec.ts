@@ -31,7 +31,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { uuid, waitForDeletionFromSearchIndex } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   getEntityDisplayName,
@@ -114,7 +114,12 @@ const testTier = 'Tier1';
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.slow(true); // 5 minutes
+    // Explicit hook budget for the 9 sequential entity creations. Do NOT
+    // use test.slow(true) here: combined with the (now removed) suite-wide
+    // beforeEach slow, stacked tripled budgets let a single failing attempt
+    // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
+    // 3m — run 32500973433) instead of failing fast.
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -130,11 +135,6 @@ test.describe('Right Panel Test Suite', () => {
     } finally {
       await afterAction();
     }
-  });
-
-  // No need for explicit beforeEach instantiation as fixtures handle it
-  test.beforeEach(async () => {
-    test.slow(true);
   });
 
   // Cleanup test data
@@ -158,6 +158,13 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
+      // Nightly EKS/RDS infra runs every test body in this group at 72-84 s
+      // (run 32560604531 in openmetadata-nightly; PR infra ~45 s) — genuine
+      // remote-server latency, uniform across all 10 tests. Budget for that
+      // infra explicitly instead of the old suite-wide test.slow(true),
+      // which tripled EVERY test in the file and let failures grind for
+      // minutes. Applies to all tests in this describe only.
+      test.setTimeout(120_000);
       const crudEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -372,7 +379,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1075,6 +1083,18 @@ test.describe('Right Panel Test Suite', () => {
               await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
               await deletedUser.delete(apiContext);
+              // The owner dropdown is search-backed and index deletion is
+              // eventually consistent — gate on the index before asserting
+              // absence, or the dropdown can still return the deleted user.
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedUser.getUserDisplayName(),
+                'user',
+                [
+                  deletedUser.getUserDisplayName(),
+                  deletedUser.responseData.name,
+                ]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1126,6 +1146,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedTag.delete(apiContext);
               await deletedClassification.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed tag dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTagDisplayName,
+                'tag',
+                [deletedTagDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1174,6 +1202,14 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedGlossaryTerm.delete(apiContext);
               await deletedGlossary.delete(apiContext);
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed term dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTermDisplayName,
+                'glossaryTerm',
+                [deletedTermDisplayName]
+              );
               await adminPage.reload();
               await rightPanel.waitForPanelVisible();
 
@@ -1448,7 +1484,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
