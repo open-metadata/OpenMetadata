@@ -12,13 +12,16 @@
  */
 import { TableProps } from 'antd/lib/table';
 import type { DragAndDropHooks } from 'react-aria-components';
+import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
+import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
 /**
  * Table types re-exported so this file is the single place that reaches into
- * AntD's table typings. Call sites import them from here instead, which is what
- * lets the underlying table be swapped without touching ~100 files: only the
+ * AntD's table typings. Call sites reference them from here, which is what lets
+ * the underlying table be swapped without touching ~100 files: only the
  * right-hand side of these lines has to change.
  */
+export type { TableProps } from 'antd/lib/table';
 export type {
   ColumnGroupType,
   ColumnsType,
@@ -33,9 +36,6 @@ export type {
   TablePaginationConfig,
   TableRowSelection,
 } from 'antd/lib/table/interface';
-export type { TableProps } from 'antd/lib/table';
-import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
-import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from '../../../common/Table/Table.interface';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';

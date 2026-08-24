@@ -45,7 +45,12 @@ import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
-import { TableColumnDropdownList, TableComponentProps, ColumnsType, ColumnType } from './Table.interface';
+import {
+  ColumnsType,
+  ColumnType,
+  TableColumnDropdownList,
+  TableComponentProps,
+} from './Table.interface';
 import './table.less';
 
 type TableProps<T extends object> = TableComponentProps<T>;

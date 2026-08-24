@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableColumnDropdownList, ColumnType } from '../components/common/Table/Table.interface';
+import {
+  ColumnType,
+  TableColumnDropdownList,
+} from '../components/common/Table/Table.interface';
 
 /**
  * Get customizable column details for table dropdown
