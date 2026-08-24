@@ -14,9 +14,21 @@ import { expect, test } from '@playwright/test';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { suppressCsvJobsTray } from '../../utils/importUtils';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
+import {
+  startCsvPreviewAndWaitForGrid,
+  suppressCsvJobsTray,
+  validateImportStatus,
+} from '../../utils/importUtils';
 import { performUserLogin } from '../../utils/user';
+
+const CLASSIFICATION_CSV_HEADER =
+  'parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -114,5 +126,59 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
     await expect(
       page.getByText('Drag & Drop or Browse CSV file here')
     ).toBeVisible();
+  });
+
+  test('renaming a tag row on import creates a new tag and keeps the original', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    const originalTag = new TagClass({
+      classification: userClassification.data.name,
+      name: `alpha-${uuid()}`,
+    });
+    const renamedTagName = `beta-${uuid()}`;
+
+    try {
+      await originalTag.create(apiContext);
+      const csv = [
+        CLASSIFICATION_CSV_HEADER,
+        `,${renamedTagName},Renamed,renamed via import,,,,,,,`,
+      ].join('\n');
+
+      await suppressCsvJobsTray(page);
+      await userClassification.visitPage(page);
+
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('import-button').click();
+      await page.waitForURL('**/bulk/import/classification/**');
+
+      await page.locator('[type="file"]').waitFor({ state: 'attached' });
+      await page.setInputFiles('[type="file"]', {
+        name: 'classification.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(csv),
+      });
+
+      await startCsvPreviewAndWaitForGrid(page);
+
+      await page.getByRole('button', { name: 'Next' }).click();
+      await validateImportStatus(page, {
+        passed: '1',
+        processed: '1',
+        failed: '0',
+      });
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page.waitForURL('**/tags/**');
+
+      await userClassification.visitPage(page);
+      await expect(page.getByTestId(originalTag.data.name)).toBeVisible();
+      await expect(page.getByTestId(renamedTagName)).toBeVisible();
+    } finally {
+      await originalTag.delete(apiContext);
+      await afterAction();
+    }
   });
 });
