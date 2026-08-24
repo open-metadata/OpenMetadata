@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Typography
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -113,9 +110,7 @@ export default forwardRef<
   }));
 
   return (
-    <div
-      className="suggestion-menu-wrapper"
-      id="hashtag-viewport">
+    <div className="suggestion-menu-wrapper" id="hashtag-viewport">
       {items.map((item, index) => {
         const breadcrumbsData = item.breadcrumbs
           ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
@@ -123,19 +118,22 @@ export default forwardRef<
 
         return (
           <button
-            className={classNames('tw:w-full tw:cursor-pointer hashtag-item tw:flex tw:items-start tw:flex-col', {
-              'bg-grey-2': index === selectedIndex,
-            })}
+            className={classNames(
+              'tw:w-full tw:cursor-pointer hashtag-item tw:flex tw:items-start tw:flex-col',
+              {
+                'bg-grey-2': index === selectedIndex,
+              }
+            )}
             data-testid={`hash-mention-${item.label}`}
             id={`hashtag-item-${item.id}`}
             key={item.id}
-            type='button'
+            type="button"
             onClick={() => selectItem(index)}>
-            <div className='tw:w-full tw:min-w-0 tw:flex tw:flex-wrap'>
+            <div className="tw:w-full tw:min-w-0 tw:flex tw:flex-wrap">
               <Typography
                 className="tw:text-quaternary tw:block tw:text-left tw:min-w-0"
                 ellipsis={{ tooltip: renderBreakableTooltip(breadcrumbsData) }}
-                size='text-xs'>
+                size="text-xs">
                 {breadcrumbsData}
               </Typography>
             </div>
