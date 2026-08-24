@@ -1530,6 +1530,16 @@ test.describe('Input Output Ports', () => {
         const lineageView = page.getByTestId('ports-lineage-view');
         await expect(lineageView).toHaveCSS('position', 'fixed');
 
+        // The click leaves the pointer hovering the button, whose react-aria
+        // Tooltip opens after a hover delay. An OPEN tooltip installs a
+        // capture-phase document keydown listener that stopPropagation()s
+        // Escape to dismiss itself (layered dismiss — correct UX), so the
+        // fullscreen Escape handler never fires. Whether the delay has
+        // elapsed by the time Escape is pressed depends on CI load — this
+        // was a ~50% merge-queue killer on 2026-08-24. Park the pointer
+        // away from the trigger so Escape always reaches the app.
+        await page.mouse.move(0, 0);
+
         await page.keyboard.press('Escape');
         await expect(lineageView).toHaveCSS('position', 'relative');
       });
