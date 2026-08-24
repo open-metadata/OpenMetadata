@@ -489,6 +489,7 @@ describe('ClassificationDetails', () => {
       EditAll: false,
       Delete: false,
       EditDisplayName: false,
+      ViewAll: false,
     };
 
     render(
