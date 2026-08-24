@@ -24,7 +24,7 @@
  *   2. Optimize each SVG with SVGO (two paths: regular vs colored)
  *   3. Transform to TSX with SVGR
  *   4. Write {PascalCase}.tsx files to src/icons/
- *   5. Generate src/icons/index.ts barrel
+ *   5. Generate src/icons/index.ts barrel (inline, not via templates/index.cjs)
  *
  * Adding a new colored/gradient icon:
  *   1. Drop the SVG in icons/
@@ -77,11 +77,14 @@ const svgoConfig = {
     },
     { name: 'cleanupIds', params: { minify: true, remove: true } },
     // Remove layout/meta attributes that SVGR injects at the SVG root level.
+    // Note: 'id' is intentionally excluded — cleanupIds prunes unreferenced ids
+    // while preserving clipPath/mask/gradient refs. 'stroke-width' is also excluded
+    // so each icon's designed stroke weight is preserved rather than overridden.
     {
       name: 'removeAttrs',
       params: {
-        attrs: ['xmlns', 'width', 'height', 'stroke-width',
-                'stroke-linecap', 'stroke-linejoin', 'data-name', 'id', 'style'],
+        attrs: ['xmlns', 'width', 'height',
+                'stroke-linecap', 'stroke-linejoin', 'data-name', 'style'],
       },
     },
     // Replace hardcoded hex colors with currentColor so icons are fully themeable.
@@ -148,7 +151,6 @@ const svgrConfig = {
     width: '{size}',
     height: '{size}',
     stroke: '{color}',
-    strokeWidth: '1.3',
     fill: 'none',
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
