@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import { TeamAndUserSelectItemV2Props } from './TeamAndUserSelectItemV2.interface';
 
@@ -120,7 +121,10 @@ function TeamAndUserSelectItemV2({
         ].join(' ')}
         data-testid={`team-user-select-trigger-${destinationNumber}`}
         ref={triggerRef}
-        onClick={handleTriggerClick}>
+        role="button"
+        tabIndex={0}
+        onClick={handleTriggerClick}
+        onKeyDown={handleKeyboardActivation(handleTriggerClick)}>
         {isEmpty(selectedOptions) ? (
           <span
             className="tw:text-sm tw:text-placeholder"
@@ -151,6 +155,7 @@ function TeamAndUserSelectItemV2({
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={dropdownRef}>
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- search box must focus when dropdown opens
             autoFocus
             data-testid="search-input"
             inputDataTestId="search-input-field"

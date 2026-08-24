@@ -58,6 +58,17 @@ from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.entity_link import CustomColumnName
 
 
+def test_generated_model_transforms_name():
+    """Validate automatic name transformation on generated models."""
+    request = CreateTableRequest(
+        name=EntityName('my::table>with"special_chars'),
+        columns=[Column(name=ColumnName("column"), dataType=DataType.STRING)],
+        databaseSchema=FullyQualifiedEntityName("database.schema"),
+    )
+
+    assert request.name.root == "my__reserved__colon__table__reserved__arrow__with__reserved__quote__special_chars"
+
+
 class TestCustomBasemodelValidation(TestCase):
     """Comprehensive test suite for custom basemodel validation functionality."""
 

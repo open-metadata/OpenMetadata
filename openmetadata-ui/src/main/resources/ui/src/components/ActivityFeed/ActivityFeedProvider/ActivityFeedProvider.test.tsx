@@ -573,6 +573,7 @@ describe('ActivityFeedProvider', () => {
       );
 
       await act(async () => {
+        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
         resolveSlowRequest({
           data: [{ ...activity, summary: 'Stale result' }],
           paging: {},

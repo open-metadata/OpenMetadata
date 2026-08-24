@@ -48,7 +48,6 @@ us_driving_license = [
         r"^[a-zA-Z]\d{2}-\d{2}-\d{4}$",
         r"^[a-zA-Z]\d{2}-\d{3}-\d{3}$",
         r"^[a-zA-Z]\d{9}$",
-        r"^\d{3}-\d{2}-\d{4}$",
         r"^[a-zA-Z]\d{9}$",
         r"^(([0][1-9]|[1][0-2])\d{3}([1-9][0-9]{3})41([0][1-9]|[1][0-9]|[3][0-1]))\d{10}$",
         r"^([0][1-9]|[1][0-2])[a-zA-Z]{3}\d{2}(0[1-9]|[1-2][0-9]|3[0-1])\d$",
@@ -136,6 +135,15 @@ us_driving_license = [
         r"^\d{2}-\d{5}$",  # ##-#####
     )
 ]
+
+# Mississippi prints its nine-digit licence numbers in Social Security positions, so this
+# shape is a real licence format that is also indistinguishable from an SSN. It keeps its
+# place in the list, but not at the shared 0.3: US_SSN only matches values that pass
+# Presidio's validator, while this pattern matches the shape unconditionally, so at an equal
+# score a column of masked or placeholder SSNs -- fewer than 60% of values validating --
+# outweighed the SSN match and was labelled a driving licence. A very weak score keeps the
+# licence reading available when nothing else claims the column, without displacing SSN.
+us_driving_license.append(Pattern("US Driving License (SSN-shaped)", r"^\d{3}-\d{2}-\d{4}$", 0.05))
 
 au_tfn_number = [
     Pattern(

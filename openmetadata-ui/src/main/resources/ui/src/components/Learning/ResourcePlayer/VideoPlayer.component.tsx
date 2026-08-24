@@ -94,6 +94,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
             <Spin size="large" />
           </div>
         )}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- lifecycle, not interaction */}
         <iframe
           allowFullScreen
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"

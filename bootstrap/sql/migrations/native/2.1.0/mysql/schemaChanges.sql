@@ -134,3 +134,10 @@ PREPARE drop_conversation_activity_timestamp_stmt
   FROM @drop_conversation_activity_timestamp_ddl;
 EXECUTE drop_conversation_activity_timestamp_stmt;
 DEALLOCATE PREPARE drop_conversation_activity_timestamp_stmt;
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
+CREATE INDEX idx_entity_relationship_pipeline_relation
+ON entity_relationship (
+    (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
+    relation
+);

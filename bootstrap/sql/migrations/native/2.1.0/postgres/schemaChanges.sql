@@ -128,3 +128,8 @@ CREATE INDEX IF NOT EXISTS idx_conversation_domain_lookup
     ON conversation_domain (domainId, conversationId);
 
 ALTER TABLE conversation_entity DROP COLUMN IF EXISTS activityTimestamp;
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- The partial index avoids write amplification for relationships that have no pipeline metadata.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
+ON entity_relationship ((json->'pipeline'->>'id'), relation)
+WHERE (json->'pipeline'->>'id') IS NOT NULL;

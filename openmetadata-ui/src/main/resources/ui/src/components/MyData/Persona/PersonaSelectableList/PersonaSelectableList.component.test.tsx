@@ -64,6 +64,7 @@ jest.mock('antd', () => {
 
       return (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
           <input
             data-testid="persona-search"
             onChange={(e) => onSearch?.(e.target.value)}
@@ -72,6 +73,7 @@ jest.mock('antd', () => {
             <div
               data-testid={`option-${option.value}`}
               key={option.value}
+              role="presentation"
               onClick={() => onChange?.([option.value])}>
               {option.label}
             </div>

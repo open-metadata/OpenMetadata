@@ -19,11 +19,11 @@ import {
   getFeedItemByText,
   getTableLeafName,
   insertActivityEventForTest,
-  postActivityComment,
   THUMBS_UP_EMOJI,
   toggleThumbsUpReaction,
   visitTableActivityFeed,
 } from '../../utils/activityAPI';
+import { postActivityComment } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';

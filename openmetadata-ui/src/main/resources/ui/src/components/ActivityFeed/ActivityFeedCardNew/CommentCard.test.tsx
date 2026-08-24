@@ -67,6 +67,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
   return jest.fn(({ onSave, onTextChange }) => (
     <div data-testid="feed-editor">
       <input
+        aria-label="Editor input"
         data-testid="editor-input"
         onChange={(e) => onTextChange(e.target.value)}
       />
