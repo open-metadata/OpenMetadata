@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { useRef } from 'react';
+import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
+import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
 import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
-import { UserProfileIcon } from '../../../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 
 export interface UserProfileCardProps {
   /**
@@ -26,13 +28,12 @@ export interface UserProfileCardProps {
 }
 
 /**
- * Default user chrome for the ClassicV1 sidebar footer — the shared
- * `UserProfileIcon` (avatar, name, profile dropdown) plus the Classic/ClassicV1
- * `AppModeSwitcher`, mirroring Collate's user card. Rendered by
- * `MainPanel`/`Rail` only when no plugin contributes an
- * `app-mode.sidebar.*.footer` slot, so a downstream (Collate) user card still
- * overrides it. `cardRef` lets the switcher popover treat clicks inside the
- * card as "inside" and not self-close.
+ * User chrome for the ClassicV1 sidebar footer — the AI user menu (avatar,
+ * name, profile dropdown), the inbox launcher, and the Classic/ClassicV1
+ * `AppModeSwitcher`. `cardRef` lets the switcher popover treat clicks inside
+ * the card as "inside" and not self-close. In the collapsed rail the card
+ * mirrors the compact profile: inbox, user menu, mode switcher — no full-width
+ * wrapper.
  */
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   compact = false,
@@ -42,12 +43,28 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   return (
     <div
       className={classNames('ask-user-card', {
-        'tw:flex tw:flex-col tw:gap-2': !compact,
+        'tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-2 tw:bg-primary tw:rounded-md':
+          !compact,
       })}
       data-testid="ask-user-card"
       ref={cardRef}>
-      <UserProfileIcon />
-      {compact ? null : <AppModeSwitcher cardRef={cardRef} />}
+      {compact ? (
+        <>
+          <InboxIconButton />
+          <AIUserMenu collapsed />
+          <AppModeSwitcher compact />
+        </>
+      ) : (
+        <>
+          <Box>
+            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
+              <AIUserMenu />
+            </div>
+            <InboxIconButton />
+          </Box>
+          <AppModeSwitcher cardRef={cardRef} />
+        </>
+      )}
     </div>
   );
 };
