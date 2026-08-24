@@ -494,7 +494,7 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return  # noqa: RET502
+    return None
 
 
 def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045

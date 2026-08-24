@@ -215,9 +215,20 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self._load_description_maps()
-            self.set_inspector(database_name=configured_db)
-            yield configured_db
+            try:
+                self._load_description_maps()
+                self.set_inspector(database_name=configured_db)  # pyright: ignore[reportArgumentType]
+                yield configured_db  # pyright: ignore[reportReturnType]
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Error trying to connect to database {configured_db}: {exc}")
+                self.status.failed(
+                    error=StackTraceError(
+                        name=configured_db,  # pyright: ignore[reportArgumentType]
+                        error=f"Error trying to connect to database {configured_db}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(

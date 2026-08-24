@@ -112,13 +112,26 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
             yield self.engine
 
     def _per_database_engines(self) -> Iterator[Engine]:
-        databases = list(self._databases_to_scan())
+        try:
+            databases = list(self._databases_to_scan())
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not enumerate MSSQL databases for query history, falling back to the "
+                f"single instance-wide connection: {exc}"
+            )
+            databases = []
         if not databases:
             self._active_query_store = None
             yield self.engine
             return
         for database in databases:
-            engine = self._engine_for_database(database)
+            try:
+                engine = self._engine_for_database(database)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Skipping MSSQL database {database} for query history: {exc}")
+                continue
             self._active_query_store = is_query_store_enabled(engine)
             if self._active_query_store:
                 logger.info(
@@ -138,15 +151,8 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         self._active_query_store = None
 
     def _databases_to_scan(self) -> Iterator[str]:
-        try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(text(MSSQL_GET_QUERY_STORE_DATABASES)).fetchall()
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not list databases to scan, falling back to the configured connection database: {exc}"
-            )
-            return
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(MSSQL_GET_QUERY_STORE_DATABASES)).fetchall()
         database_filter = getattr(self.source_config, "databaseFilterPattern", None)
         for row in rows:
             database = row[0]

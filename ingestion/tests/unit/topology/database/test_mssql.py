@@ -534,6 +534,22 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
+    def test_failed_single_database_recorded_in_status(self):
+        """In single-database mode a connection failure is recorded in status and not
+        yielded, matching the ingest-all-databases branch instead of aborting the run."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        self.mssql.config.serviceConnection.root.config.database = "only_db"
+        self.mssql.status = MagicMock()
+
+        with (
+            patch.object(MssqlSource, "_load_description_maps"),
+            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == []
+        self.mssql.status.failed.assert_called_once()
+
 
 class MssqlIdentityColumnTest(TestCase):
     """Regression tests for identity column reflection.
@@ -887,15 +903,38 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
 
-    def test_databases_to_scan_degrades_gracefully_on_query_failure(self):
+    def test_falls_back_to_single_engine_when_database_enumeration_fails(self):
         """A transient failure listing databases (network blip, timeout) must not
         crash the whole ingest-all-databases run - it falls back to the single,
         already-connected engine instead."""
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
         source.engine.connect.side_effect = Exception("connection reset")
 
-        assert list(source._databases_to_scan()) == []
         assert list(source.get_engine()) == [source.engine]
+
+    def test_skips_database_when_engine_construction_fails(self):
+        """A database whose engine cannot be built (e.g. login denied on that specific
+        database) is skipped; the remaining databases are still processed - one bad
+        database must not kill query history for the rest of the ingest-all-databases run."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source._databases_to_scan = lambda: iter(["BadDb", "GoodDb"])
+        good_engine = MagicMock()
+
+        def build(database):
+            if database == "BadDb":
+                raise RuntimeError("login failed for user on BadDb")
+            return good_engine
+
+        source._engine_for_database = build
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ):
+            engines = list(source.get_engine())
+
+        assert engines == [good_engine]
+        good_engine.dispose.assert_called_once()
 
     def test_falls_back_to_dmv_when_no_user_databases_scanned(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)

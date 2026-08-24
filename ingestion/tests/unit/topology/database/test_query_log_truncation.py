@@ -122,3 +122,20 @@ def test_the_notice_fires_once_per_run(source_class, method_name, expected_messa
 
     warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
     assert len([message for message in warnings if "resultLimit" in message]) == 1
+
+
+def _failing_engine():
+    engine = MagicMock()
+    engine.connect.side_effect = Exception("VIEW SERVER STATE denied")
+    return engine
+
+
+def test_yield_table_query_skips_engine_that_fails_to_connect():
+    """One engine's connection/query failure (e.g. a permission error) must not stop
+    lineage extraction for the other engines in an ingest-all-databases run."""
+    bound = _source(LineageSource, "yield_table_query", row_count=2, result_limit=5)
+    bound.__self__.get_engine.return_value = [_failing_engine(), _engine_yielding(2)]
+
+    queries = list(bound())
+
+    assert len(queries) == 2
