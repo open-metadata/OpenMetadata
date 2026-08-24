@@ -574,15 +574,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         // Start search operation timing
         Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
 
-        // Parse the transformed query and create Query object
-        OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
-        String queryToProcess = OsUtils.parseJsonQuery(transformedQuery);
-        Query nlqQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-        requestBuilder.query(nlqQuery);
-
-        requestBuilder.from(request.getFrom());
-        requestBuilder.size(request.getSize());
-        applyContextMemoryVisibility(subjectContext, requestBuilder);
+        OpenSearchRequestBuilder requestBuilder =
+            buildNlqRequestBuilder(request, subjectContext, transformedQuery);
 
         // Add aggregations for NLQ query
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
@@ -895,6 +888,129 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
+  /**
+   * Applies the caller's {@code queryFilter} on top of whatever query the builder already carries.
+   * Extracted so the NLQ path applies the same filter as the keyword path — it previously ran the
+   * LLM-transformed query with the caller's filter silently dropped.
+   */
+  private void applyQueryFilter(
+      OpenSearchRequestBuilder requestBuilder,
+      org.openmetadata.schema.search.SearchRequest request) {
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
+      try {
+        String queryToProcess = OsUtils.parseJsonQuery(request.getQueryFilter());
+        Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        Query existingQuery = requestBuilder.query();
+        if (existingQuery != null) {
+          Query combinedQuery =
+              Query.of(
+                  q ->
+                      q.bool(
+                          b -> {
+                            b.must(existingQuery);
+                            b.filter(filterQuery);
+                            return b;
+                          }));
+          requestBuilder.query(combinedQuery);
+        } else {
+          requestBuilder.query(filterQuery);
+        }
+      } catch (Exception ex) {
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+  }
+
+  /**
+   * Applies the {@code deleted} constraint, tolerating documents that carry no {@code deleted} field
+   * at all on the multi-entity aliases. Extracted for reuse by the NLQ path, which previously ignored
+   * the flag entirely and so could return soft-deleted assets.
+   */
+  private void applyDeletedFilter(
+      OpenSearchRequestBuilder requestBuilder,
+      org.openmetadata.schema.search.SearchRequest request,
+      String indexName) {
+    if (!nullOrEmpty(request.getDeleted())) {
+      Query existingQuery = requestBuilder.query();
+      Query deletedQuery;
+
+      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+        deletedQuery =
+            Query.of(
+                q ->
+                    q.bool(
+                        b ->
+                            b.should(
+                                    s ->
+                                        s.bool(
+                                            bb ->
+                                                bb.must(existingQuery)
+                                                    .must(m -> m.exists(e -> e.field("deleted")))
+                                                    .must(
+                                                        m ->
+                                                            m.term(
+                                                                t ->
+                                                                    t.field("deleted")
+                                                                        .value(
+                                                                            FieldValue.of(
+                                                                                request
+                                                                                    .getDeleted()))))))
+                                .should(
+                                    s ->
+                                        s.bool(
+                                            bb ->
+                                                bb.must(existingQuery)
+                                                    .mustNot(
+                                                        mn ->
+                                                            mn.exists(e -> e.field("deleted")))))));
+      } else {
+        deletedQuery =
+            Query.of(
+                q ->
+                    q.bool(
+                        b ->
+                            b.must(existingQuery)
+                                .must(
+                                    m ->
+                                        m.term(
+                                            t ->
+                                                t.field("deleted")
+                                                    .value(FieldValue.of(request.getDeleted()))))));
+      }
+      requestBuilder.query(deletedQuery);
+    }
+  }
+
+  /**
+   * Builds the request for an NLQ search whose query the provider already transformed.
+   *
+   * <p>The happy path used to apply only context-memory visibility, while {@code
+   * fallbackToBasicSearch} applied RBAC as well — so the same user got different results depending on
+   * whether the NLQ provider answered or failed. RBAC, the caller's {@code queryFilter} (which is
+   * where the Collate AI-dashboard visibility injection rides) and the {@code deleted} flag are all
+   * applied here, so both paths are constrained identically.
+   */
+  OpenSearchRequestBuilder buildNlqRequestBuilder(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      String transformedQuery)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
+    String queryToProcess = OsUtils.parseJsonQuery(transformedQuery);
+    requestBuilder.query(Query.of(q -> q.wrapper(w -> w.query(queryToProcess))));
+    requestBuilder.from(request.getFrom());
+    requestBuilder.size(request.getSize());
+
+    applyRbacQueryWithCaching(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyQueryFilter(requestBuilder, request);
+    // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
+    // this against the dataAsset/all aliases.
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
+    applyDeletedFilter(requestBuilder, request, indexName);
+    return requestBuilder;
   }
 
   private void applyContextMemoryVisibility(
@@ -1288,30 +1404,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
     applyContextMemoryVisibility(subjectContext, requestBuilder);
 
-    // Apply query filter
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        String queryToProcess = OsUtils.parseJsonQuery(request.getQueryFilter());
-        Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  q ->
-                      q.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(filterQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(filterQuery);
-        }
-      } catch (Exception ex) {
-        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    applyQueryFilter(requestBuilder, request);
 
     // Apply post filter
     if (!nullOrEmpty(request.getPostFilter())) {
@@ -1333,56 +1426,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder.searchAfter(searchAfterValues);
     }
 
-    // Handle deleted field for backward compatibility
-    if (!nullOrEmpty(request.getDeleted())) {
-      Query existingQuery = requestBuilder.query();
-      Query deletedQuery;
-
-      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
-        deletedQuery =
-            Query.of(
-                q ->
-                    q.bool(
-                        b ->
-                            b.should(
-                                    s ->
-                                        s.bool(
-                                            bb ->
-                                                bb.must(existingQuery)
-                                                    .must(m -> m.exists(e -> e.field("deleted")))
-                                                    .must(
-                                                        m ->
-                                                            m.term(
-                                                                t ->
-                                                                    t.field("deleted")
-                                                                        .value(
-                                                                            FieldValue.of(
-                                                                                request
-                                                                                    .getDeleted()))))))
-                                .should(
-                                    s ->
-                                        s.bool(
-                                            bb ->
-                                                bb.must(existingQuery)
-                                                    .mustNot(
-                                                        mn ->
-                                                            mn.exists(e -> e.field("deleted")))))));
-      } else {
-        deletedQuery =
-            Query.of(
-                q ->
-                    q.bool(
-                        b ->
-                            b.must(existingQuery)
-                                .must(
-                                    m ->
-                                        m.term(
-                                            t ->
-                                                t.field("deleted")
-                                                    .value(FieldValue.of(request.getDeleted()))))));
-      }
-      requestBuilder.query(deletedQuery);
-    }
+    applyDeletedFilter(requestBuilder, request, indexName);
 
     // Handle sorting — always append a deterministic tiebreaker so equal-ranked docs order
     // identically across shards/replicas; without it the same query bounces between copies.

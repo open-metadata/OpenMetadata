@@ -12,6 +12,7 @@
  */
 
 export interface IngestionPipelineLogByIdInterface {
+  error?: string;
   // Generic log body returned when logs are fetched by fqn (the backend has no pipeline type to key
   // the logs under a *_task field). Prefer this when present; fall back to the *_task fields.
   logs?: string;

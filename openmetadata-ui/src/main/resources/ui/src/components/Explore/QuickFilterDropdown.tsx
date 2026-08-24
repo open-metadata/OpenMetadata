@@ -79,6 +79,15 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
     debouncedOnSearch.cancel();
   }, [pathname, debouncedOnSearch]);
 
+  // A queued search must not resolve into a closed dropdown: consumers share
+  // one options state, so it would repaint whichever dropdown opened next.
+  // Keyed on the open flag to cover every close path (Escape, Close, Update).
+  useEffect(() => {
+    if (!isOpen) {
+      debouncedOnSearch.cancel();
+    }
+  }, [isOpen, debouncedOnSearch]);
+
   useEffect(() => {
     setNullOptionSelected(
       selectedKeys.some((item) => item.key === NULL_OPTION_KEY)

@@ -18,8 +18,9 @@ import {
   Card,
   EmptyPlaceholder,
   SlideoutMenu,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { AlignLeft } from '@untitledui/icons';
+import { AlignLeft, LinkExternal02 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +32,7 @@ import {
   AgentRun,
   RunStatus,
 } from '../AgentsPage.interface';
+import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import {
   AGENT_TYPE_ICON,
@@ -162,6 +164,10 @@ interface RunHistoryDrawerProps {
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
+  agentLinkProps?: {
+    href: string;
+    label: string;
+  };
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
@@ -173,8 +179,10 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onClose,
   onOpenLogs,
   onRun,
+  agentLinkProps,
 }) => {
   const { t } = useTranslation();
+  const { isPending, isUnavailable } = useAgentActionAvailability();
   const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
@@ -221,29 +229,51 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
             <Icon height={18} width={18} />
           </span>
-          <div className="tw:flex-1">
-            <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
+          <div className="tw:flex-1 tw:min-w-0">
+            {/* The ellipsis tooltip already surfaces the full name on hover, so a
+                native `title` here would only stack an OS-styled duplicate that
+                ignores the theme and fires even when the name is not clipped. */}
+            <Typography
+              ellipsis={{ rows: 1, tooltip: true }}
+              size="text-md"
+              weight="bold">
               {agent.name}
-            </div>
+            </Typography>
             <div className="tw:text-xs tw:text-quaternary">
               {t('label.run-history-and-details')}
             </div>
           </div>
+          {agentLinkProps && (
+            <Button
+              color="link-color"
+              data-testid="agent-link-button"
+              href={agentLinkProps.href}
+              iconTrailing={<LinkExternal02 size={12} />}
+              target="_blank">
+              {agentLinkProps.label}
+            </Button>
+          )}
+          {/* Raw logs and Run now both go through the pipeline service; the run history below
+              does not, so the drawer stays useful when those two are closed down. */}
           <Button
-            className="tw:font-semibold tw:after:outline-secondary"
-            color="secondary"
+            className="tw:font-semibold"
+            color={
+              agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
+            }
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
+            isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}
           </Button>
           {canRunAgent(agent, permissions) && (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-              color="secondary"
+              className="tw:font-semibold"
+              color="primary"
               data-testid="drawer-run-now-button"
               iconLeading={<PlayIcon height={14} width={14} />}
+              isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>
               {t('label.run-now')}

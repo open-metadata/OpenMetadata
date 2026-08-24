@@ -41,15 +41,25 @@ const test = base.extend<{
   ingestionBotPage: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const page = await browser.newPage();
-    await page.goto('/');
-
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
       .then((response) => response.json());
     const tokenData = await apiContext
       .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
       .then((response) => response.json());
+
+    const page = await browser.newPage();
+    await page.goto('/signin');
+    // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
+    // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
+    // registers a SW -- there is no clients.claim() race to wait out there.
+    await page.waitForFunction(
+      () =>
+        !('serviceWorker' in navigator) ||
+        Boolean(navigator.serviceWorker.controller),
+      undefined,
+      { timeout: 30_000 }
+    );
 
     await setToken(page, tokenData.config.JWTToken);
     await redirectToHomePage(page);
