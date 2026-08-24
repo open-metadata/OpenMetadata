@@ -637,7 +637,6 @@ run_local_docker_main() {
       "${VALIDATE_COMPOSE_MAX_RETRIES:-}"; then
       sample_data_validation_failed=true
       echo "⚠ Skipping sample_data DAG validation because its trigger did not succeed."
-      echo "  Continuing with remaining setup..."
     else
       echo 'Validate sample data DAG...'
       sleep 5
@@ -655,13 +654,15 @@ run_local_docker_main() {
         else
           echo "⚠ Warning: DAG validation failed with exit code $exit_code"
         fi
-        echo "  Continuing with remaining setup..."
       }
     fi
 
     if [[ "${STRICT_DAG_VALIDATION:-false}" == "true" && "$sample_data_validation_failed" == "true" ]]; then
       echo "✗ Startup requires sample data ingestion to complete before continuing."
       exit 1
+    fi
+    if [[ "$sample_data_validation_failed" == "true" ]]; then
+      echo "⚠ Continuing with remaining setup despite sample-data validation failure."
     fi
 
     sleep 5
