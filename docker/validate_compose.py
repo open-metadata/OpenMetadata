@@ -16,13 +16,14 @@ margin would let one stalled Airflow call carry the process past the outer `time
 which killed the very diagnostics this script exists to print.
 
 The wait is governed by VALIDATION_TIMEOUT_SECONDS on the host, forwarded here as
-VALIDATE_COMPOSE_TIMEOUT_SECONDS. VALIDATE_COMPOSE_MAX_RETRIES remains an explicit
-escape hatch that overrides that deadline; nothing in-tree sets it.
+VALIDATE_COMPOSE_TIMEOUT_SECONDS. VALIDATE_COMPOSE_MAX_RETRIES may shorten that
+deadline, but it cannot extend past the outer timeout's diagnostic margin.
 """
 
 import os
 import sys
 import time
+from urllib.parse import quote, urlencode
 
 import requests
 
@@ -69,13 +70,16 @@ def resolve_timeout_seconds(poll_interval_seconds: int) -> int:
     """
     Wall-clock budget for the whole wait.
 
-    VALIDATE_COMPOSE_MAX_RETRIES, if set, overrides the forwarded deadline and is
-    expressed as a retry count; it is kept as an escape hatch for operators.
+    An explicit retry count can shorten the wait, but cannot let it outlive the
+    forwarded deadline. The host reserves the remaining outer-timeout budget for
+    diagnostics, so extending this deadline would let `timeout` kill their output.
     """
+    timeout_seconds = get_env_int("VALIDATE_COMPOSE_TIMEOUT_SECONDS", 600)
     if os.getenv("VALIDATE_COMPOSE_MAX_RETRIES") is not None:
-        return get_env_int("VALIDATE_COMPOSE_MAX_RETRIES", 60) * poll_interval_seconds
+        retry_timeout_seconds = get_env_int("VALIDATE_COMPOSE_MAX_RETRIES", 60) * poll_interval_seconds
+        return min(timeout_seconds, retry_timeout_seconds)
 
-    return get_env_int("VALIDATE_COMPOSE_TIMEOUT_SECONDS", 600)
+    return timeout_seconds
 
 
 def remaining_seconds() -> float:
@@ -147,15 +151,27 @@ def airflow_get(path: str, timeout: float) -> requests.Response | None:
     return response
 
 
-def get_last_run_info() -> tuple[str | None, str | None, bool]:
+def get_last_run_info(
+    target_dag_run_id: str | None,
+    target_logical_date: str | None,
+) -> tuple[str | None, str | None, bool]:
     """
-    Latest sample_data DAG run id and state.
+    Targeted sample_data DAG run id and state.
 
     The third element reports whether the poll itself succeeded, so the caller can
     tell "Airflow has no run yet" apart from "we could not reach Airflow" — during the
     ~40s startup window those are very different things.
     """
-    response = airflow_get(f"/api/v2/dags/{DAG_ID}/dagRuns", poll_request_timeout())
+    if target_dag_run_id:
+        path = f"/api/v2/dags/{DAG_ID}/dagRuns/{quote(target_dag_run_id, safe='')}"
+    else:
+        query_params: dict[str, str | int] = {"limit": 1, "order_by": "-logical_date"}
+        if target_logical_date:
+            query_params["logical_date_gte"] = target_logical_date
+            query_params["logical_date_lte"] = target_logical_date
+        path = f"/api/v2/dags/{DAG_ID}/dagRuns?{urlencode(query_params)}"
+
+    response = airflow_get(path, poll_request_timeout())
     if response is None:
         return None, None, False
 
@@ -163,7 +179,24 @@ def get_last_run_info() -> tuple[str | None, str | None, bool]:
         log(f"Error getting DAG runs: {response.status_code} - {response.text}")
         return None, None, False
 
-    dag_runs = response.json().get("dag_runs") or []
+    payload = response.json()
+    if target_dag_run_id:
+        if not isinstance(payload, dict):
+            log("Airflow returned an invalid DAG-run response.")
+            return None, None, False
+
+        dag_run_id = payload.get("dag_run_id")
+        if not isinstance(dag_run_id, str) or not dag_run_id:
+            log("Airflow DAG-run response did not contain a dag_run_id.")
+            return None, None, False
+
+        return dag_run_id, (payload.get("state") or "").lower(), True
+
+    if not isinstance(payload, dict):
+        log("Airflow returned an invalid DAG-runs response.")
+        return None, None, False
+
+    dag_runs = payload.get("dag_runs") or []
     if not dag_runs:
         return None, None, True
 
@@ -253,14 +286,22 @@ def main() -> None:
     poll_interval_seconds = get_env_int("VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS", 10)
     timeout_seconds = resolve_timeout_seconds(poll_interval_seconds)
     _deadline = time.monotonic() + timeout_seconds
+    target_dag_run_id = os.getenv("VALIDATE_COMPOSE_DAG_RUN_ID") or None
+    target_logical_date = os.getenv("VALIDATE_COMPOSE_LOGICAL_DATE") or None
 
-    log(f"Waiting up to {timeout_seconds}s for the {DAG_ID} DAG (polling every {poll_interval_seconds}s).")
+    if target_dag_run_id:
+        target_description = f"DAG run {target_dag_run_id}"
+    elif target_logical_date:
+        target_description = f"DAG run at logical date {target_logical_date}"
+    else:
+        target_description = f"latest {DAG_ID} DAG run"
+    log(f"Waiting up to {timeout_seconds}s for {target_description} (polling every {poll_interval_seconds}s).")
 
     last_observed_dag_run_id: str | None = None
     last_observed_state: str | None = None
 
     while True:
-        dag_run_id, state, polled = get_last_run_info()
+        dag_run_id, state, polled = get_last_run_info(target_dag_run_id, target_logical_date)
         if dag_run_id:
             last_observed_dag_run_id = dag_run_id
             last_observed_state = state

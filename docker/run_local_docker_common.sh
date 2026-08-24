@@ -560,11 +560,17 @@ run_local_docker_main() {
       --data-raw "{\"logical_date\": \"$LOGICAL_DATE\"}")
 
     http_code=$(echo "$response" | tail -n1)
+    trigger_response_body=$(echo "$response" | sed '$d')
+    triggered_dag_run_id=""
     if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+      triggered_dag_run_id=$(printf '%s' "$trigger_response_body" | python3 -c "import json, sys; response = json.load(sys.stdin); print(response.get('dag_run_id', '') if isinstance(response, dict) else '')" 2>/dev/null || echo "")
       echo "✓ Successfully triggered sample_data DAG"
+      if [ -z "$triggered_dag_run_id" ]; then
+        echo "⚠ Trigger response did not include a DAG run id; validating only the trigger logical date."
+      fi
     else
       echo "⚠ Could not trigger sample_data DAG (HTTP ${http_code})"
-      echo "  Response: $(echo "$response" | sed '$d')"
+      echo "  Response: ${trigger_response_body}"
       echo "  Note: DAG may run automatically on schedule"
     fi
 
@@ -574,6 +580,12 @@ run_local_docker_main() {
     echo "Running DAG validation (this may take a few minutes)..."
     sample_data_validation_failed=false
     validation_timeout_seconds="${VALIDATION_TIMEOUT_SECONDS:-300}"
+    validate_compose_margin=60
+
+    if ! [[ "$validation_timeout_seconds" =~ ^[1-9][0-9]*$ ]] || [ "$validation_timeout_seconds" -le "$validate_compose_margin" ]; then
+      echo "✗ VALIDATION_TIMEOUT_SECONDS must be an integer greater than ${validate_compose_margin} seconds to preserve timeout diagnostics."
+      exit 1
+    fi
 
     # docker exec starts a process in the container's own environment — the
     # VALIDATE_COMPOSE_* exports above (and in run_local_docker_rdf.sh) do NOT
@@ -584,21 +596,21 @@ run_local_docker_main() {
     # Leave the inner deadline below the outer `timeout` so we exit with the
     # validator's own diagnostics instead of being SIGTERMed mid-report. The margin
     # has to cover the validator's whole post-deadline diagnostic pass
-    # (DIAGNOSTIC_BUDGET_SECONDS plus one in-flight poll), so 30s is too thin.
-    if [ "$validation_timeout_seconds" -gt 180 ]; then
-      validate_compose_margin=60
-    elif [ "$validation_timeout_seconds" -gt 60 ]; then
-      validate_compose_margin=30
-    else
-      validate_compose_margin=0
-    fi
+    # (DIAGNOSTIC_BUDGET_SECONDS plus one in-flight poll), so every accepted
+    # validation window reserves the same 60-second margin.
     validate_compose_timeout=$(( validation_timeout_seconds - validate_compose_margin ))
 
     validate_compose_env=(
       -e "VALIDATE_COMPOSE_TIMEOUT_SECONDS=${validate_compose_timeout}"
       -e "VALIDATE_COMPOSE_RETRY_INTERVAL_SECONDS=${validate_compose_retry_interval}"
+      -e "VALIDATE_COMPOSE_LOGICAL_DATE=${LOGICAL_DATE}"
     )
-    # An explicit retry count still wins over the timeout-derived deadline.
+    if [ -n "$triggered_dag_run_id" ]; then
+      # Airflow returns the exact run it created. Forward its id so the
+      # validator cannot mistake an earlier successful run for this invocation.
+      validate_compose_env+=(-e "VALIDATE_COMPOSE_DAG_RUN_ID=${triggered_dag_run_id}")
+    fi
+    # An explicit retry count can shorten the timeout, but cannot extend it.
     if [ -n "${VALIDATE_COMPOSE_MAX_RETRIES:-}" ]; then
       validate_compose_env+=(-e "VALIDATE_COMPOSE_MAX_RETRIES=${VALIDATE_COMPOSE_MAX_RETRIES}")
     fi
