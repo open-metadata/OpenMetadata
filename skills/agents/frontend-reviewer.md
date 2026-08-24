@@ -223,9 +223,24 @@ Beyond CI checks, review for these patterns:
 - Avoid type assertions (`as Type`) unless absolutely necessary
 - Use discriminated unions for action types and state variants
 
-### 10. Component Patterns
+### 10. Structure, Naming & Component Patterns
+
+Full spec: `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` — read it before reviewing
+any newly added file.
+
+- **Placement**: layers stay top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`), grouped
+  inside by `domain/feature/` — `components/governance/glossary/GlossaryList/`. Domains are
+  `discovery`, `governance`, `observability`, `insights`, `platform`; cross-cutting features
+  (`lineage`, `data-contract`, `entity`, `activity-feed`) sit at the domain level. Flag a new file
+  dropped straight into `components/` or `utils/` without a domain folder.
+- **File naming (new files)**: one stem, suffix = role — `GlossaryList.tsx`, `.types.ts`, `.utils.ts`,
+  `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`. Do NOT flag legacy
+  `.component.tsx`/`.interface.ts` files or ask for them to be renamed — the suffix marks migration
+  status, and case-only/suffix renames churn history.
+- **Business logic in `*.utils.ts`** as pure functions (no React, no JSX) so it is unit-testable
+  without rendering.
+- **No `index.ts` barrel** inside a component folder — `no-internal-barrel-imports` reports it.
 - Functional components only, no class components
-- File naming: `ComponentName.component.tsx`, interfaces in `ComponentName.interface.ts`
 - `useCallback` for event handlers passed to children
 - `useMemo` for expensive computations
 - `useEffect` with correct dependency arrays — no missing deps, no over-fetching

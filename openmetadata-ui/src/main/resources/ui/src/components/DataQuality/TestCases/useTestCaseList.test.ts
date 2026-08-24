@@ -220,6 +220,18 @@ describe('useTestCaseList', () => {
     });
   });
 
+  it('should normalize a single URL status for the multi-select form', async () => {
+    const { props } = renderList({
+      params: { testCaseStatus: TestCaseStatus.Failed },
+    });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+      testCaseStatus: [TestCaseStatus.Failed],
+    });
+  });
+
   it('should change the page and refetch for the requested page when the paging handler is called', async () => {
     const { result, props } = renderList();
 

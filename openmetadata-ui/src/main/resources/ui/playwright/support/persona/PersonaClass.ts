@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -42,10 +47,12 @@ export class PersonaClass {
   }
 
   async create(apiContext: APIRequestContext, users?: string[]) {
-    const response = await apiContext.post('/api/v1/personas', {
+    const data = await createOrFetch(apiContext, {
+      label: 'PersonaClass.create',
+      createPath: '/api/v1/personas',
+      fqnSegments: [this.data.name],
       data: { ...this.data, users },
     });
-    const data = await response.json();
     this.responseData = data;
 
     return data;
@@ -60,18 +67,17 @@ export class PersonaClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/personas/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/personas/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'PersonaClass.patch');
 
-    return await response.json();
+    return await okJson(response, 'PersonaClass.patch');
   }
 }

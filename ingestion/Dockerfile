@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.0-python3.12
+FROM apache/airflow:3.3.1-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -53,8 +53,15 @@ RUN apt-get -qq update \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+  # docker-ce-cli comes from the airflow base and nothing in this image runs it:
+  # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
+  # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
+  # executable, so it reports the full go/stdlib CVE set (CVE-2026-39821 Critical
+  # among them) against every build. Docker's apt repo is not configured here, so
+  # --only-upgrade cannot reach a fixed build; removing it is the only remediation.
+  # Nothing installed depends on it -- verified with apt-get -s purge.
   && apt-get -qq purge -y \
-       'imagemagick*' 'libmagick*' 'graphicsmagick*' \
+       'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
@@ -112,7 +119,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
@@ -143,6 +150,14 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # final pip install, or a later install restores the fixture.
 COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
 RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
+# Drop the teradatasql driver libraries this platform cannot load. The wheel ships
+# all ten platform builds (337 MB of Go shared objects); only the two this
+# architecture can load are kept, taking the package to 48 MB (arm64) / 70 MB (amd64);
+# see ingestion/scripts/strip_teradatasql_arch_libs.sh. Same placement rule as the
+# spaCy strip -- after the final pip install, or a later install restores them.
+COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
+RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
 
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs

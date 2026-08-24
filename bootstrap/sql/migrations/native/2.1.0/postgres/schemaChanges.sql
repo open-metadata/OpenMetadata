@@ -36,6 +36,12 @@ CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- The partial index avoids write amplification for relationships that have no pipeline metadata.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
+ON entity_relationship ((json->'pipeline'->>'id'), relation)
+WHERE (json->'pipeline'->>'id') IS NOT NULL;
+
 -- Switch Oracle services to python-oracledb's native SQLAlchemy dialect.
 UPDATE dbservice_entity
 SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracledb"')

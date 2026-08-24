@@ -189,11 +189,43 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # though mysqlclient's compiled extension links against them at runtime.
 # apt-mark manual pins them before autoremove runs so the cleanup doesn't take
 # them out too -- verified end-to-end by the `import MySQLdb` gate check.
+#
+# The OS security upgrades ride along in the same root layer. trixie's base ships
+# util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
+# CVE-2026-27456; trixie-security has 2.41.5-0+deb13u1.
+# expat is the same story one release later. It is not in the trixie base at all
+# -- it arrives transitively from the top-of-file apt layer -- and that layer's
+# frozen index is exactly why the image keeps shipping 2.8.2 and being reported
+# for CVE-2026-72522 while trixie-security has 2.8.3-1~deb13u1.
+# The package sets are computed from dpkg rather than hand-listed. One source
+# package produces many binaries -- here util-linux, bsdutils, login, mount,
+# liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
+# report each separately, so a hand-written list silently leaves behind whichever
+# binary it forgot, and liblastlog2-2 is exactly the one that is easy to forget.
+# Asking dpkg which installed packages came from the source cannot miss one, and
+# stays correct if Debian splits the source differently later.
+# util-linux is asserted non-empty and expat deliberately is not: util-linux is
+# Essential, so an empty query there means dpkg-query misbehaved and the build
+# must not continue, whereas expat is transitive and an empty query is a
+# legitimate image with nothing to patch. Asserting one of the two is what the
+# check is for -- `apt-get install --only-upgrade` with no package arguments
+# exits 0, so an all-empty query would give a green build that shipped the
+# vulnerable packages anyway. Fail closed.
+# This deliberately does NOT go in the top-of-file apt RUN: that layer's cache
+# key never changes, so an upgrade placed there freezes its Debian index with it
+# and the image keeps shipping whatever was current when the layer was first
+# built. Below the COPY and pip layers, the index is re-read on every build.
 USER root
-RUN apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8 \
-  && apt-mark manual libmariadb3 mariadb-common \
-  && apt-get -qq autoremove -y --purge \
-  && rm -rf /var/lib/apt/lists/*
+RUN set -eu; \
+    ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
+    [ -n "$ul" ] || { echo "no src:util-linux packages found; refusing to skip the CVE patch" >&2; exit 1; }; \
+    ex="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="expat"{print $2}')"; \
+    apt-get -qq update; \
+    apt-get -qq install -y --only-upgrade $ul $ex; \
+    apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
+    apt-mark manual libmariadb3 mariadb-common; \
+    apt-get -qq autoremove -y --purge; \
+    rm -rf /var/lib/apt/lists/*
 USER openmetadata
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
@@ -201,3 +233,11 @@ USER openmetadata
 # final pip install, or a later install restores the fixture.
 COPY --chown=openmetadata:openmetadata ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
 RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
+# Drop the teradatasql driver libraries this platform cannot load. The wheel ships
+# all ten platform builds (337 MB of Go shared objects); only the two this
+# architecture can load are kept, taking the package to 48 MB (arm64) / 70 MB (amd64);
+# see ingestion/scripts/strip_teradatasql_arch_libs.sh. Same placement rule as the
+# spaCy strip -- after the final pip install, or a later install restores them.
+COPY --chown=openmetadata:openmetadata ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
+RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
