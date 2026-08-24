@@ -125,7 +125,12 @@ export const ICON_CATEGORIES: Record<string, string[]> = {
     'PlannerRouting',
     'ToolsCapabilities',
   ],
-  'Inbox — My Data': ['AssetsOwned', 'DataHealthScore', 'OpenIncidents', 'Queries'],
+  'Inbox — My Data': [
+    'AssetsOwned',
+    'DataHealthScore',
+    'OpenIncidents',
+    'Queries',
+  ],
   'Tasks — DAR': [
     'Approver',
     'AssetsType',
@@ -184,7 +189,13 @@ export const ICON_CATEGORIES: Record<string, string[]> = {
     'GlossaryTerm',
     'Tag',
   ],
-  'Dashboards & BI': ['Chart', 'Dashboard', 'DashboardDataModel', 'Metric', 'Report'],
+  'Dashboards & BI': [
+    'Chart',
+    'Dashboard',
+    'DashboardDataModel',
+    'Metric',
+    'Report',
+  ],
   APIs: ['ApiCollection', 'ApiEndpoint'],
   'ML & Pipelines': ['MlModel', 'Pipeline'],
   'Certification Badges': ['Bronze', 'Gold', 'None', 'Silver'],
@@ -196,6 +207,16 @@ export const ICON_CATEGORIES: Record<string, string[]> = {
     'RunProfiler',
     'Size',
   ],
-  Pipeline: ['ActivePipeline', 'AverageRuntime', 'Failed', 'InactivePipeline', 'TotalPipeline'],
-  'Column Bulk Operations': ['PendingChanges', 'TotalOccurrences', 'TotalUniqueColumn'],
+  Pipeline: [
+    'ActivePipeline',
+    'AverageRuntime',
+    'Failed',
+    'InactivePipeline',
+    'TotalPipeline',
+  ],
+  'Column Bulk Operations': [
+    'PendingChanges',
+    'TotalOccurrences',
+    'TotalUniqueColumn',
+  ],
 };

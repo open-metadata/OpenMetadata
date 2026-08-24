@@ -26,13 +26,22 @@ const ALL_ICONS = Object.entries(Icons).filter(
 const ALL_ICON_NAMES = new Set(ALL_ICONS.map(([name]) => name));
 
 // Build resolved category list (only names that exist in the library)
-const RESOLVED: Array<{ label: string; icons: Array<[string, IconComponent]> }> = [];
+const RESOLVED: Array<{
+  label: string;
+  icons: Array<[string, IconComponent]>;
+}> = [];
 const CATEGORISED_NAMES = new Set<string>();
 
 for (const [label, names] of Object.entries(ICON_CATEGORIES)) {
   const entries = names
     .filter((n) => ALL_ICON_NAMES.has(n))
-    .map((n) => [n, Icons[n as keyof typeof Icons] as IconComponent] as [string, IconComponent]);
+    .map(
+      (n) =>
+        [n, Icons[n as keyof typeof Icons] as IconComponent] as [
+          string,
+          IconComponent
+        ]
+    );
   if (entries.length > 0) {
     RESOLVED.push({ label, icons: entries });
     names.forEach((n) => CATEGORISED_NAMES.add(n));
@@ -40,7 +49,9 @@ for (const [label, names] of Object.entries(ICON_CATEGORIES)) {
 }
 
 // Icons not assigned to any category
-const UNCATEGORISED = ALL_ICONS.filter(([name]) => !CATEGORISED_NAMES.has(name));
+const UNCATEGORISED = ALL_ICONS.filter(
+  ([name]) => !CATEGORISED_NAMES.has(name)
+);
 if (UNCATEGORISED.length > 0) {
   RESOLVED.push({ label: 'Uncategorised', icons: UNCATEGORISED });
 }
@@ -60,7 +71,9 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
 
   const handleCopy = (name: string) => {
     navigator.clipboard
-      .writeText(`import { ${name} } from '@openmetadata/ui-core-components/icons';`)
+      .writeText(
+        `import { ${name} } from '@openmetadata/ui-core-components/icons';`
+      )
       .then(() => {
         setCopied(name);
         setTimeout(() => setCopied(null), 1200);
@@ -75,12 +88,20 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
   const filteredCategories = visibleCategories
     .map(({ label, icons }) => ({
       label,
-      icons: query ? icons.filter(([name]) => name.toLowerCase().includes(query)) : icons,
+      icons: query
+        ? icons.filter(([name]) => name.toLowerCase().includes(query))
+        : icons,
     }))
     .filter(({ icons }) => icons.length > 0);
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        fontFamily: 'Inter, sans-serif',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
       {/* Tab bar */}
       <div
         style={{
@@ -98,7 +119,10 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #7f56d9' : '2px solid transparent',
+              borderBottom:
+                activeTab === tab
+                  ? '2px solid #7f56d9'
+                  : '2px solid transparent',
               color: activeTab === tab ? '#6941c6' : '#667085',
               cursor: 'pointer',
               flexShrink: 0,
@@ -159,7 +183,12 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                   textTransform: 'uppercase',
                 }}>
                 {label}
-                <span style={{ color: '#98a2b3', fontWeight: 400, marginLeft: '6px' }}>
+                <span
+                  style={{
+                    color: '#98a2b3',
+                    fontWeight: 400,
+                    marginLeft: '6px',
+                  }}>
                   {icons.length}
                 </span>
               </h2>
@@ -174,11 +203,12 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
               {icons.map(([name, Icon]) => (
                 <button
                   key={name}
-                  title={`Click to copy import for ${name}`}
                   style={{
                     alignItems: 'center',
                     background: copied === name ? '#f0fdf4' : '#fff',
-                    border: `1px solid ${copied === name ? '#86efac' : '#f2f4f7'}`,
+                    border: `1px solid ${
+                      copied === name ? '#86efac' : '#f2f4f7'
+                    }`,
                     borderRadius: '6px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -187,8 +217,12 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                     padding: '8px 4px',
                     transition: 'border-color 0.1s',
                   }}
+                  title={`Click to copy import for ${name}`}
                   onClick={() => handleCopy(name)}>
-                  <Icon color={copied === name ? '#16a34a' : '#344054'} size={size} />
+                  <Icon
+                    color={copied === name ? '#16a34a' : '#344054'}
+                    size={size}
+                  />
                   <span
                     style={{
                       color: copied === name ? '#16a34a' : '#667085',
