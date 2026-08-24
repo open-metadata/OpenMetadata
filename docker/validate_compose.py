@@ -131,14 +131,23 @@ def airflow_get(path: str, timeout: float) -> requests.Response | None:
     """
     global _access_token
 
+    # Authentication shares this endpoint's budget; otherwise a token refresh can
+    # double the duration of a poll issued close to the validation deadline.
+    request_deadline = time.monotonic() + timeout
     token = get_access_token(timeout)
     if not token:
         return None
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    remaining = request_deadline - time.monotonic()
+    if remaining <= 0:
+        log(f"No time left to call {path} after authentication.")
+        return None
 
     try:
-        response = requests.get(f"{AIRFLOW_URL}{path}", headers=headers, timeout=timeout)
+        response = requests.get(
+            f"{AIRFLOW_URL}{path}", headers=headers, timeout=remaining
+        )
     except requests.exceptions.RequestException as exc:
         log(f"Error calling {path}: {exc}")
         return None

@@ -45,6 +45,15 @@ class FakeAirflowResponse:
         return self.payload
 
 
+class FakeTokenResponse:
+    """Minimal token response returned by the Airflow authentication boundary."""
+
+    status_code = 201
+
+    def json(self) -> dict[str, str]:
+        return {"access_token": "token"}
+
+
 def load_validate_compose() -> ModuleType:
     """Load the Docker-executed validator without running its CLI entry point."""
     spec = importlib.util.spec_from_file_location("validate_compose_test_module", VALIDATE_COMPOSE_PATH)
@@ -187,3 +196,32 @@ def test_timeout_keeps_last_observed_run_after_transient_poll_failure(
     assert "Task instances for run-1:" in output
     assert "ingest_using_recipe: state=running" in output
     assert "last observed run=run-1, state=running" in str(exit_info.value)
+
+
+def test_airflow_get_uses_remaining_timeout_after_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Authentication and the protected request share one caller-provided budget."""
+    validator = load_validate_compose()
+    clock = FakeClock()
+    post_timeouts: list[float] = []
+    get_timeouts: list[float] = []
+
+    def post(*_args, **kwargs) -> FakeTokenResponse:
+        post_timeouts.append(kwargs["timeout"])
+        clock.now += 7
+        return FakeTokenResponse()
+
+    def get(*_args, **kwargs) -> FakeAirflowResponse:
+        get_timeouts.append(kwargs["timeout"])
+        return FakeAirflowResponse({})
+
+    monkeypatch.setattr(validator, "time", clock)
+    monkeypatch.setattr(validator.requests, "post", post)
+    monkeypatch.setattr(validator.requests, "get", get)
+
+    response = validator.airflow_get("/api/v2/dags/sample_data/dagRuns", timeout=10)
+
+    assert response is not None
+    assert post_timeouts == [10]
+    assert get_timeouts == [3]
