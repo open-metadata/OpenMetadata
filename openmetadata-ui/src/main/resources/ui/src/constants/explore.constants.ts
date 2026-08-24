@@ -27,6 +27,7 @@ export const MAX_RESULT_HITS = 10000;
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.OWNERS,
   EntityFields.DOMAINS,
+  EntityFields.DATA_PRODUCT,
   EntityFields.TIER,
   EntityFields.TAG,
   EntityFields.CERTIFICATION,
