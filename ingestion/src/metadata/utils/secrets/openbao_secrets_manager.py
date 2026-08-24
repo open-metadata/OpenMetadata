@@ -16,7 +16,7 @@ OpenBao (and HashiCorp Vault) KV v2 secrets manager implementation
 import os
 import traceback
 from abc import ABC
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import requests
 
@@ -33,6 +33,11 @@ from metadata.utils.secrets.external_secrets_manager import (
     ExternalSecretsManager,
     SecretsManagerConfigException,
 )
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.security.credentials.openBaoCredentials import (
+        OpenBaoCredentials,
+    )
 
 logger = utils_logger()
 
@@ -61,7 +66,7 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
+def _() -> Optional["OpenBaoCredentials"]:
     from airflow.configuration import conf
 
     from metadata.generated.schema.security.credentials.openBaoCredentials import (
@@ -72,24 +77,28 @@ def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
     if not address:
         raise ValueError("Missing `openbao_address` config for the OpenBao Secrets Manager Provider.")
 
-    return OpenBaoCredentials(
-        address=address,
-        mount=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_mount", fallback=DEFAULT_MOUNT),
-        namespace=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_namespace", fallback=None),
-        authMethod=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_auth_method", fallback="token"),
-        token=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_token", fallback=None),
-        roleId=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_role_id", fallback=None),
-        secretId=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_secret_id", fallback=None),
-        authPath=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_auth_path", fallback=DEFAULT_AUTH_PATH),
-        caCertPath=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_ca_cert_path", fallback=None),
-        skipTlsVerify=conf.getboolean(SECRET_MANAGER_AIRFLOW_CONF, "openbao_skip_tls_verify", fallback=False),
-        connectTimeoutMs=conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_connect_timeout_ms", fallback=5000),
-        readTimeoutMs=conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_read_timeout_ms", fallback=10000),
+    # Built from a dict so Pydantic coerces the password fields into CustomSecretStr and the
+    # auth method into its enum, rather than constructing those types by hand.
+    return OpenBaoCredentials.model_validate(
+        {
+            "address": address,
+            "mount": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_mount", fallback=DEFAULT_MOUNT),
+            "namespace": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_namespace", fallback=None),
+            "authMethod": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_auth_method", fallback="token"),
+            "token": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_token", fallback=None),
+            "roleId": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_role_id", fallback=None),
+            "secretId": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_secret_id", fallback=None),
+            "authPath": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_auth_path", fallback=DEFAULT_AUTH_PATH),
+            "caCertPath": conf.get(SECRET_MANAGER_AIRFLOW_CONF, "openbao_ca_cert_path", fallback=None),
+            "skipTlsVerify": conf.getboolean(SECRET_MANAGER_AIRFLOW_CONF, "openbao_skip_tls_verify", fallback=False),
+            "connectTimeoutMs": conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_connect_timeout_ms", fallback=5000),
+            "readTimeoutMs": conf.getint(SECRET_MANAGER_AIRFLOW_CONF, "openbao_read_timeout_ms", fallback=10000),
+        }
     )
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
+def _() -> Optional["OpenBaoCredentials"]:
     from metadata.generated.schema.security.credentials.openBaoCredentials import (
         OpenBaoCredentials,
     )
@@ -98,19 +107,21 @@ def _() -> Optional["OpenBaoCredentials"]:  # noqa: F821
     if not address:
         raise ValueError("Missing `OPENBAO_ADDRESS` config for the OpenBao Secrets Manager Provider.")
 
-    return OpenBaoCredentials(
-        address=address,
-        mount=os.getenv("OPENBAO_MOUNT", DEFAULT_MOUNT),
-        namespace=os.getenv("OPENBAO_NAMESPACE"),
-        authMethod=os.getenv("OPENBAO_AUTH_METHOD", "token"),
-        token=os.getenv("OPENBAO_TOKEN"),
-        roleId=os.getenv("OPENBAO_ROLE_ID"),
-        secretId=os.getenv("OPENBAO_SECRET_ID"),
-        authPath=os.getenv("OPENBAO_AUTH_PATH", DEFAULT_AUTH_PATH),
-        caCertPath=os.getenv("OPENBAO_CA_CERT_PATH"),
-        skipTlsVerify=os.getenv("OPENBAO_SKIP_TLS_VERIFY", "false").lower() == "true",
-        connectTimeoutMs=int(os.getenv("OPENBAO_CONNECT_TIMEOUT_MS", "5000")),
-        readTimeoutMs=int(os.getenv("OPENBAO_READ_TIMEOUT_MS", "10000")),
+    return OpenBaoCredentials.model_validate(
+        {
+            "address": address,
+            "mount": os.getenv("OPENBAO_MOUNT", DEFAULT_MOUNT),
+            "namespace": os.getenv("OPENBAO_NAMESPACE"),
+            "authMethod": os.getenv("OPENBAO_AUTH_METHOD", "token"),
+            "token": os.getenv("OPENBAO_TOKEN"),
+            "roleId": os.getenv("OPENBAO_ROLE_ID"),
+            "secretId": os.getenv("OPENBAO_SECRET_ID"),
+            "authPath": os.getenv("OPENBAO_AUTH_PATH", DEFAULT_AUTH_PATH),
+            "caCertPath": os.getenv("OPENBAO_CA_CERT_PATH"),
+            "skipTlsVerify": os.getenv("OPENBAO_SKIP_TLS_VERIFY", "false").lower() == "true",
+            "connectTimeoutMs": int(os.getenv("OPENBAO_CONNECT_TIMEOUT_MS", "5000")),
+            "readTimeoutMs": int(os.getenv("OPENBAO_READ_TIMEOUT_MS", "10000")),
+        }
     )
 
 
@@ -236,7 +247,7 @@ class OpenBaoSecretsManager(ExternalSecretsManager, ABC):
             f"HTTP {response.status_code}"
         )
 
-    def load_credentials(self) -> Optional["OpenBaoCredentials"]:  # noqa: F821
+    def load_credentials(self) -> Optional["OpenBaoCredentials"]:
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
