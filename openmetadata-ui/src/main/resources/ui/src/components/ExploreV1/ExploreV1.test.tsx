@@ -142,7 +142,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?: () => void;
       onPress?: () => void;
     } & Record<string, unknown>) => (
-      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onPress ?? onClick}
+        onKeyDown={onPress ?? onClick}
+        {...props}>
         {label ?? children}
       </div>
     ),

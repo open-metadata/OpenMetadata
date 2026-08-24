@@ -70,15 +70,11 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
     };
 
     const onSaveHandler = () => {
-      if (editorRef.current) {
-        if (editorRef.current?.getEditorContent()) {
-          setEditorValue('');
-          editorRef.current?.clearEditorContent();
-          const message = getBackendFormat(
-            editorRef.current?.getEditorContent()
-          );
-          onSave && onSave(message);
-        }
+      if (editorRef.current && editorRef.current?.getEditorContent()) {
+        setEditorValue('');
+        editorRef.current?.clearEditorContent();
+        const message = getBackendFormat(editorRef.current?.getEditorContent());
+        onSave && onSave(message);
       }
     };
 
@@ -95,6 +91,7 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
       <div
         className={classNames('relative', className)}
         data-testid="activity-feed-editor-new"
+        role="presentation"
         onClick={(e) => e.stopPropagation()}>
         <FeedEditor
           defaultValue={defaultValue}

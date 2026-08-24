@@ -15,20 +15,26 @@ import {
   Avatar,
   Box,
   Card,
+  EmptyPlaceholder,
   Input,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
+import { Globe01, Package, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  FC,
+  MouseEvent,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -43,7 +49,6 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
-  LIST_EMPTY_STATE_CLASS,
   NAME_CELL_CLIP_CLASS,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
@@ -53,10 +58,10 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
@@ -170,12 +175,18 @@ const DataProductListPage = ({
             entity.name &&
             entity.displayName !== entity.name;
 
+          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+            event.stopPropagation();
+            dataProductListing.actionHandlers.onEntityClick?.(entity);
+          };
+
           return (
             <Box
               align="center"
               className={NAME_CELL_CLIP_CLASS}
               direction="row"
-              gap={3}>
+              gap={3}
+              onClick={handleNameClick}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
               <Box className="tw:min-w-0" direction="col">
                 <Typography
@@ -252,7 +263,7 @@ const DataProductListPage = ({
           return null;
       }
     },
-    []
+    [dataProductListing.actionHandlers.onEntityClick]
   );
 
   const selectedDataProductEntities = useMemo(
@@ -282,28 +293,43 @@ const DataProductListPage = ({
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:min-h-70">
+            <NoFilteredResultsPlaceholder
+              onClearFilters={() => {
+                dataProductListing.handleSearchChange('');
+                dataProductListing.handleFilterChange([]);
+              }}
+            />
+          </div>
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="data-product-add-button"
-          buttonTitle={t('label.add-entity', {
-            entity: t('label.data-product'),
-          })}
-          className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
-          heading={t('message.no-data-message', {
-            entity: t('label.data-product-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={openDrawer}
-        />
+        <div
+          className="tw:relative tw:min-h-70"
+          data-testid="no-data-placeholder">
+          <EmptyPlaceholder
+            actions={
+              permissions.dataProduct?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'add-data-product',
+                      label: t('label.add-entity', {
+                        entity: t('label.data-product'),
+                      }),
+                      onPress: openDrawer,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('label.no-data-products-yet-description')}
+            icon={<Package className="tw:text-fg-brand-primary" />}
+            title={t('label.no-data-products-yet')}
+            variant="blank"
+          />
+        </div>
       );
     }
 
@@ -355,6 +381,7 @@ const DataProductListPage = ({
     dataProductListing.currentPage,
     dataProductListing.totalPages,
     dataProductListing.handlePageChange,
+    dataProductListing.handleSearchChange,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,

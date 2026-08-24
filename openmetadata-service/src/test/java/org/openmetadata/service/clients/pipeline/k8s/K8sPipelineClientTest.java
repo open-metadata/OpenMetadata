@@ -83,6 +83,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.BotRepository;
@@ -791,7 +792,49 @@ class K8sPipelineClientTest {
     when(listPodRequest.execute()).thenThrow(new ApiException(500, "pod lookup failed"));
 
     Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
-    assertTrue(failureLogs.get("logs").contains("Failed to retrieve logs"));
+    assertTrue(
+        failureLogs
+            .get(PipelineServiceClientInterface.LOGS_ERROR_KEY)
+            .contains("Failed to retrieve logs"));
+  }
+
+  @Test
+  void testGetLastIngestionLogsHandlesUnsupportedPodFields() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
+        .thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(
+            new IllegalArgumentException(
+                "The field `allocatedResources` in the JSON string is not defined in the "
+                    + "`V1PodStatus` properties. JSON: {\"allocatedResources\":{}}"));
+
+    Map<String, String> failureLogs = client.getLastIngestionLogs(pipeline, null);
+
+    assertEquals(
+        "Failed to retrieve logs: Kubernetes pod status is incompatible with the bundled client",
+        failureLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY));
+    assertFalse(failureLogs.containsKey("logs"));
+    assertFalse(
+        failureLogs
+            .get(PipelineServiceClientInterface.LOGS_ERROR_KEY)
+            .contains("allocatedResources"));
+    assertFalse(failureLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY).contains("JSON:"));
+  }
+
+  @Test
+  void testGetLastIngestionLogsDoesNotSwallowOtherIllegalArgumentExceptions() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.labelSelector(eq("app.kubernetes.io/pipeline=test-pipeline")))
+        .thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(new IllegalArgumentException("Expected conditions to be an array"));
+
+    assertThrows(IllegalArgumentException.class, () -> client.getLastIngestionLogs(pipeline, null));
   }
 
   @Test
@@ -850,6 +893,79 @@ class K8sPipelineClientTest {
     PipelineServiceClientResponse secretFailure = client.getServiceStatus();
     assertEquals(500, secretFailure.getCode());
     assertTrue(secretFailure.getReason().contains("missing Secret permissions"));
+  }
+
+  @Test
+  void testGetServiceStatusToleratesUnsupportedPodAndJobFields() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(
+            new IllegalArgumentException(
+                "The field `allocatedResources` in the JSON string is not defined in the "
+                    + "`V1PodStatus` properties. JSON: {\"allocatedResources\":{}}"));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute())
+        .thenThrow(
+            new IllegalArgumentException(
+                "The field `observedGeneration` in the JSON string is not defined in the "
+                    + "`V1JobStatus` properties. JSON: {\"observedGeneration\":1}"));
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenReturn(null);
+
+    when(coreApi.listNamespacedSecret(eq(NAMESPACE))).thenReturn(listSecretRequest);
+    when(listSecretRequest.limit(1)).thenReturn(listSecretRequest);
+    when(listSecretRequest.execute()).thenReturn(null);
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("Pod/job status details are unavailable"));
+    verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
+    verify(coreApi).listNamespacedSecret(eq(NAMESPACE));
+  }
+
+  @Test
+  void testGetServiceStatusReportsMalformedStatusAsUnhealthy() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(new IllegalArgumentException("Expected conditions to be an array"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("Failed to parse Kubernetes pod/job status"));
+    verifyNoInteractions(batchApi, listConfigMapRequest, listSecretRequest);
+  }
+
+  @Test
+  void testGetServiceStatusStillChecksPermissionsAfterUnsupportedPodFields() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute())
+        .thenThrow(
+            new IllegalArgumentException(
+                "The field `allocatedResources` in the JSON string is not defined in the "
+                    + "`V1PodStatus` properties. JSON: {\"allocatedResources\":{}}"));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(403, "forbidden configmaps"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("missing ConfigMap permissions"));
+    verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
   }
 
   @Test

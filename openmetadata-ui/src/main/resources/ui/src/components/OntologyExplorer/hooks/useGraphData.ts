@@ -397,21 +397,25 @@ export function useGraphDataBuilder({
         }
       });
       mergedEdgesList.forEach((edge) => {
-        if (allTermIds.has(edge.from) && allAssetIds.has(edge.to)) {
-          if (!termAssetCountMap.has(edge.from)) {
-            termAssetCountMap.set(
-              edge.from,
-              (termAssetCountMap.get(edge.from) ?? 0) + 1
-            );
-          }
+        if (
+          allTermIds.has(edge.from) &&
+          allAssetIds.has(edge.to) &&
+          !termAssetCountMap.has(edge.from)
+        ) {
+          termAssetCountMap.set(
+            edge.from,
+            (termAssetCountMap.get(edge.from) ?? 0) + 1
+          );
         }
-        if (allAssetIds.has(edge.from) && allTermIds.has(edge.to)) {
-          if (!termAssetCountMap.has(edge.to)) {
-            termAssetCountMap.set(
-              edge.to,
-              (termAssetCountMap.get(edge.to) ?? 0) + 1
-            );
-          }
+        if (
+          allAssetIds.has(edge.from) &&
+          allTermIds.has(edge.to) &&
+          !termAssetCountMap.has(edge.to)
+        ) {
+          termAssetCountMap.set(
+            edge.to,
+            (termAssetCountMap.get(edge.to) ?? 0) + 1
+          );
         }
       });
 

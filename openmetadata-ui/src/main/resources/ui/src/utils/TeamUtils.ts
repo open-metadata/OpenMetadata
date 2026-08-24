@@ -113,5 +113,5 @@ export const getTeamsUser = (
     }
   }
 
-  return;
+  return undefined;
 };

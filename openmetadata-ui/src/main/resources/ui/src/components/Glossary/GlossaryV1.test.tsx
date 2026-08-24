@@ -74,7 +74,9 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => params),
-  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }) => <a href="/">{children}</a>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
@@ -129,6 +131,14 @@ jest.mock(
     })),
   })
 );
+
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
+}));
 
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],

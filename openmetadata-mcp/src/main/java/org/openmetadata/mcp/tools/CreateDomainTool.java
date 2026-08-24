@@ -72,6 +72,7 @@ public class CreateDomainTool implements McpTool {
 
     final DomainRepository repo = (DomainRepository) Entity.getEntityRepository(Entity.DOMAIN);
     repo.prepareInternal(entity, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.DOMAIN, entity);
 
     final String userName = CommonUtils.principal(securityContext);
     // createOrUpdate silently overwrites an existing domain with this name — tools.json

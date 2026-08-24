@@ -44,10 +44,9 @@ on:
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
   MAIN_PYTHON_VERSION: "3.10"
-  # Hugging Face uses a moving wheel name, so pin its immutable revision and content hash.
-  SPACY_MODEL_VERSION: "3.7.1"
-  SPACY_MODEL_REVISION: "22f17ee20cda126e498ea2fb92dc504bea0d111c"
-  SPACY_MODEL_SHA256: "6a0f857a2b4d219c6fa17d455f82430b365bf53171a2d919b9376e5dc9be032e"
+  # Pin the model release and verify its content before installation.
+  SPACY_MODEL_VERSION: "3.8.0"
+  SPACY_MODEL_SHA256: "5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310"
   SONAR_OPTS: >-
     -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
     -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
@@ -176,7 +175,7 @@ jobs:
           wheel_path=".cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
           curl --fail --location --retry 10 --retry-all-errors --connect-timeout 20 --max-time 600 \
             --output "${wheel_path}" \
-            "https://huggingface.co/spacy/en_core_web_md/resolve/${SPACY_MODEL_REVISION}/en_core_web_md-any-py3-none-any.whl"
+            "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-${SPACY_MODEL_VERSION}/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
           echo "${SPACY_MODEL_SHA256}  ${wheel_path}" | sha256sum --check --strict
         shell: bash
 

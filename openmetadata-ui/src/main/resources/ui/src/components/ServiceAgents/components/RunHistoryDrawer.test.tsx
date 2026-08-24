@@ -65,6 +65,15 @@ const mockRuns: AgentRun[] = [
   },
 ];
 
+const mockAirflowStatus = jest.fn();
+
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: () => mockAirflowStatus(),
+  })
+);
+
 jest.mock('../hooks/useAgentRuns', () => ({
   useAgentRuns: jest.fn().mockImplementation(() => ({
     runs: mockRuns,
@@ -116,6 +125,36 @@ const renderDrawer = (
   );
 
 describe('RunHistoryDrawer', () => {
+  beforeEach(() => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+  });
+
+  it.each([
+    [
+      'is still being fetched',
+      { isAirflowAvailable: false, isFetchingStatus: true },
+    ],
+    [
+      'reports it unreachable',
+      { isAirflowAvailable: false, isFetchingStatus: false },
+    ],
+  ])(
+    'should disable the pipeline-service controls while the status %s, keeping the run history',
+    (_label, status) => {
+      mockAirflowStatus.mockReturnValue({ ...status, platform: 'Airflow' });
+
+      renderDrawer();
+
+      expect(screen.getByTestId('raw-logs-button')).toBeDisabled();
+      expect(screen.getByTestId('drawer-run-now-button')).toBeDisabled();
+      expect(screen.getByTestId('run-history-drawer')).toBeInTheDocument();
+    }
+  );
+
   beforeEach(() => {
     mockOnRun.mockClear();
   });
@@ -210,6 +249,62 @@ describe('RunHistoryDrawer', () => {
     );
 
     expect(useAgentRuns).toHaveBeenCalledWith(agent.fqn, true, fetchRuns);
+  });
+
+  describe('header title', () => {
+    it('should truncate a long agent name and keep it reachable through the ellipsis tooltip', () => {
+      // The header is a fixed-width row shared with the action buttons, so a long
+      // name has to clip rather than push them out. Clipping is only honest while
+      // the full name stays readable, which core Typography delivers by wrapping
+      // the text in a tooltip trigger. Hover itself belongs to core-components
+      // (see its typography.test.tsx); asserting it here would re-test react-aria's
+      // open/close timing rather than this drawer.
+      const longName =
+        'A very long metadata agent name that will not fit the drawer header';
+
+      renderDrawer(undefined, { name: longName });
+
+      const title = screen.getByText(longName);
+
+      expect(title).toHaveClass('tw:truncate');
+      expect(title.closest('button')).toBeInTheDocument();
+    });
+  });
+
+  describe('agent link', () => {
+    const agentLinkProps = {
+      href: '/ai-automations/mysql_service_DescriptionAutomation',
+      label: 'label.view-entity',
+    };
+
+    it('should render no link when the host has no detail page to point at', () => {
+      // OpenMetadata's own agents have nowhere to link, so the header must stay
+      // exactly as it was before the prop existed.
+      renderDrawer();
+
+      expect(screen.queryByTestId('agent-link-button')).not.toBeInTheDocument();
+    });
+
+    it('should render the agent link as an anchor that opens in a new tab', () => {
+      // The drawer sits on top of the page the user came from; navigating in place
+      // would lose the run they were reading.
+      render(
+        <RunHistoryDrawer
+          open
+          agent={agent}
+          agentLinkProps={agentLinkProps}
+          onClose={jest.fn()}
+          onOpenLogs={jest.fn()}
+          onRun={mockOnRun}
+        />
+      );
+
+      const link = screen.getByTestId('agent-link-button');
+
+      expect(link).toHaveAttribute('href', agentLinkProps.href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveTextContent(agentLinkProps.label);
+    });
   });
 
   describe('steps section', () => {
