@@ -185,7 +185,7 @@ class ClientConfig(ConfigModel):
     retry: Optional[int] = 3  # noqa: UP045
     retry_wait: Optional[int] = 30  # noqa: UP045
     limit_codes: List[int] = [429]  # noqa: RUF012, UP006
-    retry_codes: List[int] = [504]  # noqa: RUF012, UP006
+    retry_codes: List[int] = [503, 504]  # noqa: RUF012, UP006
     auth_token: Optional[Callable] = None  # noqa: UP045
     access_token: Optional[str] = None  # noqa: UP045
     expires_in: Optional[int] = None  # noqa: UP045

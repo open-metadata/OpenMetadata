@@ -89,7 +89,7 @@ class FlakyServer:
 
     @staticmethod
     def _send(conn: socket.socket, status: int, payload: dict) -> None:
-        reason = {200: "OK", 401: "Unauthorized", 504: "Gateway Timeout"}.get(status, "Status")
+        reason = {200: "OK", 401: "Unauthorized", 503: "Service Unavailable", 504: "Gateway Timeout"}.get(status, "Status")
         body = json.dumps(payload).encode()
         conn.sendall(
             f"HTTP/1.1 {status} {reason}\r\n".encode()
@@ -144,6 +144,23 @@ def test_get_raw_surfaces_a_status_get_swallows():
 
 def test_get_raw_still_retries_gateway_5xx():
     with FlakyServer(["504", "ok"]) as srv:
+        resp = _rest(srv.port).get_raw("/x", retry_wait=0)
+    assert resp.status_code == 200
+    assert srv.attempts >= 2
+
+
+def test_get_retries_service_unavailable_503():
+    # 503 Service Unavailable is a transient error (Kubernetes pod transitions,
+    # rolling deploys) that should be retried, not treated as a hard failure.
+    with FlakyServer(["503", "ok"]) as srv:
+        client = REST(ClientConfig(base_url=f"http://127.0.0.1:{srv.port}", timeout=_CLIENT_TIMEOUT, retry_wait=0))
+        out = client.get("/x")
+    assert out == {"ok": True}
+    assert srv.attempts >= 2
+
+
+def test_get_raw_retries_service_unavailable_503():
+    with FlakyServer(["503", "ok"]) as srv:
         resp = _rest(srv.port).get_raw("/x", retry_wait=0)
     assert resp.status_code == 200
     assert srv.attempts >= 2
