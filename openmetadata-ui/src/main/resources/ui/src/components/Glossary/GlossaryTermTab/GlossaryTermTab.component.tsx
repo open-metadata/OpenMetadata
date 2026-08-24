@@ -542,6 +542,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
+      // Invalidate any in-flight expand-all so its stale tree cannot
+      // overwrite the newly selected glossary's terms.
+      expandTreeSeqRef.current++;
       fetchAllTerms();
     }
   }, [
