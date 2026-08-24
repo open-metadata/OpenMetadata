@@ -24,6 +24,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import {
   EMAIL_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
@@ -38,6 +39,15 @@ import {
 } from '../../rest/settingConfigAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const withoutMaskedPassword = (configValues: SMTPSettings) => {
+  const updateValues = { ...configValues };
+  if (updateValues.password === MASKED_PASSWORD_VALUE) {
+    delete updateValues.password;
+  }
+
+  return updateValues;
+};
 
 function EditEmailConfigPage() {
   const navigate = useNavigate();
@@ -106,7 +116,7 @@ function EditEmailConfigPage() {
         setIsSaveLoading(true);
         const settingsConfigData: Settings = {
           config_type: SettingType.EmailConfiguration,
-          config_value: configValues,
+          config_value: withoutMaskedPassword(configValues),
         };
         await updateSettingsConfig(settingsConfigData);
 

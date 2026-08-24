@@ -37,7 +37,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
 
-  private static final String PASSWORD = "*********";
+  private static final String PASSWORD = "openmetadata-secret";
 
   protected static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 

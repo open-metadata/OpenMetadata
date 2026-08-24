@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { cloneDeep, isNil, reduce } from 'lodash';
+import { MASKED_PASSWORD_VALUE } from '../constants/Secrets.constants';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import {
   ADVANCED_PROPERTIES,
@@ -307,7 +308,7 @@ export const SECRET_FIELD_PREFIX = 'secret:';
  * the real value, so an unmodified field on an edit form must not be treated
  * as a plaintext value missing the secret prefix.
  */
-export const MASKED_PASSWORD_VALUE = '*********';
+export { MASKED_PASSWORD_VALUE };
 
 type JsonObject = Record<string, Record<string, unknown>>;
 

@@ -85,6 +85,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -510,6 +511,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+  }
+
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {

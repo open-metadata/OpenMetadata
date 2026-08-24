@@ -64,10 +64,12 @@ import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.Settings;
@@ -930,6 +932,9 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+      preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
       // Auto-populate publicKeyUrls for OIDC confidential clients before saving
@@ -955,7 +960,7 @@ public class SystemResource {
       // Reload entire security system
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
-      return Response.ok(securityConfig).build();
+      return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
@@ -1001,6 +1006,7 @@ public class SystemResource {
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+      preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
@@ -1049,6 +1055,46 @@ public class SystemResource {
       LOG.error("Failed to patch security configuration", e);
       throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
     }
+  }
+
+  static void preserveMaskedSecuritySecrets(
+      SecurityConfiguration updated, SecurityConfiguration original) {
+    if (updated != null && original != null) {
+      AuthenticationConfiguration updatedAuthentication = updated.getAuthenticationConfiguration();
+      AuthenticationConfiguration originalAuthentication =
+          original.getAuthenticationConfiguration();
+      if (updatedAuthentication != null && originalAuthentication != null) {
+        preserveOidcSecret(updatedAuthentication, originalAuthentication);
+        preserveLdapPassword(updatedAuthentication, originalAuthentication);
+      }
+    }
+  }
+
+  private static void preserveOidcSecret(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    OidcClientConfig updatedOidc = updated.getOidcConfiguration();
+    OidcClientConfig originalOidc = original.getOidcConfiguration();
+    if (updatedOidc != null && originalOidc != null) {
+      updatedOidc.setSecret(restoredSecret(updatedOidc.getSecret(), originalOidc.getSecret()));
+    }
+  }
+
+  private static void preserveLdapPassword(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    LdapConfiguration updatedLdap = updated.getLdapConfiguration();
+    LdapConfiguration originalLdap = original.getLdapConfiguration();
+    if (updatedLdap != null && originalLdap != null) {
+      updatedLdap.setDnAdminPassword(
+          restoredSecret(updatedLdap.getDnAdminPassword(), originalLdap.getDnAdminPassword()));
+    }
+  }
+
+  private static String restoredSecret(String replacement, String original) {
+    String restored = replacement;
+    if (restored == null || PasswordEntityMasker.PASSWORD_MASK.equals(restored)) {
+      restored = original;
+    }
+    return restored;
   }
 
   @POST

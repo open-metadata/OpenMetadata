@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -32,10 +33,15 @@ import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 class SystemRepositoryPatchSettingTest {
   private static final String SETTING_NAME = SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value();
   private static final String ORIGINAL_JSON = "{\"relationTypes\":[]}";
+  private static final String EMAIL_SETTING_NAME = SettingsType.EMAIL_CONFIGURATION.value();
+  private static final String SMTP_PASSWORD = "smtp-secret";
+  private static final String ORIGINAL_SENDER = "before@example.com";
+  private static final String UPDATED_SENDER = "after@example.com";
 
   private MockedStatic<Entity> entityMock;
   private MockedStatic<MigrationValidationClient> migrationMock;
@@ -219,6 +225,61 @@ class SystemRepositoryPatchSettingTest {
     settingsCacheMock.verifyNoInteractions();
   }
 
+  @Test
+  void patchEmailSettingPreservesMaskedPassword() {
+    String originalJson = JsonUtils.pojoToJson(emailSettings(SMTP_PASSWORD, ORIGINAL_SENDER));
+    when(systemDAO.getConfigJsonWithKey(EMAIL_SETTING_NAME)).thenReturn(originalJson);
+    when(systemDAO.updateSettingsIfCurrent(eq(EMAIL_SETTING_NAME), eq(originalJson), anyString()))
+        .thenReturn(1);
+
+    Response response =
+        systemRepository.patchSetting(
+            EMAIL_SETTING_NAME,
+            Json.createPatchBuilder().replace("/senderMail", UPDATED_SENDER).build());
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO)
+        .updateSettingsIfCurrent(eq(EMAIL_SETTING_NAME), eq(originalJson), updatedJson.capture());
+    SmtpSettings persisted =
+        SystemRepository.decryptEmailSetting(
+            JsonUtils.readValue(updatedJson.getValue(), SmtpSettings.class));
+    assertEquals(SMTP_PASSWORD, persisted.getPassword());
+    assertEquals(UPDATED_SENDER, persisted.getSenderMail());
+    Settings responseSettings = (Settings) response.getEntity();
+    SmtpSettings responseConfig = (SmtpSettings) responseSettings.getConfigValue();
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, responseConfig.getPassword());
+  }
+
+  @Test
+  void putEmailSettingPreservesOmittedPassword() {
+    Settings stored =
+        new Settings()
+            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+            .withConfigValue(emailSettings(SMTP_PASSWORD, ORIGINAL_SENDER));
+    Settings update =
+        new Settings()
+            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+            .withConfigValue(
+                JsonUtils.readValue(
+                    JsonUtils.pojoToJson(emailSettings(null, UPDATED_SENDER)), Object.class));
+    when(systemDAO.getConfigWithKey(EMAIL_SETTING_NAME)).thenReturn(stored);
+
+    Response response = systemRepository.createOrUpdate(update);
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO).insertSettings(eq(EMAIL_SETTING_NAME), updatedJson.capture());
+    SmtpSettings persisted =
+        SystemRepository.decryptEmailSetting(
+            JsonUtils.readValue(updatedJson.getValue(), SmtpSettings.class));
+    assertEquals(SMTP_PASSWORD, persisted.getPassword());
+    assertEquals(UPDATED_SENDER, persisted.getSenderMail());
+    Settings responseSettings = (Settings) response.getEntity();
+    SmtpSettings responseConfig = (SmtpSettings) responseSettings.getConfigValue();
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, responseConfig.getPassword());
+  }
+
   private JsonPatch appendRelationTypePatch() {
     return Json.createPatchBuilder()
         .test("/relationTypes", Json.createArrayBuilder().build())
@@ -241,5 +302,9 @@ class SystemRepositoryPatchSettingTest {
 
   private JsonPatch removeFirstRelationTypePatch() {
     return Json.createPatchBuilder().remove("/relationTypes/0").build();
+  }
+
+  private SmtpSettings emailSettings(String password, String senderMail) {
+    return new SmtpSettings().withPassword(password).withSenderMail(senderMail);
   }
 }
