@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
+import { PagingResponse } from 'Models';
 import {
   createContext,
   lazy,
@@ -93,6 +94,109 @@ interface Props {
 export const ActivityFeedContext = createContext(
   {} as ActivityFeedProviderContextType
 );
+
+const TASK_LIST_FIELDS = 'assignees,createdBy,about,comments,payload';
+
+type TaskListUser = { fullyQualifiedName?: string; name?: string } | undefined;
+
+interface TaskListScope {
+  feedFilterType: FeedFilter;
+  entityType?: EntityType;
+  fqn?: string;
+  currentUser: TaskListUser;
+  taskStatusGroup?: TaskStatusGroup;
+}
+
+/** The "my tasks" endpoints differ only by which side of the task the filter names. */
+const myTasksEndpointFor = (feedFilterType: FeedFilter) => {
+  if (feedFilterType === FeedFilter.ASSIGNED_BY) {
+    return listMyCreatedTasks;
+  }
+
+  return feedFilterType === FeedFilter.ASSIGNED_TO
+    ? listMyAssignedTasks
+    : listMyVisibleTasks;
+};
+
+/** True when the profile being viewed is the logged-in user's own. */
+const isOwnProfile = ({ entityType, fqn, currentUser }: TaskListScope) =>
+  entityType === EntityType.USER &&
+  Boolean(fqn) &&
+  [currentUser?.fullyQualifiedName, currentUser?.name].includes(fqn);
+
+const mentionedTaskParams = ({
+  entityType,
+  fqn,
+  currentUser,
+}: TaskListScope) => ({
+  mentionedUser: currentUser?.fullyQualifiedName ?? currentUser?.name,
+  // Scope to the entity only on an entity page; a user page wants every mention.
+  aboutEntity: entityType !== EntityType.USER && fqn ? fqn : undefined,
+});
+
+const otherUserTaskParams = ({
+  feedFilterType,
+  fqn,
+  currentUser,
+  taskStatusGroup,
+}: TaskListScope) => {
+  const assigneeFqn =
+    fqn || currentUser?.fullyQualifiedName || currentUser?.name;
+  const isCreatedByFilter = feedFilterType === FeedFilter.ASSIGNED_BY;
+
+  return {
+    statusGroup: taskStatusGroup,
+    assignee: isCreatedByFilter ? undefined : assigneeFqn,
+    createdBy: isCreatedByFilter ? assigneeFqn : undefined,
+  };
+};
+
+/**
+ * Picks the task endpoint the current scope calls for. Extracted from getTaskData
+ * so the fetcher keeps only its loading/sequence orchestration.
+ */
+const fetchTaskList = (
+  scope: TaskListScope,
+  page: { after?: string; limit?: number; domain?: string }
+): Promise<PagingResponse<Task[]>> => {
+  const common = { ...page, fields: TASK_LIST_FIELDS };
+  const { feedFilterType, entityType, fqn, taskStatusGroup } = scope;
+  const scoped = { statusGroup: taskStatusGroup, ...common };
+
+  if (feedFilterType === FeedFilter.MENTIONS) {
+    return listTasks({ ...mentionedTaskParams(scope), ...common });
+  }
+
+  if (isOwnProfile(scope)) {
+    return myTasksEndpointFor(feedFilterType)(scoped);
+  }
+
+  if (entityType === EntityType.USER) {
+    return listTasks({ ...otherUserTaskParams(scope), ...common });
+  }
+
+  if (entityType && fqn) {
+    return listTasks({ aboutEntity: fqn, ...scoped });
+  }
+
+  return myTasksEndpointFor(feedFilterType)(scoped);
+};
+
+/** Replaces one post inside a thread's post list, leaving the rest untouched. */
+const applyPostUpdate = (
+  posts: Post[],
+  postId: string,
+  updated: Pick<Post, 'reactions' | 'message'>
+) =>
+  posts.map((post) =>
+    isEqual(postId, post.id)
+      ? { ...post, reactions: updated.reactions, message: updated.message }
+      : post
+  );
+
+/** Swaps a refreshed task into the list by id. */
+const replaceTaskById = (tasks: Task[], fresh: Task) =>
+  tasks.map((task) => (task.id === fresh.id ? fresh : task));
 
 const ActivityFeedProvider = ({ children, user }: Props) => {
   const { t } = useTranslation();
@@ -242,105 +346,18 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setTasks([]);
           setEntityPaging({} as Paging);
         }
-        const feedFilterType = filterType ?? FeedFilter.ALL;
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const taskFields = 'assignees,createdBy,about,comments,payload';
-        const isCurrentUserEntity =
-          entityType === EntityType.USER &&
-          Boolean(fqn) &&
-          [currentUser?.fullyQualifiedName, currentUser?.name].includes(fqn);
-        let taskResponse;
-
-        if (feedFilterType === FeedFilter.MENTIONS) {
-          const userFqn = currentUser?.fullyQualifiedName ?? currentUser?.name;
-          taskResponse = await listTasks({
-            mentionedUser: userFqn,
-            aboutEntity:
-              entityType !== EntityType.USER && fqn ? fqn : undefined,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (isCurrentUserEntity) {
-          if (feedFilterType === FeedFilter.ASSIGNED_BY) {
-            taskResponse = await listMyCreatedTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          } else if (feedFilterType === FeedFilter.ASSIGNED_TO) {
-            taskResponse = await listMyAssignedTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          } else {
-            taskResponse = await listMyVisibleTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          }
-        } else if (entityType === EntityType.USER) {
-          const assigneeFqn =
-            fqn || currentUser?.fullyQualifiedName || currentUser?.name;
-          taskResponse = await listTasks({
-            statusGroup: taskStatusGroup,
-            assignee:
-              feedFilterType === FeedFilter.ASSIGNED_BY
-                ? undefined
-                : assigneeFqn,
-            createdBy:
-              feedFilterType === FeedFilter.ASSIGNED_BY
-                ? assigneeFqn
-                : undefined,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (entityType && fqn) {
-          taskResponse = await listTasks({
-            statusGroup: taskStatusGroup,
-            aboutEntity: fqn,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (feedFilterType === FeedFilter.ASSIGNED_BY) {
-          taskResponse = await listMyCreatedTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (feedFilterType === FeedFilter.ASSIGNED_TO) {
-          taskResponse = await listMyAssignedTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else {
-          taskResponse = await listMyVisibleTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        }
+        const taskResponse = await fetchTaskList(
+          {
+            feedFilterType: filterType ?? FeedFilter.ALL,
+            entityType,
+            fqn,
+            currentUser,
+            taskStatusGroup,
+          },
+          { after, limit, domain }
+        );
 
         if (listRequestSeq.current !== requestId) {
           return;
@@ -556,27 +573,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     async (threadId: string, postId: string, data: Operation[]) => {
       try {
         const res = await updatePost(threadId, postId, data);
+        // Deliberately sequential: this reads back the thread the PATCH above just
+        // modified. Issuing them together would let the read observe pre-patch
+        // state and land it in setSelectedThread, so the right panel would
+        // disagree with the optimistic list update below.
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
         const activeThreadData = await getFeedById(threadId);
         setEntityThread((prevData) =>
-          prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts ?? []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
+          prevData.map((thread) =>
+            isEqual(threadId, thread.id)
+              ? {
+                  ...thread,
+                  posts: applyPostUpdate(thread.posts ?? [], postId, res),
                 }
-              });
-
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          })
+              : thread
+          )
         );
         setSelectedThread(activeThreadData.data);
       } catch (err) {
@@ -745,9 +756,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           .then((res) => {
             const fresh = res.data;
             setSelectedTask(fresh);
-            setTasks((prev) =>
-              prev.map((t) => (t.id === fresh.id ? fresh : t))
-            );
+            setTasks((prev) => replaceTaskById(prev, fresh));
           })
           .catch(() => {});
       }
