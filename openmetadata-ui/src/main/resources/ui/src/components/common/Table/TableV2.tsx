@@ -308,6 +308,26 @@ const getRowInteractionProps = (
   };
 };
 
+/**
+ * Stable, unique React Aria column ids.
+ *
+ * AntD tolerates two columns sharing a `key` — it renders both. React Aria uses
+ * the id as a collection key, so a duplicate collapses the column while the row
+ * still renders a cell for it, and the table throws "Cell count must match
+ * column count". Suffixing repeats keeps such a table rendering instead.
+ */
+const getColumnIds = <T,>(columns: ColumnsType<T>): string[] => {
+  const seen = new Map<string, number>();
+
+  return columns.map((col, idx) => {
+    const base = String(col.key ?? (col as ColumnType<T>).dataIndex ?? idx);
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+
+    return count === 0 ? base : `${base}-${count}`;
+  });
+};
+
 const TableV2 = <T extends object>(
   {
     loading,
@@ -786,6 +806,8 @@ const TableV2 = <T extends object>(
     };
   }, [clientPagination, handlePageSizeChange]);
 
+  const columnIds = useMemo(() => getColumnIds(propsColumns), [propsColumns]);
+
   // ─── Flat rows (tree data flattened with depth tracking) ──────────────────
 
   const flatRows = useMemo<FlatRow<T>[]>(() => {
@@ -980,7 +1002,7 @@ const TableV2 = <T extends object>(
                   const rowHeaderColumn = colType as ColumnType<T> & {
                     isRowHeader?: boolean;
                   };
-                  const colKey = String(col.key ?? colType.dataIndex ?? colIdx);
+                  const colKey = columnIds[colIdx];
                   const colWidth =
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
@@ -1120,9 +1142,7 @@ const TableV2 = <T extends object>(
                       )}>
                       {propsColumns.map((col, colIdx) => {
                         const colType = col as ColumnType<T>;
-                        const cellKey = String(
-                          col.key ?? colType.dataIndex ?? colIdx
-                        );
+                        const cellKey = columnIds[colIdx];
                         const stickyStyle = getColumnStickyStyle(
                           colType.fixed,
                           1
