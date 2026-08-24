@@ -81,7 +81,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
                 )
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
                 oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
-                if oracledb.clientversion()[0] < MIN_RECOMMENDED_ORACLE_CLIENT_VERSION:
+                if oracledb.clientversion() < (MIN_RECOMMENDED_ORACLE_CLIENT_VERSION,):
                     logger.warning(
                         "Oracle Client versions older than %s are deprecated and "
                         "will not be supported in a future OpenMetadata release. "
