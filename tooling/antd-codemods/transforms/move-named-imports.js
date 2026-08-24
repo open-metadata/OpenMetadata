@@ -14,10 +14,12 @@ function stripExtension(filePath) {
  * is never mistaken for a package.
  */
 function relativeSpecifier(fromFile, toPath) {
-  const rel = path.relative(
-    path.dirname(path.resolve(fromFile)),
-    stripExtension(toPath)
-  );
+  // `path.relative` uses the platform separator, so on Windows this would emit
+  // `..\components\...` — a specifier no bundler resolves, written silently.
+  const rel = path
+    .relative(path.dirname(path.resolve(fromFile)), stripExtension(toPath))
+    .split(path.sep)
+    .join('/');
 
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
