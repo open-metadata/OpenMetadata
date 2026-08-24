@@ -231,11 +231,13 @@ class McpResponseTrimTest {
   void slimCertificationKeepsTheLabelWhenThereIsNoExpiry() {
     Map<String, Object> certification =
         Map.of("tagLabel", Map.of("tagFQN", "Certification.Bronze"));
-    assertEquals(
-        "Certification.Bronze (expiry unknown)",
-        McpResponseTrim.slimCertification(certification, 1L),
-        "a bare label reads as a live badge; when the projection carries no expiry, say so rather "
-            + "than letting the caller assume validity");
+    String summary = McpResponseTrim.slimCertification(certification, 1L).toString();
+    assertTrue(summary.startsWith("Certification.Bronze"), summary);
+    assertTrue(
+        summary.contains("not in this index") && summary.contains("get_entity_details"),
+        "an un-indexed expiry must name the cause and where to resolve it - a bare label reads as "
+            + "a live badge, and 'unknown' reads as 'no expiry set'. Both mislead: "
+            + summary);
     assertEquals(
         "not-a-map",
         McpResponseTrim.slimCertification("not-a-map", 1L),

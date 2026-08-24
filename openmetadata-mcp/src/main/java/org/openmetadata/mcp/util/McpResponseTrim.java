@@ -188,11 +188,13 @@ public final class McpResponseTrim {
               ? " (EXPIRED " + date + ")"
               : " (valid until " + date + ")";
     } else {
-      // Search projections do not always carry expiryDate. Measured live, one table returned a bare
-      // "Certification.Gold" while its own test cases returned "(EXPIRED 2026-07-29)" — same badge,
-      // same expiry, opposite impression. A bare label reads as a live badge, which is the exact
-      // misread this method exists to prevent, so state that validity is unknown instead.
-      suffix = " (expiry unknown)";
+      // The search index is inconsistent: some documents carry the full certification, others only
+      // {tagLabel:{tagFQN}} — and the asset that mattered most in testing was a stripped one. Two
+      // earlier wordings both misled. A bare label reads as a live badge; "(expiry unknown)" reads
+      // as "no expiry set", which a caller reported as "actively obscured the fact ... invites an
+      // agent that skips the follow-up to report a stale certification as valid". So name the cause
+      // and the remedy: the date exists, it is just not in this projection.
+      suffix = " (expiry not in this index - check get_entity_details before trusting)";
     }
     return suffix;
   }
