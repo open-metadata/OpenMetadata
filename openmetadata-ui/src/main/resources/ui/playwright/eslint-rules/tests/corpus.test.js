@@ -28,9 +28,19 @@ test('suppressions baseline only ever shrinks', () => {
     }
   }
 
-  // Update this ceiling downward as violations are fixed. It must never rise:
-  // a rise means new violations were suppressed instead of fixed.
-  const CEILING = Number(process.env.PW_SUPPRESSION_CEILING ?? 1446);
+  // The ratchet's starting notch, set once when this gate lands, then only
+  // ever moved downward as violations are fixed. After the gate is live a rise
+  // means new violations were suppressed instead of fixed, and is never
+  // acceptable.
+  //
+  // 1,521 rather than the 1,446 this PR was authored against: the gate sat
+  // closed from 2026-08-13 until after the 2.0 release, and across those 509
+  // commits of `main` nothing enforced these rules, so the corpus gained 88
+  // no-positional-locator sites (four other rules shrank, for +75 net). That
+  // drift is the argument for the gate, not a violation of it — the ratchet
+  // cannot have been broken before it existed. The burn-down PRs that follow
+  // this one take it back down.
+  const CEILING = Number(process.env.PW_SUPPRESSION_CEILING ?? 1521);
 
   assert.ok(
     total <= CEILING,
