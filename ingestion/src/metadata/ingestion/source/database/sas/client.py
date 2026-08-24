@@ -174,5 +174,12 @@ class SASClient:
             "Authorization": "Basic c2FzLmNsaTo=",
         }
         url = base_url + endpoint
-            verify=get_verify_ssl_fn(config.verifySSL)(config.sslConfig),
+        response = requests.request(
+            "POST",
+            url,
+            headers=headers,
+            data=payload,
+            verify=get_verify_ssl_fn(self.config.verifySSL)(self.config.sslConfig),
+            timeout=10,
+        )
         return response.json()["access_token"]
