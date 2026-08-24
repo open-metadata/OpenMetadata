@@ -65,6 +65,12 @@ public class GetEntityTool implements McpTool {
   private static final String SCHEMA_DEFINITION_TRUNCATED_KEY = "schemaDefinitionTruncated";
   private static final String SQL_TRUNCATED_KEY = "sqlTruncated";
 
+  private static final String ENTITIES_PARAM = "entities";
+  private static final char REFERENCE_SEPARATOR = ':';
+  private static final int MAX_BATCH = 10;
+  private static final String BAD_REFERENCE_MESSAGE =
+      "Expected 'entityType:fqn', e.g. 'table:svc.db.schema.orders'";
+
   private static final String INCLUDE_PARAM = "include";
   private static final String INCLUDE_LINEAGE = "lineage";
   private static final String INCLUDE_QUALITY = "quality";
@@ -115,8 +121,112 @@ public class GetEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String entityType = (String) params.get("entityType");
-    String fqn = (String) params.get("fqn");
+    List<String> batch = McpParams.getStringList(params, ENTITIES_PARAM);
+    Map<String, Object> result;
+    if (batch.isEmpty()) {
+      result =
+          readOne(
+              authorizer,
+              securityContext,
+              params,
+              (String) params.get("entityType"),
+              (String) params.get("fqn"));
+    } else {
+      result = readMany(authorizer, securityContext, params, batch);
+    }
+    return result;
+  }
+
+  /**
+   * Reads up to {@link #MAX_BATCH} entities in one call.
+   *
+   * <p>A "tell me about these assets" question previously cost one round trip per asset, and a
+   * search result routinely names several worth inspecting. Each entity is resolved independently:
+   * an unknown type, a missing asset or a permission denial yields an {@code error} entry for that
+   * one entity rather than failing the whole call, which is what makes batching safe to use on a
+   * list the caller has not verified.
+   */
+  private Map<String, Object> readMany(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      List<String> batch) {
+    List<Map<String, Object>> entities = new ArrayList<>();
+    for (String reference : batch.subList(0, Math.min(batch.size(), MAX_BATCH))) {
+      entities.add(readBatchEntry(authorizer, securityContext, params, reference));
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("entities", entities);
+    result.put("requested", batch.size());
+    result.put("returned", entities.size());
+    if (batch.size() > MAX_BATCH) {
+      result.put(
+          McpResponseTrim.MESSAGE_KEY,
+          String.format(
+              "%d entities requested, %d returned. Ask for at most %d per call.",
+              batch.size(), entities.size(), MAX_BATCH));
+    }
+    return result;
+  }
+
+  /** One batch entry, with its own failure contained to itself. */
+  private Map<String, Object> readBatchEntry(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String reference) {
+    Map<String, Object> entry;
+    EntityRef parsed = parseReference(reference);
+    if (parsed == null) {
+      entry = batchError(reference, BAD_REFERENCE_MESSAGE);
+    } else {
+      try {
+        entry = readOne(authorizer, securityContext, params, parsed.entityType(), parsed.fqn());
+      } catch (Exception e) {
+        LOG.warn("Batch read failed for {}: {}", reference, e.getMessage());
+        entry = batchError(reference, McpResponseTrim.safeMessage(e));
+      }
+    }
+    return entry;
+  }
+
+  record EntityRef(String entityType, String fqn) {}
+
+  /**
+   * Splits {@code entityType:fqn} on the FIRST colon only — an FQN legitimately contains colons
+   * (a test case FQN embeds them), so splitting on every colon would corrupt valid input.
+   * Returns null for anything unparseable so the caller can report it per entity.
+   */
+  @VisibleForTesting
+  static EntityRef parseReference(String reference) {
+    EntityRef parsed = null;
+    if (reference != null) {
+      int separator = reference.indexOf(REFERENCE_SEPARATOR);
+      boolean parseable = separator > 0 && separator < reference.length() - 1;
+      if (parseable) {
+        String type = reference.substring(0, separator).trim();
+        String fqn = reference.substring(separator + 1).trim();
+        if (!type.isEmpty() && !fqn.isEmpty()) {
+          parsed = new EntityRef(type, fqn);
+        }
+      }
+    }
+    return parsed;
+  }
+
+  private static Map<String, Object> batchError(String reference, String message) {
+    Map<String, Object> entry = new LinkedHashMap<>();
+    entry.put("requested", reference);
+    entry.put(McpResponseTrim.ERROR_KEY, message);
+    return entry;
+  }
+
+  private Map<String, Object> readOne(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params,
+      String entityType,
+      String fqn) {
     // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
     // resource-type permission.
     authorizer.authorize(
@@ -127,9 +237,8 @@ public class GetEntityTool implements McpTool {
     int columnOffset =
         Math.max(0, McpParams.getInt(params, COLUMN_OFFSET_PARAM, DEFAULT_COLUMN_OFFSET));
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
-    String fields = "*";
     Map<String, Object> entityData =
-        JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, fields, null));
+        JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, "*", null));
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.
