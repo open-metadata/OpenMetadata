@@ -68,7 +68,7 @@ import {
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
@@ -82,7 +82,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
-  getGlossaryTerms,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
@@ -101,7 +100,6 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
-  buildTree,
   findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
@@ -141,7 +139,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const fetchRequestSeqRef = useRef(0);
-  const expandTreeSeqRef = useRef(0);
   const fetchTasksSeqRef = useRef(0);
   const {
     activeGlossary,
@@ -215,6 +212,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [isDraggingTerm, setIsDraggingTerm] = useState(false);
   const [isTopLevelDropActive, setIsTopLevelDropActive] = useState(false);
   const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
+  const toggleExpandBtnRef = useRef(false);
+  toggleExpandBtnRef.current = toggleExpandBtn;
 
   // handle search
   const handleSearch = useCallback(async (value: string) => {
@@ -396,8 +395,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         );
       } else {
         setGlossaryChildTerms(newTerms);
-        // Start with all terms collapsed
-        setExpandedRowKeys([]);
+        // Start with all terms collapsed unless expand-all mode is active
+        if (!toggleExpandBtnRef.current) {
+          setExpandedRowKeys([]);
+        }
+      }
+
+      // In expand-all mode, auto-expand newly loaded rows and lazy-load their
+      // children — same lazy pattern as the normal per-row expansion, applied
+      // to the whole page so the user never waits for a full pre-fetch.
+      if (toggleExpandBtnRef.current && requestSeq === fetchRequestSeqRef.current) {
+        const termsToExpand = newTerms.filter(
+          (t) => (t.childrenCount ?? 0) > 0 || (t.children?.length ?? 0) > 0
+        );
+        const fqnsToExpand = termsToExpand
+          .map((t) => t.fullyQualifiedName ?? '')
+          .filter(Boolean);
+
+        if (fqnsToExpand.length > 0) {
+          setExpandedRowKeys((prev) =>
+            loadMore
+              ? [...new Set([...prev, ...fqnsToExpand])]
+              : fqnsToExpand
+          );
+          termsToExpand.forEach((term) => {
+            if (
+              (!term.children || term.children.length === 0) &&
+              (term.childrenCount ?? 0) > 0
+            ) {
+              // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+              fetchChildTerms(term.fullyQualifiedName ?? '');
+            }
+          });
+        }
       }
     } catch (error) {
       if (requestSeq === fetchRequestSeqRef.current) {
@@ -407,64 +437,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (requestSeq === fetchRequestSeqRef.current) {
         setIsTableLoading(false);
         setIsLoadingMore(false);
-      }
-    }
-  };
-
-  const fetchExpadedTree = async () => {
-    const seq = ++expandTreeSeqRef.current;
-    setIsTableLoading(true);
-    setIsExpandingAll(true);
-    const key = isGlossary ? 'glossary' : 'parent';
-    const fields = [
-      TabSpecificField.OWNERS,
-      TabSpecificField.PARENT,
-      TabSpecificField.CHILDREN,
-    ];
-
-    try {
-      let allData: GlossaryTerm[] = [];
-      let after: string | undefined;
-
-      do {
-        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
-        const response = await getGlossaryTerms({
-          [key]: activeGlossary?.id || '',
-          limit: PAGE_SIZE_LARGE,
-          after,
-          fields,
-        });
-        allData = [...allData, ...response.data];
-        after = response.paging?.after;
-      } while (after);
-
-      // Discard results if a newer expand-all was triggered while this one
-      // was paginating (covers both glossary-switch and same-glossary re-trigger).
-      if (seq !== expandTreeSeqRef.current) {
-        return;
-      }
-
-      setGlossaryChildTerms(buildTree(allData) as ModifiedGlossary[]);
-      const keys = allData.reduce((prev, curr) => {
-        if (curr.children?.length) {
-          prev.push(curr.fullyQualifiedName ?? '');
+        // Initial expand-all page has loaded; spinner in the button can stop.
+        if (!loadMore && toggleExpandBtnRef.current) {
+          setIsExpandingAll(false);
         }
-
-        return prev;
-      }, [] as string[]);
-
-      setExpandedRowKeys(keys);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      // Only reset loading flags if this invocation is still the latest one;
-      // an older expand-all must not clear the spinner of a newer request.
-      if (seq === expandTreeSeqRef.current) {
-        setIsTableLoading(false);
-        setIsExpandingAll(false);
       }
     }
   };
+
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
       return;
@@ -535,23 +515,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       currentFQN &&
       !isLoadingMore &&
       currentFQN !== previousGlossaryFQN &&
-      !toggleExpandBtn &&
       !searchTerm // Don't fetch if there's an active search
     ) {
-      // Clear existing terms when switching glossaries
+      // Clear existing terms when switching glossaries; also exit expand-all mode
+      // so stale expanded state from the previous glossary cannot bleed through.
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
-      // Invalidate any in-flight expand-all so its stale tree cannot
-      // overwrite the newly selected glossary's terms.
-      expandTreeSeqRef.current++;
+      setToggleExpandBtn(false);
+      setExpandedRowKeys([]);
       fetchAllTerms();
     }
   }, [
     activeGlossary?.fullyQualifiedName,
     isLoadingMore,
     previousGlossaryFQN,
-    toggleExpandBtn,
     searchTerm,
   ]);
 
@@ -610,7 +588,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         scrollContainer &&
         canLoadMore &&
         !isLoadingMore &&
-        !toggleExpandBtn &&
         !isTableLoading // Added check to prevent multiple fetches
       ) {
         const { scrollHeight, clientHeight } = scrollContainer;
@@ -640,7 +617,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     isLoadingMore,
     findScrollContainer,
     fetchAllTerms,
-    toggleExpandBtn,
     isTableLoading,
   ]);
 
@@ -657,8 +633,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         scrollContainer &&
         canLoadMore &&
         !isLoadingMore &&
-        !isTableLoading &&
-        !toggleExpandBtn
+        !isTableLoading
       ) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
         // Load more when user is 200px from the bottom
@@ -1178,27 +1153,20 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsStatusDropdownVisible(false);
   };
 
-  const toggleExpandAll = useCallback(async () => {
-    setToggleExpandBtn((prev) => !prev);
-    if (expandedRowKeys.length === expandableKeys.length) {
-      // Collapse all - immediate UI update
+  const toggleExpandAll = useCallback(() => {
+    if (toggleExpandBtn) {
+      // Collapse all: exit expand-all mode, reset to normal first-level view
+      setToggleExpandBtn(false);
       setExpandedRowKeys([]);
       fetchAllTerms();
     } else {
-      fetchExpadedTree();
+      // Expand all: enter expand-all mode and reload using the same infinite-scroll
+      // table — rows auto-expand as each page loads, children lazy-load per row.
+      setToggleExpandBtn(true);
+      setIsExpandingAll(true);
+      fetchAllTerms();
     }
-  }, [
-    glossaryTerms,
-    glossaryChildTerms,
-    setGlossaryChildTerms,
-    loadingChildren,
-    setLoadingChildren,
-    expandedRowKeys,
-    expandableKeys,
-    setExpandedRowKeys,
-    showErrorToast,
-    selectedStatus,
-  ]);
+  }, [toggleExpandBtn, fetchAllTerms]);
 
   const isAllExpanded = useMemo(() => {
     return expandedRowKeys.length === expandableKeys.length;
