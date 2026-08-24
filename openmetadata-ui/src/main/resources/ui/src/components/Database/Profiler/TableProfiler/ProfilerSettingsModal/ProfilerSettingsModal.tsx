@@ -47,7 +47,6 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
-  PROFILER_METRIC,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -65,6 +64,7 @@ import {
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
+import profilerMetricsClassBase from '../../../../../utils/ProfilerMetricsClassBase';
 import {
   showErrorToast,
   showSuccessToast,
@@ -136,12 +136,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
+    const profilerMetrics = profilerMetricsClassBase.getProfilerMetricOptions();
     const metricsOptions = [
       {
         title: t('label.all'),
         value: 'all',
         key: 'all',
-        children: PROFILER_METRIC.map((metric) => ({
+        children: profilerMetrics.map((metric) => ({
           title: startCase(metric),
           value: metric,
           key: metric,

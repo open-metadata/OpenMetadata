@@ -1778,9 +1778,12 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
     assert performance["targets"]["atMostOneAppBootPerUIScenario"] is True
     assert performance["targets"]["appBootMeasurementIntegrity"] is True
     assert "atMostOneAppBootPerAttempt" not in performance["targets"]
-    assert performance["blockingTargetsMet"] is False
+    # Flaky-rate/retry-share breaches are budget signals, not blockers — a
+    # green run stays green (run 32500973433).
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargetsMet"] is False
     assert performance["convergenceTargetsMet"] is True
-    assert "appBootMeasurementIntegrity" in performance["blockingTargets"]
+    assert "appBootMeasurementIntegrity" in performance["budgetTargets"]
     assert "atMostOneAppBootPerUIScenario" in performance["convergenceTargets"]
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
@@ -1876,7 +1879,13 @@ def test_performance_enforcement_reports_convergence_without_failing(
     }
 
 
-def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypatch):
+def test_environment_overrun_is_budget_breach_not_enforcement_failure(
+    tmp_path, monkeypatch, capsys
+):
+    # Formerly this fixture (481 s > the 480 s env ceiling) raised SystemExit
+    # under --enforce and failed the merge-group check. Environment time is a
+    # BUDGET target now: main() completes, the breach lands in the payload
+    # and stdout for the workflow's budget-signal step.
     evaluator = load_script("evaluate_playwright_performance")
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -1937,12 +1946,18 @@ def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypa
         ],
     )
 
-    with pytest.raises(
-        SystemExit,
-        match="Blocking Playwright performance targets not met: "
-        "environmentAtMostFiveMinutes",
-    ):
-        evaluator.main()
+    evaluator.main()
+
+    captured = capsys.readouterr()
+    assert "BUDGET BREACH" in captured.out
+    assert "environmentAtMostFiveMinutes" in captured.out
+    performance = json.loads(output.read_text())
+    assert performance["blockingTargetsMet"] is True
+    assert performance["budgetTargets"]["environmentAtMostFiveMinutes"] is False
+    assert (
+        "environmentAtMostFiveMinutes"
+        in performance["failedBudgetTargetDetails"]
+    )
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -2400,11 +2415,12 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "specFile.endsWith('.setup.ts')" in summary_helper
     assert "lifecycleFailures" in summary_helper
     assert "lifecycleFlaky" in summary_helper
-    assert ".blockingTargets.reportingAtMostTwoMinutes" in workflow
-    assert ".blockingTargetsMet = ([.blockingTargets[]] | all)" in workflow
+    assert ".budgetTargets.reportingAtMostTwoMinutes" in workflow
+    assert ".budgetTargetsMet = ([.budgetTargets[]] | all)" in workflow
+    assert "Signal Playwright budget breaches" in workflow
     assert "### Performance targets" in summary_helper
-    assert "### Performance convergence warnings" in summary_helper
-    assert "Blocking targets enforce CI" in summary_helper
+    assert "### Performance budget and convergence warnings" in summary_helper
+    assert "Budget targets signal capacity problems" in summary_helper
     assert "convergenceWarnings" in summary_helper
     assert "workflowWallSeconds" in summary_helper
     assert "Full workflow signal wall (to summary)" in summary_helper
