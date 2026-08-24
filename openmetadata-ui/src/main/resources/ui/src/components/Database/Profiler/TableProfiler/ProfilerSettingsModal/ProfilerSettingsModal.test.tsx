@@ -88,6 +88,7 @@ jest.mock('../../../../../utils/ObjectUtils', () => ({
 }));
 
 jest.mock('../../../../../utils/ProfilerMetricsClassBase', () => ({
+  __esModule: true,
   default: {
     getProfilerMetricOptions: jest
       .fn()
