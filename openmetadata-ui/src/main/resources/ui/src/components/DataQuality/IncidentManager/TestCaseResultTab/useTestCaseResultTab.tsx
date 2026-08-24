@@ -344,12 +344,12 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     if (testCaseData?.useDynamicAssertion) {
       items.push({
         value: (
-          <label
+          <span
             className="parameter-value-text tw:inline-flex"
             data-testid="dynamic-assertion">
             <StarIcon aria-hidden className="tw:h-3 tw:w-3 tw:mr-1 tw:mt-1" />{' '}
             {t('label.dynamic-assertion')}
-          </label>
+          </span>
         ),
       });
     } else if (!isEmpty(withoutSqlParams)) {

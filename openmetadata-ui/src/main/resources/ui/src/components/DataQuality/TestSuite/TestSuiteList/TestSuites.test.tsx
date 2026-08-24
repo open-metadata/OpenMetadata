@@ -229,6 +229,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}

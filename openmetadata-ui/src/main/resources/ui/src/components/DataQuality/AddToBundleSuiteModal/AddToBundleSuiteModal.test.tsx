@@ -80,6 +80,7 @@ jest.mock('antd', () => ({
   Select: ({ onChange, onSearch, 'data-testid': testId }: MockSelectProps) => (
     <div>
       <input
+        aria-label="Search"
         data-testid={testId}
         onChange={(e) => onSearch?.(e.target.value)}
       />
@@ -156,7 +157,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => (
       <>
         {isOpen && (
-          <div data-testid="modal-overlay" onClick={() => onOpenChange(false)}>
+          <div
+            aria-label="Modal overlay"
+            data-testid="modal-overlay"
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpenChange(false)}
+            onKeyDown={() => onOpenChange(false)}>
             {children}
           </div>
         )}

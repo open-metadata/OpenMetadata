@@ -620,7 +620,8 @@ class EntityUtilClassBase {
 
       case EntityType.API_ENDPOINT:
       case EntityType.DATABASE_SCHEMA:
-        // Service.ApiCollection.Endpoint
+      case EntityType.DASHBOARD_DATA_MODEL:
+        // 3-level parent FQN (e.g. Service.Database.Schema)
         if (fqnParts.length > 3) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));
           columnFqn = Fqn.build(...fqnParts.slice(3));
@@ -641,15 +642,6 @@ class EntityUtilClassBase {
         if (fqnParts.length > 2) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 2));
           columnFqn = Fqn.build(...fqnParts.slice(2));
-        }
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        // Service.Dashboard.DataModel
-        if (fqnParts.length > 3) {
-          entityFqn = Fqn.build(...fqnParts.slice(0, 3));
-          columnFqn = Fqn.build(...fqnParts.slice(3));
         }
 
         break;

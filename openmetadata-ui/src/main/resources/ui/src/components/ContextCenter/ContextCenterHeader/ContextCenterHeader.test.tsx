@@ -49,6 +49,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         placeholder={placeholder}
         value={value}

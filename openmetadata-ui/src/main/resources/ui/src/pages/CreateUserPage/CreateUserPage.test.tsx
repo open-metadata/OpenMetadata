@@ -59,11 +59,11 @@ jest.mock('../../hooks/authHooks', () => ({
 jest.mock(
   '../../components/Settings/Users/CreateUser/CreateUser.component',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ onSave }) => (
-        <div onClick={onSave}>CreateUser component</div>
-      ));
+    return jest.fn().mockImplementation(({ onSave }) => (
+      <button type="button" onClick={onSave}>
+        CreateUser component
+      </button>
+    ));
   }
 );
 
