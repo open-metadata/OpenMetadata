@@ -190,6 +190,7 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
           {!hideSearchBar && (
             <div className="tw:p-2">
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the dropdown opens
                 autoFocus
                 aria-label={searchPlaceholder}
                 placeholder={searchPlaceholder}

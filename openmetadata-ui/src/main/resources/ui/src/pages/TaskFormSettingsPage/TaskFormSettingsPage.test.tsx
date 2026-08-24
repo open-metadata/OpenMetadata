@@ -49,6 +49,7 @@ jest.mock('../../components/Database/SchemaEditor/CodeEditor', () =>
     .fn()
     .mockImplementation(({ value, onChange }) => (
       <textarea
+        aria-label="Code Editor"
         data-testid="code-editor"
         value={value}
         onChange={(event) => onChange(event.target.value)}

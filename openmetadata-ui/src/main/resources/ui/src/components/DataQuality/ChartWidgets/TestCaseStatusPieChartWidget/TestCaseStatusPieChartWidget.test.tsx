@@ -67,18 +67,21 @@ jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
         <div>
           CustomPieChart.component
           <button
+            aria-label="segment-0"
             data-testid="segment-0"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Success', value: 4 }, 0)
             }
           />
           <button
+            aria-label="segment-1"
             data-testid="segment-1"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Failed', value: 3 }, 1)
             }
           />
           <button
+            aria-label="segment-2"
             data-testid="segment-2"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Aborted', value: 1 }, 2)

@@ -480,13 +480,11 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab) {
-      if (!isTourOpen) {
-        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
-          replace: true,
-          state: location.state,
-        });
-      }
+    if (activeKey !== activeTab && !isTourOpen) {
+      navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+        replace: true,
+        state: location.state,
+      });
     }
   };
 

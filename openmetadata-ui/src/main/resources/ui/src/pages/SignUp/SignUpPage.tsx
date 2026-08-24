@@ -154,6 +154,7 @@ const SignUp = () => {
               },
             ]}>
             <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-up form
               autoFocus
               data-testid="full-name-input"
               placeholder={t('label.your-entity', {

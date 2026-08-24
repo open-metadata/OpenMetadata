@@ -179,6 +179,7 @@ jest.mock('./TestCaseFormBody', () =>
         <div data-testid="test-case-form-body">
           {!showOnlyParameter && (
             <input
+              aria-label="Test case name"
               data-testid="test-case-name"
               disabled={Boolean(isEditMode)}
               value={testNameValue ?? ''}
@@ -187,6 +188,7 @@ jest.mock('./TestCaseFormBody', () =>
           )}
           {!showOnlyParameter && isEditMode && (
             <input
+              aria-label="Display name"
               data-testid="display-name"
               value={displayNameValue ?? ''}
               onChange={() => undefined}

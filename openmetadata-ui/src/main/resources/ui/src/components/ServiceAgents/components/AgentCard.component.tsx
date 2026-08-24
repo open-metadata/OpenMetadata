@@ -222,6 +222,9 @@ const AgentCard: FC<AgentCardProps> = ({
               <Box className="tw:gap-1">
                 {agent.recentRuns.map((run, index) => (
                   <button
+                    aria-label={t('message.run-status-click-details', {
+                      status: t(RUN_META[run.status].labelKey),
+                    })}
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
                       RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
                     }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
