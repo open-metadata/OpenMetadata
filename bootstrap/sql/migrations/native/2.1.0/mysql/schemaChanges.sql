@@ -43,3 +43,9 @@ ON entity_relationship (
     (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
     relation
 );
+
+-- Data-only migration: align stored hybrid search weights with the shipped defaults
+-- (keyword 0.4 / semantic 0.6 -> keyword 0.6 / semantic 0.4). The weights are seeded into the
+-- settings row on first startup, so a later default change cannot reach an existing installation.
+-- Only a pair equal to the previous default is rewritten; any other pair is an operator choice.
+-- Handled in org.openmetadata.service.migration.mysql.v210.Migration. No schema changes.
