@@ -356,13 +356,6 @@ const OntologyExplorerPage: React.FC = () => {
 
       break;
     case 'ai':
-      subModeConfiguration = {
-        id: 'ai',
-        items: [],
-        label: t('label.ontology-ai-assistant'),
-      };
-
-      break;
     default:
       subModeConfiguration = {
         id: 'ai',
@@ -404,10 +397,6 @@ const OntologyExplorerPage: React.FC = () => {
       fullHeight
       className="tw:p-0!"
       mainContainerClassName="ontology-studio-page-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - var(--ant-navbar-height))',
-        overflow: 'hidden',
-      }}
       pageTitle={t('label.ontology-studio')}>
       <main
         className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-tertiary tw:font-body tw:antialiased"

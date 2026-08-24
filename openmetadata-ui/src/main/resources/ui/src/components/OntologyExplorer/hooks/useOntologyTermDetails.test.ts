@@ -73,7 +73,7 @@ describe('useOntologyTermDetails', () => {
   });
 
   it('does not set stale state when termId changes before the fetch resolves', async () => {
-    let resolveFirst: (value: GlossaryTerm) => void = () => undefined;
+    let resolveFirst: ((value: GlossaryTerm) => void) | undefined;
     const firstTerm = term(VALID_UUID, 'stale-term');
     const secondTerm = term(OTHER_UUID, 'fresh-term');
 
@@ -95,7 +95,7 @@ describe('useOntologyTermDetails', () => {
     await waitFor(() => expect(result.current.termDetails).toBe(secondTerm));
 
     await act(async () => {
-      resolveFirst(firstTerm);
+      resolveFirst?.(firstTerm);
       await Promise.resolve();
     });
 

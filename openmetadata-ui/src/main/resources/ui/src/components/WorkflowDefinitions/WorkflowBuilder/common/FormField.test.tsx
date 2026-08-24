@@ -35,7 +35,13 @@ jest.mock('./InfoLabel', () => ({
 
 const mockProps = {
   label: 'Test Field',
-  children: <input data-testid="test-input" placeholder="Test input" />,
+  children: (
+    <input
+      aria-label="Test input"
+      data-testid="test-input"
+      placeholder="Test input"
+    />
+  ),
 };
 
 describe('FormField', () => {
@@ -105,8 +111,8 @@ describe('FormField', () => {
   it('should render with complex children', () => {
     const complexChildren = (
       <div data-testid="complex-child">
-        <input data-testid="input-1" />
-        <select data-testid="select-1">
+        <input aria-label="Input 1" data-testid="input-1" />
+        <select aria-label="Select 1" data-testid="select-1">
           <option value="option1">Option 1</option>
         </select>
         <button data-testid="button-1">Submit</button>
@@ -173,10 +179,10 @@ describe('FormField', () => {
     render(
       <div>
         <FormField required label="Field 1">
-          <input data-testid="input-1" />
+          <input aria-label="Input 1" data-testid="input-1" />
         </FormField>
         <FormField showInfoIcon description="Description 2" label="Field 2">
-          <input data-testid="input-2" />
+          <input aria-label="Input 2" data-testid="input-2" />
         </FormField>
       </div>
     );

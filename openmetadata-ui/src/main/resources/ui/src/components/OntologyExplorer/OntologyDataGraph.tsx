@@ -591,13 +591,25 @@ const OntologyDataGraph = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}>
       <div
+        aria-label={t('label.graph')}
         className="tw:relative tw:origin-top-left"
+        role="button"
         style={{
           height: canvasHeight,
           transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.zoom})`,
           width: canvasWidth,
         }}
-        onClick={handleCanvasClick}>
+        tabIndex={0}
+        onClick={handleCanvasClick}
+        onKeyDown={(event) => {
+          if (
+            event.key === 'Escape' ||
+            event.key === 'Enter' ||
+            event.key === ' '
+          ) {
+            onPaneClick();
+          }
+        }}>
         <svg
           aria-hidden="true"
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"

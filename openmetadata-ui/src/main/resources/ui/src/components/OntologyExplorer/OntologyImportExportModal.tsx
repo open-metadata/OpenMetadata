@@ -632,6 +632,7 @@ const OntologyImportExportModal = ({
                 data-testid="ontology-import-panel">
                 <input
                   accept=".ttl,.rdf,.owl,.nt,.xml"
+                  aria-label={t('label.choose-file')}
                   className="tw:hidden"
                   data-testid="ontology-import-input"
                   ref={importInputRef}

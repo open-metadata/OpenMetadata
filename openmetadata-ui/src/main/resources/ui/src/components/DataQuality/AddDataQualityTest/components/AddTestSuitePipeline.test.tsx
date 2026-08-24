@@ -75,8 +75,12 @@ describe('AddTestSuitePipeline', () => {
           ScheduleInterval
           {topChildren}
           {children}
-          <div onClick={onDeploy}>submit</div>
-          <div onClick={onBack}>cancel</div>
+          <button type="button" onClick={onDeploy}>
+            submit
+          </button>
+          <button type="button" onClick={onBack}>
+            cancel
+          </button>
         </div>
       )
     );
@@ -148,6 +152,7 @@ describe('AddTestSuitePipeline', () => {
     jest.spyOn(Form, 'Provider').mockImplementation(
       jest.fn().mockImplementation(({ onFormChange, children }) => (
         <div
+          role="presentation"
           onClick={() =>
             onFormChange('', {
               forms: {
@@ -215,6 +220,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   raiseOnError: true,
@@ -269,6 +275,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: [testCaseObject, 'test-case-string'],
@@ -311,6 +318,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: undefined,
@@ -369,6 +377,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: [testCase1, 'string-test', testCase2],
@@ -678,6 +687,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   ...initialData,

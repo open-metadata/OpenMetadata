@@ -942,7 +942,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   {scope === 'global' ? (
                     <>
                       {explorationMode === 'model' ? (
-                        <label
+                        <div
                           className={classNames(
                             'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:flex tw:w-[216px] tw:items-center tw:gap-2',
                             'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2 tw:shadow-sm'
@@ -952,6 +952,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                             className="tw:size-3.5 tw:shrink-0 tw:text-tertiary"
                           />
                           <input
+                            aria-label={t('label.find-concept')}
                             className={classNames(
                               'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
                               'tw:text-xs tw:leading-normal tw:font-normal tw:text-primary tw:outline-none',
@@ -964,7 +965,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                               setSearchInput(event.target.value)
                             }
                           />
-                        </label>
+                        </div>
                       ) : null}
                       <Tabs
                         className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
@@ -1034,14 +1035,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                           <Tabs.Panel className="tw:hidden" id="model" />
                           <Tabs.Panel className="tw:hidden" id="data" />
                         </Tabs>
-                        <Input
-                          data-testid="ontology-graph-search"
-                          icon={SearchMd}
-                          inputClassName="tw:pl-10"
-                          placeholder={t('label.search-in-graph')}
-                          value={searchInput}
-                          onChange={setSearchInput}
-                        />
+                        <div className="tw:relative">
+                          <SearchMd
+                            aria-hidden="true"
+                            className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:z-1 tw:size-5 tw:-translate-y-1/2 tw:text-fg-quaternary"
+                          />
+                          <Input
+                            data-testid="ontology-graph-search"
+                            inputClassName="tw:pl-10"
+                            placeholder={t('label.search-in-graph')}
+                            value={searchInput}
+                            onChange={setSearchInput}
+                          />
+                        </div>
                         <ExportGraphPanel
                           onExportJsonLd={
                             rdfEnabled && exportableGlossaryId

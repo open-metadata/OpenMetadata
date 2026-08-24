@@ -160,13 +160,13 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         ) : null}
       </div>
 
-      <label className="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:px-3 tw:py-2">
+      <div className="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:px-3 tw:py-2">
         <SearchMd
           aria-hidden="true"
           className="tw:size-3.5 tw:shrink-0 tw:text-fg-tertiary"
         />
         <input
-          autoFocus
+          aria-label={t('label.filter-relationships')}
           className={classNames(
             'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
             'tw:text-xs tw:font-normal tw:text-primary tw:outline-none tw:placeholder:text-placeholder'
@@ -176,7 +176,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-      </label>
+      </div>
 
       <div className="tw:flex tw:max-h-64 tw:flex-col tw:overflow-auto tw:p-1.5">
         {isLoading ? (

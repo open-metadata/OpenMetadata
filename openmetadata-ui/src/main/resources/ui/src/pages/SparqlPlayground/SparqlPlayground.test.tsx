@@ -69,6 +69,7 @@ jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
     onChange?: (v: string) => void;
   }> = ({ value, onChange }) => (
     <textarea
+      aria-label="schema editor"
       data-testid="schema-editor"
       value={value ?? ''}
       onChange={(e) => onChange?.(e.target.value)}

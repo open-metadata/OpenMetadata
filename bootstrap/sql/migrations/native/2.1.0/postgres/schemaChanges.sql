@@ -137,3 +137,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS relationship_id_unique
   ON entity_relationship (relationshipId);
 CREATE INDEX IF NOT EXISTS entity_relationship_type_id_index
   ON entity_relationship (relationshipTypeId);
+
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- The partial index avoids write amplification for relationships that have no pipeline metadata.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_relation
+ON entity_relationship ((json->'pipeline'->>'id'), relation)
+WHERE (json->'pipeline'->>'id') IS NOT NULL;

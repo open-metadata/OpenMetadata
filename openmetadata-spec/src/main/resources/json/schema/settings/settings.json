@@ -43,7 +43,8 @@
         "mcpConfiguration",
         "glossaryTermRelationSettings",
         "sparqlQuerySettings",
-        "appConfiguration"
+        "appConfiguration",
+        "startupChecksums"
       ]
     }
   },
@@ -125,6 +126,9 @@
         },
         {
           "$ref": "../api/configuration/appConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

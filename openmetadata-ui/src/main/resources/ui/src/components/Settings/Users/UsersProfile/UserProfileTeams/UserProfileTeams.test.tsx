@@ -63,6 +63,7 @@ jest.mock('../../../Team/TeamsSelectable/TeamsSelectable', () => {
           )}
         </div>
         <input
+          aria-label="Select user teams"
           data-testid="select-user-teams"
           onChange={() =>
             onSelectionChange([

@@ -32,11 +32,11 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.constants import ROW_COUNT
 from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import Metrics
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.functions.table_metric_computer import (
-    ROW_COUNT,
     table_metric_computer_factory,
 )
 from metadata.profiler.processor.handle_partition import build_partition_predicate

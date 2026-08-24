@@ -620,7 +620,6 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
             onClose={() => setIsSaveModalOpen(false)}>
             <Dialog.Content>
               <Input
-                autoFocus
                 inputDataTestId="sparql-save-name-input"
                 label={t('label.name')}
                 placeholder={t('message.sparql-save-prompt')}

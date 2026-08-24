@@ -2141,6 +2141,34 @@ def test_permission_impact_mapping_includes_ingestion_project():
     assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in service_creation_permissions
 
 
+@pytest.mark.parametrize(
+    ("source_pattern", "spec_path"),
+    [
+        (
+            "openmetadata-service/src/main/java/org/openmetadata/service/search/**",
+            "playwright/e2e/Features/SearchExport.spec.ts",
+        ),
+        (
+            "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**",
+            "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
+        ),
+    ],
+)
+def test_import_export_impacts_use_the_dedicated_project(source_pattern, spec_path):
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry for entry in impact_map["mappings"] if source_pattern in entry["sources"]
+    )
+    source = (
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec_path
+    ).read_text()
+
+    assert "ImportExport" in mapping["projects"]
+    assert "@import-export" in source
+
+
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()

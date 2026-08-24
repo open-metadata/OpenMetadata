@@ -83,7 +83,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button: ({ 'data-testid': testId, onClick }: MockButtonProps) => (
-      <button data-testid={testId} type="button" onClick={onClick} />
+      <button
+        aria-label={testId}
+        data-testid={testId}
+        type="button"
+        onClick={onClick}
+      />
     ),
     ButtonUtility: ({
       'data-testid': testId,
@@ -120,15 +125,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
       'data-testid': testId,
       label,
     }: MockToggleProps) => (
-      <label>
+      <div>
         <input
+          aria-label={label ?? testId}
           checked={Boolean(isSelected)}
           data-testid={testId}
           type="checkbox"
           onChange={(event) => onChange?.(event.target.checked)}
         />
         {label}
-      </label>
+      </div>
     ),
     Typography: ({ children }: MockTypographyProps) => <span>{children}</span>,
   };

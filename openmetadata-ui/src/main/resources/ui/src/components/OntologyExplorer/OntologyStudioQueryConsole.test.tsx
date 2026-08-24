@@ -42,6 +42,7 @@ jest.mock('../Database/SchemaEditor/SchemaEditor', () => ({
   __esModule: true,
   default: ({ value, onChange }: SchemaEditorMockProps) => (
     <textarea
+      aria-label="schema editor"
       data-testid="schema-editor"
       value={value}
       onChange={(event) => onChange?.(event.target.value)}

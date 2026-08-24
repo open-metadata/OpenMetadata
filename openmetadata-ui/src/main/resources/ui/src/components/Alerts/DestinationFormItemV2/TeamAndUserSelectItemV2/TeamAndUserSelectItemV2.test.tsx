@@ -49,6 +49,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => (
     <input
       readOnly
+      aria-label="Select"
       checked={isSelected ?? false}
       data-testid={tid}
       type="checkbox"
@@ -70,6 +71,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     autoFocus?: boolean;
   }) => (
     <input
+      aria-label="Search"
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- mock forwards the autofocus prop under test
       autoFocus={autoFocus}
       data-testid={inputDataTestId ?? tid}
       placeholder={placeholder}

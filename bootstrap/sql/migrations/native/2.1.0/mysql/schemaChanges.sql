@@ -135,3 +135,11 @@ ALTER TABLE entity_relationship ADD COLUMN relationshipTypeId varchar(36) DEFAUL
 ALTER TABLE entity_relationship ADD UNIQUE KEY relationship_id_unique (relationshipId);
 
 ALTER TABLE entity_relationship ADD KEY relationship_type_id_index (relationshipTypeId);
+
+-- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
+-- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
+CREATE INDEX idx_entity_relationship_pipeline_relation
+ON entity_relationship (
+    (CAST(json->>'$.pipeline.id' AS CHAR(36)) COLLATE utf8mb4_bin),
+    relation
+);

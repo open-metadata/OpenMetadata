@@ -149,10 +149,10 @@ class CardinalityAwareLine extends Line {
     container: Group
   ): void {
     super.render(attributes, container);
-    const endpoints = this.getEndpoints(attributes);
+    const [start, end] = this.getEndpoints(attributes);
     drawCardinalityLabels(
       attributes as Record<string, unknown>,
-      [endpoints[0] as [number, number], endpoints[1] as [number, number]],
+      [start as CardinalityEndpoint, end as CardinalityEndpoint],
       (key, labelAttributes) =>
         this.upsert(key, GText, labelAttributes, container)
     );

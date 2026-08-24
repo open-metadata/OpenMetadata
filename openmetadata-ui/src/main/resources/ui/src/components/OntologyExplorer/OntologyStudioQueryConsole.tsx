@@ -629,7 +629,6 @@ const OntologyStudioQueryConsole = ({
             onClose={() => setIsSaveModalOpen(false)}>
             <Dialog.Content>
               <Input
-                autoFocus
                 inputDataTestId="ontology-query-save-name"
                 label={t('label.name')}
                 placeholder={t('message.sparql-save-prompt')}

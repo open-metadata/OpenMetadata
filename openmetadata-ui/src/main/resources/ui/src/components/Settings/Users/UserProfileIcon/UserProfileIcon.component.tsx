@@ -26,6 +26,7 @@ import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
@@ -160,7 +161,13 @@ export const UserProfileIcon = () => {
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
-          onClick={() => handleSelectedPersonaChange(item)}>
+          role="button"
+          tabIndex={0}
+          onClick={() => handleSelectedPersonaChange(item)}
+          onKeyDown={handleKeyboardActivation(
+            () => handleSelectedPersonaChange(item),
+            true
+          )}>
           <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
@@ -411,6 +418,7 @@ export const UserProfileIcon = () => {
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"

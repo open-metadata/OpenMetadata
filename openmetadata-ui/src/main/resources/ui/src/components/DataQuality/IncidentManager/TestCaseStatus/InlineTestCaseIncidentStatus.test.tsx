@@ -101,7 +101,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     label?: React.ReactNode;
     onAction?: (key: React.Key) => void;
   }) => (
-    <div role="menuitem" onClick={() => onAction?.(id)}>
+    <div
+      role="menuitem"
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={() => onAction?.(id)}>
       {children ?? label}
     </div>
   );
@@ -184,6 +188,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);
@@ -224,10 +229,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       isRequired?: boolean;
     }) => (
-      <label>
+      <span>
         {children}
         {isRequired && <span> *</span>}
-      </label>
+      </span>
     ),
     Popover: ({
       children,
@@ -260,6 +265,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       return (
         <div data-testid="popover-trigger-root">
           <div
+            role="presentation"
             onClick={() => {
               setOpen(true);
               onOpenChange?.(true);

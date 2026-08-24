@@ -13,10 +13,18 @@
 
 package org.openmetadata.service.resources;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.AuthenticatorHandler;
 
 class CollectionRegistryTest {
   private static final List<String> HIGH_ORDER_ONTOLOGY_COLLECTIONS =
@@ -27,10 +35,112 @@ class CollectionRegistryTest {
           "/v1/ontology/reasoning");
 
   @Test
+  void resolvesKnownConstructorSignaturesInExistingPrecedenceOrder() throws Exception {
+    assertSignature(AllSignaturesResource.class, OpenMetadataApplicationConfig.class, Limits.class);
+    assertSignature(AuthorizerSignaturesResource.class, Authorizer.class, Limits.class);
+    assertSignature(AuthorizerOnlyResource.class, Authorizer.class);
+    assertSignature(
+        AuthorizerAndFallbackSignaturesResource.class,
+        Authorizer.class,
+        Limits.class,
+        AuthenticatorHandler.class);
+    assertSignature(JdbiAndFallbackSignaturesResource.class, Jdbi.class, Authorizer.class);
+    assertSignature(LimitsAndNoArgsResource.class, Limits.class);
+    assertSignature(NoArgsResource.class);
+  }
+
+  @Test
+  void rejectsUnknownAndNonPublicNoArgsConstructors() {
+    assertThrows(
+        NoSuchMethodException.class,
+        () -> CollectionRegistry.resolveConstructor(UnknownSignatureResource.class));
+    assertThrows(
+        NoSuchMethodException.class,
+        () -> CollectionRegistry.resolveConstructor(NonPublicNoArgsResource.class));
+  }
+
+  @Test
   void registersCollectionsAboveTheLegacyOrderCeiling() {
     final CollectionRegistry registry = CollectionRegistry.getInstance();
 
     HIGH_ORDER_ONTOLOGY_COLLECTIONS.forEach(
         path -> assertTrue(registry.hasCollection(path), () -> "Missing collection " + path));
+  }
+
+  private static void assertSignature(Class<?> resourceClass, Class<?>... parameterTypes)
+      throws Exception {
+    Constructor<?> constructor = CollectionRegistry.resolveConstructor(resourceClass);
+    assertArrayEquals(parameterTypes, constructor.getParameterTypes());
+  }
+
+  private static class AllSignaturesResource {
+    public AllSignaturesResource() {}
+
+    AllSignaturesResource(OpenMetadataApplicationConfig config, Limits limits) {}
+
+    AllSignaturesResource(Authorizer authorizer, Limits limits) {}
+
+    AllSignaturesResource(Authorizer authorizer) {}
+
+    AllSignaturesResource(
+        Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {}
+
+    AllSignaturesResource(Jdbi jdbi, Authorizer authorizer) {}
+
+    AllSignaturesResource(Limits limits) {}
+  }
+
+  private static class AuthorizerSignaturesResource {
+    public AuthorizerSignaturesResource() {}
+
+    AuthorizerSignaturesResource(Authorizer authorizer, Limits limits) {}
+
+    AuthorizerSignaturesResource(Authorizer authorizer) {}
+  }
+
+  private static class AuthorizerAndFallbackSignaturesResource {
+    public AuthorizerAndFallbackSignaturesResource() {}
+
+    AuthorizerAndFallbackSignaturesResource(
+        Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {}
+
+    AuthorizerAndFallbackSignaturesResource(Jdbi jdbi, Authorizer authorizer) {}
+
+    AuthorizerAndFallbackSignaturesResource(Limits limits) {}
+  }
+
+  private static class AuthorizerOnlyResource {
+    public AuthorizerOnlyResource() {}
+
+    AuthorizerOnlyResource(Authorizer authorizer) {}
+
+    AuthorizerOnlyResource(
+        Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {}
+  }
+
+  private static class JdbiAndFallbackSignaturesResource {
+    public JdbiAndFallbackSignaturesResource() {}
+
+    JdbiAndFallbackSignaturesResource(Jdbi jdbi, Authorizer authorizer) {}
+
+    JdbiAndFallbackSignaturesResource(Limits limits) {}
+  }
+
+  private static class LimitsAndNoArgsResource {
+    public LimitsAndNoArgsResource() {}
+
+    LimitsAndNoArgsResource(Limits limits) {}
+  }
+
+  private static class NoArgsResource {
+    public NoArgsResource() {}
+  }
+
+  private static class UnknownSignatureResource {
+    UnknownSignatureResource(String value) {}
+  }
+
+  private static class NonPublicNoArgsResource {
+    private NonPublicNoArgsResource() {}
   }
 }

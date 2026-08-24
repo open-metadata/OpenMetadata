@@ -376,19 +376,20 @@ const OntologyAuthoringInspector = ({
       </span>
       {selectedRelationType ? (
         <>
-          <label className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2">
+          <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2">
             <SearchMd
               aria-hidden="true"
               className="tw:size-3.5 tw:text-fg-quaternary"
             />
             <input
+              aria-label={t('label.search')}
               className="tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-xs tw:leading-normal tw:text-primary tw:outline-none tw:placeholder:text-placeholder"
               data-testid="authoring-target-search"
               placeholder={`${t('label.search')} ${t('label.term-lowercase')}…`}
               value={targetSearch}
               onChange={(event) => setTargetSearch(event.target.value)}
             />
-          </label>
+          </div>
           <div className="tw:flex tw:max-h-48 tw:flex-col tw:gap-1 tw:overflow-auto">
             {targetNodes.map((targetNode) => (
               <button

@@ -25,15 +25,28 @@ jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
     hoverEdge: Edge | null;
     onEdgeClick?: (edge: Edge, event: MouseEvent) => void;
     onEdgeHover?: (edge: Edge | null) => void;
-  }) => (
-    <div
-      data-dq-edges={dqHighlightedEdges.size}
-      data-hover-edge={hoverEdge?.id || 'none'}
-      data-testid="canvas-edge-renderer"
-      onClick={() => onEdgeClick?.(hoverEdge!, new MouseEvent('click'))}
-      onMouseEnter={() => onEdgeHover?.(hoverEdge)}
-    />
-  ),
+  }) => {
+    const handleEdgeClick = () =>
+      onEdgeClick?.(hoverEdge!, new MouseEvent('click'));
+
+    return (
+      <div
+        aria-label={hoverEdge?.id}
+        data-dq-edges={dqHighlightedEdges.size}
+        data-hover-edge={hoverEdge?.id || 'none'}
+        data-testid="canvas-edge-renderer"
+        role="button"
+        tabIndex={0}
+        onClick={handleEdgeClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleEdgeClick();
+          }
+        }}
+        onMouseEnter={() => onEdgeHover?.(hoverEdge)}
+      />
+    );
+  },
 }));
 
 jest.mock(
@@ -49,6 +62,7 @@ jest.mock(
     }) => (
       <div
         data-testid="edge-interaction-overlay"
+        role="presentation"
         onClick={() => {
           onPipelineClick?.();
           onEdgeRemove?.();

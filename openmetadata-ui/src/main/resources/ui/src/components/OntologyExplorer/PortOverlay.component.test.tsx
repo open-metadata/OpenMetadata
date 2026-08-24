@@ -45,6 +45,7 @@ jest.mock(
             {sourceLabel} {targetLabel}
           </button>
           <button
+            aria-label="cancel relationship type selection"
             data-testid="relationship-type-picker-cancel"
             type="button"
             onClick={onCancel}

@@ -39,15 +39,18 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
   }: MockSearchDropdownProps) => (
     <div data-testid={`search-dropdown-${searchKey}`}>
       <input
+        aria-label={`search-${searchKey}`}
         data-testid={`search-input-${searchKey}`}
         onChange={(event) => onSearch(event.target.value, searchKey)}
       />
       <button
+        aria-label={`initialize-${searchKey}`}
         data-testid={`init-options-${searchKey}`}
         type="button"
         onClick={() => onGetInitialOptions?.(searchKey)}
       />
       <button
+        aria-label={`apply-${searchKey}`}
         data-testid={`apply-change-${searchKey}`}
         type="button"
         onClick={() => onChange(options, searchKey)}
