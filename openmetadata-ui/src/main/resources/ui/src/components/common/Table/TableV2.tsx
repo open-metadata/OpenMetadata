@@ -17,14 +17,11 @@
  * Drop-in replacement for Table.tsx using @openmetadata/ui-core-components.
  * Accepts the same TableComponentProps<T> interface for zero-friction adoption.
  *
- * Unsupported in v1 (accepted but ignored):
- *  - components  (AntD custom cell/header renderers)
- *
- * Not in props type (compile-time error if passed):
- *  - className   → use containerClassName instead
+ * Not in the props type (compile-time error if passed) — see UnsupportedProps:
+ *  - summary, components
  *
  * Partially supported:
- *  - expandable        → tree/nested rows via record.children; expandedRowRender not supported
+ *  - expandable        → tree/nested rows via record.children, plus expandedRowRender
  *  - onRow             → onClick and onDoubleClick are forwarded to the row element
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
@@ -50,7 +47,7 @@ import type {
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, noop } from 'lodash';
 import React, {
   forwardRef,
   ReactElement,
@@ -63,6 +60,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Button as AriaButton,
   ColumnResizer,
   Dialog,
   DialogTrigger,
@@ -98,7 +96,192 @@ import {
   resolveColumnTitle,
 } from './TableV2Utils';
 
-type TableV2Props<T extends object> = TableComponentProps<T>;
+/**
+ * Props AntD's Table accepts that TableV2 cannot honour. Omitting them makes a
+ * call site fail to compile rather than render a table that quietly lost a
+ * feature:
+ *  - `summary`    React Aria's collection builder discards any table child that
+ *                 is not a Header or Body, so a `tfoot` never reaches the DOM,
+ *                 and a summary drawn outside the table would not line up with
+ *                 the columns. Needs a summary slot in ui-core-components.
+ *  - `components` custom row/cell renderers have no equivalent — use
+ *                 `dragAndDropHooks` for drag rows, or a column `render`.
+ */
+type UnsupportedProps = 'summary' | 'components';
+
+type CustomPaginationProps = NonNullable<
+  TableComponentProps<never>['customPaginationProps']
+>;
+
+/**
+ * `customPaginationProps` means the parent owns paging and has already fetched
+ * exactly the rows for this page — internal pagination must be off or the page
+ * gets sliced twice (a 50-row server page rendered as 10). Requiring
+ * `pagination={false}` alongside it makes that intent explicit at every call
+ * site instead of leaving it to convention.
+ */
+type PaginationContract<T> =
+  | {
+      customPaginationProps?: undefined;
+      pagination?: TableComponentProps<T>['pagination'];
+    }
+  | { customPaginationProps: CustomPaginationProps; pagination: false };
+
+type TableV2Props<T extends object> = Omit<
+  TableComponentProps<T>,
+  UnsupportedProps | 'customPaginationProps' | 'pagination'
+> &
+  PaginationContract<T>;
+
+const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_INDENT_PX = 12;
+const EXPANDER_GUTTER_PX = 16;
+
+/** AntD's size scale mapped onto the core component's. */
+const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
+  small: 'compact',
+  middle: 'sm',
+  large: 'md',
+};
+
+const toCoreSize = (size: TableComponentProps<never>['size']) =>
+  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'sm';
+
+/**
+ * Internal pagination is off whenever the parent owns paging, so a server page
+ * is never sliced a second time.
+ */
+const resolveClientPagination = <T,>(
+  pagination: TableComponentProps<T>['pagination'],
+  pageSizeOverride: number | null,
+  hasParentPagination: boolean
+) => {
+  if (pagination === false || hasParentPagination) {
+    return null;
+  }
+  const cfg = (pagination ?? {}) as TablePaginationConfig;
+
+  return {
+    pageSize: pageSizeOverride ?? (cfg.pageSize as number) ?? DEFAULT_PAGE_SIZE,
+    hideOnSinglePage: cfg.hideOnSinglePage ?? false,
+    showSizeChanger: cfg.showSizeChanger ?? false,
+    pageSizeOptions: (cfg.pageSizeOptions ?? []).map(Number),
+    onShowSizeChange: cfg.onShowSizeChange,
+  };
+};
+
+/** Tree depth is drawn as left padding on the cell that carries the expander. */
+const getIndentStyle = (
+  showExpander: boolean,
+  depth: number,
+  indentSize: number | undefined
+): React.CSSProperties =>
+  showExpander
+    ? {
+        paddingLeft: `${
+          EXPANDER_GUTTER_PX + depth * (indentSize ?? DEFAULT_INDENT_PX)
+        }px`,
+      }
+    : {};
+
+const toAriaDirection = (order: 'ascend' | 'descend') =>
+  order === 'descend' ? ('descending' as const) : ('ascending' as const);
+
+/**
+ * React Aria always opens a fresh sort on 'ascending'. AntD lets a column say
+ * which way the first click should go via `sortDirections`, so honour the head
+ * of that list when the sort moves to a different column.
+ */
+const resolveSortDirection = <T,>(
+  column: ColumnType<T> | undefined,
+  isFirstClickOnColumn: boolean,
+  fallback: 'ascending' | 'descending' | null
+) => {
+  const preferred = column?.sortDirections?.[0];
+
+  if (!isFirstClickOnColumn || !preferred) {
+    return fallback;
+  }
+
+  return toAriaDirection(preferred);
+};
+
+/**
+ * `expandedRowRender` draws a detail panel in a row of its own beneath the
+ * record, spanning every column — AntD's shape, rebuilt on the core Row/Cell.
+ */
+const buildExpandedDetailRow = <T extends object>(
+  expandable: TableComponentProps<T>['expandable'],
+  flatRow: FlatRow<T>,
+  isExpanded: boolean,
+  columnCount: number
+) => {
+  const renderDetail = expandable?.expandedRowRender;
+
+  if (!renderDetail || !isExpanded || !flatRow.hasChildren) {
+    return null;
+  }
+
+  return (
+    <UntitledTable.Row
+      id={`${flatRow.rowKey}-expanded`}
+      key={`${flatRow.rowKey}-expanded`}>
+      <UntitledTable.Cell
+        className="tw:py-2 tw:pl-4 tw:pr-2"
+        colSpan={columnCount}>
+        {renderDetail(flatRow.record, flatRow.actualIndex, flatRow.depth, isExpanded)}
+      </UntitledTable.Cell>
+    </UntitledTable.Row>
+  );
+};
+
+/**
+ * Row-level DOM wiring. When `dragAndDropHooks` is supplied React Aria owns drag
+ * and drop, so the call site's native HTML5 drag handlers must not also be
+ * attached — they would fight each other.
+ *
+ * `onAction` is what makes `onClick` work at all: React Aria strips a row's
+ * click handler unless the row is interactive. The empty action marks it
+ * interactive so the call site's handler still receives a real MouseEvent,
+ * without adding a second activation path that would fire it twice.
+ */
+const getRowInteractionProps = (
+  rowHandlers: React.HTMLAttributes<HTMLTableRowElement> & {
+    draggable?: boolean;
+  },
+  hasAriaDragAndDrop: boolean
+) => {
+  const activation = {
+    onAction: rowHandlers.onClick ? noop : undefined,
+    onClick: rowHandlers.onClick,
+    onDoubleClick: rowHandlers.onDoubleClick,
+  };
+
+  if (hasAriaDragAndDrop) {
+    return activation;
+  }
+
+  const {
+    draggable,
+    onDragEnd,
+    onDragEnter,
+    onDragLeave,
+    onDragOver,
+    onDragStart,
+    onDrop,
+  } = rowHandlers;
+
+  return {
+    ...activation,
+    draggable,
+    onDragEnd,
+    onDragEnter,
+    onDragLeave,
+    onDragOver,
+    onDragStart,
+    onDrop,
+  };
+};
 
 const TableV2 = <T extends object>(
   {
@@ -119,6 +302,7 @@ const TableV2 = <T extends object>(
   const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [pageSizeOverride, setPageSizeOverride] = useState<number | null>(null);
   const [sortState, setSortState] = useState<{
     columnKey: string | null;
     direction: 'ascending' | 'descending' | null;
@@ -151,27 +335,65 @@ const TableV2 = <T extends object>(
 
   const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
 
-  const clientPagination = useMemo(() => {
-    if (rest.pagination === false) {
+  // The props type already requires `pagination={false}` alongside
+  // `customPaginationProps`; this keeps the page intact even when that contract
+  // is bypassed at an untyped boundary.
+  const hasParentPagination = Boolean(customPaginationProps);
+
+  const clientPagination = useMemo(
+    () =>
+      resolveClientPagination(
+        rest.pagination,
+        pageSizeOverride,
+        hasParentPagination
+      ),
+    [rest.pagination, pageSizeOverride, hasParentPagination]
+  );
+
+  /**
+   * Changing the page size invalidates the current page — AntD resets to the
+   * first page, and so must we, or a reader on page 6 of 12 lands past the end
+   * of a now-shorter list.
+   */
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSizeOverride(size);
+      setInternalCurrentPage(1);
+      clientPagination?.onShowSizeChange?.(1, size);
+    },
+    [clientPagination]
+  );
+
+  /**
+   * A column carrying `sortOrder` drives the sort, exactly as in AntD — the
+   * prop is controlled by the parent and outranks whatever the user last
+   * clicked. Falls back to the internal (uncontrolled) state when no column
+   * declares one.
+   */
+  const controlledSort = useMemo(() => {
+    const idx = propsColumns.findIndex((c) => (c as ColumnType<T>).sortOrder);
+    if (idx === -1) {
       return null;
     }
-    const cfg = (rest.pagination ?? {}) as TablePaginationConfig;
+    const col = propsColumns[idx] as ColumnType<T>;
 
     return {
-      pageSize: (cfg.pageSize as number) ?? 10,
-      hideOnSinglePage: cfg.hideOnSinglePage ?? false,
+      columnKey: String(col.key ?? col.dataIndex ?? idx),
+      direction: toAriaDirection(col.sortOrder === 'descend' ? 'descend' : 'ascend'),
     };
-  }, [rest.pagination]);
+  }, [propsColumns]);
+
+  const effectiveSort = controlledSort ?? sortState;
 
   const sortedDataSource = useMemo((): T[] => {
     const data = (rest.dataSource ?? []) as T[];
-    if (!sortState.columnKey || !sortState.direction) {
+    if (!effectiveSort.columnKey || !effectiveSort.direction) {
       return data;
     }
     const col = propsColumns.find((c, idx) => {
       const key = String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx);
 
-      return key === sortState.columnKey;
+      return key === effectiveSort.columnKey;
     }) as ColumnType<T> | undefined;
 
     if (!col?.sorter || typeof col.sorter !== 'function') {
@@ -180,8 +402,8 @@ const TableV2 = <T extends object>(
     const compareFn = col.sorter as (a: T, b: T) => number;
     const sorted = [...data].sort((a, b) => compareFn(a, b));
 
-    return sortState.direction === 'descending' ? sorted.reverse() : sorted;
-  }, [rest.dataSource, sortState, propsColumns]);
+    return effectiveSort.direction === 'descending' ? sorted.reverse() : sorted;
+  }, [rest.dataSource, effectiveSort, propsColumns]);
 
   const filteredDataSource = useMemo((): T[] => {
     const activeFilters = Object.entries(filterState).filter(
@@ -344,6 +566,25 @@ const TableV2 = <T extends object>(
     return rest.rowSelection.type === 'radio' ? 'single' : 'multiple';
   }, [rest.rowSelection]);
 
+  /**
+   * AntD blocks selection per row through `getCheckboxProps().disabled`, leaving
+   * the row itself interactive. `disabledBehavior="selection"` is React Aria's
+   * equivalent: the row keeps focus and row actions, only selection is refused.
+   */
+  const disabledRowKeys = useMemo((): Set<string> | undefined => {
+    const getCheckboxProps = rest.rowSelection?.getCheckboxProps;
+    if (!getCheckboxProps) {
+      return undefined;
+    }
+
+    return new Set(
+      filteredDataSource
+        .map((record, index) => ({ key: getRowKey(record, index), record }))
+        .filter(({ record }) => getCheckboxProps(record).disabled)
+        .map(({ key }) => key)
+    );
+  }, [rest.rowSelection, filteredDataSource, getRowKey]);
+
   const handleSelectionChange = useCallback(
     (keys: AriaSelection) => {
       if (!rest.rowSelection?.onChange) {
@@ -386,7 +627,17 @@ const TableV2 = <T extends object>(
   const handleSortChange = useCallback(
     (descriptor: AriaSortDescriptor) => {
       const newKey = descriptor.column ? String(descriptor.column) : null;
-      const newDirection = descriptor.direction ?? null;
+      const clickedColumn = propsColumns.find((c, idx) => {
+        const key = String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx);
+
+        return key === newKey;
+      }) as ColumnType<T> | undefined;
+
+      const newDirection = resolveSortDirection(
+        clickedColumn,
+        sortState.columnKey !== newKey,
+        descriptor.direction ?? null
+      );
       setSortState({ columnKey: newKey, direction: newDirection });
 
       if (!rest.onChange) {
@@ -412,9 +663,9 @@ const TableV2 = <T extends object>(
           columnKey: String(descriptor.column ?? ''),
           field: String(descriptor.column ?? ''),
           order:
-            descriptor.direction === 'ascending'
+            newDirection === 'ascending'
               ? 'ascend'
-              : descriptor.direction === 'descending'
+              : newDirection === 'descending'
               ? 'descend'
               : null,
         } as SorterResult<T>,
@@ -430,6 +681,7 @@ const TableV2 = <T extends object>(
       rest.dataSource,
       internalCurrentPage,
       clientPagination,
+      sortState.columnKey,
     ]
   );
 
@@ -496,6 +748,19 @@ const TableV2 = <T extends object>(
     }
   }, [dataSourceLength, clientPagination, internalCurrentPage]);
 
+  /** NextPrevious renders its page-size dropdown only when handed a handler. */
+  const sizeChangerProps = useMemo(() => {
+    if (!clientPagination?.showSizeChanger) {
+      return {};
+    }
+    const { pageSizeOptions } = clientPagination;
+
+    return {
+      onShowSizeChange: handlePageSizeChange,
+      ...(pageSizeOptions.length ? { pageSizeOptions } : {}),
+    };
+  }, [clientPagination, handlePageSizeChange]);
+
   // ─── Flat rows (tree data flattened with depth tracking) ──────────────────
 
   const flatRows = useMemo<FlatRow<T>[]>(() => {
@@ -515,12 +780,27 @@ const TableV2 = <T extends object>(
       });
     }
 
-    return flattenTreeRows(
+    const rows = flattenTreeRows(
       pagedDataSource,
       getRowKey,
       expandedKeys,
       rest.expandable.rowExpandable as ((r: T) => boolean) | undefined
     );
+
+    // With `expandedRowRender` the detail panel is the child, so a row is
+    // expandable even though it carries no `children` array — which is all
+    // `flattenTreeRows` looks at.
+    if (!rest.expandable.expandedRowRender) {
+      return rows;
+    }
+    const rowExpandable = rest.expandable.rowExpandable as
+      | ((r: T) => boolean)
+      | undefined;
+
+    return rows.map((row) => ({
+      ...row,
+      hasChildren: rowExpandable ? rowExpandable(row.record) : true,
+    }));
   }, [
     pagedDataSource,
     rest.expandable,
@@ -636,7 +916,9 @@ const TableV2 = <T extends object>(
             <UntitledTable
               stickyHeader
               aria-label="data-table"
-              className={rest.resizableColumns ? 'tw:table-fixed' : undefined}
+              className={classNames(rest.className, {
+                'tw:table-fixed': rest.resizableColumns,
+              })}
               containerStyle={
                 scroll?.y
                   ? {
@@ -645,6 +927,8 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              disabledBehavior="selection"
+              disabledKeys={disabledRowKeys}
               dragAndDropHooks={dragAndDropHooks}
               selectedKeys={
                 rest.rowSelection?.selectedRowKeys
@@ -653,12 +937,12 @@ const TableV2 = <T extends object>(
               }
               selectionBehavior={rest.rowSelection ? 'toggle' : undefined}
               selectionMode={selectionMode}
-              size={rest.size === 'small' ? 'sm' : 'md'}
+              size={toCoreSize(rest.size)}
               sortDescriptor={
-                sortState.columnKey && sortState.direction
+                effectiveSort.columnKey && effectiveSort.direction
                   ? {
-                      column: sortState.columnKey,
-                      direction: sortState.direction,
+                      column: effectiveSort.columnKey,
+                      direction: effectiveSort.direction,
                     }
                   : undefined
               }
@@ -703,16 +987,22 @@ const TableV2 = <T extends object>(
                             onOpenChange={(isOpen) =>
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
-                            <Button
+                            {/*
+                              `DialogTrigger` opens its popover through a React
+                              Aria `PressResponder`, which only reaches a React
+                              Aria pressable child. A core `Button` here is not
+                              one — it warns "PressResponder was rendered
+                              without a pressable child" and the dropdown never
+                              opens. */}
+                            <AriaButton
                               aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
-                              color="tertiary">
+                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center">
                               {typeof colType.filterIcon === 'function'
                                 ? colType.filterIcon(
                                     Boolean(filterState[colKey]?.length)
                                   )
                                 : colType.filterIcon ?? null}
-                            </Button>
+                            </AriaButton>
                             <Popover placement="bottom right">
                               <Dialog className="tw:outline-none">
                                 <div
@@ -767,13 +1057,19 @@ const TableV2 = <T extends object>(
                     </div>
                   )
                 }>
-                {flatRows.map((flatRow) => {
+                {flatRows.flatMap((flatRow) => {
                   const { record, actualIndex, depth, hasChildren, rowKey } =
                     flatRow;
                   const rowHandlers = rest.onRow?.(record, actualIndex) ?? {};
                   const isExpanded = expandedKeys.has(rowKey);
+                  const detailRow = buildExpandedDetailRow(
+                    rest.expandable,
+                    flatRow,
+                    isExpanded,
+                    propsColumns.length
+                  );
 
-                  return (
+                  return [
                     <UntitledTable.Row
                       className={classNames(
                         'tw:group tw:transition-colors tw:hover:bg-secondary tw:data-[selected]:bg-secondary',
@@ -783,33 +1079,12 @@ const TableV2 = <T extends object>(
                       )}
                       data-level={depth}
                       data-row-key={rowKey}
-                      draggable={
-                        dragAndDropHooks
-                          ? undefined
-                          : (rowHandlers.draggable as boolean | undefined)
-                      }
                       id={rowKey}
                       key={rowKey}
-                      onClick={rowHandlers.onClick}
-                      onDoubleClick={rowHandlers.onDoubleClick}
-                      onDragEnd={
-                        dragAndDropHooks ? undefined : rowHandlers.onDragEnd
-                      }
-                      onDragEnter={
-                        dragAndDropHooks ? undefined : rowHandlers.onDragEnter
-                      }
-                      onDragLeave={
-                        dragAndDropHooks ? undefined : rowHandlers.onDragLeave
-                      }
-                      onDragOver={
-                        dragAndDropHooks ? undefined : rowHandlers.onDragOver
-                      }
-                      onDragStart={
-                        dragAndDropHooks ? undefined : rowHandlers.onDragStart
-                      }
-                      onDrop={
-                        dragAndDropHooks ? undefined : rowHandlers.onDrop
-                      }>
+                      {...getRowInteractionProps(
+                        rowHandlers,
+                        Boolean(dragAndDropHooks)
+                      )}>
                       {propsColumns.map((col, colIdx) => {
                         const colType = col as ColumnType<T>;
                         const cellKey = String(
@@ -858,9 +1133,11 @@ const TableV2 = <T extends object>(
                                   }
                                 : {}),
                               ...stickyStyle,
-                              ...(showExpandInCell
-                                ? { paddingLeft: `${16 + depth * 12}px` }
-                                : {}),
+                              ...getIndentStyle(
+                                Boolean(showExpandInCell),
+                                depth,
+                                rest.indentSize
+                              ),
                               ...cellHandlerProps.style,
                             }}>
                             <div
@@ -925,8 +1202,9 @@ const TableV2 = <T extends object>(
                           </UntitledTable.Cell>
                         );
                       })}
-                    </UntitledTable.Row>
-                  );
+                    </UntitledTable.Row>,
+                    detailRow,
+                  ].filter(Boolean);
                 })}
               </UntitledTable.Body>
             </UntitledTable>
@@ -943,6 +1221,12 @@ const TableV2 = <T extends object>(
           );
         })()}
       </div>
+
+      {rest.footer && (
+        <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
+          {rest.footer(pagedDataSource)}
+        </div>
+      )}
 
       {customPaginationProps && customPaginationProps.showPagination ? (
         <div>
@@ -962,6 +1246,7 @@ const TableV2 = <T extends object>(
             pagingHandler={({ currentPage }) =>
               setInternalCurrentPage(currentPage)
             }
+            {...sizeChangerProps}
           />
         </div>
       ) : null}
