@@ -1,20 +1,24 @@
-"""Tests for the Playwright performance-gate script.
+"""Tests for the Playwright performance-budget script.
 
-Focus: the 25-minute execution ceiling introduced with PR #30689's wrapper
-bump, and the shard-level attribution added so gate failures name the
-offending shards instead of surfacing a generic "1 CI/reporting failure(s)"
-banner (run 30736786802 was the trigger)."""
+Focus: timing/flake targets are BUDGET SIGNALS, not gates. A run where every
+test passed must never exit non-zero because a shard ran long — that ejected
+green PRs from the merge queue (run 32500973433: 0 test failures, one wedged
+retry teardown pushed chromium-12 past the old blocking ceiling). Breaches
+are reported in the payload (`failedBudgetTargetDetails`) and stdout for the
+workflow's budget-signal step to surface."""
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 
 SCRIPTS = Path(__file__).parents[1]
+WORKFLOWS = SCRIPTS.parent / "workflows"
 
 
 def load_script(name: str):
@@ -26,15 +30,72 @@ def load_script(name: str):
     return module
 
 
-def test_execution_target_matches_wrapper_ceiling():
-    # Wrapper is 25m (playwright-e2e-reusable.yml). The gate must
-    # match — the 21m gate was pre-PR-#30689 and marked healthy shards as
-    # failures. If someone changes one without the other, this test fires.
+def test_execution_budget_stays_below_hang_protection_wrapper():
+    # The 1500 s execution target is the BUDGET the planner packs against;
+    # the `timeout … Nm` wrapper in playwright-e2e-reusable.yml is HANG
+    # PROTECTION and must sit well above it — at parity (the old 25m/1500s
+    # pairing) the wrapper killed slow-but-green shards mid-report and
+    # destroyed the results artifact (run 32500973433). If someone tightens
+    # the wrapper back toward the budget, this test fires.
     evaluator = load_script("evaluate_playwright_performance")
-    detail = evaluator.BLOCKING_TARGET_DETAILS["executionAtMostTwentyFiveMinutes"]
+    budget = evaluator.BUDGET_TARGET_DETAILS["executionAtMostTwentyFiveMinutes"]
+    assert budget["threshold"] == 1500
+    assert budget["phase_field"] == "executionSeconds"
 
-    assert detail["threshold"] == 1500
-    assert detail["phase_field"] == "executionSeconds"
+    reusable = (WORKFLOWS / "playwright-e2e-reusable.yml").read_text()
+    match = re.search(
+        r"timeout --signal=TERM --kill-after=30s (\d+)m\s*\\\s*\n\s*npx playwright test",
+        reusable,
+    )
+    assert match, "hang-protection wrapper on the playwright test step not found"
+    wrapper_seconds = int(match.group(1)) * 60
+    assert wrapper_seconds - budget["threshold"] >= 240, (
+        f"wrapper ({wrapper_seconds}s) must leave >= 4 min of headroom above "
+        f"the execution budget ({budget['threshold']}s); a shard between "
+        "budget and wrapper should breach the budget signal, not be killed"
+    )
+
+
+def test_timing_targets_are_budget_not_blocking():
+    # Every timing/flake target belongs to the budget class; the blocking
+    # class is reserved for corrupt-results style states and must be empty
+    # for a normal target set — otherwise budget breaches eject PRs again.
+    evaluator = load_script("evaluate_playwright_performance")
+    targets = {
+        "environmentAtMostFiveMinutes": False,
+        "executionAtMostTwentyFiveMinutes": False,
+        "shardsAtMostThirtyMinutesBeforeUpload": True,
+        "commonShardSkewAtMostFifteenPercent": True,
+        "flakyRateAtMostPointFivePercent": False,
+        "retryWorkerTimeAtMostTwoPercent": True,
+        "requestsPerAttemptBelowTwoHundred": True,
+        "staticRequestsPerAppBootBelowOneHundred": True,
+        "atMostOneAppBootPerUIScenario": True,
+        "appBootMeasurementIntegrity": True,
+    }
+
+    blocking, budget, convergence = evaluator.classify_targets(targets)
+
+    assert blocking == {}
+    assert budget["executionAtMostTwentyFiveMinutes"] is False
+    assert budget["flakyRateAtMostPointFivePercent"] is False
+    assert convergence["commonShardSkewAtMostFifteenPercent"] is True
+
+
+def test_summary_workflow_does_not_enforce():
+    # The caller must not pass --enforce: with the blocking set empty it is
+    # inert, but reintroducing it alongside a reclassification would resurrect
+    # the eject-green-PRs failure mode. Guard the workflow text directly
+    # (comments may mention the flag; executable lines may not).
+    caller = (WORKFLOWS / "playwright-postgresql-e2e.yml").read_text()
+    executable_lines = [
+        line for line in caller.splitlines()
+        if "--enforce" in line and not line.lstrip().startswith("#")
+    ]
+    assert executable_lines == [], (
+        "playwright-postgresql-e2e.yml must not pass --enforce to "
+        f"evaluate_playwright_performance.py: {executable_lines}"
+    )
 
 
 def test_offending_shards_lists_only_phases_over_threshold():
@@ -70,7 +131,7 @@ def test_describe_failed_target_names_top_offenders():
     )
 
     # Names the target label, the threshold, the shard count, and the top-5
-    # offenders — the piece the merge-queue error message previously lacked.
+    # offenders — what the budget annotation and tracked issue surface.
     assert "Maximum shard execution" in message
     assert "target ≤ 1500 s" in message
     assert "exceeded on 7 shard(s)" in message
@@ -78,10 +139,10 @@ def test_describe_failed_target_names_top_offenders():
     assert "(+2 more)" in message
 
 
-def test_enforce_exits_with_detailed_message(tmp_path):
-    # End-to-end: run the script with --enforce against synthetic phase files
-    # that trip the gate. Confirms the exit message carries the per-shard
-    # detail that the summary renderer now surfaces.
+def test_budget_breach_exits_zero_with_detailed_payload(tmp_path):
+    # End-to-end: an over-budget shard must NOT fail the script (even with
+    # --enforce), but must land in failedBudgetTargetDetails and print a
+    # BUDGET BREACH line for the raw log.
     timings = tmp_path / "timings.json"
     requests = tmp_path / "requests.json"
     phase_a = tmp_path / "phase-chromium-01.json"
@@ -90,7 +151,7 @@ def test_enforce_exits_with_detailed_message(tmp_path):
 
     timings.write_text(json.dumps({"tests": [], "lifecycleTests": []}))
     requests.write_text(json.dumps({}))
-    # Below the wrapper (would pass) and above (must trip the gate).
+    # Below the budget (passes) and above (must surface as a breach).
     phase_a.write_text(
         json.dumps(
             {"shardId": "chromium-01", "lane": "chromium",
@@ -121,14 +182,17 @@ def test_enforce_exits_with_detailed_message(tmp_path):
         text=True,
     )
 
-    assert result.returncode == 1, result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
     combined = result.stdout + result.stderr
-    assert "Blocking Playwright performance targets not met" in combined
+    assert "BUDGET BREACH" in combined
     assert "chromium-02" in combined
     assert "1600 s" in combined
 
     payload = json.loads(output.read_text())
-    detail = payload["failedBlockingTargetDetails"][
+    assert payload["blockingTargetsMet"] is True
+    assert payload["budgetTargetsMet"] is False
+    assert payload["failedBlockingTargetDetails"] == {}
+    detail = payload["failedBudgetTargetDetails"][
         "executionAtMostTwentyFiveMinutes"
     ]
     assert detail["label"] == "Maximum shard execution"
@@ -139,10 +203,10 @@ def test_enforce_exits_with_detailed_message(tmp_path):
 
 
 def test_failed_details_absent_when_phase_targets_pass(tmp_path):
-    # Even when non-phase targets fail (empty requests/timings trip a few of
-    # them), only the phase-attributable targets contribute entries to
-    # `failedBlockingTargetDetails`. This isolates the shard-attribution
-    # payload to the targets that carry per-shard evidence.
+    # Only phase-attributable targets contribute entries to
+    # `failedBudgetTargetDetails` when they actually breach. This isolates
+    # the shard-attribution payload to the targets carrying per-shard
+    # evidence.
     timings = tmp_path / "timings.json"
     requests = tmp_path / "requests.json"
     phase = tmp_path / "phase-chromium-01.json"
@@ -179,5 +243,5 @@ def test_failed_details_absent_when_phase_targets_pass(tmp_path):
         "executionAtMostTwentyFiveMinutes",
         "shardsAtMostThirtyMinutesBeforeUpload",
     ):
-        assert payload["blockingTargets"][target] is True
-    assert payload["failedBlockingTargetDetails"] == {}
+        assert payload["budgetTargets"][target] is True
+    assert payload["failedBudgetTargetDetails"] == {}
