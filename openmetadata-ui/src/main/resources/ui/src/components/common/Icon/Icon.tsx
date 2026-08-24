@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton } from '@openmetadata/ui-core-components';
-import { FC, ReactNode, useState } from 'react';
+import { FC, ReactNode, useEffect, useState } from 'react';
 import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
 
 export interface IconProps {
@@ -42,6 +42,10 @@ export const Icon: FC<IconProps> = ({
   alt = 'icon',
 }) => {
   const [loadState, setLoadState] = useState<IconLoadState>('loading');
+
+  useEffect(() => {
+    setLoadState('loading');
+  }, [iconValue]);
 
   if (!iconValue) {
     return <>{fallback}</>;
