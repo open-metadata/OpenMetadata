@@ -674,7 +674,12 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a href={GLOSSARIES_DOCS} rel="noreferrer" target="_blank" />
+              <a
+                aria-label={t('label.doc-plural-lowercase')}
+                href={GLOSSARIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+              />
             }
             values={{
               doc: t('label.doc-plural-lowercase'),

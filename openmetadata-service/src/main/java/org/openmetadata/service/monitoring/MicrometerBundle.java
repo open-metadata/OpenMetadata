@@ -49,6 +49,12 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
   @Override
   public void run(OpenMetadataApplicationConfig configuration, Environment environment) {
+    EventMonitorConfiguration eventMonitorConfiguration =
+        configuration.getEventMonitorConfiguration();
+    RequestLatencyContext.configure(
+        eventMonitorConfiguration != null
+            && eventMonitorConfiguration.isRequestLatencyPercentileHistogram());
+
     // Configure common tags
     String clusterName =
         configuration.getClusterName() != null ? configuration.getClusterName() : "default";

@@ -120,6 +120,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
   default: jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div data-testid="searchbar-component">
       <input
+        aria-label="Search"
         data-testid="search-input"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}

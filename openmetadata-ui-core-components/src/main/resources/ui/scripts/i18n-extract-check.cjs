@@ -79,10 +79,16 @@ function flatten(obj, prefix) {
 }
 flatten(enUs, '');
 
+// Keys intentionally resolved from the HOST app's default i18n namespace rather
+// than the library's `core` namespace, so they are not (and must not be) defined
+// in this library's en-us.json. Example: the brand name, which the consuming app
+// owns and populates from its `BRAND_NAME` env var.
+const HOST_NS_KEYS = new Set(['label.brand-name']);
+
 // -- Diff
 const missing = [];
 for (const [key, locs] of usedKeys) {
-  if (!definedKeys.has(key)) {
+  if (!definedKeys.has(key) && !HOST_NS_KEYS.has(key)) {
     missing.push({ key, locs });
   }
 }

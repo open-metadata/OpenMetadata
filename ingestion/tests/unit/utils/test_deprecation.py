@@ -29,6 +29,9 @@ class TestDeprecationWarning(TestCase):
 
     def test_deprecation_warning(self) -> None:
         """Test that deprecation warnings are controlled by logger level."""
+        metadata_logger = logging.getLogger("metadata")
+        self.addCleanup(metadata_logger.setLevel, metadata_logger.level)
+
         logger_levels = [
             logging.DEBUG,
             logging.INFO,
@@ -44,7 +47,6 @@ class TestDeprecationWarning(TestCase):
             # Capture logging output
             log_capture = StringIO()
             handler = logging.StreamHandler(log_capture)
-            metadata_logger = logging.getLogger("metadata")
             metadata_logger.addHandler(handler)
 
             # Create and call a deprecated function

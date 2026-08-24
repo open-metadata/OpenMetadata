@@ -145,7 +145,7 @@ class TopologyContext(BaseModel):
         :return: TopologyContext
         """
         nodes = get_topology_nodes(topology)
-        ctx_fields = {
+        ctx_fields: dict[str, Any] = {
             stage.context: (Optional[stage.type_], None)  # noqa: UP045
             for node in nodes
             for stage in node.stages

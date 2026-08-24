@@ -132,6 +132,7 @@ const CommentCard = ({
         'reply-card-border-bottom': !isLastReply,
       })}
       data-testid="feed-reply-card"
+      role="presentation"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture">
