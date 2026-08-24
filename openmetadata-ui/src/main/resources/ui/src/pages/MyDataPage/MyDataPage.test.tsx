@@ -301,6 +301,27 @@ describe('MyDataPage component', () => {
     });
   });
 
+  it('MyDataPage should render a customized layout after a null legacy page', async () => {
+    (getDocumentByFQN as jest.Mock).mockResolvedValueOnce({
+      ...mockDocumentData,
+      data: {
+        pages: [null, ...mockDocumentData.data.pages],
+      },
+    });
+
+    renderMyDataPage();
+
+    expect(
+      await screen.findByText('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+  });
+
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
     (getActiveAnnouncements as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
