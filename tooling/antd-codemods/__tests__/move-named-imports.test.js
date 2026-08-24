@@ -1,5 +1,5 @@
 'use strict';
-const { defineInlineTest } = require('jscodeshift/dist/testUtils');
+const { defineInlineTest, runInlineTest } = require('jscodeshift/dist/testUtils');
 const transform = require('../transforms/move-named-imports');
 
 const OPTS = { names: 'Divider,Tag', from: 'antd', to: '@openmetadata/ui-core-components' };
@@ -88,4 +88,56 @@ defineInlineTest(
   `import type { TabsProps } from 'antd';\nimport { Card } from '@openmetadata/ui-core-components';`,
   `import type { TabsProps } from '@openmetadata/ui-core-components';\nimport { Card } from '@openmetadata/ui-core-components';`,
   'does not merge a type-only specifier into an existing value import of the same target module'
+);
+
+// ── --toPath: destination is a file in the repo, not a package ──────────────
+// The specifier has to be recomputed per file: relative depth differs between
+// call sites and there is no `src` resolve root to fall back on. These use
+// runInlineTest rather than defineInlineTest because only the former lets a
+// test supply the file path the specifier is resolved from.
+
+const TO_PATH_OPTS = {
+  names: 'ColumnsType,ColumnType',
+  from: 'antd/lib/table',
+  toPath: 'src/components/common/Table/Table.interface.ts',
+};
+
+const defineToPathTest = (name, path, source, expectedOutput) =>
+  it(name, () => {
+    runInlineTest(transform, TO_PATH_OPTS, { path, source }, expectedOutput);
+  });
+
+defineToPathTest(
+  'writes a sibling specifier as ./',
+  'src/components/common/Table/SomeTable.tsx',
+  `import { ColumnsType } from 'antd/lib/table';`,
+  `import { ColumnsType } from './Table.interface';`
+);
+
+defineToPathTest(
+  'climbs out of nested directories',
+  'src/pages/Deeply/Nested/Page.tsx',
+  `import { ColumnsType } from 'antd/lib/table';`,
+  `import { ColumnsType } from '../../../components/common/Table/Table.interface';`
+);
+
+defineToPathTest(
+  'leaves the destination module itself untouched',
+  'src/components/common/Table/Table.interface.ts',
+  `import { ColumnsType } from 'antd/lib/table';`,
+  `import { ColumnsType } from 'antd/lib/table';`
+);
+
+defineToPathTest(
+  'keeps a default import behind when its named sibling moves',
+  'src/components/common/Table/SomeTable.tsx',
+  `import Table, { ColumnsType } from 'antd/lib/table';`,
+  `import Table from 'antd/lib/table';\nimport { ColumnsType } from './Table.interface';`
+);
+
+defineToPathTest(
+  'keeps a type-only import type-only',
+  'src/components/common/Table/SomeTable.tsx',
+  `import type { ColumnsType } from 'antd/lib/table';`,
+  `import type { ColumnsType } from './Table.interface';`
 );

@@ -12,6 +12,27 @@
  */
 import { TableProps } from 'antd/lib/table';
 import type { DragAndDropHooks } from 'react-aria-components';
+
+/**
+ * Table types re-exported so this file is the single place that reaches into
+ * AntD's table typings. Call sites import them from here instead, which is what
+ * lets the underlying table be swapped without touching ~100 files: only the
+ * right-hand side of these lines has to change.
+ */
+export type {
+  ColumnGroupType,
+  ColumnsType,
+  ColumnTitle,
+  ColumnType,
+  ExpandableConfig,
+  FilterDropdownProps,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+  TableRowSelection,
+} from 'antd/lib/table/interface';
+export type { TableProps } from 'antd/lib/table';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
