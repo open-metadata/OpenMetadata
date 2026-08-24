@@ -84,14 +84,18 @@ const resolveChildren = (
     .filter(({ child }) => !child.isHidden)
     .map(({ item }) => item);
 
-const collectPresentKeys = (nodes: MainNavNode[]): Set<string> => {
+/**
+ * Every id referenced by a stored customization — top-level entries and the
+ * "More" node's children alike. Used to tell a genuinely NEW module (never
+ * customized → append it so it isn't lost) apart from one the persona
+ * deliberately hid (in the stored list, `isHidden` → must stay hidden, not
+ * reappear appended).
+ */
+const collectStoredKeys = (customization: NavigationItem[]): Set<string> => {
   const keys = new Set<string>();
-  nodes.forEach((node) => {
-    if (node.type === 'item') {
-      keys.add(node.item.key);
-    } else {
-      node.children.forEach((child) => keys.add(child.key));
-    }
+  customization.forEach((navItem) => {
+    keys.add(navItem.id);
+    navItem.children?.forEach((child) => keys.add(child.id));
   });
 
   return keys;
@@ -143,9 +147,12 @@ export const applySidebarCustomization = (
     return acc;
   }, []);
 
-  const presentKeys = collectPresentKeys(nodes);
+  // Append only modules the stored list never mentioned (added to the product
+  // after this persona was customized). Items the persona explicitly hid are
+  // in `storedKeys`, so they stay hidden instead of reappearing here.
+  const storedKeys = collectStoredKeys(customization);
   const appended = items
-    .filter((item) => !presentKeys.has(item.key))
+    .filter((item) => !storedKeys.has(item.key))
     .map((item): MainNavNode => ({ type: 'item', item }));
 
   return [...nodes, ...appended];
