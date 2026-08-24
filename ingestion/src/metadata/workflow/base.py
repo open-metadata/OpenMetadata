@@ -40,14 +40,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
-    SourceConfig,
     WorkflowConfig,
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
-from metadata.ingestion.models.custom_pydantic import BaseModel as OpenMetadataBaseModel
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
@@ -369,18 +367,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._run_id
 
-    def _source_config_with_explicit_type(self) -> SourceConfig:
-        source_config = self.config.source.sourceConfig
-        config = source_config.config
-        if not isinstance(config, OpenMetadataBaseModel):
-            return source_config
-
-        config_type = getattr(config, "type", None)
-        if config_type is None:
-            return source_config
-
-        return source_config.model_copy(update={"config": config.model_copy(update={"type": config_type})})
-
     def get_or_create_ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
         """
         If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
@@ -418,7 +404,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                             type=get_reference_type_from_service_type(self.service_type),
                         ),
                         pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
-                        sourceConfig=self._source_config_with_explicit_type(),
+                        sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
                         enableStreamableLogs=self.config.enableStreamableLogs,
                     )

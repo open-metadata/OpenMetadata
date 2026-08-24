@@ -12,8 +12,6 @@
 Validate the logic and status handling of the base workflow
 """
 
-import uuid
-from types import SimpleNamespace
 from typing import Iterable, Tuple  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -201,55 +199,6 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
-
-
-def _self_registration_request(source_config):
-    workflow_config = config.model_copy(
-        update={
-            "source": config.source.model_copy(
-                update={"type": "mysql", "sourceConfig": SourceConfig(config=source_config)}
-            )
-        },
-        deep=True,
-    )
-
-    metadata = MagicMock()
-    metadata.config.forceEntityOverwriting = True
-    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
-        workflow = SimpleWorkflow(config=workflow_config)
-
-    workflow.config = workflow_config.model_copy(
-        update={"ingestionPipelineFQN": "test-service.self-registered-pipeline"}
-    )
-    workflow.metadata.get_by_name.return_value = None
-    with patch.object(
-        workflow,
-        "_get_ingestion_pipeline_service",
-        return_value=SimpleNamespace(id=uuid.uuid4()),
-    ):
-        workflow.get_or_create_ingestion_pipeline()
-
-    return workflow.metadata.create_or_update.call_args.args[0]
-
-
-def test_self_registration_serializes_default_source_config_type():
-    source_config = DatabaseServiceMetadataPipeline()
-    assert "type" not in source_config.model_dump(exclude_unset=True)
-
-    request = _self_registration_request(source_config)
-    payload = request.model_dump(mode="json", exclude_unset=True, exclude_none=True)
-    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
-    assert "type" not in source_config.model_dump(exclude_unset=True)
-
-
-def test_self_registration_preserves_explicit_source_config_type():
-    source_config = DatabaseServiceMetadataPipeline(type="DatabaseMetadata")
-    assert source_config.model_dump(mode="json", exclude_unset=True)["type"] == "DatabaseMetadata"
-
-    request = _self_registration_request(source_config)
-    payload = request.model_dump(mode="json", exclude_unset=True, exclude_none=True)
-
-    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
 
 
 class TestWorkflowExecuteTeardown:

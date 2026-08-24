@@ -1629,52 +1629,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void streamProgress(String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
-    ProgressStreamEventEmitter emitter = new ProgressStreamEventEmitter(eventSink, sse);
-    Consumer<ProgressUpdate> listener = emitter::emitLiveUpdate;
+    Consumer<ProgressUpdate> listener = update -> emitProgressUpdate(eventSink, sse, update);
     Runnable onClose =
         () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
     if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
       progressTracker.registerProgressListener(pipelineFQN, runId, listener);
       ProgressUpdate snapshot = getLatestProgressUpdate(pipelineFQN, runId);
       if (snapshot != null) {
-        emitter.emitSnapshot(snapshot);
+        emitProgressUpdate(eventSink, sse, snapshot);
       }
     } else {
       eventSink.close();
-    }
-  }
-
-  /**
-   * Delivers the initial progress snapshot and live updates in one ordered stream. A listener must
-   * be registered before reading the snapshot so updates cannot be lost. When a live update races
-   * with that read, the tracker stores and dispatches the same {@link ProgressUpdate} instance;
-   * emitting the snapshot first marks that instance so its delayed listener callback is not replayed.
-   */
-  private final class ProgressStreamEventEmitter {
-    private final SseEventSink eventSink;
-    private final Sse sse;
-    private ProgressUpdate emittedSnapshot;
-    private boolean liveUpdateDelivered;
-
-    private ProgressStreamEventEmitter(SseEventSink eventSink, Sse sse) {
-      this.eventSink = eventSink;
-      this.sse = sse;
-    }
-
-    private synchronized void emitLiveUpdate(ProgressUpdate update) {
-      liveUpdateDelivered = true;
-      if (emittedSnapshot == update) {
-        return;
-      }
-      emitProgressUpdate(eventSink, sse, update);
-    }
-
-    private synchronized void emitSnapshot(ProgressUpdate snapshot) {
-      if (liveUpdateDelivered) {
-        return;
-      }
-      emittedSnapshot = snapshot;
-      emitProgressUpdate(eventSink, sse, snapshot);
     }
   }
 
