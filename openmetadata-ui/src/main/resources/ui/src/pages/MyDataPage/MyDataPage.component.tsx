@@ -114,11 +114,11 @@ const MyDataPage = () => {
     if (!docData || !selectedPersona) {
       return getDefaultLandingPageLayout();
     }
-    const pageData = getPersonaPage(docData, PageType.LandingPage) ?? {
-      layout: [],
-      pageType: PageType.LandingPage,
-    };
-    const filteredLayout = (pageData.layout as WidgetConfig[])
+    const pageData = getPersonaPage(docData, PageType.LandingPage);
+    const customizedLayout = Array.isArray(pageData?.layout)
+      ? (pageData.layout as WidgetConfig[])
+      : [];
+    const filteredLayout = customizedLayout
       .filter(
         (widget: WidgetConfig) =>
           !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||

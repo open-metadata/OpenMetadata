@@ -21,7 +21,7 @@ import {
 
 const tablePage = {
   pageType: PageType.Table,
-  layout: [],
+  tabs: [{ id: 'overview', layout: [], name: 'overview' }],
 } as unknown as Page;
 
 const dashboardPage = {
@@ -55,7 +55,7 @@ describe('PersonaPage utilities', () => {
     expect(document.data.pages).toEqual([null, tablePage, undefined]);
   });
 
-  it('preserves the document reference when pages are already valid', () => {
+  it('preserves tab-based pages without a top-level layout', () => {
     const document = createDocument([tablePage]);
 
     expect(normalizePersonaDocument(document)).toBe(document);
