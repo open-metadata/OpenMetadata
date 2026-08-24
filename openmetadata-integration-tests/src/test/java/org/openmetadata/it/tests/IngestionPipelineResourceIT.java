@@ -69,6 +69,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.migration.utils.v201.MigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,7 +223,7 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
-  void deployRepairsAndPersistsLegacySourceConfigType(TestNamespace ns) {
+  void migrationRepairsLegacySourceConfigTypeBeforeDeployment(TestNamespace ns) {
     IngestionPipeline pipeline =
         createEntity(createMinimalRequest(ns).withName(ns.prefix("legacyMissingType")));
     Map<String, Object> legacyConfig =
@@ -236,6 +237,15 @@ public class IngestionPipelineResourceIT
     assertNull(
         JsonUtils.getMap(getEntity(pipeline.getId().toString()).getSourceConfig().getConfig())
             .get("type"));
+
+    MigrationUtil.MigrationResult migrationResult =
+        MigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
+    EntityRepository.invalidateCacheForEntity(
+        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+
+    assertTrue(migrationResult.repaired() >= 1);
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+
     PipelineServiceClientResponse response =
         SdkClients.adminClient()
             .getHttpClient()
