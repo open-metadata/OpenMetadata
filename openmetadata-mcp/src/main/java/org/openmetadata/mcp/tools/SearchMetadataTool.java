@@ -40,6 +40,9 @@ public class SearchMetadataTool implements McpTool {
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
+  private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
+  private static final String TEST_CASE_ENTITY = "testCase";
+  private static final String NEVER_RUN_STATUS = "NeverRun";
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -484,11 +487,34 @@ public class SearchMetadataTool implements McpTool {
 
     addSlimTestCaseResult(source, result);
 
-    // Truncate long descriptions to optimize LLM context usage
+    // Truncate long descriptions to optimize LLM context usage, and SAY SO. A silent cut is worse
+    // than a short field: measured live, a caller read a truncated description as the complete text
+    // and lost the sentence that carried the asset's strongest documentation signal. Columns have
+    // been flagged with columnsTruncated all along; descriptions were not.
     if (result.get("description") instanceof String description) {
-      result.put("description", McpResponseTrim.truncateDescription(description));
+      String trimmed = McpResponseTrim.truncateDescription(description);
+      result.put("description", trimmed);
+      if (trimmed.length() < description.length()) {
+        result.put(DESCRIPTION_TRUNCATED_KEY, Boolean.TRUE);
+      }
     }
+    markNeverRunTestCase(result);
     return result;
+  }
+
+  /**
+   * Distinguishes a test that has never executed from a field that was simply not returned.
+   *
+   * <p>{@code testCaseStatus} is present and accurate once a test has run, so the absence is
+   * genuine — but absence alone is ambiguous, and two callers independently spent extra calls
+   * fetching a test suite summary purely to learn that "no status" meant "never ran". Naming the
+   * state answers it in the hit itself.
+   */
+  private static void markNeverRunTestCase(Map<String, Object> result) {
+    boolean isTestCase = TEST_CASE_ENTITY.equals(result.get("entityType"));
+    if (isTestCase && result.get("testCaseStatus") == null) {
+      result.put("testCaseStatus", NEVER_RUN_STATUS);
+    }
   }
 
   private static void addSlimTestCaseResult(
