@@ -1,4 +1,5 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DotsVertical } from '@untitledui/icons';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
@@ -174,10 +175,12 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
 const DropdownDotsButton = (
   props: AriaButtonProps & RefAttributes<HTMLButtonElement>
 ) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaButton
       {...props}
-      aria-label="Open menu"
+      aria-label={t('label.open-menu', 'Open menu')}
       className={(state) =>
         cx(
           'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',

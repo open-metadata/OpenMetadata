@@ -636,26 +636,30 @@ class GoogleDriveSource(DriveServiceSource):
         self.directory_source_state.add(directory_fqn)
 
     def register_record_file(self, file_request: CreateFileRequest) -> None:
-        """Build FQN using cached directory FQN for efficiency."""
-        # Build file FQN - use cached directory FQN if available
+        """
+        Record the file FQN exactly as the create request will be stored.
+
+        Stale-entity deletion removes anything absent from this set, so an FQN that does not
+        match the stored one deletes a file that was just ingested.
+        """
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
         if file_request.directory:
-            # Directory reference already contains the full FQN path
+            # `directory` holds the parent's full FQN, which already starts with the service
+            # name. fqn.build prepends the service itself, so pass only the path components
+            # below it - otherwise the service name appears twice and quotes the dotted
+            # remainder: svc."svc.data"."f.csv" instead of svc.data."f.csv".
+            directory_path = fqn.split(file_request.directory.root)[1:]
             file_fqn = fqn.build(
                 self.metadata,
                 entity_type=File,
-                service_name=self.context.get().drive_service,
-                directory_path=[file_request.directory.root],  # This is already the full directory FQN
+                service_name=service_name,
+                directory_path=directory_path,
                 file_name=file_request.name.root,
             )
         else:
-            # File without directory (root level)
-            file_fqn = fqn.build(
-                self.metadata,
-                entity_type=File,
-                service_name=self.context.get().drive_service,
-                directory_path=["root"],
-                file_name=file_request.name.root,
-            )
+            # Root-level files are created with `directory=None`, so they are stored directly
+            # under the service. fqn.build rejects an empty directory path.
+            file_fqn = fqn._build(service_name, file_request.name.root)
 
         self.file_source_state.add(file_fqn)
 
@@ -958,9 +962,9 @@ class GoogleDriveSource(DriveServiceSource):
         """
         try:
             # Try pandas-based inference across a capped set of rows to reuse datalake logic.
-            import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel
                 DataFrameColumnParser,
             )
 

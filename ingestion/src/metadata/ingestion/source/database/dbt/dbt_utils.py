@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.testDefinition import EntityType
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -29,9 +30,10 @@ from metadata.ingestion.source.database.dbt.constants import (
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
     DbtCommonEnum,
+    DbtTestSuccessEnum,
     RawQueriesEnum,
 )
-from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation
+from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation, UpstreamNode
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
 
@@ -689,66 +691,188 @@ def get_manifest_column_name(manifest_node) -> Optional[str]:  # noqa: UP045
     return None
 
 
-def get_dbt_test_definition_name(manifest_node) -> str:
+def get_dbt_test_definition_name(manifest_node, entity_type: EntityType) -> str:
     """
     Return the dbt test type (e.g. "unique", "not_null") from
     test_metadata for generic tests. Singular tests and source freshness
     nodes have no test_metadata, so fall back to the node name.
+
+    Suffixed with entity_type so a table-scoped usage of a type (e.g. a
+    composite-key "unique" check with no single column) never shares a
+    TestDefinition with that same type's column-scoped usage - the two
+    have incompatible entityLink shapes and the server rejects the mismatch.
     """
     test_metadata = getattr(manifest_node, "test_metadata", None)
     test_type = getattr(test_metadata, "name", None) if test_metadata else None
-    return test_type or manifest_node.name
+    name = test_type or manifest_node.name
+    return name if entity_type == EntityType.COLUMN else f"{name}_{entity_type.value.lower()}"
+
+
+def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
+    """
+    Return the description of a dbt test node.
+
+    Falls back to the "description" key of the node level ``meta`` dict when the
+    node has no description of its own.  dbt only supports a first class
+    ``description`` on data tests from 1.9 onwards, so older projects carry it in
+    ``config(meta={"description": ...})`` instead, which dbt copies onto
+    ``manifest_node.meta`` while parsing.
+    """
+    description = getattr(manifest_node, "description", None)
+    if not description:
+        meta = getattr(manifest_node, "meta", None)
+        if isinstance(meta, dict):
+            description = meta.get("description")
+    return description
+
+
+# Matches a dbt ``ref()``/``source()`` expression, capturing the optional namespace
+# (package for ref, source name for source) and the model/table name. Handles ref('t'),
+# ref("pkg", "t"), source('s', 't') and the get_where_subquery(...) wrapper dbt adds to
+# test_metadata.kwargs['model'].
+_DBT_REF_PATTERN = re.compile(r"\b(?:ref|source)\(\s*['\"]([^'\"]+)['\"]\s*(?:,\s*['\"]([^'\"]+)['\"]\s*)?\)")
+
+# Marks a bare dbt name claimed by more than one upstream table. Looking such a name up
+# must fall through to the other resolution strategies rather than pick an arbitrary one.
+_AMBIGUOUS_NAME = None
+
+
+def _get_test_kwargs(manifest_node) -> Dict[str, Any]:  # noqa: UP006
+    test_metadata = getattr(manifest_node, "test_metadata", None)
+    kwargs = getattr(test_metadata, "kwargs", None) if test_metadata else None
+    return kwargs if isinstance(kwargs, dict) else {}
+
+
+def _extract_dbt_reference(reference: Any) -> Optional[Tuple[Optional[str], str]]:  # noqa: UP045, UP006
+    """Return ``(namespace, name)`` for a dbt ``ref()``/``source()`` expression.
+
+    ``ref('model')`` yields ``(None, 'model')`` while the two-argument ``ref('pkg', 'model')``
+    and ``source('source_name', 'table')`` forms yield their namespace, which disambiguates
+    names reused across packages or between a model and a source table.
+    """
+    match = _DBT_REF_PATTERN.search(str(reference)) if reference else None
+    resolved = None
+    if match:
+        first, second = match.group(1), match.group(2)
+        resolved = (first, second) if second else (None, first)
+    return resolved
+
+
+def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
+    """Pair a dbt manifest node with its table FQN, recording the namespace that a
+    ``ref('pkg', 'model')`` or ``source('source_name', 'table')`` reference would use."""
+    namespace = getattr(parent_node, "source_name", None) or getattr(parent_node, "package_name", None)
+    return UpstreamNode(
+        name=parent_node.name,
+        qualified_name=f"{namespace}.{parent_node.name}" if namespace else None,
+        fqn=parent_fqn,
+    )
+
+
+def build_upstream_name_map(upstream_nodes) -> Dict[str, str]:  # noqa: UP006
+    """Index upstream nodes by dbt name so a ``ref()``/``source()`` can be resolved exactly.
+
+    Both the qualified (``namespace.name``) and bare names are indexed. A bare name claimed
+    by two different tables is marked ambiguous instead of silently keeping the last one.
+    """
+    name_map = {}
+    for node in upstream_nodes:
+        if node.qualified_name:
+            name_map[node.qualified_name] = node.fqn
+        if node.name in name_map and name_map[node.name] != node.fqn:
+            name_map[node.name] = _AMBIGUOUS_NAME
+        else:
+            name_map.setdefault(node.name, node.fqn)
+    return name_map
+
+
+def _match_fqn_by_table_name(upstream_list, table_name: str) -> Optional[str]:  # noqa: UP045
+    """Match on the FQN's table segment, case-insensitively so that warehouses which
+    upper-case identifiers (Snowflake) still line up with lower-case dbt model names.
+
+    Returns nothing when several upstreams match, since the choice would be arbitrary.
+    """
+    suffix = f".{table_name}".lower()
+    matches = [fqn for fqn in upstream_list if fqn.lower().endswith(suffix)]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optional[str]:  # noqa: UP045
+    """Resolve a dbt ref()/source() expression to one of the test's upstream FQNs.
+
+    Prefers the dbt node name map because ``ref()`` carries the model *name* while the
+    upstream FQN is built from the model *alias*; the two diverge whenever a project
+    sets ``alias:``, and a suffix match alone then silently fails.
+    """
+    dbt_reference = _extract_dbt_reference(reference)
+    resolved = None
+    if dbt_reference:
+        namespace, name = dbt_reference
+        if namespace:
+            resolved = upstream_by_name.get(f"{namespace}.{name}")
+        resolved = resolved or upstream_by_name.get(name) or _match_fqn_by_table_name(upstream_list, name)
+    return resolved
+
+
+def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> Optional[str]:  # noqa: UP045
+    """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
+    parent, so if removing it leaves exactly one candidate that must be the tested table."""
+    referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
+    candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn] if referenced_fqn else []
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def get_dbt_test_primary_table_fqn(dbt_test) -> Optional[str]:  # noqa: UP045
+    """
+    Return the FQN of the table a dbt test belongs to.
+
+    A test can have several upstreams (a ``relationships`` test depends on both the
+    tested model and the model it references). dbt records the tested model in
+    ``test_metadata.kwargs['model']`` and the referenced parent in ``kwargs['to']``,
+    and orders ``depends_on.nodes`` parent-first. Falling back to the first upstream
+    therefore attaches the test - and its foreign key column - to the referenced table,
+    which rejects it with "Invalid column name" (issue #28911).
+    """
+    manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
+    upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value) or []
+    upstream_by_name = dbt_test.get(DbtCommonEnum.UPSTREAM_BY_NAME.value) or {}
+    kwargs = _get_test_kwargs(manifest_node)
+
+    primary_table_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("model"))
+    if not primary_table_fqn:
+        primary_table_fqn = _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs)
+    if not primary_table_fqn and upstream_list:
+        primary_table_fqn = upstream_list[0]
+
+    return primary_table_fqn
+
+
+def is_compiled_only_result(dbt_test_result) -> bool:
+    """
+    Tell a compiled-only run_results entry apart from an executed test result.
+
+    ``dbt run`` and ``dbt docs generate`` list test nodes in run_results.json with
+    the *node* status ``success`` and ``message=null`` even though no test SQL ran.
+    An executed test instead carries a *test* status (``pass``/``fail``/``warn``/
+    ``error``), and dbt leaves ``message`` null for passing tests, so ``message``
+    alone cannot be used as the discriminator (issue #29824). ``failures`` would be
+    the other signal but it is dropped by ``REQUIRED_RESULTS_KEYS`` before parsing.
+    """
+    return not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value
 
 
 def generate_entity_link(dbt_test):
     """
     Method returns entity link for dbt test cases.
-
-    For test cases with multiple upstream dependencies (e.g., relationship tests),
-    we must identify the primary table being tested. This is explicitly specified in
-    test_metadata.kwargs['model'] for generic tests. Using this explicit reference
-    is more reliable than guessing based on upstream order (fixes issue #24636).
     """
-    manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-    upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value, [])
-
-    if not upstream_list:
-        return []
-
-    primary_table_fqn = None
-
-    # Try to extract the primary table from test_metadata.kwargs['model']
-    # This field contains the main table being tested (order-independent)
-    if hasattr(manifest_node, "test_metadata"):
-        kwargs = getattr(manifest_node.test_metadata, "kwargs", {})
-        if isinstance(kwargs, dict):
-            model_str = kwargs.get("model", "")
-            if model_str:
-                # Extract table name from ref() pattern
-                # Handles: ref('table'), ref("table"), ref('pkg', 'table'), ref("pkg", "table")
-                match = re.search(
-                    r"ref\(['\"](?:[^'\"]+['\"],\s*['\"])?([^'\"]+)['\"]\)",
-                    str(model_str),
-                )
-                if match:
-                    primary_table_name = match.group(1)
-                    # Find the matching FQN in upstream_list
-                    for fqn in upstream_list:
-                        if fqn.endswith(f".{primary_table_name}"):
-                            primary_table_fqn = fqn
-                            break
-
-    # Fallback: use the first upstream table if model field is not available
-    if not primary_table_fqn and upstream_list:
-        primary_table_fqn = upstream_list[0]
-
+    primary_table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
     if not primary_table_fqn:
         return []
 
     entity_link_str = entity_link.get_entity_link(
         Table,
         fqn=primary_table_fqn,
-        column_name=get_manifest_column_name(manifest_node),
+        column_name=get_manifest_column_name(dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)),
     )
     return [entity_link_str]
 
@@ -811,6 +935,18 @@ def get_dbt_model_name(manifest_node) -> str:
     return manifest_node.alias if hasattr(manifest_node, "alias") and manifest_node.alias else manifest_node.name
 
 
+def get_source_physical_name(manifest_node) -> str:
+    """
+    Get the warehouse table name of a dbt source node.
+
+    Sources carry no ``alias``; they name the physical table through ``identifier``, which
+    dbt lets you set independently of the logical ``name`` used in ``source()`` calls.
+    https://docs.getdbt.com/reference/resource-properties/identifier
+    """
+    identifier = getattr(manifest_node, "identifier", None)
+    return identifier or get_dbt_model_name(manifest_node)
+
+
 def get_corrected_name(name: Optional[str]):  # noqa: UP045
     """
     Method to fetch correct name
@@ -867,22 +1003,22 @@ def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity
     Returns:
         Entity object if found, None otherwise
     """
-    from metadata.generated.schema.entity.classification.tag import Tag  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.container import Container  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.dashboard import Dashboard  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.dashboardDataModel import (  # noqa: PLC0415
+    from metadata.generated.schema.entity.classification.tag import Tag
+    from metadata.generated.schema.entity.data.container import Container
+    from metadata.generated.schema.entity.data.dashboard import Dashboard
+    from metadata.generated.schema.entity.data.dashboardDataModel import (
         DashboardDataModel,
     )
-    from metadata.generated.schema.entity.data.database import Database  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.metric import Metric  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.mlmodel import MlModel  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.pipeline import Pipeline  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.searchIndex import SearchIndex  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.table import Table  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.topic import Topic  # noqa: PLC0415
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+    from metadata.generated.schema.entity.data.metric import Metric
+    from metadata.generated.schema.entity.data.mlmodel import MlModel
+    from metadata.generated.schema.entity.data.pipeline import Pipeline
+    from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+    from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+    from metadata.generated.schema.entity.data.table import Table
+    from metadata.generated.schema.entity.data.topic import Topic
 
     # Map entity type names to Python classes
     ENTITY_TYPE_MAP = {  # noqa: N806

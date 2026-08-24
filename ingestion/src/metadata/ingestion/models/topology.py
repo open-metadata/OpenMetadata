@@ -145,7 +145,7 @@ class TopologyContext(BaseModel):
         :return: TopologyContext
         """
         nodes = get_topology_nodes(topology)
-        ctx_fields = {
+        ctx_fields: dict[str, Any] = {
             stage.context: (Optional[stage.type_], None)  # noqa: UP045
             for node in nodes
             for stage in node.stages
@@ -305,7 +305,7 @@ class Queue:
         # Lazy import — keeps the topology module importable even if the
         # diagnostics package is not on the path (rare, but defensive).
         try:
-            from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
+            from metadata.ingestion.diagnostics.collectors import stage_progress
 
             stage_progress.register_queue(name, self)
             self._stage_progress = stage_progress
@@ -452,27 +452,27 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:  # noqa: UP006
         >>> hierarchy[Database]  # Returns 101
         >>> hierarchy[Table]  # Returns 301
     """
-    from metadata.ingestion.source.api.api_service import ApiServiceTopology  # noqa: PLC0415
-    from metadata.ingestion.source.dashboard.dashboard_service import (  # noqa: PLC0415
+    from metadata.ingestion.source.api.api_service import ApiServiceTopology
+    from metadata.ingestion.source.dashboard.dashboard_service import (
         DashboardServiceTopology,
     )
-    from metadata.ingestion.source.database.database_service import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.database_service import (
         DatabaseServiceTopology,
     )
-    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology  # noqa: PLC0415
-    from metadata.ingestion.source.drive.drive_service import DriveServiceTopology  # noqa: PLC0415
-    from metadata.ingestion.source.messaging.messaging_service import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
+    from metadata.ingestion.source.drive.drive_service import DriveServiceTopology
+    from metadata.ingestion.source.messaging.messaging_service import (
         MessagingServiceTopology,
     )
-    from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology  # noqa: PLC0415
-    from metadata.ingestion.source.pipeline.pipeline_service import (  # noqa: PLC0415
+    from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology
+    from metadata.ingestion.source.pipeline.pipeline_service import (
         PipelineServiceTopology,
     )
-    from metadata.ingestion.source.search.search_service import SearchServiceTopology  # noqa: PLC0415
-    from metadata.ingestion.source.security.security_service import (  # noqa: PLC0415
+    from metadata.ingestion.source.search.search_service import SearchServiceTopology
+    from metadata.ingestion.source.security.security_service import (
         SecurityServiceTopology,
     )
-    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology
 
     all_topologies = [
         DatabaseServiceTopology(),

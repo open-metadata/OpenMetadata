@@ -6,6 +6,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +22,19 @@ public class VectorSearchQueryBuilder {
   private static final String NONE = "__NONE__";
   public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
 
-  /** Build a full search request body (size + _source + query) for standalone vector search. */
+  /**
+   * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}) and field
+   * constants, so this builder decides who is restricted from the same rule the search managers use.
+   * The factory is irrelevant here — this class renders raw JSON, never OMQueryBuilder clauses.
+   */
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+
+  /**
+   * Build a full search request body (size + _source + query) for standalone vector search. Context
+   * memory visibility is enforced fail-closed: with no subject, only org-wide memories match. See
+   * {@link #appendMemoryVisibilityClause}.
+   */
   public static String build(
       float[] vector,
       int size,
@@ -24,6 +42,18 @@ public class VectorSearchQueryBuilder {
       int k,
       Map<String, List<String>> filters,
       double threshold) {
+    return build(vector, size, from, k, filters, threshold, null);
+  }
+
+  /** As {@link #build}, constraining context memories to those {@code subjectContext} may see. */
+  public static String build(
+      float[] vector,
+      int size,
+      int from,
+      int k,
+      Map<String, List<String>> filters,
+      double threshold,
+      SubjectContext subjectContext) {
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
@@ -32,19 +62,31 @@ public class VectorSearchQueryBuilder {
             .append(from)
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"query\":");
-    appendKnnQuery(sb, vector, k, filters, threshold);
+    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext);
     sb.append('}');
     return sb.toString();
   }
 
   /**
    * Build only the KNN query JSON (no size/_source wrapper). Used by hybrid search to embed as a
-   * sub-query inside a hybrid query.
+   * sub-query inside a hybrid query. Context memory visibility is enforced fail-closed.
    */
   public static String buildQuery(
       float[] vector, int k, Map<String, List<String>> filters, double threshold) {
+    return buildQuery(vector, k, filters, threshold, null);
+  }
+
+  /**
+   * As {@link #buildQuery}, constraining context memories to those {@code subjectContext} may see.
+   */
+  public static String buildQuery(
+      float[] vector,
+      int k,
+      Map<String, List<String>> filters,
+      double threshold,
+      SubjectContext subjectContext) {
     StringBuilder sb = new StringBuilder(512);
-    appendKnnQuery(sb, vector, k, filters, threshold);
+    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext);
     return sb.toString();
   }
 
@@ -53,7 +95,8 @@ public class VectorSearchQueryBuilder {
       float[] vector,
       int k,
       Map<String, List<String>> filters,
-      double threshold) {
+      double threshold,
+      SubjectContext subjectContext) {
     sb.append("{\"knn\":{\"embedding\":{\"vector\":").append(Arrays.toString(vector));
 
     // OpenSearch KNN supports either min_score or k, not both. When min_score is set,
@@ -68,7 +111,9 @@ public class VectorSearchQueryBuilder {
     // Build filter inside knn for efficient k-NN filtering
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, filters);
-    sb.append("]}}"); // close must array and bool
+    sb.append("]"); // close must array
+    appendMemoryVisibilityFilter(sb, subjectContext);
+    sb.append("}}"); // close bool and filter
 
     sb.append("}}}"); // close embedding, knn, query
   }
@@ -86,6 +131,22 @@ public class VectorSearchQueryBuilder {
       int k,
       Map<String, List<String>> filters,
       int numCandidatesMultiplier) {
+    return buildNativeESQuery(vector, size, from, k, filters, numCandidatesMultiplier, null);
+  }
+
+  /**
+   * As {@link #buildNativeESQuery}, constraining context memories to those {@code subjectContext}
+   * may see. Elasticsearch has no chunk index, so this filters memory entity documents, which carry
+   * the same visibility fields.
+   */
+  public static String buildNativeESQuery(
+      float[] vector,
+      int size,
+      int from,
+      int k,
+      Map<String, List<String>> filters,
+      int numCandidatesMultiplier,
+      SubjectContext subjectContext) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
     // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
     long candidatesLong = (long) k * (long) numCandidatesMultiplier;
@@ -108,10 +169,85 @@ public class VectorSearchQueryBuilder {
 
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, filters);
-    sb.append("]}}"); // close must array and bool
+    sb.append("]"); // close must array
+    appendMemoryVisibilityFilter(sb, subjectContext);
+    sb.append("}}"); // close bool and filter
 
     sb.append("}}"); // close knn object
     return sb.toString();
+  }
+
+  /**
+   * Constrain context memory documents to those the subject may see. Non-memory documents always
+   * pass, so this is safe to AND into every vector query — and it is applied unconditionally,
+   * because a caller cannot be trusted to remember a privacy filter.
+   *
+   * <p>Note the deliberate difference from {@link
+   * ContextMemorySearchVisibility#buildVisibilityFilter}, where a null or unresolvable subject means
+   * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
+   * callers that pass no identity at all, so the safe default lives here rather than in call-site
+   * discipline. Unknown subject means org-wide memories only; admins get no clause.
+   */
+  private static void appendMemoryVisibilityFilter(
+      StringBuilder sb, SubjectContext subjectContext) {
+    boolean widen = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !widen) {
+      return; // an identified admin sees every memory, so no clause at all
+    }
+    // A sibling `filter` array rather than another `must` entry: a security constraint must not
+    // contribute to the relevance score, and keeping it out of `must` also keeps the
+    // caller-supplied
+    // filter list exactly as the caller expressed it.
+    sb.append(",\"filter\":[{\"bool\":{\"should\":[");
+    // Branch 1: anything that is not a context memory.
+    sb.append("{\"bool\":{\"must_not\":[")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
+        .append("]}}");
+    // Branch 2: a context memory this subject may see.
+    sb.append(",{\"bool\":{\"must\":[")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
+        .append(',');
+    appendVisibleMemoryClause(sb, widen ? subjectContext : null);
+    sb.append("]}}");
+    sb.append("]}}]");
+  }
+
+  /** Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}. */
+  private static void appendVisibleMemoryClause(StringBuilder sb, SubjectContext subjectContext) {
+    // A document lacking `visibility` satisfies no branch, so a memory chunk written before it was
+    // stamped is excluded until a Search Reindex restamps it — it may be a Private one.
+    sb.append("{\"bool\":{\"should\":[")
+        .append(
+            termClause(
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    if (subjectContext != null) {
+      User user = subjectContext.user();
+      // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query
+      // spans an alias of many indices, and OpenSearch fails the whole request with a 400 if any of
+      // them does not map `owners` as nested. Without it a single such index breaks search outright
+      // for every non-admin caller.
+      sb.append(",{\"nested\":{\"path\":\"")
+          .append(ContextMemorySearchVisibility.FIELD_OWNERS)
+          .append("\",\"ignore_unmapped\":true,\"query\":")
+          .append(
+              termClause(ContextMemorySearchVisibility.FIELD_OWNERS_ID, user.getId().toString()))
+          .append("}}");
+      sb.append(",{\"bool\":{\"must\":[")
+          .append(
+              termClause(
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.SHARED.value()))
+          .append(',');
+      appendFlat(
+          sb,
+          ContextMemorySearchVisibility.FIELD_SHARED_WITH_IDS,
+          ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      sb.append("]}}");
+    }
+    sb.append("]}}");
+  }
+
+  private static String termClause(String field, String value) {
+    return "{\"term\":{\"" + field + "\":\"" + escape(value) + "\"}}";
   }
 
   private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
@@ -137,6 +273,10 @@ public class VectorSearchQueryBuilder {
           case "domains" -> {
             sb.append(',');
             appendFlat(sb, "domains.name", values);
+          }
+          case "dataProducts" -> {
+            sb.append(',');
+            appendFlat(sb, "dataProducts.name", values);
           }
           case "tier" -> {
             sb.append(',');
@@ -173,6 +313,36 @@ public class VectorSearchQueryBuilder {
           case "parentId" -> {
             sb.append(',');
             appendFlat(sb, "parentId", values);
+          }
+            // Context memory facets: the Company Context tools scope their search to
+            // file-extracted,
+            // shared knowledge pills, and an unrecognised key here is dropped silently — which
+            // would
+            // widen those searches to every memory the caller can see.
+          case "sourceType" -> {
+            sb.append(',');
+            appendFlat(sb, "sourceType", values);
+          }
+          case "visibility" -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemorySearchVisibility.FIELD_VISIBILITY, values);
+          }
+            // Metric facets: semantic_search returns these on every metric result, so a caller
+            // that sees "granularity": "MONTH" will reasonably filter by it.
+          case "metricType" -> {
+            sb.append(',');
+            appendFlat(sb, "metricType", values);
+          }
+          case "granularity" -> {
+            sb.append(',');
+            appendFlat(sb, "granularity", values);
+          }
+            // Matches the raw enum or the custom text, because a metric whose unit is OTHER
+            // displays its customUnitOfMeasurement ("basis points") and a caller will filter by
+            // what they saw. Accepting only the stored enum would match nothing, silently.
+          case "unitOfMeasurement" -> {
+            sb.append(',');
+            appendFlatOr(sb, "unitOfMeasurement", "customUnitOfMeasurement", values);
           }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }

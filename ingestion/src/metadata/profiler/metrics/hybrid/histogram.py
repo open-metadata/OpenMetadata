@@ -219,8 +219,8 @@ class Histogram(HybridMetric):
             Dict
         """
         # pylint: disable=import-outside-toplevel
-        import numpy as np  # noqa: PLC0415
-        import pandas as pd  # noqa: PLC0415
+        import numpy as np
+        import pandas as pd
 
         if self.col is None or not is_quantifiable(self.col.type):
             return None
@@ -252,11 +252,11 @@ class Histogram(HybridMetric):
         for df in dfs:
             if not frequencies.any():
                 frequencies = (
-                    pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                    pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
                 )  # right boundary is exclusive
                 continue
             frequencies += (
-                pd.cut(df[self.col.name], bins, right=False).value_counts().values
+                pd.cut(df[self.col.name], bins, right=False).value_counts().to_numpy()
             )  # right boundary is exclusive
 
         if frequencies.size > 0:  # pyright: ignore[reportAttributeAccessIssue]

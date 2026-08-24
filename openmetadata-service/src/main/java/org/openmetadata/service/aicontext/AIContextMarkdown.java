@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
@@ -264,7 +265,8 @@ public final class AIContextMarkdown {
    * The OKF {@code description} frontmatter key is a one-line summary; the full description stays
    * in the body. Takes the first line and bounds it so previews and index generators stay compact.
    */
-  private static String summaryOf(String description) {
+  private static String summaryOf(String rawDescription) {
+    String description = PromptText.forPrompt(rawDescription);
     String summary = null;
     if (!nullOrEmpty(description)) {
       String firstLine = description.strip().split("\n", 2)[0].strip();
@@ -299,8 +301,9 @@ public final class AIContextMarkdown {
   }
 
   private static void appendDescription(StringBuilder markdown, AIContext context) {
-    if (!nullOrEmpty(context.getDescription())) {
-      markdown.append('\n').append(context.getDescription().strip()).append('\n');
+    String description = PromptText.forPrompt(context.getDescription());
+    if (!nullOrEmpty(description)) {
+      markdown.append('\n').append(description.strip()).append('\n');
     }
   }
 
@@ -311,6 +314,32 @@ public final class AIContextMarkdown {
       String headingPrefix) {
     if (assetContext != null && assetContext.getTable() != null) {
       appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
+    }
+    if (assetContext != null && assetContext.getGeneric() != null) {
+      appendGenericContext(markdown, assetContext.getGeneric(), sections, headingPrefix);
+    }
+  }
+
+  /**
+   * The fallback sub-context: an asset's fields plus the definition backing it (a metric's
+   * expression, a stored procedure's code, a query). Gated on SCHEMA like the table equivalent.
+   */
+  private static void appendGenericContext(
+      StringBuilder markdown,
+      GenericAssetContext generic,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    if (sections.contains(ContextSection.SCHEMA)) {
+      appendSchemaTable(markdown, generic.getFields(), headingPrefix);
+      appendDefinition(markdown, generic.getDefinition(), headingPrefix);
+    }
+  }
+
+  private static void appendDefinition(
+      StringBuilder markdown, String definition, String headingPrefix) {
+    if (!nullOrEmpty(definition)) {
+      appendHeading(markdown, headingPrefix, "Definition");
+      appendSqlBlock(markdown, definition);
     }
   }
 
@@ -371,7 +400,7 @@ public final class AIContextMarkdown {
           .append(" | ")
           .append(constraintCell(column.getConstraint()))
           .append(" | ")
-          .append(cell(column.getDescription()))
+          .append(cell(PromptText.forPrompt(column.getDescription())))
           .append(" |\n");
     }
   }
@@ -490,8 +519,11 @@ public final class AIContextMarkdown {
    */
   private static void appendKnowledgeContent(
       StringBuilder markdown, KnowledgeItem item, boolean truncateContent) {
-    if (!nullOrEmpty(item.getContent())) {
-      String content = item.getContent().strip();
+    // Stripped before truncation: an excerpt cut out of an inline base64 image would be pure
+    // padding, and would spend the whole excerpt budget saying nothing.
+    String promptContent = PromptText.forPrompt(item.getContent());
+    if (!nullOrEmpty(promptContent)) {
+      String content = promptContent.strip();
       markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {

@@ -31,11 +31,13 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 
 /**
  * Mirrors task-first incident lifecycle events into the legacy {@code
@@ -80,10 +82,10 @@ public final class IncidentTcrsSyncHandler {
 
   private static final Map<String, TestCaseResolutionStatusTypes> STAGE_TO_TCRS_STATUS =
       Map.of(
-          "new", TestCaseResolutionStatusTypes.New,
-          "ack", TestCaseResolutionStatusTypes.Ack,
-          "assigned", TestCaseResolutionStatusTypes.Assigned,
-          "resolved", TestCaseResolutionStatusTypes.Resolved);
+          IncidentWorkflowStages.NEW_STAGE_ID, TestCaseResolutionStatusTypes.New,
+          IncidentWorkflowStages.ACK_STAGE_ID, TestCaseResolutionStatusTypes.Ack,
+          IncidentWorkflowStages.ASSIGNED_STAGE_ID, TestCaseResolutionStatusTypes.Assigned,
+          IncidentWorkflowStages.RESOLVED_STAGE_ID, TestCaseResolutionStatusTypes.Resolved);
 
   private static final String TEST_CASE_TYPE = "testCase";
 
@@ -159,6 +161,7 @@ public final class IncidentTcrsSyncHandler {
               .withTestCaseReference(task.getAbout())
               .withTimestamp(task.getUpdatedAt())
               .withUpdatedAt(task.getUpdatedAt())
+              .withFailureSummary(extractFailureReason(task))
               .withUpdatedBy(updatedByRef);
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
@@ -176,6 +179,12 @@ public final class IncidentTcrsSyncHandler {
           e.getMessage(),
           e);
     }
+  }
+
+  private static String extractFailureReason(Task task) {
+    TestCaseResolutionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
+    return payload != null ? payload.getFailureReason() : null;
   }
 
   /**

@@ -79,6 +79,15 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
     debouncedOnSearch.cancel();
   }, [pathname, debouncedOnSearch]);
 
+  // A queued search must not resolve into a closed dropdown: consumers share
+  // one options state, so it would repaint whichever dropdown opened next.
+  // Keyed on the open flag to cover every close path (Escape, Close, Update).
+  useEffect(() => {
+    if (!isOpen) {
+      debouncedOnSearch.cancel();
+    }
+  }, [isOpen, debouncedOnSearch]);
+
   useEffect(() => {
     setNullOptionSelected(
       selectedKeys.some((item) => item.key === NULL_OPTION_KEY)
@@ -203,7 +212,17 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
             </div>
           )}
 
-          <div className="tw:max-h-64 tw:overflow-auto tw:px-1.5 tw:py-1">
+          {/*
+           * `relative` makes this list the containing block for the Checkbox's
+           * visually-hidden input. Those inputs are `position: absolute`, so
+           * without it they resolve against the popover root — escaping this
+           * list's clip, extending <html>'s scroll area by the full option
+           * count, and letting a click on an off-screen option scroll the
+           * whole page to bring the focused input into view.
+           */}
+          <div
+            className="tw:relative tw:max-h-64 tw:overflow-auto tw:px-1.5 tw:py-1"
+            data-testid="quick-filter-option-list">
             {isSuggestionsLoading ? (
               <div className="tw:flex tw:justify-center tw:py-3">
                 <Loader size="small" />
@@ -216,7 +235,16 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
                   <Checkbox
                     data-testid={`${option.label}-checkbox`}
                     isSelected={isOptionSelected(option)}
-                    label={option.label}
+                    label={
+                      option.icon ? (
+                        <span className="tw:flex tw:items-center tw:gap-1.5">
+                          {option.icon}
+                          {option.label}
+                        </span>
+                      ) : (
+                        option.label
+                      )
+                    }
                     onChange={() => handleOptionToggle(option)}
                   />
                   {!hideCounts && !isUndefined(option.count) && (

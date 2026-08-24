@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RefObject } from 'react';
+import { StreamHealth } from '../../../utils/SseStreamUtils';
+
 export type LogViewerStatusTone = 'success' | 'error' | 'warning' | 'muted';
 
 export interface LogViewerStatus {
@@ -39,16 +42,61 @@ export interface LogViewerModalBaseProps {
   loadingMore?: boolean;
   // Shows a loader in place of the download button while a download is running.
   downloading?: boolean;
-  // The full log text. Callers that poll an in-progress run keep growing this.
+  // The full log text. The caller grows this as the run produces output.
   logs: string;
   // 'stream' means the underlying run is LIVE: the modal shows the live
-  // indicator and auto-follows the tail. Today liveness is produced by the
-  // caller polling and growing `logs` while the run is active, then flipping
-  // back to 'static' once the run reaches a terminal state. `fqn`/`runId` are
-  // reserved for re-enabling a self-fetching SSE stream (via `useLogStream`)
-  // once the backend endpoint is available again — see useLogStream.ts.
+  // indicator and auto-follows the tail. The caller grows `logs` while the run
+  // is active — over SSE where the deployment supports it, otherwise by polling
+  // — then flips back to 'static' once the run reaches a terminal state.
   mode?: 'static' | 'stream';
-  fqn?: string;
+  // Transport state of the SSE tail, when one is in use. 'connecting' after a
+  // drop shows a reconnecting indicator in place of the live dot.
+  streamHealth?: StreamHealth;
+  // The server could not replay the whole backlog: what is shown starts partway
+  // through the run and the rest has to come from the download.
+  streamTruncated?: boolean;
+  // A message from the server explaining why the tail stopped.
+  streamError?: string | null;
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps;
+
+/** The geometry the log viewer reports on every scroll. */
+export interface LogViewerScrollValues {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/** What a single scroll report says, before any decision is taken on it. */
+export interface ScrollFacts {
+  isBottom: boolean;
+  fillsViewport: boolean;
+  userMovedTheView: boolean;
+  movedAwayFromTail: boolean;
+  movedTowardsTail: boolean;
+}
+
+export interface UseLogAutoFollowParams {
+  /** The modal's own open state: a closed viewer follows nothing. */
+  open: boolean;
+  isLive: boolean;
+  /** The caller's static preference, used to seed and re-seed the live state. */
+  follow: boolean;
+  /** Watched to know when the library may have restored its own scroll offset. */
+  logs: string;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  /** Accessible name given to the scrolling element once it is found. */
+  scrollerLabel: string;
+  scrollToEnd: () => void;
+}
+
+export interface UseLogAutoFollowResult {
+  followTail: boolean;
+  /** Feed every scroll report through this; returns what the report said. */
+  trackScroll: (values: LogViewerScrollValues) => ScrollFacts;
+  resumeFollowingTail: () => void;
+  toggleFollow: () => void;
+  /** Call before a relayout (wrap, full screen) so it is not read as intent. */
+  markViewerScroll: () => void;
+}

@@ -20,6 +20,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FormPanelBody, {
+  getFormFirstPanelProps,
+} from '../../components/common/FormPanelBody/FormPanelBody.component';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -76,6 +79,7 @@ const EditIngestionPage = () => {
     {} as IngestionPipeline
   );
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isStepReady, setIsStepReady] = useState(false);
   const [isLoading, setIsloading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | JSX.Element>('');
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -271,8 +275,31 @@ const EditIngestionPage = () => {
   };
 
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
-      <div className="tw:flex-1">
+    <FormPanelBody
+      footer={
+        activeIngestionStep <= 2 ? (
+          <>
+            <Button
+              color="secondary"
+              data-testid="previous-button"
+              size="sm"
+              type="button"
+              onPress={handleFooterBack}>
+              {t('label.back')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="next-button"
+              isDisabled={!isStepReady}
+              size="sm"
+              type="button"
+              onPress={handleFooterNext}>
+              {footerNextText}
+            </Button>
+          </>
+        ) : undefined
+      }>
+      <>
         <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
         <div className="tw:mt-4">
           <AddIngestion
@@ -298,32 +325,13 @@ const EditIngestionPage = () => {
             status={FormSubmitType.EDIT}
             onFocus={handleFieldFocus}
             onIngestionDeploy={onIngestionDeploy}
+            onStepReadyChange={setIsStepReady}
             onSuccessSave={goToService}
             onUpdateIngestion={onEditIngestionSave}
           />
         </div>
-      </div>
-      {activeIngestionStep <= 2 && (
-        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
-          <Button
-            color="secondary"
-            data-testid="previous-button"
-            size="sm"
-            type="button"
-            onPress={handleFooterBack}>
-            {t('label.back')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="next-button"
-            size="sm"
-            type="button"
-            onPress={handleFooterNext}>
-            {footerNextText}
-          </Button>
-        </div>
-      )}
-    </div>
+      </>
+    </FormPanelBody>
   );
 
   const secondPanelChildren = (
@@ -353,13 +361,7 @@ const EditIngestionPage = () => {
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel tw:bg-transparent"
-      firstPanel={{
-        children: firstPanelChildren,
-        minWidth: 700,
-        flex: 0.7,
-        className: 'content-resizable-panel-container',
-        wrapInCard: false,
-      }}
+      firstPanel={getFormFirstPanelProps(firstPanelChildren)}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),
       })}

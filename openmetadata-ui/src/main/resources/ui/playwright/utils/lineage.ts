@@ -631,7 +631,17 @@ export const removeColumnLineage = async (
     .click();
   await deleteRes;
 
-  await editLineageClick(page);
+  // Reload before asserting. removeColumnEdge optimistically mutates local
+  // React state (setEntityLineage / removeEdgeById / setColumnsHavingLineage),
+  // so the edge disappears from the DOM regardless of what the server did.
+  // Only a fresh /api/v1/lineage/getLineage response proves the removal
+  // actually persisted.
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.reload();
+  await lineageRes;
+
+  await waitForAllLoadersToDisappear(page);
+  await activateColumnLayer(page);
 
   await expect(
     page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
@@ -868,18 +878,51 @@ export const verifyExportLineagePNG = async (
 
   await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
-  const [download] = await Promise.all([
-    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
-    // render enough headroom before the download event fires.
-    page.waitForEvent('download', { timeout: 120_000 }),
-    page.click(
-      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
-    ),
-  ]);
+  // If the client-side render throws, no download event ever fires and the wait
+  // below expires with nothing to say. Capture page errors so a silent exception
+  // is reported as the cause instead of an anonymous 120s timeout; a genuinely
+  // slow render still surfaces the original timeout untouched.
+  const pageErrors: string[] = [];
+  const collectPageError = (error: Error) =>
+    pageErrors.push(error.stack ?? error.message);
+  page.on('pageerror', collectPageError);
 
-  const filePath = await download.path();
+  try {
+    const [download] = await Promise.all([
+      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+      // render enough headroom before the download event fires.
+      page.waitForEvent('download', { timeout: 120_000 }),
+      page.click(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
+      ),
+    ]);
 
-  expect(filePath).not.toBeNull();
+    const filePath = await download.path();
+
+    expect(filePath).not.toBeNull();
+  } catch (error) {
+    // Only the download wait is ambiguous about its cause. A click or selector
+    // failure already says what went wrong, so a stray page error must never
+    // replace it — and even for a timeout the original message is kept and the
+    // page errors appended, so a slow render still reads as a slow render.
+    const isDownloadTimeout =
+      error instanceof Error &&
+      error.message.includes('waiting for event "download"');
+
+    if (isDownloadTimeout && pageErrors.length > 0) {
+      throw new Error(
+        `${
+          error.message
+        }\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
+          '\n  '
+        )}`
+      );
+    }
+
+    throw error;
+  } finally {
+    page.off('pageerror', collectPageError);
+  }
 };
 
 export const verifyColumnLineageInCSV = async (
@@ -972,10 +1015,16 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
+  // React Flow mounts nodes after its own layout pass, which runs well after the
+  // getLineage response the caller waited on. Clicking straight away leaves the
+  // action auto-waiting with no timeout of its own, so a graph that is slow to
+  // lay out surfaces as a bare test timeout with nothing naming the node.
+  const nodeTitle = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+    .locator(`[data-testid="entity-header-display-name"]`);
+
+  await expect(nodeTitle).toBeVisible();
+  await nodeTitle.click();
 };
 
 export const updateLineageConfigFromModal = async (

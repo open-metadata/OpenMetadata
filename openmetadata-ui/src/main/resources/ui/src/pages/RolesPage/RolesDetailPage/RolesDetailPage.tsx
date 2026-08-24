@@ -146,7 +146,7 @@ const RolesDetailPage = () => {
     const patch = compare(role, { ...role, description });
     try {
       const data = await patchRole(patch, role.id);
-      setRole({ ...role, description: data.description });
+      setRole((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -362,9 +362,12 @@ const RolesDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.role'),
-      })}>
+      pageTitle={
+        roleName ||
+        t('label.entity-detail-plural', {
+          entity: t('label.role'),
+        })
+      }>
       <div data-testid="role-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 

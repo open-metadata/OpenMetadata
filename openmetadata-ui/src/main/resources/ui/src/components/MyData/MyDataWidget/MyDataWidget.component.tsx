@@ -16,8 +16,8 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as MyDataIcon } from '../../../assets/svg/widget/my-data.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -40,12 +40,12 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { EntityIconSize } from '../../../utils/TableUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';

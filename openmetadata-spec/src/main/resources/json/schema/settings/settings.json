@@ -41,7 +41,9 @@
         "entityRulesSettings",
         "openLineageSettings",
         "mcpConfiguration",
-        "glossaryTermRelationSettings"
+        "glossaryTermRelationSettings",
+        "appConfiguration",
+        "startupChecksums"
       ]
     }
   },
@@ -117,6 +119,12 @@
         },
         {
           "$ref": "../configuration/glossaryTermRelationSettings.json"
+        },
+        {
+          "$ref": "../api/configuration/appConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

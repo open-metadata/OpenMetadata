@@ -263,18 +263,17 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
-  void testServerCapabilitiesDoNotAdvertiseLogging() {
-    // The stateless MCP server has no handler for logging/setLevel.
-    // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
-    // to call logging/setLevel, which fails with MethodNotFound.
-    McpSchema.ServerCapabilities capabilities =
-        McpSchema.ServerCapabilities.builder()
-            .tools(true)
-            .prompts(true)
-            .resources(true, true)
-            .build();
+  void testServerAdvertisesOnlyHandledCapabilities() {
+    // Every advertised capability must have a handler. Logging would make spec-compliant clients
+    // (e.g. VSCode) call logging/setLevel; resources would let them call resources/list and
+    // resources/subscribe. The stateless server handles none of those, so they must stay absent.
+    McpSchema.ServerCapabilities capabilities = new McpServer().buildServerCapabilities();
 
+    assertThat(capabilities.tools()).isNotNull();
+    assertThat(capabilities.prompts()).isNotNull();
     assertThat(capabilities.logging()).isNull();
+    assertThat(capabilities.resources()).isNull();
+    assertThat(capabilities.completions()).isNull();
   }
 
   @Test

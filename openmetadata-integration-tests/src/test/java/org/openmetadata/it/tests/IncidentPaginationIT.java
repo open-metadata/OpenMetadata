@@ -54,6 +54,7 @@ public class IncidentPaginationIT {
   private OpenMetadataClient client;
   private List<TestCase> testCases;
   private String databaseSchemaFqn;
+  private String tableFqn;
 
   @BeforeAll
   public void setup() throws Exception {
@@ -78,6 +79,7 @@ public class IncidentPaginationIT {
             .getFullyQualifiedName();
 
     Table table = createTestTable();
+    tableFqn = table.getFullyQualifiedName();
     String testDefFqn =
         client
             .testDefinitions()
@@ -157,7 +159,12 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationFirstPage() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);
@@ -165,32 +172,55 @@ public class IncidentPaginationIT {
     assertNotNull(response);
     assertEquals(
         PAGE_SIZE, response.getData().size(), "First page should return " + PAGE_SIZE + " results");
-    assertTrue(
-        response.getPaging().getTotal() >= TEST_DATA_SIZE,
-        "Total should be at least " + TEST_DATA_SIZE);
+    assertEquals(
+        TEST_DATA_SIZE,
+        response.getPaging().getTotal(),
+        "Scoped total must be exactly the fixture size");
   }
 
   @Test
   public void testPaginationSecondPage() throws Exception {
     ListParams firstPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
-    ListResponse<TestCaseResolutionStatus> firstPage =
-        client.testCaseResolutionStatuses().searchList(firstPageParams);
-
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListParams secondPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(PAGE_SIZE).withLatest(true);
-    ListResponse<TestCaseResolutionStatus> secondPage =
-        client.testCaseResolutionStatuses().searchList(secondPageParams);
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(PAGE_SIZE)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
+
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> firstPageRef = new AtomicReference<>();
+    AtomicReference<ListResponse<TestCaseResolutionStatus>> secondPageRef = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListResponse<TestCaseResolutionStatus> first =
+                  client.testCaseResolutionStatuses().searchList(firstPageParams);
+              ListResponse<TestCaseResolutionStatus> second =
+                  client.testCaseResolutionStatuses().searchList(secondPageParams);
+              assertEquals(
+                  first.getPaging().getTotal(),
+                  second.getPaging().getTotal(),
+                  "Total count should be consistent across pages");
+              firstPageRef.set(first);
+              secondPageRef.set(second);
+            });
+    ListResponse<TestCaseResolutionStatus> firstPage = firstPageRef.get();
+    ListResponse<TestCaseResolutionStatus> secondPage = secondPageRef.get();
 
     assertNotNull(secondPage);
     assertEquals(
         PAGE_SIZE,
         secondPage.getData().size(),
         "Second page should return " + PAGE_SIZE + " results");
-    assertEquals(
-        firstPage.getPaging().getTotal(),
-        secondPage.getPaging().getTotal(),
-        "Total count should be consistent across pages");
 
     if (!firstPage.getData().isEmpty() && !secondPage.getData().isEmpty()) {
       Object firstItem = firstPage.getData().get(0);
@@ -201,21 +231,31 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationLastPage() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> firstPage =
         client.testCaseResolutionStatuses().searchList(params);
     int total = firstPage.getPaging().getTotal();
     int lastPageOffset = ((total - 1) / PAGE_SIZE) * PAGE_SIZE;
 
     ListParams lastPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(lastPageOffset).withLatest(true);
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(lastPageOffset)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> lastPage =
         client.testCaseResolutionStatuses().searchList(lastPageParams);
 
     assertNotNull(lastPage);
-    assertTrue(
-        lastPage.getData().size() > 0 && lastPage.getData().size() <= PAGE_SIZE,
-        "Last page should have between 1 and " + PAGE_SIZE + " results");
+    assertEquals(
+        total - lastPageOffset,
+        lastPage.getData().size(),
+        "Scoped last page must hold exactly the remainder of the fixture");
   }
 
   @Test
@@ -233,7 +273,12 @@ public class IncidentPaginationIT {
 
   @Test
   public void testOffsetBeyondResults() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(10000).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(10000)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);

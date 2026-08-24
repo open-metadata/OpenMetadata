@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/prefectConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrefectConnection",
+  "description": "Prefect Metadata Database Connection Config",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",
+  "definitions": {
+    "prefectType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Prefect"],
+      "default": "Prefect"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/prefectType",
+      "default": "Prefect"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your self-hosted server's URL, e.g. http://localhost:4200.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Authentication",
+      "description": "Choose between Prefect Cloud or a self-hosted Prefect Server.",
+      "oneOf": [
+        { "title": "Prefect Cloud", "$ref": "prefect/cloudAuth.json" },
+        { "title": "Prefect Server", "$ref": "prefect/serverAuth.json" }
+      ]
+    },
+    "numberOfStatus": {
+      "title": "Number of Status",
+      "description": "Number of past flow run statuses to ingest per flow.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration for Prefect API connection.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["authType", "hostPort"]
+}

@@ -75,6 +75,7 @@ import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -508,29 +509,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-      client.updateByQuery(
-          u ->
-              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(exactFieldQuery(fieldAndValue))
-                  .conflicts(Conflicts.Proceed)
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(
-                                          l ->
-                                              l.builtin(
-                                                  os.org.opensearch.client.opensearch._types
-                                                      .BuiltinScriptLanguage.Painless))
-                                      .source(updates.getKey())
-                                      .params(params)))
-                  .refresh(Refresh.True));
-
-      LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
+      submitChildUpdate(
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          fieldAndValue,
+          updates);
+      LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
       SearchIndexRetryQueue.enqueue(
           null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
@@ -548,6 +531,64 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
       return;
     }
+    submitChildUpdate(indexNames, fieldAndValue, updates);
+    LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
+  }
+
+  private void submitChildUpdate(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+  }
+
+  /**
+   * Builds the inherited-field child propagation as an async update-by-query
+   * ({@code wait_for_completion=false}). A synchronous update-by-query over a large child set (for
+   * example a test suite with thousands of test cases) holds one HC5 socket open for the entire
+   * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
+   * submitting it as a background task returns immediately and lets the cluster finish the
+   * propagation and the post-task {@code refresh} on its own.
+   */
+  UpdateByQueryRequest buildUpdateChildrenRequest(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    return UpdateByQueryRequest.of(
+        u ->
+            u.index(indexNames)
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(
+                                        l ->
+                                            l.builtin(
+                                                os.org.opensearch.client.opensearch._types
+                                                    .BuiltinScriptLanguage.Painless))
+                                    .source(updates.getKey())
+                                    .params(params)))
+                .refresh(Refresh.True));
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update children for indices.");
+      return;
+    }
 
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
@@ -555,7 +596,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(exactFieldQuery(fieldAndValue))
+                .query(anyOfFieldQuery(field, values))
                 .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
@@ -572,6 +613,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .refresh(Refresh.True));
 
     LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
+  }
+
+  private Query anyOfFieldQuery(String field, List<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    Query termsOnField =
+        Query.of(q -> q.terms(t -> t.field(field).terms(tv -> tv.value(fieldValues))));
+    Query result;
+    if (field.endsWith(".keyword")) {
+      result = termsOnField;
+    } else {
+      Query termsOnKeyword =
+          Query.of(
+              q -> q.terms(t -> t.field(field + ".keyword").terms(tv -> tv.value(fieldValues))));
+      result =
+          Query.of(
+              q ->
+                  q.bool(
+                      b -> b.should(termsOnField).should(termsOnKeyword).minimumShouldMatch("1")));
+    }
+    return result;
   }
 
   @Override

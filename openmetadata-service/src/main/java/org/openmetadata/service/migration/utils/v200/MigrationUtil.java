@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -49,8 +51,10 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -550,10 +554,13 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
-        String fieldPath =
-            "Tag".equals(mappedSuggestionType)
-                ? Entity.FIELD_TAGS
-                : extractFieldPathFromEntityLink(entityLink);
+        // Keep the field path the entityLink points at (e.g. columns.<col>.tags) so a tag
+        // suggestion lands on the suggested column, not the parent entity; fall back to
+        // entity-level tags only when the link carries no tags field.
+        String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        if ("Tag".equals(mappedSuggestionType) && !fieldPath.endsWith(Entity.FIELD_TAGS)) {
+          fieldPath = Entity.FIELD_TAGS;
+        }
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
@@ -1923,6 +1930,9 @@ public class MigrationUtil {
     private static final String MENTION_FILTER_NAME = "filterByMentionedName";
     private static final String CONVERSATION_RESOURCE = "conversation";
     private static final String TASK_RESOURCE = "task";
+    private static final String TEST_CASE_TABLE = "test_case";
+    private static final String INCIDENT_TIME_SERIES_TABLE =
+        "test_case_resolution_status_time_series";
     private static final String UPDATE_SUBSCRIPTION_MYSQL =
         "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
     private static final String UPDATE_SUBSCRIPTION_POSTGRES =
@@ -1948,10 +1958,11 @@ public class MigrationUtil {
       int redeployedWorkflows = redeployUserApprovalWorkflows();
       MigrationStats stats = migrateLegacyThreadTasks();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int adoptedIncidents = adoptOrphanIncidentChains();
       int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
       LOG.info(
-          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
+          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, adoptedIncidents={}, backfilledOpenTasks={}",
           seededDefaults,
           redeployedWorkflows,
           stats.migrated,
@@ -1959,6 +1970,7 @@ public class MigrationUtil {
           stats.skipped,
           stats.failed,
           rewrittenRecognizerFeedbackTasks,
+          adoptedIncidents,
           backfilledOpenTasks);
     }
 
@@ -2138,11 +2150,12 @@ public class MigrationUtil {
             if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
               addEntityStatusToTriggerExclude(workflowDefinition);
             }
-            workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+            WorkflowDefinition patched = backfillUserApprovalTransitionMetadata(workflowDefinition);
+            workflowDefinitionRepository.createOrUpdate(null, patched, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
                 "Redeployed workflow '{}' to activate Task V2 approval listeners",
-                workflowDefinition.getName());
+                patched.getName());
           } catch (Exception e) {
             LOG.warn(
                 "Failed to redeploy workflow '{}': {}",
@@ -2155,6 +2168,93 @@ public class MigrationUtil {
       }
       return redeployed;
     }
+
+    /**
+     * Populate a default {@code transitionMetadata} of {@code [approve, reject]} on every
+     * {@code userApprovalTask} node whose config is missing the field or carries an empty array.
+     *
+     * <p>Round-trips the whole definition through JSON instead of calling
+     * {@link WorkflowNodeDefinitionInterface#setConfig(Map)}: that interface method is a default
+     * no-op (only the generated typed subclasses expose a real setter), so mutating through the
+     * interface reference silently drops the change and {@code createOrUpdate} then sees no diff
+     * and skips the persist.
+     */
+    private WorkflowDefinition backfillUserApprovalTransitionMetadata(
+        WorkflowDefinition workflowDefinition) {
+      List<WorkflowNodeDefinitionInterface> nodes = workflowDefinition.getNodes();
+      if (nullOrEmpty(nodes)) {
+        return workflowDefinition;
+      }
+      WorkflowDefinition result = workflowDefinition;
+      try {
+        Map<String, Object> workflowJson =
+            JsonUtils.convertValue(workflowDefinition, LinkedHashMap.class);
+        Object rawNodes = workflowJson == null ? null : workflowJson.get("nodes");
+        if (rawNodes instanceof List<?> nodeList
+            && applyBackfillToNodes(nodeList, workflowDefinition)) {
+          result = JsonUtils.convertValue(workflowJson, WorkflowDefinition.class);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to backfill transitionMetadata on workflow '{}'; leaving definition as-is: {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return result;
+    }
+
+    private boolean applyBackfillToNodes(List<?> nodeList, WorkflowDefinition workflowDefinition) {
+      boolean modified = false;
+      for (Object rawNode : nodeList) {
+        if (!(rawNode instanceof Map<?, ?> nodeMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nodeMap = (Map<String, Object>) nodeMapUntyped;
+        if (!USER_APPROVAL_TASK_SUBTYPE.equals(nodeMap.get("subType"))) {
+          continue;
+        }
+        Object rawConfig = nodeMap.get("config");
+        if (!(rawConfig instanceof Map<?, ?> configMapUntyped)) {
+          continue;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = (Map<String, Object>) configMapUntyped;
+        Object existing = configMap.get(TRANSITION_METADATA_FIELD);
+        if (existing instanceof List<?> list && !list.isEmpty()) {
+          continue;
+        }
+        configMap.put(TRANSITION_METADATA_FIELD, defaultUserApprovalTransitionMetadata());
+        modified = true;
+        LOG.info(
+            "Backfilled default transitionMetadata on userApprovalTask '{}' in workflow '{}'",
+            nodeMap.get("name"),
+            workflowDefinition.getName());
+      }
+      return modified;
+    }
+
+    private List<Map<String, Object>> defaultUserApprovalTransitionMetadata() {
+      Map<String, Object> approve = new LinkedHashMap<>();
+      approve.put("id", "approve");
+      approve.put("label", "Approve");
+      approve.put("targetStageId", "approved");
+      approve.put("targetTaskStatus", TaskEntityStatus.Approved.value());
+      approve.put("resolutionType", TaskResolutionType.Approved.value());
+      approve.put("requiresComment", false);
+
+      Map<String, Object> reject = new LinkedHashMap<>();
+      reject.put("id", "reject");
+      reject.put("label", "Reject");
+      reject.put("targetStageId", "rejected");
+      reject.put("targetTaskStatus", TaskEntityStatus.Rejected.value());
+      reject.put("resolutionType", TaskResolutionType.Rejected.value());
+      reject.put("requiresComment", false);
+
+      return List.of(approve, reject);
+    }
+
+    private static final String TRANSITION_METADATA_FIELD = "transitionMetadata";
 
     private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
       if (workflowDefinition.getTrigger()
@@ -2237,6 +2337,159 @@ public class MigrationUtil {
       return stats;
     }
 
+    /**
+     * Create a Task for every ongoing incident chain that never had a legacy thread to migrate.
+     * The task reuses the chain's stateId as its id, so the stateId-to-task identity the
+     * task-first model assumes holds for these chains too. Workflow start and status replay are
+     * left to {@link #backfillOpenTasksToWorkflowInstances()}, which runs after this.
+     */
+    private int adoptOrphanIncidentChains() {
+      int adopted = 0;
+      if (tableExists(INCIDENT_TIME_SERIES_TABLE) && tableExists(TEST_CASE_TABLE)) {
+        try {
+          for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
+            if (isAdoptableChain(candidate.latest())) {
+              adopted += adoptIncidentChain(candidate);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[v200] Failed to adopt orphan incident chains", e);
+        }
+      }
+      return adopted;
+    }
+
+    private boolean isAdoptableChain(TestCaseResolutionStatus latest) {
+      return latest.getStateId() != null
+          && latest.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved
+          && !incidentChainHasTask(latest.getStateId());
+    }
+
+    private int adoptIncidentChain(OrphanIncidentCandidate candidate) {
+      int adopted = 0;
+      UUID stateId = candidate.latest().getStateId();
+      Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
+      if (task != null) {
+        try {
+          taskRepository.create(null, task);
+          adopted = 1;
+          LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
+        } catch (Exception e) {
+          LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
+        }
+      }
+      return adopted;
+    }
+
+    /**
+     * Latest record of each test case's most recent incident chain, paired with the owning test
+     * case id. Stored records drop {@code testCaseReference}, so the test case is recovered by
+     * joining the indexed entityFQNHash.
+     */
+    private List<OrphanIncidentCandidate> listLatestIncidentPerTestCase() {
+      List<OrphanIncidentCandidate> candidates =
+          handle
+              .createQuery(
+                  "SELECT ts.json AS record, tc.id AS testCaseId "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " ts INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
+                      + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
+                      + "INNER JOIN "
+                      + TEST_CASE_TABLE
+                      + " tc ON tc.fqnHash = ts.entityFQNHash")
+              .map((rs, ctx) -> readCandidate(rs.getString("record"), rs.getString("testCaseId")))
+              .list()
+              .stream()
+              .filter(Objects::nonNull)
+              .toList();
+
+      Map<UUID, OrphanIncidentCandidate> latestPerTestCase = new LinkedHashMap<>();
+      for (OrphanIncidentCandidate candidate : candidates) {
+        latestPerTestCase.merge(candidate.testCaseId(), candidate, TaskWorkflow::preferStableChain);
+      }
+      return List.copyOf(latestPerTestCase.values());
+    }
+
+    private OrphanIncidentCandidate readCandidate(String record, String testCaseId) {
+      OrphanIncidentCandidate candidate = null;
+      try {
+        TestCaseResolutionStatus latest =
+            JsonUtils.readValue(record, TestCaseResolutionStatus.class);
+        if (latest.getStateId() != null) {
+          candidate = new OrphanIncidentCandidate(latest, UUID.fromString(testCaseId));
+        }
+      } catch (Exception e) {
+        LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
+      }
+      return candidate;
+    }
+
+    /**
+     * Records written in the same millisecond leave more than one chain tied for latest; pick by
+     * stateId so a re-run adopts the same one instead of a second task for the test case.
+     */
+    private static OrphanIncidentCandidate preferStableChain(
+        OrphanIncidentCandidate current, OrphanIncidentCandidate candidate) {
+      String currentId = current.latest().getStateId().toString();
+      String candidateId = candidate.latest().getStateId().toString();
+      return candidateId.compareTo(currentId) > 0 ? candidate : current;
+    }
+
+    private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
+
+    /** True when the chain already drives a task, either as its id or through a migrated thread. */
+    private boolean incidentChainHasTask(UUID stateId) {
+      try {
+        if (taskRepository.find(stateId, Include.ALL) != null) {
+          return true;
+        }
+      } catch (Exception e) {
+        // find() throws when absent; fall through to the legacy payload lookup
+      }
+      return collectionDAO.taskDAO().fetchTaskByTestCaseResolutionStatusId(stateId.toString())
+          != null;
+    }
+
+    private Task buildTaskFromIncidentChain(TestCaseResolutionStatus latest, UUID testCaseId) {
+      EntityReference aboutRef;
+      try {
+        aboutRef = Entity.getEntityReferenceById(Entity.TEST_CASE, testCaseId, Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.warn(
+            "[v200] Incident chain {} has no resolvable test case; skipping", latest.getStateId());
+        return null;
+      }
+
+      long updatedAt =
+          latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
+      // Flows into the workflow's updatedBy variable, so it must never be null.
+      String actorName =
+          latest.getUpdatedBy() != null && !nullOrEmpty(latest.getUpdatedBy().getName())
+              ? latest.getUpdatedBy().getName()
+              : ADMIN_USER_NAME;
+      EntityReference actorRef = resolveUserReference(actorName);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
+
+      return new Task()
+          .withId(latest.getStateId())
+          .withCategory(TaskCategory.Incident)
+          .withType(TaskEntityType.TestCaseResolution)
+          .withStatus(TaskEntityStatus.Open)
+          .withPriority(TaskPriority.Medium)
+          .withDescription("Incident on " + aboutRef.getFullyQualifiedName())
+          .withAbout(aboutRef)
+          .withCreatedBy(actorRef)
+          .withCreatedAt(updatedAt)
+          .withUpdatedAt(updatedAt)
+          .withUpdatedBy(actorName)
+          .withPayload(payload);
+    }
+
     private int backfillOpenTasksToWorkflowInstances() {
       int backfilled = 0;
       int failedIncidentReplays = 0;
@@ -2246,6 +2499,23 @@ public class MigrationUtil {
         List<Task> openTasks =
             listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
         for (Task task : openTasks) {
+          // Glossary approvals are governed by GlossaryTermApprovalWorkflow, not a standalone task
+          // workflow. A GlossaryApproval task with no workflowInstanceId is a legacy row stranded
+          // by
+          // a move/rename whose original process was already cleaned; remediate it by term status
+          // instead of letting the generic backfill start a stray workflow for it.
+          if (task.getType() == TaskEntityType.GlossaryApproval
+              && task.getWorkflowInstanceId() == null) {
+            try {
+              remediateStrandedGlossaryApproval(task);
+            } catch (Exception e) {
+              LOG.warn(
+                  "[v200] Failed to remediate stranded glossary approval task {}; continuing",
+                  task.getId(),
+                  e);
+            }
+            continue;
+          }
           if (task.getAbout() == null) {
             continue;
           }
@@ -2310,6 +2580,128 @@ public class MigrationUtil {
         variables.put(WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, schema.getVersion());
       }
       return variables;
+    }
+
+    /**
+     * Remediate a legacy glossary approval task that lost its GlossaryTermApprovalWorkflow process
+     * (moved/renamed term whose original process was cleaned). Only In-Review terms still need an
+     * approval; Draft/Approved/Rejected (or unresolvable) terms get the dead task closed. For an
+     * In-Review term we restart GlossaryTermApprovalWorkflow only when it has no other active
+     * approval task, then close this stranded row so the workflow's fresh task is the only one.
+     */
+    private void remediateStrandedGlossaryApproval(Task task) {
+      GlossaryTerm term = resolveGlossaryTermForTask(task.getAbout());
+      if (term != null && term.getEntityStatus() == EntityStatus.IN_REVIEW) {
+        remediateInReviewGlossaryApproval(task, term);
+      } else {
+        String status =
+            (term == null || term.getEntityStatus() == null)
+                ? "unresolved"
+                : term.getEntityStatus().value();
+        closeStrandedGlossaryApproval(task, "glossary term is not In Review (status=%s)", status);
+      }
+    }
+
+    private void remediateInReviewGlossaryApproval(Task task, GlossaryTerm term) {
+      String termFqn = term.getFullyQualifiedName();
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // A valid approval task already governs the term (a later cycle's task, or the fresh task a
+        // prior stranded row's restart just created) -> this row is a duplicate, close it.
+        closeStrandedGlossaryApproval(
+            task, "glossary term already has an active approval task", null);
+      } else if (startGlossaryTermApprovalWorkflow(term, task.getUpdatedBy())) {
+        closeStrandedGlossaryApprovalAfterRestart(task, term, termFqn);
+      } else {
+        LOG.warn(
+            "[v200] {} not found; leaving stranded glossary approval task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private void closeStrandedGlossaryApprovalAfterRestart(
+        Task task, GlossaryTerm term, String termFqn) {
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // Only close once the restart actually produced a bound approval task, so a workflow that
+        // completed without a wait-state never leaves the term with zero approval tasks.
+        closeStrandedGlossaryApproval(
+            task, "restarted GlossaryTermApprovalWorkflow; closing superseded stranded task", null);
+      } else {
+        LOG.warn(
+            "[v200] restarted {} but no bound approval task appeared; leaving stranded task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private GlossaryTerm resolveGlossaryTermForTask(EntityReference about) {
+      GlossaryTerm term = null;
+      if (about != null) {
+        try {
+          if (about.getId() != null) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntity(
+                        Entity.GLOSSARY_TERM,
+                        about.getId(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          } else if (!nullOrEmpty(about.getFullyQualifiedName())) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntityByName(
+                        Entity.GLOSSARY_TERM,
+                        about.getFullyQualifiedName(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          }
+        } catch (EntityNotFoundException e) {
+          // Term genuinely deleted -> leave term null so the caller closes the dead task. Any other
+          // (transient) failure propagates and is caught per-task by the backfill loop, leaving the
+          // task open rather than closing a still-valid In-Review approval on a migration-time
+          // blip.
+          LOG.warn("[v200] Glossary term for approval task about {} no longer exists", about, e);
+        }
+      }
+      return term;
+    }
+
+    private boolean hasActiveApprovalSibling(String termFqn, UUID strandedTaskId) {
+      return taskRepository
+          .listNonTerminalTasksByEntityAndCategory(termFqn, TaskCategory.Approval)
+          .stream()
+          .anyMatch(t -> !t.getId().equals(strandedTaskId) && t.getWorkflowInstanceId() != null);
+    }
+
+    private boolean startGlossaryTermApprovalWorkflow(GlossaryTerm term, String updatedBy) {
+      WorkflowDefinition definition =
+          workflowDefinitionRepository.findByNameOrNull(
+              GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
+      boolean started = false;
+      if (definition != null) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            EntityUtil.buildEntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()));
+        variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), updatedBy);
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
+            term.getId().toString(),
+            variables);
+        started = true;
+      }
+      return started;
+    }
+
+    private void closeStrandedGlossaryApproval(Task task, String reasonFormat, String reasonArg) {
+      String reason = reasonArg == null ? reasonFormat : reasonFormat.formatted(reasonArg);
+      try {
+        taskRepository.closeTask(task, ADMIN_USER_NAME, "v200 migration: %s".formatted(reason));
+      } catch (Exception e) {
+        LOG.warn("[v200] Could not close stranded glossary approval task {}", task.getId(), e);
+      }
     }
 
     private boolean replayMigratedIncidentState(Task task) {

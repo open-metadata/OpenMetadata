@@ -120,7 +120,7 @@ def convert_numpy_to_list(data):
     """
     Recursively converts numpy arrays to lists in a nested data structure.
     """
-    import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    import numpy as np  # pylint: disable=import-outside-toplevel
 
     if isinstance(data, np.ndarray):
         return data.tolist()

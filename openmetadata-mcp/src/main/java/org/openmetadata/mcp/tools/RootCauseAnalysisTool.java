@@ -263,8 +263,8 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * Reduces a raw {@code EsLineageData} edge to the fields useful for reasoning. Drops {@code
    * docId}/{@code docUniqueId}/{@code fqnHash}, audit fields and the raw {@code pipeline} blob
-   * (folded into {@code relationshipType}); truncates {@code sqlQuery}; and includes column-level
-   * lineage only when explicitly requested.
+   * (folded into {@code relationshipType}); keeps {@code sqlQuery} in full, since the transformation
+   * SQL is the point of the edge; and includes column-level lineage only when explicitly requested.
    */
   @VisibleForTesting
   static Map<String, Object> slimEdge(Map<String, Object> edge, boolean includeColumns) {

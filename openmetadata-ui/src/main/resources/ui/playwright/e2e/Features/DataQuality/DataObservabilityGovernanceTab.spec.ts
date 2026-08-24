@@ -12,7 +12,6 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
@@ -27,6 +26,7 @@ import {
   isDashboardReportBatchResponse,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -97,13 +97,15 @@ test.beforeAll('setup', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
       },
     ],
   });

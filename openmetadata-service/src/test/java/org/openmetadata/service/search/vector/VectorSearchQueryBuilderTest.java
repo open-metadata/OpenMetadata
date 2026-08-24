@@ -3,17 +3,95 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class VectorSearchQueryBuilderTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID TEAM_ID = UUID.randomUUID();
+
+  private static SubjectContext nonAdminSubject() {
+    User user =
+        new User()
+            .withId(USER_ID)
+            .withName("alice")
+            .withIsAdmin(false)
+            .withTeams(
+                List.of(
+                    new EntityReference()
+                        .withId(TEAM_ID)
+                        .withType(Entity.TEAM)
+                        .withName("analytics")));
+    return new SubjectContext(user, null);
+  }
+
+  private static SubjectContext adminSubject() {
+    return new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+  }
+
+  /**
+   * The memory visibility clause, or null when none was emitted. It lives in the KNN filter bool's
+   * sibling {@code filter} array rather than in {@code must}, because a security constraint must not
+   * contribute to the relevance score.
+   */
+  private static JsonNode memoryVisibilityClause(JsonNode query) {
+    JsonNode bool = query.path("knn").path("embedding").path("filter").path("bool");
+    if (bool.isMissingNode()) {
+      bool = query.path("knn").path("filter").path("bool");
+    }
+    JsonNode filter = bool.path("filter");
+    return filter.isArray() && !filter.isEmpty() ? filter.get(0) : null;
+  }
+
+  @Test
+  void testContextMemoryScopingFiltersReachTheQuery() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of(Entity.CONTEXT_MEMORY),
+            "sourceType", List.of("FileExtraction"),
+            "visibility", List.of(MemoryVisibility.SHARED.value()));
+
+    String query =
+        VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0);
+
+    JsonNode must =
+        MAPPER
+            .readTree(query)
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
+    assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
+    boolean found = false;
+    for (JsonNode clause : mustClauses) {
+      if (value.equals(clause.path("term").path(field).asText(null))) {
+        found = true;
+        break;
+      }
+    }
+    return found;
+  }
 
   @Test
   void testBuildsValidQueryWithNoFilters() throws Exception {
@@ -244,6 +322,31 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithDataProductsFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("dataProducts", List.of("clickstream"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    // Should have 2 filters: deleted=false + dataProducts
+    assertEquals(2, mustFilters.size());
+
+    // Second filter should be a term query on dataProducts.name
+    JsonNode dataProductFilter = mustFilters.get(1);
+    assertTrue(dataProductFilter.has("term"));
+
+    JsonNode termQuery = dataProductFilter.get("term");
+    assertTrue(termQuery.has("dataProducts.name"));
+    assertEquals("clickstream", termQuery.get("dataProducts.name").asText());
+  }
+
+  @Test
   void testBuildsQueryWithMultipleFilters() throws Exception {
     float[] vector = {0.1f, 0.2f, 0.3f, 0.4f};
     int size = 20;
@@ -394,6 +497,55 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("service.name"));
     assertTrue(filtersJson.contains("service.displayName"));
     assertTrue(filtersJson.contains("my_service"));
+  }
+
+  @Test
+  void testBuildsQueryWithMetricFacetFilters() throws Exception {
+    float[] vector = {0.1f};
+    Map<String, List<String>> filters =
+        Map.of("granularity", List.of("MONTH"), "metricType", List.of("COUNT"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    JsonNode mustFilters =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("granularity"));
+    assertTrue(filtersJson.contains("MONTH"));
+    assertTrue(filtersJson.contains("metricType"));
+    assertTrue(filtersJson.contains("COUNT"));
+  }
+
+  @Test
+  void testUnitOfMeasurementFilterAlsoMatchesTheCustomUnit() throws Exception {
+    float[] vector = {0.1f};
+    // A metric whose unit is OTHER displays its customUnitOfMeasurement, so filtering by the
+    // displayed value must match; otherwise the filter silently returns nothing.
+    Map<String, List<String>> filters = Map.of("unitOfMeasurement", List.of("basis points"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    String filtersJson =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must")
+            .toString();
+    assertTrue(filtersJson.contains("unitOfMeasurement"));
+    assertTrue(filtersJson.contains("customUnitOfMeasurement"));
+    assertTrue(filtersJson.contains("basis points"));
   }
 
   @Test
@@ -945,5 +1097,97 @@ class VectorSearchQueryBuilderTest {
     assertEquals(1, osMust.size(), "Null filters should yield only the deleted=false clause");
     assertEquals(1, esMust.size(), "Null filters should yield only the deleted=false clause");
     assertEquals("{\"term\":{\"deleted\":false}}", osMust.get(0).toString());
+  }
+
+  /**
+   * The single most important test here: no integration test ever issues a vector query without a
+   * subject (every IT caller is authenticated), so this is the only guard that an anonymous or
+   * internal caller cannot reach a restricted memory.
+   */
+  @Test
+  void testAppliesFailClosedMemoryClauseWhenNoSubject() throws Exception {
+    String query = VectorSearchQueryBuilder.buildQuery(new float[] {0.1f, 0.2f}, 10, Map.of(), 0.0);
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "every vector query must carry a memory visibility clause");
+    String rendered = clause.toString();
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
+    assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
+    assertFalse(
+        rendered.contains(MemoryVisibility.PRIVATE.value()),
+        "a Private memory must never be admitted by the fail-closed clause");
+  }
+
+  @Test
+  void testWidensMemoryClauseForResolvableSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    String rendered = memoryVisibilityClause(MAPPER.readTree(query)).toString();
+    assertTrue(rendered.contains(USER_ID.toString()), "the owner branch must name the subject");
+    assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
+    assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+  }
+
+  /**
+   * A KNN query spans an alias of many indices and OpenSearch 400s the whole request if any of them
+   * does not map {@code owners} as nested, so the owner branch must set ignore_unmapped exactly as
+   * {@code QueryBuilderFactory#nestedQuery} does. Regressing this breaks search outright for every
+   * non-admin caller, which the field-set drift guard cannot see because the field names are
+   * unchanged.
+   */
+  @Test
+  void testOwnerBranchIgnoresUnmappedNestedPath() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    JsonNode nested = findNested(memoryVisibilityClause(MAPPER.readTree(query)));
+    assertNotNull(nested, "the widened clause must carry a nested owners query");
+    assertTrue(
+        nested.path("ignore_unmapped").asBoolean(false),
+        "nested owners query must set ignore_unmapped, or one unmapped index 400s the search");
+  }
+
+  private static JsonNode findNested(JsonNode node) {
+    JsonNode found = null;
+    if (node != null && node.isObject()) {
+      if (node.has("nested")) {
+        found = node.get("nested");
+      } else {
+        for (JsonNode child : node) {
+          found = findNested(child);
+          if (found != null) break;
+        }
+      }
+    } else if (node != null && node.isArray()) {
+      for (JsonNode child : node) {
+        found = findNested(child);
+        if (found != null) break;
+      }
+    }
+    return found;
+  }
+
+  @Test
+  void testOmitsMemoryClauseForAdminSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
+
+    assertNull(memoryVisibilityClause(MAPPER.readTree(query)), "admins bypass memory visibility");
+  }
+
+  /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */
+  @Test
+  void testNativeESQueryAlsoCarriesTheMemoryClause() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, 5, 0, 5, Map.of());
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "the ES query path must enforce memory visibility too");
+    assertTrue(clause.toString().contains(MemoryVisibility.ENTITY.value()));
   }
 }

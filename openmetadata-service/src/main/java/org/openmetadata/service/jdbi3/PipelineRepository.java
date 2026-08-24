@@ -91,6 +91,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -468,7 +469,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     .bind("entityFQNHash", entityFQNHash)
                     .bind("extension", PIPELINE_STATUS_EXTENSION)
                     .bind("jsonSchema", "pipelineStatus")
-                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .bind(
+                        "json",
+                        JsonStorageUtils.sanitizeNulCharacters(
+                            JsonUtils.pojoToJson(pipelineStatus)))
                     .add();
               }
               batch.execute();
@@ -1585,14 +1589,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Build filter strings for database query
     String serviceFilterSql = buildServiceFilter(service);
 
-    // Build database-specific serviceType filters
-    String mysqlServiceTypeFilter =
-        serviceType != null
-            ? "AND JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = '" + serviceType + "'"
-            : "";
-    String postgresServiceTypeFilter =
-        serviceType != null ? "AND pe.json->>'serviceType' = '" + serviceType + "'" : "";
-
     String domainFilterSql =
         domainId != null
             ? "AND pe.id IN (SELECT toId FROM entity_relationship WHERE fromId = '"
@@ -1733,8 +1729,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .entityExtensionTimeSeriesDao()
             .listPipelineSummariesFiltered(
                 serviceFilterSql,
-                mysqlServiceTypeFilter,
-                postgresServiceTypeFilter,
+                serviceType,
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,
@@ -1750,8 +1745,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .entityExtensionTimeSeriesDao()
             .countPipelineSummariesFiltered(
                 serviceFilterSql,
-                mysqlServiceTypeFilter,
-                postgresServiceTypeFilter,
+                serviceType,
                 domainFilterSql,
                 ownerFilterSql,
                 tierFilterSql,

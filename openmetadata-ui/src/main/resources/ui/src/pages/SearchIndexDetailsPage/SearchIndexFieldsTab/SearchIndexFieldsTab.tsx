@@ -12,9 +12,8 @@
  */
 
 import { lazy, useCallback, useMemo } from 'react';
-import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
-} from '../../../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../../../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import {
   SearchIndex,
@@ -25,7 +24,7 @@ import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
 
 const SearchIndexFieldsTable = withSuspenseFallback(
   lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable')),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 function SearchIndexFieldsTab() {

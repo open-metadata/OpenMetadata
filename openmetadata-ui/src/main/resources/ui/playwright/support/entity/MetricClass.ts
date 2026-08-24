@@ -12,6 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -31,6 +36,18 @@ export class MetricClass extends EntityClass {
     metricType: string;
     displayName: string;
     unitOfMeasurement: string;
+    dimensions?: {
+      name: string;
+      type: string;
+      expression: string;
+      description: string;
+    }[];
+    measures?: {
+      name: string;
+      aggregation: string;
+      expression: string;
+      description: string;
+    }[];
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
@@ -51,20 +68,43 @@ export class MetricClass extends EntityClass {
       metricType: 'SUM',
       displayName: this.metricName,
       unitOfMeasurement: 'DOLLARS',
+      dimensions: [
+        {
+          name: 'order_date',
+          type: 'TIME',
+          expression: "DATE_TRUNC('day', o.created_at)",
+          description: 'Day the order was placed.',
+        },
+        {
+          name: 'region',
+          type: 'CATEGORICAL',
+          expression: 'c.region',
+          description: 'Customer billing region.',
+        },
+      ],
+      measures: [
+        {
+          name: 'engagements',
+          aggregation: 'SUM',
+          expression: 'likes + comments + shares',
+          description: 'Total interactions across all engagement types.',
+        },
+      ],
     };
 
     this.type = 'Metric';
   }
 
   async create(apiContext: APIRequestContext) {
-    const entityResponse = await apiContext.post('/api/v1/metrics', {
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'MetricClass.create',
+      createPath: '/api/v1/metrics',
+      fqnSegments: [this.entity.name],
       data: this.entity,
     });
 
-    this.entityResponseData = await entityResponse.json();
-
     return {
-      entity: entityResponse.body,
+      entity: this.entityResponseData,
     };
   }
 
@@ -85,17 +125,19 @@ export class MetricClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/metrics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'MetricClass.patch');
 
     return {
       entity: this.entityResponseData,

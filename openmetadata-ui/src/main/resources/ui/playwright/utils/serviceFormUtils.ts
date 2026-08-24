@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { startCase } from 'lodash';
+import { COLLATE_SAAS_RUNNER } from '../constant/serviceForm';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
 
 const escapeRegExp = (value: string) =>
@@ -46,23 +47,23 @@ export const selectOneOfOption = async (
   const selectWidget = page.getByTestId(selectTestId);
 
   if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
-    const combobox = selectWidget.getByRole('combobox');
+    // The testid sits on the react-aria Select wrapper. Click the wrapper (not
+    // the visually hidden native `combobox` it renders for form submission —
+    // clicking that never opens the listbox) so the popover opens.
+    await selectWidget.click();
 
-    if (await combobox.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await combobox.click({
-        // eslint-disable-next-line playwright/no-force-option -- some oneOf selectors are partially covered by the field wrapper
-        force: true,
-      });
-    } else {
-      await selectWidget.click();
-    }
+    const popoverOption = page
+      .locator('.core-one-of-field-select-popover:visible')
+      .getByRole('option', { name: optionName })
+      .first();
+    const anyOption = page.getByRole('option', { name: optionName }).first();
 
-    const option = page.getByRole('option', { name: optionName });
+    for (const option of [popoverOption, anyOption]) {
+      if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await option.click();
 
-    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await option.click();
-
-      return;
+        return;
+      }
     }
 
     await page
@@ -76,6 +77,26 @@ export const selectOneOfOption = async (
   throw new Error(
     `Unable to select oneOf option "${optionName}" for field "${fieldId}"`
   );
+};
+
+export const selectIngestionRunnerFromDropdown = async (
+  page: Page,
+  runnerDisplayName: string
+) => {
+  // Select the ingestion runner if the selector is visible. The runner control
+  // migrated from an antd Select to a react-aria Select — clicking the trigger
+  // opens a role="listbox" of runner options instead of an `.ant-select-dropdown`.
+  const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
+
+  if (await runnerSelector.isVisible()) {
+    await runnerSelector.click();
+
+    const runnerOption = page.getByRole('option').getByText(runnerDisplayName);
+    await runnerOption.waitFor({ state: 'visible' });
+    await runnerOption.click();
+
+    await expect(runnerSelector).toContainText(runnerDisplayName);
+  }
 };
 
 export const fillSupersetFormDetails = async ({
@@ -155,21 +176,5 @@ export const fillSupersetFormDetails = async ({
       { force: true } // eslint-disable-line playwright/no-force-option -- form field overlay covers input
     );
   }
-
-  // Select the ingestion runner if the selector is visible. The runner control
-  // migrated from an antd Select to a react-aria Select — clicking the trigger
-  // opens a role="listbox" of runner options instead of an `.ant-select-dropdown`.
-  const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
-
-  if (await runnerSelector.isVisible()) {
-    await runnerSelector.click();
-
-    const runnerOption = page
-      .getByRole('option', { name: /Collate SaaS/i })
-      .first();
-    await runnerOption.waitFor({ state: 'visible' });
-    await runnerOption.click();
-
-    await expect(runnerSelector).toContainText('Collate SaaS');
-  }
+  await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 };

@@ -33,7 +33,7 @@ permissions:
 
 concurrency:
   group: maven-sonar-build-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 jobs:
   maven-sonarcloud-ci:
     runs-on: ubuntu-latest
@@ -84,6 +84,18 @@ jobs:
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
+
+      - name: Restore openmetadata-ui dist cache
+        # Skip cache on fork-PR-via-pull_request_target: that combination
+        # runs base-branch privileged with untrusted checked-out code, so a
+        # cache save would poison the default-branch cache scope (CodeQL
+        # `actions/actions/cache-poisoning`). The same guard lives inside
+        # the composite action as defence in depth, but CodeQL is a static
+        # analyser and needs to see it here at the workflow level.
+        if: >-
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
 
       - name: Build with Maven
         env:

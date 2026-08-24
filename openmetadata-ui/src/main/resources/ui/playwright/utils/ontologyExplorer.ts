@@ -15,7 +15,8 @@ import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
+import { createAdminApiContext } from '../utils/admin';
+import { redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
@@ -159,31 +160,46 @@ export function buildMalformedRdfGraphJson(
   };
 }
 
-export async function createApiContext(browser: Browser) {
-  const page = await browser.newPage({
-    storageState: 'playwright/.auth/admin.json',
-  });
-  await redirectToHomePage(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
+// Creates a fresh admin API context for suite-level setup and teardown.
+// Using createAdminApiContext (instead of a full browser page) avoids opening
+// an extra WebSocket-connected admin session, which would cause the backend's
+// entity-deleted broadcasts to appear as toasts on every other parallel worker's
+// admin page. Each suite gets its own owned context; afterAction disposes it —
+// the worker-shared context is never touched.
+export async function createApiContext(_browser: Browser) {
+  const { apiContext, afterAction } = await createAdminApiContext();
 
-  return { page, apiContext };
+  return { apiContext, afterAction };
 }
 
 export async function disposeApiContext(
-  page: Page,
+  afterActionOrPage: (() => Promise<void>) | Page,
   apiContext: APIRequestContext
 ) {
-  await apiContext.dispose();
-  await page.close();
+  if (typeof afterActionOrPage === 'function') {
+    // afterAction from createAdminApiContext already disposes apiContext and the
+    // login context — do not call apiContext.dispose() separately here.
+    await afterActionOrPage();
+  } else {
+    await apiContext.dispose();
+    await afterActionOrPage.close();
+  }
+}
+
+export function defined<T>(val: T | undefined, name: string): T {
+  if (val === undefined) {
+    throw new Error(`${name} is undefined — beforeEach may not have completed`);
+  }
+
+  return val;
 }
 
 export async function deleteEntities(
   apiContext: APIRequestContext,
-  ...entities: Array<Glossary | GlossaryTerm>
+  ...entities: Array<Glossary | GlossaryTerm | undefined>
 ) {
   for (const entity of entities) {
-    if (entity.responseData?.id) {
+    if (entity?.responseData?.id) {
       await entity.delete(apiContext);
     }
   }
@@ -404,6 +420,53 @@ export async function addRelationTypeWithCardinality(
 
   throw new Error(
     `addRelationTypeWithCardinality: failed to add "${relationType.name}" after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
+  );
+}
+
+// Batch variant: adds ALL supplied relation types in a single read-modify-write.
+// Use this instead of multiple sequential addRelationTypeWithCardinality calls so
+// that parallel workers only have ONE conflict window to race on rather than N.
+// The retry loop re-reads fresh each time, so a concurrent writer that removes
+// one of our types will cause the verification to fail and the loop to re-add it.
+export async function addRelationTypesWithCardinality(
+  apiContext: APIRequestContext,
+  relationTypes: Array<{
+    name: string;
+    displayName: string;
+    cardinality: string;
+    sourceMax?: number | null;
+    targetMax?: number | null;
+  }>
+): Promise<void> {
+  const names = relationTypes.map((rt) => rt.name);
+
+  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
+    const existing = await getRelationTypes(apiContext);
+    const existingNames = new Set(existing.map((rt) => rt.name));
+    const toAdd = relationTypes.filter((rt) => !existingNames.has(rt.name));
+
+    if (toAdd.length === 0) {
+      return;
+    }
+
+    const res = await putRelationTypes(apiContext, [
+      ...existing,
+      ...toAdd.map(buildRelationTypeEntry),
+    ]);
+
+    if (res.ok()) {
+      const updated = await getRelationTypes(apiContext);
+      const updatedNames = new Set(updated.map((rt) => rt.name));
+      if (names.every((n) => updatedNames.has(n))) {
+        return;
+      }
+    }
+
+    await backoffBeforeRetry(attempt);
+  }
+
+  throw new Error(
+    `addRelationTypesWithCardinality: failed to confirm all types after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
   );
 }
 

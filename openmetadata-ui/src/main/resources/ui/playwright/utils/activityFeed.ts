@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { descriptionBox, removeLandingBanner } from './common';
+import { descriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -88,10 +88,28 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page, feedNumber: number) => {
-  // Ensure at least one message exists; the caller usually checks, but we guard here
-  const message = getNthFeedMessage(page, Math.max(0, feedNumber - 1));
+/**
+ * Reactions are served by two different endpoints depending on what the card is:
+ * legacy conversation threads use `/api/v1/feed/{id}`, activity events use
+ * `PUT /api/v1/activity/{id}/reaction/{type}`. Matching only the feed one made
+ * `reactOnFeed` hang for 60s against the landing-page widget, which renders
+ * activity events.
+ */
+export const waitForReactionResponse = (page: Page, reaction: string) =>
+  page.waitForResponse(
+    (response) =>
+      (response.url().includes('/api/v1/activity') ||
+        response.url().includes('/api/v1/feed')) &&
+      response.url().includes(`/reaction/${reaction}`) &&
+      response.ok()
+  );
 
+/**
+ * Cycles every reaction on a specific card. Callers that react twice (add, then
+ * toggle off) must pass the same `Locator` both times — the list re-renders
+ * between calls, so an index would not resolve to the same card.
+ */
+export const reactOnFeedCard = async (page: Page, message: Locator) => {
   await expect(message).toBeVisible();
 
   for (const reaction of FEED_REACTIONS) {
@@ -107,12 +125,19 @@ export const reactOnFeed = async (page: Page, feedNumber: number) => {
       .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
       .waitFor({ state: 'visible' });
 
-    const waitForReactionResponse = page.waitForResponse('/api/v1/feed/*');
+    const reactionResponse = waitForReactionResponse(page, reaction);
     await page
       .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
       .click();
-    await waitForReactionResponse;
+    await reactionResponse;
   }
+};
+
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
+  await reactOnFeedCard(
+    page,
+    getNthFeedMessage(page, Math.max(0, feedNumber - 1))
+  );
 };
 
 export const addMentionCommentInFeed = async (
@@ -124,7 +149,6 @@ export const addMentionCommentInFeed = async (
     const fetchFeedResponse = page.waitForResponse(
       '/api/v1/feed?type=Conversation*'
     );
-    await removeLandingBanner(page);
     await fetchFeedResponse;
   }
 
@@ -252,28 +276,4 @@ export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
   ]).catch(() => {
     // Neither appeared within timeout, which may be acceptable
   });
-};
-
-/**
- * Post a comment on an activity event
- */
-export const postActivityComment = async (page: Page, commentText: string) => {
-  const commentInput = page.locator('[data-testid="comments-input-field"]');
-
-  await expect(commentInput).toBeVisible();
-  await commentInput.click();
-
-  const editorField = page.locator('[data-testid="editor-wrapper"] .ql-editor');
-  await editorField.fill(commentText);
-
-  const sendButton = page.getByTestId('send-button');
-
-  await expect(sendButton).toBeEnabled();
-
-  const postResponse = page.waitForResponse('/api/v1/feed/*/posts');
-  await sendButton.click();
-  await postResponse;
-
-  // Verify comment appears
-  await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
 };
