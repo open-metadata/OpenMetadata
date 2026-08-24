@@ -20,12 +20,12 @@ import traceback
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union  # noqa: UP035
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.pii.algorithms.preprocessing import MAX_NLP_TEXT_LENGTH
-from metadata.pii.algorithms.presidio_utils import _load_spacy_model
-from metadata.pii.constants import PII, SPACY_EN_MODEL
+from metadata.pii.algorithms.presidio_utils import build_analyzer_engine
+from metadata.pii.constants import PII
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
 from metadata.pii.scanners.base import BaseScanner
@@ -46,32 +46,17 @@ class StringAnalysis(BaseModel):
     appearances: int
 
 
-class NLPEngineModel(BaseModel):
-    """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
-
-    model_config = ConfigDict(protected_namespaces=())
-    lang_code: str
-    model_name: str
-
-
 # pylint: disable=import-outside-toplevel
 class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        from presidio_analyzer import AnalyzerEngine
-        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
-
-        _load_spacy_model(SPACY_EN_MODEL)
-
-        nlp_engine_model = NLPEngineModel(lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL)
-
         # Set the presidio logger to talk less about internal entities unless we are debugging
         logging.getLogger(PRESIDIO_LOGGER).setLevel(
             logging.INFO if logging.getLogger(METADATA_LOGGER).level == logging.DEBUG else logging.ERROR
         )
 
-        self.analyzer = AnalyzerEngine(nlp_engine=SpacyNlpEngine(models=[nlp_engine_model.model_dump()]))
+        self.analyzer = build_analyzer_engine()
 
     @staticmethod
     def get_highest_score_label(entities_score: Dict[str, StringAnalysis]) -> Tuple[str, float]:  # noqa: UP006
