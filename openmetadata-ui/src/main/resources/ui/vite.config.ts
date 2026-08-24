@@ -237,6 +237,15 @@ export default defineConfig(async ({ mode }) => {
         ),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
+      // Resolve dependencies through their node_modules-relative path rather
+      // than following symlinks out of the project root. Two setups need this:
+      // (1) `@openmetadata/ui-core-components` is a yarn `link:` — preserving
+      // symlinks makes it resolve React (and other peers) from THIS app's
+      // node_modules, not a second copy under the linked source; (2) worktree
+      // dev setups where `node_modules` itself is symlinked (e.g. Conductor)
+      // otherwise serve deps like `react-hook-form` raw via `@fs` outside root,
+      // giving them a second React instance → "Invalid hook call" on mount.
+      preserveSymlinks: true,
       dedupe: [
         'react',
         'react-dom',
