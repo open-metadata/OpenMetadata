@@ -340,3 +340,26 @@ class GlueUnitTest(TestCase):
         assert ["default", "foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
         assert len(source.status.warnings) == 1
         assert "more than one catalog" in str(source.status.warnings[0])
+
+    def test_tables_are_read_from_the_schema_own_catalog(self):
+        """A schema from another catalog must not have its tables read from the caller's."""
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                    ]
+                )
+            ]
+        )
+        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+
+        paginator = Mock()
+        paginator.paginate.return_value = [mock_data.get("mock_table_paginator")]
+        source.glue = Mock()
+        source.glue.get_paginator.return_value = paginator
+        source.context.get().__dict__["database_schema"] = "foreign_schema"
+
+        list(source._get_glue_tables())
+
+        paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")

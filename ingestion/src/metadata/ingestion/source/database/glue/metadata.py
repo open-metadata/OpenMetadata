@@ -96,6 +96,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}
+        self.schema_catalog_id_map = {}
         self.external_location_map = {}
         with close_on_failure(self._connection):
             self.test_connection()
@@ -117,7 +118,13 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
     def _get_glue_tables(self):
         schema_name = self.context.get().database_schema
         paginator = self.glue.get_paginator("get_tables")
-        paginator_response = paginator.paginate(DatabaseName=schema_name)
+        # Name the schema's own catalog. Defaulting to the caller's catalog reads the
+        # wrong tables, or none, for a schema that came from another one.
+        paginate_args = {"DatabaseName": schema_name}
+        catalog_id = self.schema_catalog_id_map.get(schema_name)
+        if catalog_id:
+            paginate_args["CatalogId"] = catalog_id
+        paginator_response = paginator.paginate(**paginate_args)
         for page in paginator_response:
             yield TablePage(**page)
 
@@ -212,6 +219,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         continue
                     if schema.Description:
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
+                    if schema.CatalogId:
+                        self.schema_catalog_id_map[schema.Name] = schema.CatalogId
                     catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:
