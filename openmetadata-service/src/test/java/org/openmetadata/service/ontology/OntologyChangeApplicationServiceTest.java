@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -39,6 +40,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -152,7 +154,12 @@ class OntologyChangeApplicationServiceTest {
     assertFalse(transaction.isActive());
     verify(executor, never()).execute(uriInfo, USER, later);
     verify(eventPublisher, never()).publish(any(), any(), any());
-    verify(cacheInvalidator).invalidate(appliedEntity);
+    final InOrder failureOrder = inOrder(repository, cacheInvalidator);
+    failureOrder
+        .verify(repository)
+        .transition(
+            any(), eq(USER), eq(changeSetId), eq(OntologyChangeSetState.APPLY_FAILED), any());
+    failureOrder.verify(cacheInvalidator).invalidate(appliedEntity);
   }
 
   @Test

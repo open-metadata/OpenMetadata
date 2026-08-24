@@ -103,10 +103,22 @@ public final class OntologyChangeApplicationService {
     try {
       response = transaction.execute(() -> applyAtomically(execution, operations));
     } catch (OperationApplicationException failure) {
-      invalidateMutationCaches(execution);
-      response = recordFailure(execution, operations, failure);
+      response = recordFailureAndInvalidateCaches(execution, operations, failure);
     }
     if (response.getEntity().getState() == OntologyChangeSetState.APPLIED) {
+      invalidateMutationCaches(execution);
+    }
+    return response;
+  }
+
+  private PutResponse<OntologyChangeSet> recordFailureAndInvalidateCaches(
+      final ApplicationExecution execution,
+      final List<OntologyChangeOperation> operations,
+      final OperationApplicationException failure) {
+    PutResponse<OntologyChangeSet> response;
+    try {
+      response = recordFailure(execution, operations, failure);
+    } finally {
       invalidateMutationCaches(execution);
     }
     return response;
