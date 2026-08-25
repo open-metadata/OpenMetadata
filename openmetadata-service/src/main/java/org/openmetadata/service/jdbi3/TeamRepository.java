@@ -348,8 +348,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<String> nonOrgTeamIds = new ArrayList<>();
     for (Team team : teams) {
       if (isOrganizationTeam(team)) {
-        team.setChildrenCount(
-            daoCollection.teamDAO().listTeamsUnderOrganization(team.getId()).size());
+        team.setChildrenCount(getLiveOrganizationChildIds(team.getId()).size());
       } else {
         nonOrgTeamIds.add(team.getId().toString());
       }
@@ -404,15 +403,7 @@ public class TeamRepository extends EntityRepository<Team> {
     List<String> nonOrgIds = new ArrayList<>();
     for (UUID teamId : teamIds) {
       if (organization != null && teamId.equals(organization.getId())) {
-        List<UUID> orgChildren =
-            EntityUtil.strToIds(daoCollection.teamDAO().listTeamsUnderOrganization(teamId));
-        List<UUID> liveOrgChildren =
-            nullOrEmpty(orgChildren)
-                ? List.of()
-                : Entity.getEntityReferencesByIds(TEAM, orgChildren, NON_DELETED).stream()
-                    .map(EntityReference::getId)
-                    .toList();
-        result.put(teamId, liveOrgChildren);
+        result.put(teamId, getLiveOrganizationChildIds(teamId));
       } else {
         nonOrgIds.add(teamId.toString());
       }
@@ -971,6 +962,26 @@ public class TeamRepository extends EntityRepository<Team> {
     return getChildren(team.getId(), include);
   }
 
+  /**
+   * Parentless teams are the organization's children. {@code listTeamsUnderOrganization} returns raw
+   * ids without applying the {@code deleted} flag, so resolve them through the requested {@link
+   * Include} to stay consistent with the PARENT_OF path, which gets that filtering from {@code
+   * findTo}.
+   */
+  private List<EntityReference> getOrganizationChildren(UUID organizationId, Include include) {
+    List<UUID> childIds =
+        EntityUtil.strToIds(daoCollection.teamDAO().listTeamsUnderOrganization(organizationId));
+    return nullOrEmpty(childIds)
+        ? List.of()
+        : Entity.getEntityReferencesByIds(TEAM, childIds, include);
+  }
+
+  private List<UUID> getLiveOrganizationChildIds(UUID organizationId) {
+    return getOrganizationChildren(organizationId, NON_DELETED).stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
   protected List<EntityReference> getChildren(UUID teamId) {
     return getChildren(teamId, NON_DELETED);
   }
@@ -978,8 +989,7 @@ public class TeamRepository extends EntityRepository<Team> {
   protected List<EntityReference> getChildren(UUID teamId, Include include) {
     if (teamId.equals(
         organization.getId())) { // For organization all the parentless teams are children
-      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
-      return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
+      return getOrganizationChildren(teamId, include);
     }
     return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM, include);
   }

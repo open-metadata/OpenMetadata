@@ -1162,6 +1162,37 @@ public interface ClassificationTagDAOs {
     @SqlQuery("SELECT COUNT(*) FROM tag_usage")
     long getTotalTagUsageCount();
 
+    // Keyset pagination over the unique (source, tagFQNHash, targetFQNHash) key. The expanded
+    // OR form is required on MySQL — its optimizer turns it into an index range seek, whereas a
+    // row-constructor comparison scans the whole index from the start (verified via
+    // Handler_read_next). Postgres seeks optimally with the row-constructor (Index Only Scan).
+    // The tagFQNHash/targetFQNHash columns are nullable, and comparing a cursor against a NULL hash
+    // yields UNKNOWN — which would silently terminate the scan and skip the remaining rows once the
+    // cursor lands on a NULL-hash row (MySQL sorts NULLs first, so this is reachable early).
+    // Excluding
+    // NULL hashes here keeps the cursor on real keys (preserving the index seek) and makes both
+    // engine
+    // forms scan an identical row set regardless of their differing NULL ordering; the rare
+    // malformed
+    // NULL-hash rows are swept separately via getTagUsagesWithNullHash.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
+                + "FROM tag_usage "
+                + "WHERE (source > :lastSource "
+                + "OR (source = :lastSource AND tagFQNHash > :lastTagFQNHash) "
+                + "OR (source = :lastSource AND tagFQNHash = :lastTagFQNHash AND targetFQNHash > :lastTargetFQNHash)) "
+                + "AND tagFQNHash IS NOT NULL AND targetFQNHash IS NOT NULL "
+                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
+                + "FROM tag_usage "
+                + "WHERE (source, tagFQNHash, targetFQNHash) > (:lastSource, :lastTagFQNHash, :lastTargetFQNHash) "
+                + "AND tagFQNHash IS NOT NULL AND targetFQNHash IS NOT NULL "
+                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getTagUsagesAfter(
         @Bind("lastSource") int lastSource,
