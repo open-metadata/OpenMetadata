@@ -19,7 +19,6 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseList, UseTestCaseListProps } from './useTestCaseList';
 
@@ -127,19 +126,16 @@ describe('useTestCaseList', () => {
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(lastPayload().q).toBe('*orders*');
+    expect(lastPayload().q).toBe('orders');
   });
 
-  it('should escape query_string reserved characters in searchValue so a URL does not break the shard query', async () => {
+  it('should send a reserved-character term verbatim, since the server parses q as literal text', async () => {
     const url = 'https://example.com/data-quality/test-case-results';
     renderList({ searchValue: url });
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(lastPayload().q).toBe(`*${escapeESReservedCharacters(url)}*`);
-    expect(lastPayload().q).toContain(String.raw`\:`);
-    expect(lastPayload().q).toContain(String.raw`\/`);
-    expect(lastPayload().q).not.toMatch(/[^\\][:/]/);
+    expect(lastPayload().q).toBe(url);
   });
 
   it('should pass a non-empty testCaseStatus through as-is', async () => {
