@@ -104,7 +104,7 @@ describe('Tooltip — child wrapping', () => {
 
   it('passes triggerIsDisabled to the wrapper button', () => {
     render(
-      <Tooltip isOpen title="tip" triggerIsDisabled triggerClassName="">
+      <Tooltip isOpen triggerIsDisabled title="tip" triggerClassName="">
         <span>trigger</span>
       </Tooltip>
     );

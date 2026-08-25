@@ -141,17 +141,21 @@ export const Tooltip = ({
   // Providing triggerClassName or onTriggerPress is an explicit signal to wrap
   // even React component children (e.g. icon components).
   const shouldWrap = (() => {
-    if (triggerClassName !== undefined || onTriggerPress !== undefined)
+    if (triggerClassName !== undefined || onTriggerPress !== undefined) {
       return true;
-    if (!isValidElement(children)) return false;
+    }
+    if (!isValidElement(children)) {
+      return false;
+    }
     const type = children.type;
+
     return typeof type === 'string' && !NATIVELY_FOCUSABLE_HTML.has(type);
   })();
 
   const trigger_ = shouldWrap ? (
     <AriaButton
-      isDisabled={triggerIsDisabled}
       className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
+      isDisabled={triggerIsDisabled}
       onPress={onTriggerPress}>
       {children}
     </AriaButton>
