@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.jdbi3.SystemRepository.ReindexStatus;
 import org.openmetadata.service.jdbi3.SystemRepository.SearchReindexStatus;
@@ -109,31 +110,34 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
-  void degradedClusterFailsEvenWhenNoReindexNeeded() {
+  void degradedClusterFailsStepEvenWhenNoReindexNeeded() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), false, true);
-    assertFalse(status.passed());
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertFalse(step.getPassed());
+    assertTrue(step.getMessage().toLowerCase().contains("degraded"));
   }
 
   @Test
-  void cleanUpToDateHealthyClusterPasses() {
+  void cleanUpToDateHealthyClusterPassesStep() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
-    assertTrue(status.passed());
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertTrue(step.getPassed());
   }
 
   @Test
-  void reindexNeededFailsEvenWhenClusterHealthy() {
+  void reindexNeededFailsStepEvenWhenClusterHealthy() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of("dashboard"), 0, List.of(), List.of(), true, true);
-    assertFalse(status.passed());
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
   }
 
   @Test
-  void driftComputeFailureFailsEvenWhenClusterHealthy() {
+  void driftComputeFailureFailsStepEvenWhenClusterHealthy() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
-    assertFalse(status.passed());
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
   }
 
   @Test
