@@ -7,6 +7,7 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -44,9 +45,15 @@ import org.openmetadata.service.util.RestUtil;
  * patch path rather than a second write path — the same {@code OperationContext} authorisation, the
  * same {@code repository.patch}, the same {@code changeDescription} and version bump.
  *
- * <p>Array fields take an explicit mode. {@code set} replaces, {@code add} unions, {@code remove}
- * subtracts. Without that, "update the owners" is ambiguous between replace and append, and the
- * destructive reading is the one that silently loses data.
+ * <p>Array fields take a mode: {@code add} unions (the default), {@code set} replaces, {@code
+ * remove} subtracts. Without that, "update the owners" is ambiguous between replace and append.
+ *
+ * <p><b>The default is {@code add}, not {@code set}, and that is the whole point.</b> An entity's
+ * {@code tags} array holds more than the classification tags this tool writes: the tier label lives
+ * there (the search index derives {@code tier} from it), and so do glossary terms, which {@link
+ * CommonUtils#buildTagLabels} cannot even construct. A {@code set} default therefore meant {@code
+ * tags: ["PII.Sensitive"]} - the ordinary way to add one tag - deleted the asset's tier and every
+ * glossary term, and returned success. Replacing a list is now something a caller asks for by name.
  */
 @Slf4j
 public class UpdateEntityTool implements McpTool {
@@ -57,6 +64,9 @@ public class UpdateEntityTool implements McpTool {
   private static final String MODE_APPEND = "append";
 
   private static final String FIELDS = "owners,tags,domains";
+
+  private static final List<String> ARRAY_MODES = List.of(MODE_ADD, MODE_SET, MODE_REMOVE);
+  private static final List<String> DESCRIPTION_MODES = List.of(MODE_SET, MODE_APPEND);
 
   @Override
   public Map<String, Object> execute(
@@ -89,9 +99,30 @@ public class UpdateEntityTool implements McpTool {
   private static void requireChange(JsonPatch jsonPatch) {
     if (jsonPatch.toJsonArray().isEmpty()) {
       throw new IllegalArgumentException(
-          "No changes to apply. Supply at least one of: description, displayName, owners, tags, "
-              + "tier. If you passed one, its value already matches what is stored.");
+          "No changes to apply. Supply at least one of: description, displayName, owners, tags."
+              + " If you passed one, its value already matches what is stored. To set a tier, pass"
+              + " it as a tag, e.g. tags: [\"Tier.Tier1\"] with tagsMode: \"add\".");
     }
+  }
+
+  /**
+   * Reads a mode and rejects anything outside the documented set.
+   *
+   * <p>The merge helpers below start from {@code requested} and only deviate for {@code add} and
+   * {@code remove}, so an unrecognised mode used to mean <em>replace</em> - silently, and reported
+   * as success. The likeliest wrong guess is built into this tool's own vocabulary: descriptions
+   * take {@code append} while arrays take {@code add}, so {@code ownersMode: "append"} is a natural
+   * thing for a model to write, and it replaced the owner list.
+   */
+  private static String mode(
+      Map<String, Object> params, String key, String fallback, List<String> allowed) {
+    String requested = McpParams.getString(params, key, fallback).toLowerCase(Locale.ROOT);
+    if (!allowed.contains(requested)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parameter '%s' must be one of %s. Received: '%s'.", key, allowed, requested));
+    }
+    return requested;
   }
 
   @VisibleForTesting
@@ -109,7 +140,7 @@ public class UpdateEntityTool implements McpTool {
   private static void applyDescription(EntityInterface entity, Map<String, Object> params) {
     Object description = params.get("description");
     if (description != null) {
-      String mode = McpParams.getString(params, "descriptionMode", MODE_SET);
+      String mode = mode(params, "descriptionMode", MODE_SET, DESCRIPTION_MODES);
       String existing = entity.getDescription();
       boolean appending = MODE_APPEND.equalsIgnoreCase(mode) && !nullOrEmpty(existing);
       entity.setDescription(appending ? existing + "\n\n" + description : description.toString());
@@ -126,8 +157,8 @@ public class UpdateEntityTool implements McpTool {
   private static void applyOwners(EntityInterface entity, Map<String, Object> params) {
     Object owners = params.get("owners");
     if (owners != null) {
-      List<EntityReference> requested = CommonUtils.getTeamsOrUsers(owners);
-      String mode = McpParams.getString(params, "ownersMode", MODE_SET);
+      List<EntityReference> requested = CommonUtils.requireTeamsOrUsers(owners, "owners");
+      String mode = mode(params, "ownersMode", MODE_ADD, ARRAY_MODES);
       entity.setOwners(mergeOwners(entity.getOwners(), requested, mode));
     }
   }
@@ -147,7 +178,7 @@ public class UpdateEntityTool implements McpTool {
     Object tags = params.get("tags");
     if (tags != null) {
       List<TagLabel> requested = CommonUtils.buildTagLabels(tags);
-      String mode = McpParams.getString(params, "tagsMode", MODE_SET);
+      String mode = mode(params, "tagsMode", MODE_ADD, ARRAY_MODES);
       entity.setTags(mergeTags(entity.getTags(), requested, mode));
     }
   }

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -62,6 +64,47 @@ public class CommonUtils {
       }
     }
     return teamsOrUsers;
+  }
+
+  /**
+   * Resolves owner names and fails on any that do not resolve, instead of dropping them.
+   *
+   * <p>{@link #getTeamsOrUsers} returns only what it could resolve and says nothing about the rest -
+   * {@code findByNameOrNull} returning null is not an exception, so the {@code catch} never fires
+   * and nothing is logged. That is survivable for {@code create_*}, which guards with {@code
+   * if (!owners.isEmpty())}, but it is data loss for an update: one misspelled name resolves to an
+   * empty list, a {@code set} writes it, and every existing owner is deleted with a success
+   * response. The tool description promises the opposite, so this makes the promise true.
+   *
+   * @param owners the raw {@code owners} parameter, a string or list of strings
+   * @param paramName the parameter name to quote in the error
+   */
+  public static List<EntityReference> requireTeamsOrUsers(Object owners, String paramName) {
+    List<String> requested =
+        JsonUtils.readOrConvertValues(owners, String.class).stream().distinct().toList();
+    List<EntityReference> resolved = getTeamsOrUsers(owners);
+    Set<String> found =
+        resolved.stream().map(ref -> comparableName(ref.getName())).collect(Collectors.toSet());
+    List<String> missing =
+        requested.stream().filter(name -> !found.contains(comparableName(name))).toList();
+    if (!missing.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parameter '%s': no user or team found for %s. Nothing was changed. Look the name up"
+                  + " with search_metadata (entityType='user' or 'team') and use the 'name' it"
+                  + " returns.",
+              paramName, missing));
+    }
+    return resolved;
+  }
+
+  /** Owner names are compared case-insensitively and unquoted, so {@code "a.b"} matches {@code a.b}. */
+  private static String comparableName(String name) {
+    String result = name == null ? "" : name.trim();
+    if (result.length() > 1 && result.charAt(0) == '"' && result.endsWith("\"")) {
+      result = result.substring(1, result.length() - 1);
+    }
+    return result.toLowerCase(Locale.ROOT);
   }
 
   /**

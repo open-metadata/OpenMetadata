@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -30,7 +31,7 @@ class UpdateEntityMergeTest {
   }
 
   @Test
-  void tagsSetReplacesTheWholeList() {
+  void tagsSetIsStillAReplaceWhenItIsAskedForByName() {
     Table table = tableWith("d", "PII.Sensitive", "Tier.Tier1");
 
     apply(table, Map.of("tags", List.of("Tier.Tier2"), "tagsMode", "set"));
@@ -60,15 +61,44 @@ class UpdateEntityMergeTest {
   }
 
   @Test
-  void tagsDefaultToSetWhenNoModeIsGiven() {
-    Table table = tableWith("d", "PII.Sensitive");
+  void tagsDefaultToAddSoTierAndGlossaryTermsSurvive() {
+    Table table = tableWith("d", "PII.Sensitive", "Tier.Tier1", "Finance.Revenue");
 
-    apply(table, Map.of("tags", List.of("Tier.Tier1")));
+    apply(table, Map.of("tags", List.of("PII.Confidential")));
 
     assertEquals(
-        List.of("Tier.Tier1"),
+        List.of("PII.Sensitive", "Tier.Tier1", "Finance.Revenue", "PII.Confidential"),
         tagFqnsOf(table),
-        "the default must match what the schema documents, or callers lose tags they never named");
+        "adding one tag must not delete the tier or the glossary terms: they live in the same tags "
+            + "array, this tool cannot restate a glossary term at all, and a 'set' default made "
+            + "tags:['PII.Sensitive'] - the ordinary way to add a tag - destroy both and report "
+            + "success");
+  }
+
+  @Test
+  void anUnrecognisedArrayModeIsRejectedRatherThanTreatedAsAReplace() {
+    Table table = tableWith("d", "PII.Sensitive", "Tier.Tier1");
+
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> apply(table, Map.of("tags", List.of("Finance.Revenue"), "tagsMode", "append")),
+            "the merge helpers start from the requested list and only deviate for add/remove, so "
+                + "an unrecognised mode silently meant replace - and 'append' is the natural wrong "
+                + "guess, because descriptionMode uses it while arrays use 'add'");
+
+    assertTrue(rejected.getMessage().contains("tagsMode"), "the error names the parameter");
+    assertEquals(List.of("PII.Sensitive", "Tier.Tier1"), tagFqnsOf(table), "nothing was written");
+  }
+
+  @Test
+  void anUnrecognisedDescriptionModeIsRejected() {
+    Table table = tableWith("Curated text worth keeping.");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> apply(table, Map.of("description", "A note.", "descriptionMode", "appended")),
+        "a near-miss on 'append' must not silently overwrite curated text");
   }
 
   @Test

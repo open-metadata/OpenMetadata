@@ -68,7 +68,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed is returned with 'testCaseStatus': 'NeverRun', which is distinct from Success/Failed/Aborted. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -79,7 +79,7 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (auto-detected if not specified). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus': Success/Failed/Aborted once run, or 'NeverRun' if it has never executed). IMPORTANT when finding a table's tests: a COLUMN-level test stores the column's FQN in 'entityFQN' (e.g. '...dim_address.zip'), so an exact term/terms match on the table FQN silently returns only table-level tests and a clean, wrong total. Match on 'originEntityFQN' instead - it rolls up to the tested asset for both table and column tests - or use a wildcard on 'entityFQN'., testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
+            "description": "Filter by entity type (auto-detected if not specified). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus': Success/Failed/Aborted once run; a test that has never executed carries no status and is flagged 'neverRun': true). IMPORTANT when finding a table's tests: a COLUMN-level test stores the column's FQN in 'entityFQN' (e.g. '...dim_address.zip'), so an exact term/terms match on the table FQN silently returns only table-level tests and a clean, wrong total. Match on 'originEntityFQN' instead - it rolls up to the tested asset for both table and column tests - or use a wildcard on 'entityFQN'., testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
           },
           "queryFilter": {
             "type": "string",
@@ -658,7 +658,7 @@
     {
       "name": "update_entity",
       "title": "Update Entity",
-      "description": "Update an entity's governance fields without writing a JSON Patch. Give the fields you want changed and the server fetches the entity, applies them, and computes the patch itself — so you do NOT need to read the entity first to find out whether a field already has a value. Prefer this over patch_entity for description, displayName, owners and tags. Array fields take an explicit mode so nothing is clobbered by accident: 'set' replaces the list, 'add' merges into it, 'remove' subtracts from it. For description, 'append' adds to the existing text instead of replacing it. Use patch_entity when you need a field this tool does not expose.",
+      "description": "Update an entity's governance fields without writing a JSON Patch. Give the fields you want changed and the server fetches the entity, applies them, and computes the patch itself — so you do NOT need to read the entity first to find out whether a field already has a value. Prefer this over patch_entity for description, displayName, owners and tags. Array fields take a mode and DEFAULT TO 'add' so nothing is clobbered by accident: 'add' merges into the list, 'set' replaces it entirely, 'remove' subtracts from it. 'set' is destructive and must be asked for by name - an entity's tags array also holds its tier and its glossary terms, so replacing it drops those. For description the default is 'set' (it is a single value); pass 'append' to add to existing text instead of replacing it. Use patch_entity when you need a field this tool does not expose.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -681,7 +681,7 @@
               "append"
             ],
             "default": "set",
-            "description": "'set' replaces the description; 'append' adds to the existing text after a blank line. Use 'append' when adding a note to curated text you do not want to lose."
+            "description": "'set' (default) replaces the description; 'append' adds to the existing text after a blank line. Use 'append' when adding a note to curated text you do not want to lose. Note 'append' is not idempotent - retrying the same call appends the text twice."
           },
           "displayName": {
             "type": "string",
@@ -701,15 +701,15 @@
               "add",
               "remove"
             ],
-            "default": "set",
-            "description": "'set' replaces the owner list, 'add' merges, 'remove' subtracts."
+            "default": "add",
+            "description": "'add' (default) merges into the owner list, 'set' replaces it entirely, 'remove' subtracts."
           },
           "tags": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Tag FQNs such as 'PII.Sensitive' or 'Tier.Tier1'."
+            "description": "Tag FQNs such as 'PII.Sensitive' or 'Tier.Tier1'. Setting a tier means passing its tag here. Glossary terms cannot be set through this tool; with tagsMode 'add' (the default) any already on the entity are preserved."
           },
           "tagsMode": {
             "type": "string",
@@ -718,8 +718,8 @@
               "add",
               "remove"
             ],
-            "default": "set",
-            "description": "'set' replaces the tag list, 'add' merges, 'remove' subtracts."
+            "default": "add",
+            "description": "'add' (default) merges into the tag list, 'set' replaces it entirely, 'remove' subtracts. Prefer 'add': the tags array also carries the entity's tier and glossary terms, and 'set' removes any you do not restate."
           }
         },
         "required": [
@@ -730,8 +730,8 @@
       "annotations": {
         "title": "Update Entity",
         "readOnlyHint": false,
-        "destructiveHint": false,
-        "idempotentHint": true,
+        "destructiveHint": true,
+        "idempotentHint": false,
         "openWorldHint": false
       }
     },
