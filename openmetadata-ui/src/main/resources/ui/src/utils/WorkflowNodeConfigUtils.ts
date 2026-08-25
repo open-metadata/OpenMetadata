@@ -157,21 +157,17 @@ const addNodeSpecificConfig = (
             : {},
       };
     }
-  } else if (subType === NodeSubType.RollbackEntityTask) {
-    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
-      config.config = nodeData.config;
-    }
-  } else if (subType === NodeSubType.SinkTask) {
-    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
-      config.config = nodeData.config;
-    }
-  } else if (subType === NodeSubType.ResolvePendingChangeTask) {
-    // resolvePendingChangeTask requires config.action (commit | discard | hold). Carry it through
-    // on save so the round-trip (load -> save without reopening the form) preserves it; otherwise
-    // the backend rejects the node with "config must not be null".
-    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
-      config.config = nodeData.config;
-    }
+  } else if (
+    (subType === NodeSubType.RollbackEntityTask ||
+      subType === NodeSubType.SinkTask ||
+      subType === NodeSubType.ResolvePendingChangeTask) &&
+    nodeData.config &&
+    Object.keys(nodeData.config).length > 0
+  ) {
+    // resolvePendingChangeTask requires config.action (commit, discard or hold). Carrying the
+    // config through on save keeps a load then save round trip from dropping it, which the backend
+    // would reject as a null config.
+    config.config = nodeData.config;
   }
 };
 
@@ -199,10 +195,10 @@ export const configureNodeInputOutput = (
     }
 
     // Configure output based on subType
-    if (subType === NodeSubType.CheckEntityAttributesTask) {
-      config.output = ['result'];
-      config.branches = ['true', 'false'];
-    } else if (subType === NodeSubType.CheckChangeDescriptionTask) {
+    if (
+      subType === NodeSubType.CheckEntityAttributesTask ||
+      subType === NodeSubType.CheckChangeDescriptionTask
+    ) {
       config.output = ['result'];
       config.branches = ['true', 'false'];
     } else if (subType === NodeSubType.DataCompletenessTask) {

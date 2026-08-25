@@ -85,6 +85,7 @@ const CustomPropertiesSection = ({
               i18nKey="message.no-custom-properties-entity"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={CUSTOM_PROPERTIES_DOCS}
                   rel="noreferrer"
                   target="_blank"

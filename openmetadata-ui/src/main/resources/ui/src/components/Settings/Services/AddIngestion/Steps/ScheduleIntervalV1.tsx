@@ -411,6 +411,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
               <div
                 className="frequency-field"
                 data-testid="frequency-container">
+                {/* eslint-disable-next-line jsx-a11y/label-has-for -- button group, not a single control */}
                 <label>{t('label.frequency')}</label>
                 <div className="frequency-button-group m-t-xs">
                   {frequencyOptions.map((option) => (
@@ -437,6 +438,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
               <Grid gap="4">
                 {showWeekSelect && (
                   <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
                     <label>{t('label.day')}</label>
                     <Select
                       aria-label={t('label.day')}
@@ -462,6 +464,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
                 {showMonthSelect && (
                   <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
                     <label>{t('label.date')}</label>
                     <Select
                       aria-label={t('label.date')}
@@ -487,6 +490,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
                 {showTimePicker && (
                   <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- TimePicker below has its own aria-label */}
                     <label>{t('label.time')}</label>
                     <TimePicker
                       aria-label={t('label.time')}
@@ -508,6 +512,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
                 {showMinuteOnly && (
                   <Grid.Item span={8}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
                     <label>{t('label.minute')}</label>
                     <Select
                       aria-label={t('label.minute')}
@@ -535,6 +540,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
                 {showCustomInput && (
                   <Grid.Item span={24}>
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
                     <label>{t('label.cron')}</label>
                     <Input
                       aria-label={t('label.cron')}

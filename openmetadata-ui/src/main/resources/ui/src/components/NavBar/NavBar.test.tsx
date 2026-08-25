@@ -92,7 +92,7 @@ jest.mock('../../hooks/useDomainStore', () => ({
 
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
-    <div data-testid="tab-change" onClick={onTabChange}>
+    <div data-testid="tab-change" role="presentation" onClick={onTabChange}>
       tab change
     </div>
   ));

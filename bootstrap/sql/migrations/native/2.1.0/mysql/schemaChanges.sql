@@ -44,9 +44,15 @@ ON entity_relationship (
     relation
 );
 
--- Approval-gated pending change hold (issue #4673). Holds an edit off the entity until its
--- governance workflow commits or discards it. `json` is the ChangeDescription-shaped held diff,
--- keyed by (entity_id, updated_by); cleaned up on commit/discard.
+-- Switch Oracle services to python-oracledb's native SQLAlchemy dialect.
+UPDATE dbservice_entity
+SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
+WHERE serviceType = 'Oracle'
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
+
+-- Approval gated pending change hold (issue #4673). Holds an edit off the entity until its
+-- governance workflow commits or discards it. `json` is the ChangeDescription shaped held diff,
+-- keyed by (entity_id, updated_by); cleaned up on commit or discard.
 CREATE TABLE IF NOT EXISTS pending_approval_change (
     entity_id VARCHAR(36) NOT NULL,
     updated_by VARCHAR(256) NOT NULL,
