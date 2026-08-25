@@ -86,13 +86,23 @@ export const Icon: FC<IconProps> = ({
   }
 
   return (
-    <span className={className} style={wrapperStyle}>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: size,
+        height: size,
+        flexShrink: 0,
+        ...wrapperStyle,
+      }}>
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         ref={imgRef}
+        className={className}
         alt={alt}
         data-testid="icon-image"
         src={getTagImageSrc(iconValue)}
