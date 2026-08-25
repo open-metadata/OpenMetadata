@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Request } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { clickDrawerSave, fillDomainForm } from '../../utils/domain';
+import { clickDrawerSave } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openAddGlossaryTermModal } from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
