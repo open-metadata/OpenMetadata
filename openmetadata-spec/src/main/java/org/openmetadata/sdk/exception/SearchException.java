@@ -26,7 +26,8 @@ public class SearchException extends WebServiceException {
 
   public static Response.Status statusForRootCauseTypes(Collection<String> rootCauseTypes) {
     boolean isClientError =
-        rootCauseTypes.stream().anyMatch(CLIENT_ERROR_ROOT_CAUSE_TYPES::contains);
+        !rootCauseTypes.isEmpty()
+            && rootCauseTypes.stream().allMatch(CLIENT_ERROR_ROOT_CAUSE_TYPES::contains);
     return isClientError ? Response.Status.BAD_REQUEST : Response.Status.INTERNAL_SERVER_ERROR;
   }
 

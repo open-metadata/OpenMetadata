@@ -8,10 +8,10 @@ public class SearchIndexNotFoundException extends WebServiceException {
   private static final String ERROR_TYPE = "SEARCH_INDEX_NOT_FOUND";
 
   public SearchIndexNotFoundException(String message) {
-    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
 
-  private SearchIndexNotFoundException(Response.Status status, String message) {
+  public SearchIndexNotFoundException(Response.Status status, String message) {
     super(status, ERROR_TYPE, message);
   }
 
