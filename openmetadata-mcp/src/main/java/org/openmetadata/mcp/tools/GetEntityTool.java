@@ -381,6 +381,13 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> health = new LinkedHashMap<>();
       health.put("testSuite", ref.get("fullyQualifiedName"));
       health.put("summary", withNeverRun(suite.get("summary")));
+      // columnTestSummary gives counts keyed by an entityLink - enough to know a column has an
+      // aborted test, not enough to name it, which cost a caller a call. The suite already carries
+      // per-test name and status; pass it through rather than making them go and fetch it.
+      Object perTest = suite.get("testCaseResultSummary");
+      if (perTest instanceof List<?> list && !list.isEmpty()) {
+        health.put("tests", list);
+      }
       result = health;
     }
     return result;

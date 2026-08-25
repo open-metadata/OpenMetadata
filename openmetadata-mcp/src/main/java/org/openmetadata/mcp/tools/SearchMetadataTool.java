@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
@@ -40,6 +41,9 @@ public class SearchMetadataTool implements McpTool {
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
+  private static final Set<String> BULK_FIELDS =
+      Set.of("columns", "columnNames", "charts", "tasks");
+  private static final int MAX_BULK_ITEMS = 60;
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_STATUS = "NeverRun";
@@ -196,6 +200,8 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
+    Set<String> excludedTypes =
+        new java.util.HashSet<>(McpParams.getStringList(params, "excludeEntityTypes"));
     List<String> requestedFields = new ArrayList<>();
     String fieldsParam = stringParam(params, "fields", null);
     if (fieldsParam != null && !fieldsParam.trim().isEmpty()) {
@@ -278,14 +284,48 @@ public class SearchMetadataTool implements McpTool {
       searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
     }
 
-    return buildEnhancedSearchResponse(
-        searchResponse,
-        query,
-        size,
-        from,
-        requestedFields,
-        includeAggregations,
-        maxAggregationBuckets);
+    Map<String, Object> enhanced =
+        buildEnhancedSearchResponse(
+            searchResponse,
+            query,
+            size,
+            from,
+            requestedFields,
+            includeAggregations,
+            maxAggregationBuckets);
+    return dropExcludedTypes(enhanced, excludedTypes);
+  }
+
+  /**
+   * Removes hits whose entityType the caller excluded.
+   *
+   * <p>{@code tableColumn} documents live inside the default {@code dataAsset} scope, so a sweep for
+   * certified assets came back with 244 hits whose first 30 were all columns inheriting their
+   * parent's badge — and the caller spent a whole call re-issuing the query with a hand-written
+   * {@code must_not}. Filtering here rather than threading another argument through
+   * {@code buildEnhancedSearchResponse}, which already carries seven.
+   */
+  private static Map<String, Object> dropExcludedTypes(
+      Map<String, Object> response, Set<String> excluded) {
+    if (!excluded.isEmpty() && response.get("results") instanceof List<?> results) {
+      List<Object> kept =
+          results.stream()
+              .filter(hit -> !isExcluded(hit, excluded))
+              .collect(Collectors.toCollection(ArrayList::new));
+      int removed = results.size() - kept.size();
+      response.put("results", kept);
+      response.put("returnedCount", kept.size());
+      if (removed > 0) {
+        response.put("excludedByType", removed);
+      }
+    }
+    return response;
+  }
+
+  private static boolean isExcluded(Object hit, Set<String> excluded) {
+    Map<String, Object> map = safeGetMap(hit);
+    Object type = map == null ? null : map.get("entityType");
+    return type != null && excluded.contains(type.toString());
   }
 
   @Override
@@ -355,7 +395,11 @@ public class SearchMetadataTool implements McpTool {
         if (source == null) continue;
 
         Map<String, Object> cleanedSource = cleanSearchResult(source, requestedFields);
-        if (hit.containsKey("_score")) {
+        // A pure queryFilter lookup runs no scoring query, so every hit comes back with the same
+        // constant _score. Publishing that as "similarityScore" presents a filter match as a
+        // relevance ranking - a caller reported it as "a meaningless constant presented as a
+        // relevance signal". Emit it only when the scores actually discriminate.
+        if (hit.containsKey("_score") && scoresDiscriminate(hits)) {
           cleanedSource.put("similarityScore", hit.get("_score"));
         }
         cleanedResults.add(cleanedSource);
@@ -481,7 +525,7 @@ public class SearchMetadataTool implements McpTool {
     // returned the whole nested label, expiry buried in epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
-        result.put(field, slimField(field, source.get(field)));
+        result.put(field, capBulkField(field, slimField(field, source.get(field)), result));
       }
     }
 
@@ -553,6 +597,46 @@ public class SearchMetadataTool implements McpTool {
    * 19.2% was byte-identical repetition because hits from one schema re-send its descriptor. Every
    * MCP tool is addressed by {@code (entityType, fqn)}, so the FQN is the actionable part.
    */
+  /**
+   * Caps a hydrated bulk field on a search hit.
+   *
+   * <p>{@code fields=columns} hydrates every column object with its full prose description. One
+   * live discovery call asked for 3 tables and got ~30,000 characters, the bulk of it a 100-column
+   * demo table the caller had already decided against. A search hit exists to be chosen between;
+   * full column detail is what {@code get_entity_details} is for.
+   */
+  /** True when hit scores vary, i.e. something actually ranked them. */
+  private static boolean scoresDiscriminate(List<?> hits) {
+    Object first = null;
+    boolean varies = false;
+    for (Object hitObj : hits) {
+      Map<String, Object> hit = safeGetMap(hitObj);
+      Object score = hit == null ? null : hit.get("_score");
+      if (score == null) {
+        continue;
+      }
+      if (first == null) {
+        first = score;
+      } else if (!first.equals(score)) {
+        varies = true;
+        break;
+      }
+    }
+    return varies;
+  }
+
+  private static Object capBulkField(String field, Object value, Map<String, Object> result) {
+    Object capped = value;
+    if (BULK_FIELDS.contains(field)
+        && value instanceof List<?> items
+        && items.size() > MAX_BULK_ITEMS) {
+      capped = new ArrayList<>(items.subList(0, MAX_BULK_ITEMS));
+      result.put(field + "Total", items.size());
+      result.put(field + "Truncated", Boolean.TRUE);
+    }
+    return capped;
+  }
+
   private static Object slimField(String field, Object value) {
     Object result = value;
     if (REFERENCE_FIELDS.contains(field)) {

@@ -64,6 +64,8 @@ public class SemanticSearchTool implements McpTool {
   /** Read-side ceiling on the metric expression a summary carries. */
   private static final int MAX_METRIC_CODE_CHARS = 1000;
 
+  private static final int MAX_COLUMN_NAMES = 60;
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
@@ -192,7 +194,22 @@ public class SemanticSearchTool implements McpTool {
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
-    result.put("totalFound", cleanedResults.size());
+    // The backend reports totalHits - raw matches before parent-level grouping - and this tool was
+    // discarding it, publishing returnedCount under the name totalFound. Beside hasMore:true that
+    // reads as a contradiction, and it left callers unable to tell whether an inventory was
+    // complete. Report the real total when the backend gives one, and say when it did not.
+    Long backendTotal = response.getTotalHits();
+    if (backendTotal != null) {
+      result.put("totalFound", backendTotal);
+    } else {
+      result.put("totalFound", cleanedResults.size());
+    }
+    if (backendTotal == null) {
+      result.put(
+          "totalFoundIsPageCount",
+          "The backend did not report a corpus total, so 'totalFound' is this page's count. Use"
+              + " 'hasMore'/'nextCursor' to discover whether more results exist.");
+    }
     result.put(
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
@@ -379,8 +396,26 @@ public class SemanticSearchTool implements McpTool {
               .filter(Objects::nonNull)
               .toList();
       if (!names.isEmpty()) {
-        cleaned.put("columnNames", names);
+        putCappedColumnNames(cleaned, names);
       }
+    }
+  }
+
+  /**
+   * Caps the column-name list on a search hit.
+   *
+   * <p>A single {@code dashboardDataModel} hit carrying ~1000 generated names took one live
+   * response to 50.2 KB, past the client's display budget, and the caller lost 9 of its 12 results.
+   * A hit exists to be chosen between, and no one picks an asset by reading its 900th column, so
+   * the list is capped and says when it was.
+   */
+  private static void putCappedColumnNames(Map<String, Object> cleaned, List<Object> names) {
+    if (names.size() <= MAX_COLUMN_NAMES) {
+      cleaned.put("columnNames", names);
+    } else {
+      cleaned.put("columnNames", names.subList(0, MAX_COLUMN_NAMES));
+      cleaned.put("totalColumns", names.size());
+      cleaned.put("columnNamesTruncated", Boolean.TRUE);
     }
   }
 
