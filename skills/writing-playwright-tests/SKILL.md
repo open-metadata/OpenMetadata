@@ -1,6 +1,6 @@
 ---
 name: writing-playwright-tests
-description: Use when writing new Playwright E2E tests or adding test cases. Provides testing philosophy, patterns, and best practices from the Playwright Developer Handbook.
+description: Redirect only — this skill was merged into `playwright`. Invoke `playwright` instead for Playwright E2E authoring guidance and the required lint gate.
 ---
 
 # Writing Playwright Tests Skill

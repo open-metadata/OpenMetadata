@@ -214,6 +214,7 @@
     "@types/codemirror": "^0.0.104",
     "@types/dagre": "^0.7.47",
     "@types/diff": "^5.0.2",
+    "@types/estree": "^1.0.0",
     "@types/jest": "^26.0.23",
     "@types/js-yaml": "^4.0.9",
     "@types/katex": "^0.16.7",
