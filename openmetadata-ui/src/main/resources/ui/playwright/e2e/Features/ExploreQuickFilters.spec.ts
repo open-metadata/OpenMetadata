@@ -265,7 +265,7 @@ test('should filter assets by data product', async ({ page }) => {
     )
   ).toBeVisible();
 
-  await page.getByTestId('clear-all-chips').click();
+  await page.getByTestId('clear-filters').click();
 });
 
 test('should persist quick filter on global search', async ({ page }) => {
