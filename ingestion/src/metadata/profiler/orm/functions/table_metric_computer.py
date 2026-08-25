@@ -44,6 +44,13 @@ from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_APPROXIMATE_METRICS,
     TIMESCALE_IS_HYPERTABLE,
 )
+from metadata.profiler.constants import (
+    COLUMN_COUNT,
+    COLUMN_NAMES,
+    CREATE_DATETIME,
+    ROW_COUNT,
+    SIZE_IN_BYTES,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -58,12 +65,6 @@ from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
-
-COLUMN_COUNT = "columnCount"
-COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
-SIZE_IN_BYTES = "sizeInBytes"
-CREATE_DATETIME = "createDateTime"
 
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
@@ -845,8 +846,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
-        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -885,9 +886,11 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
 class ExasolTableMetricComputer(BaseTableMetricComputer):
     """Exasol Table Metric Computer"""
 
-    def compute(self):
-        """Compute table metrics for Exasol using SYS.EXA_ALL_TABLES and
-        SYS.EXA_ALL_OBJECT_SIZES for row count and size respectively."""
+    def _compute_table_metrics(self):
+        """Compute table metrics from Exasol catalog views."""
+        schema_name = self.schema_name.upper()
+        table_name = self.table_name.upper()
+
         row_data = cte(
             self._build_query(
                 [
@@ -897,8 +900,8 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
                 ],
                 self._build_table("EXA_ALL_TABLES", "SYS"),
                 [
-                    Column("TABLE_SCHEMA") == self.schema_name,
-                    Column("TABLE_NAME") == self.table_name,
+                    Column("TABLE_SCHEMA") == schema_name,
+                    Column("TABLE_NAME") == table_name,
                 ],
             )
         )
@@ -906,14 +909,14 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         size_data = cte(
             self._build_query(
                 [
-                    Column("SCHEMA_NAME"),
+                    Column("ROOT_NAME"),
                     Column("OBJECT_NAME"),
                     Column("RAW_OBJECT_SIZE"),
                 ],
                 self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
                 [
-                    Column("SCHEMA_NAME") == self.schema_name,
-                    Column("OBJECT_NAME") == self.table_name,
+                    Column("ROOT_NAME") == schema_name,
+                    Column("OBJECT_NAME") == table_name,
                 ],
             )
         )
@@ -930,7 +933,7 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
             .outerjoin(
                 size_data,
                 and_(
-                    row_data.c.TABLE_SCHEMA == size_data.c.SCHEMA_NAME,
+                    row_data.c.TABLE_SCHEMA == size_data.c.ROOT_NAME,
                     row_data.c.TABLE_NAME == size_data.c.OBJECT_NAME,
                 ),
             )
@@ -939,9 +942,24 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None:
             return super().compute()
         return res
+
+    def _compute_view_metrics(self):
+        """Compute view metrics using the generic fallback path."""
+        return super().compute()
+
+    def compute(self):
+        """Compute table or view metrics for Exasol.
+
+        Exasol exposes table row counts through SYS.EXA_ALL_TABLES, but views
+        are cataloged separately and do not have a ROW_COUNT. Views therefore
+        use the generic fallback path rather than the catalog-based query.
+        """
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return self._compute_view_metrics()
+        return self._compute_table_metrics()
 
 
 class TeradataTableMetricComputer(BaseTableMetricComputer):
@@ -1160,7 +1178,6 @@ table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricCompute
 table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
-table_metric_computer_factory.register(Dialects.Athena, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)

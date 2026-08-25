@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
@@ -69,6 +69,7 @@ const defaultProps = {
 describe('Suggestions Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
     mockUseTourProvider.mockReturnValue({
       isTourOpen: false,
       updateTourPage: jest.fn(),
@@ -129,12 +130,25 @@ describe('Suggestions Component', () => {
   });
 
   describe('Component Behavior', () => {
-    it('should show no results message when searchText is provided but no results', () => {
+    it('should fetch suggestions on mount when searchText is provided', async () => {
+      render(<Suggestions {...defaultProps} searchText="test" />);
+
+      await waitFor(() =>
+        expect(mockSearchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: 'test',
+            searchIndex: SearchIndex.TABLE,
+          })
+        )
+      );
+    });
+
+    it('should show no results message when searchText is provided but no results', async () => {
       render(<Suggestions {...defaultProps} />);
 
       // The component should show the no results message
       expect(
-        screen.getByText('message.please-enter-to-find-data-assets')
+        await screen.findByText('message.please-enter-to-find-data-assets')
       ).toBeInTheDocument();
     });
 

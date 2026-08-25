@@ -43,7 +43,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
-  private static final String TEST_CASE_INDEX_FIELDS =
+  public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
@@ -90,7 +90,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
 
   public Response addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
-    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
+    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "incidentId", Include.ALL);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
       autoResolveIncidentOnSuccess(testCase);
@@ -267,7 +267,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       TestCaseResult testCaseResult, TestCase testCase, String updatedBy) {
     if (TestCaseStatus.Failed.equals(testCaseResult.getTestCaseStatus())) {
       UUID incidentStateId =
-          TestCaseResolutionStatusRepository.getOrCreateIncident(testCase, updatedBy);
+          TestCaseResolutionStatusRepository.getOrCreateIncident(
+              testCase, updatedBy, testCaseResult.getResult());
       testCaseResult.setIncidentId(incidentStateId);
     } else {
       testCaseResult.setIncidentId(null);
@@ -316,7 +317,6 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     }
     updated.setTestCaseStatus(
         testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
-    updated.setIncidentId(testCaseResult != null ? testCaseResult.getIncidentId() : null);
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
@@ -336,16 +336,24 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   protected void deleteAllTestCaseResults(String fqn) {
+    deleteAllTestCaseResults(List.of(fqn));
+  }
+
+  protected void deleteAllTestCaseResults(List<String> testCaseFQNs) {
+    if (testCaseFQNs.isEmpty()) {
+      return;
+    }
     // Delete all the test case results
-    daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+    daoCollection.dataQualityDataTimeSeriesDao().deleteAllBatch(testCaseFQNs);
 
     // Delete all dimensional results
-    dimensionResultRepository.deleteAllByTestCase(fqn);
+    dimensionResultRepository.deleteAllByTestCases(testCaseFQNs);
 
-    Map<String, Object> params = Map.of("fqn", fqn);
+    Map<String, Object> params = Map.of("fqns", testCaseFQNs);
     searchRepository.deleteByScript(
         TEST_CASE_RESULT,
-        "if (!(doc['testCaseFQN.keyword'].empty)) { doc['testCaseFQN.keyword'].value == params.fqn}",
+        "!doc['testCaseFQN.keyword'].empty && "
+            + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
         params);
   }
 

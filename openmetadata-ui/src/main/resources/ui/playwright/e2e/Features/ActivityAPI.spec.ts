@@ -12,54 +12,40 @@
  */
 import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { TagClass } from '../../support/tag/TagClass';
 import {
-  addTagToTable,
   createConversationThread,
   FEED_ITEM_TIMEOUT,
-  getActivityFeedItems,
   getFeedItemByText,
-  getTableFqn,
   getTableLeafName,
   insertActivityEventForTest,
-  openActivityFeedAndWaitForApi,
   THUMBS_UP_EMOJI,
   toggleThumbsUpReaction,
   visitTableActivityFeed,
-  waitForActivityEvent,
 } from '../../utils/activityAPI';
-import { postActivityComment } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import {
-  addOwner,
-  updateDescription,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectActivityFeedFilterAndVerifyEndpoint } from '../../utils/widgetFilters';
 import { test } from '../fixtures/pages';
 
-// Investigation needed:
-// 1. Profile actual event propagation time — measure how long it typically takes from a PATCH/PUT call to the event appearing in /api/v1/activity, then tighten the ceiling.
-// 2. If synchronous flushing is not feasible, restructure tests to assert entity state directly via the entity API, seed a pre-built activity event, and verify only that the UI renders it decoupling UI assertions from event latency.
-test.describe.fixme(
+const ACTIVITY_FEED_WIDGET_KEY = 'KnowledgePanel.ActivityFeed';
+
+test.describe(
   'Activity API - Entity Changes',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     let entityChangesTable: TableClass;
-    let entityChangesTag: TagClass;
     let adminDisplayName: string;
 
-    test.beforeAll('Setup: create table and tag', async () => {
+    test.beforeAll('Setup: create table', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
       entityChangesTable = new TableClass();
-      entityChangesTag = new TagClass({});
 
       try {
         await entityChangesTable.create(apiContext);
-        await entityChangesTag.create(apiContext);
 
         const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
         const adminUser = await userResponse.json();
@@ -74,124 +60,45 @@ test.describe.fixme(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('creates an activity event when the description is updated', async ({
+    // Rendering-only smoke: seed a DescriptionUpdated event via test-insert and assert the feed
+    // renders it (header + actor + entity link), like the Reactions/Comments/Homepage blocks below.
+    // The seed marker has no event-type words, so the /description/i assertion exercises the
+    // eventType-driven header, not the injected text. DescriptionUpdated is the representative case
+    // (its card body shows the seeded text); per-type delivery is covered by the backend
+    // ActivityResourceIT, which has no AUT load contention.
+
+    test('renders a description-updated activity item in the feed', async ({
       page,
     }) => {
-      test.slow();
-      const newDescription = `Test description updated at ${Date.now()}`;
-      const entityFqn = getTableFqn(entityChangesTable);
+      const summaryText = `Activity feed render ${uuid()}`;
 
-      await test.step('Update the table description from the entity page', async () => {
-        await entityChangesTable.visitEntityPage(page);
-        await waitForAllLoadersToDisappear(page);
-        await updateDescription(
-          page,
-          newDescription,
-          false,
-          'asset-description-container',
-          EntityTypeEndpoint.Table
-        );
-      });
-
-      await test.step('Verify event, actor, and entity link through API and UI', async () => {
-        const descriptionEvent = await waitForActivityEvent({
-          entityFqn,
-          eventType: 'DescriptionUpdated',
-          text: newDescription,
-        });
-        const activityResponse = await openActivityFeedAndWaitForApi(
-          page,
-          entityFqn
-        );
-        const renderedEvent = activityResponse.data?.find(
-          (event) =>
-            event.eventType === 'DescriptionUpdated' &&
-            JSON.stringify(event).includes(newDescription)
-        );
-        const feedItem = await getFeedItemByText(page, newDescription);
-        const entityLink = feedItem.locator('a[href*="/table/"]').first();
-        const href = await entityLink.getAttribute('href');
-
-        expect(descriptionEvent).toBeDefined();
-        expect(renderedEvent).toBeDefined();
-        await expect(feedItem).toContainText(/description/i);
-        await expect(feedItem).toContainText(adminDisplayName);
-        await expect(entityLink).toBeVisible();
-        expect(href).toContain('table');
-        expect(href).toContain(getTableLeafName(entityChangesTable));
-      });
-    });
-
-    test('creates an activity event when tags are added', async ({ page }) => {
-      test.slow();
-      const entityFqn = getTableFqn(entityChangesTable);
-      const tagDisplayName = entityChangesTag.getTagDisplayName();
-
-      await test.step('Add a tag to the table through API setup', async () => {
+      await test.step('Seed a DescriptionUpdated activity event', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
 
         try {
-          await addTagToTable(apiContext, entityChangesTable, entityChangesTag);
+          await insertActivityEventForTest(
+            apiContext,
+            entityChangesTable,
+            summaryText,
+            'DescriptionUpdated'
+          );
         } finally {
           await afterAction();
         }
       });
 
-      await test.step('Verify the tag event through API and UI', async () => {
-        const tagsEvent = await waitForActivityEvent({
-          entityFqn,
-          eventType: 'TagsUpdated',
-        });
-        const activityResponse = await visitTableActivityFeed(
-          page,
-          entityChangesTable
-        );
-        const renderedTagsEvent = activityResponse.data?.find(
-          (event) => event.eventType === 'TagsUpdated'
-        );
-        const feedItem = getActivityFeedItems(page)
-          .filter({ hasText: /tag/i })
-          .filter({ hasText: tagDisplayName });
+      await test.step('Verify the event renders with actor and entity link', async () => {
+        await visitTableActivityFeed(page, entityChangesTable);
 
-        expect(tagsEvent).toBeDefined();
-        expect(renderedTagsEvent).toBeDefined();
-        await expect(feedItem).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
-      });
-    });
+        const feedItem = await getFeedItemByText(page, summaryText);
+        const entityLink = feedItem.locator('a[href*="/table/"]').first();
+        const href = await entityLink.getAttribute('href');
 
-    test('creates an activity event when owner is added', async ({ page }) => {
-      test.slow();
-      const entityFqn = getTableFqn(entityChangesTable);
-
-      await test.step('Add the owner from the entity page', async () => {
-        await entityChangesTable.visitEntityPage(page);
-        await waitForAllLoadersToDisappear(page);
-        await addOwner({
-          page,
-          owner: adminDisplayName,
-          endpoint: EntityTypeEndpoint.Table,
-        });
-      });
-
-      await test.step('Verify the owner event through API and UI', async () => {
-        const ownerEvent = await waitForActivityEvent({
-          entityFqn,
-          eventType: 'OwnerUpdated',
-        });
-        const activityResponse = await openActivityFeedAndWaitForApi(
-          page,
-          entityFqn
-        );
-        const renderedOwnerEvent = activityResponse.data?.find(
-          (event) => event.eventType === 'OwnerUpdated'
-        );
-        const feedItem = getActivityFeedItems(page)
-          .filter({ hasText: /owner/i })
-          .filter({ hasText: adminDisplayName });
-
-        expect(ownerEvent).toBeDefined();
-        expect(renderedOwnerEvent).toBeDefined();
-        await expect(feedItem).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+        await expect(feedItem).toContainText(/description/i);
+        await expect(feedItem).toContainText(adminDisplayName);
+        await expect(entityLink).toBeVisible();
+        expect(href).toContain('table');
+        expect(href).toContain(getTableLeafName(entityChangesTable));
       });
     });
   }
@@ -272,30 +179,23 @@ test.describe(
 );
 
 test.describe(
-  'Activity API - Comments',
+  'Activity API - Detail panel',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    let commentsTable: TableClass;
-    let commentFeedText: string;
+    let layoutTable: TableClass;
     let layoutFeedText: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
-      commentsTable = new TableClass();
-      commentFeedText = `Test activity for comments ${uuid()}`;
+      layoutTable = new TableClass();
       layoutFeedText = `Test activity detail layout ${uuid()}`;
 
       try {
-        await commentsTable.create(apiContext);
+        await layoutTable.create(apiContext);
         await insertActivityEventForTest(
           apiContext,
-          commentsTable,
-          commentFeedText
-        );
-        await insertActivityEventForTest(
-          apiContext,
-          commentsTable,
+          layoutTable,
           layoutFeedText
         );
       } finally {
@@ -308,25 +208,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('adds a comment to a feed item', async ({ page }) => {
-      const commentText = `Test comment ${uuid()}`;
-
+    test('shows the activity detail layout, read-only', async ({ page }) => {
       await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
-      });
-
-      await test.step('Open the feed detail and post a comment', async () => {
-        const feedItem = await getFeedItemByText(page, commentFeedText);
-
-        await feedItem.click();
-        await waitForAllLoadersToDisappear(page);
-        await postActivityComment(page, commentText);
-      });
-    });
-
-    test('shows the activity detail layout', async ({ page }) => {
-      await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
+        await visitTableActivityFeed(page, layoutTable);
       });
 
       await test.step('Open the detail view and verify layout regions', async () => {
@@ -338,9 +222,15 @@ test.describe(
         const activityPanel = page.locator('#activity-panel');
 
         await expect(activityPanel).toBeVisible();
+        await expect(activityPanel).toContainText(layoutFeedText);
+
+        // Change-events are read-only notifications: the panel renders the
+        // event but offers no way to reply to it. Only conversation threads
+        // carry an editor.
         await expect(
           activityPanel.getByTestId('comments-input-field')
-        ).toBeVisible();
+        ).toHaveCount(0);
+        await expect(activityPanel.getByTestId('send-button')).toHaveCount(0);
       });
     });
   }
@@ -351,11 +241,14 @@ test.describe(
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     let homepageTable: TableClass;
+    let followedTable: TableClass;
+    const followedActivitySummary = `Followed table activity ${uuid()}`;
 
     test.beforeAll('Setup: create table and activity', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
       homepageTable = new TableClass();
+      followedTable = new TableClass();
 
       try {
         await homepageTable.create(apiContext);
@@ -364,6 +257,31 @@ test.describe(
           homepageTable,
           `Test conversation for homepage widget ${uuid()}`
         );
+
+        // The Following filter reads the FOLLOWS relationship, so the table has
+        // to be followed by the logged-in user before it can surface any event.
+        await followedTable.create(apiContext);
+
+        const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
+        const adminUser = await userResponse.json();
+
+        await followedTable.followTable(apiContext, adminUser.id);
+        await insertActivityEventForTest(
+          apiContext,
+          followedTable,
+          followedActivitySummary
+        );
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test.afterAll('Cleanup: delete tables', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
+
+      try {
+        await homepageTable.delete(apiContext);
+        await followedTable.delete(apiContext);
       } finally {
         await afterAction();
       }
@@ -377,7 +295,7 @@ test.describe(
     test('displays feed content in the Activity Feed widget', async ({
       page,
     }) => {
-      const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
       const feedItems = feedWidget.getByTestId('message-container');
 
       await expect(feedWidget).toBeVisible();
@@ -387,7 +305,7 @@ test.describe(
     });
 
     test('shows Activity Feed widget filter options', async ({ page }) => {
-      const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
 
       await expect(feedWidget).toBeVisible();
 
@@ -414,6 +332,75 @@ test.describe(
 
       await page.keyboard.press('Escape');
       await expect(filterMenu).not.toBeVisible();
+    });
+
+    // Regression guard: every filter used to call the my-feed endpoint, so the
+    // widget showed the same list whichever option was picked.
+    test('routes each Activity Feed widget filter to its own endpoint', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const allActivityResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/v1/activity'
+      );
+
+      await redirectToHomePage(page);
+
+      expect((await allActivityResponse).status()).toBe(200);
+
+      const feedWidget = await waitForLandingPageWidget(
+        page,
+        ACTIVITY_FEED_WIDGET_KEY
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'My Data',
+        '/api/v1/activity/my-feed'
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'Following',
+        '/api/v1/activity/following'
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'All Activity',
+        '/api/v1/activity'
+      );
+    });
+
+    test('shows the followed entity activity under the Following filter', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const feedWidget = await waitForLandingPageWidget(
+        page,
+        ACTIVITY_FEED_WIDGET_KEY
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'Following',
+        '/api/v1/activity/following'
+      );
+
+      await expect(
+        feedWidget
+          .getByTestId('message-container')
+          .filter({ hasText: followedActivitySummary })
+          .first()
+      ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
     });
   }
 );

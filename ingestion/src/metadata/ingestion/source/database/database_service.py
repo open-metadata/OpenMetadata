@@ -25,6 +25,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -35,6 +36,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -59,6 +61,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -68,10 +71,9 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import test_connection_common
+from metadata.ingestion.source.connections import run_test_connection, test_connection_common
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
@@ -106,7 +108,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["database"],
@@ -130,8 +131,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
-                cache_entities=True,
-                use_cache=True,
             ),
         ],
         children=["databaseSchema"],
@@ -152,8 +151,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
-                cache_entities=True,
-                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
@@ -180,11 +177,19 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
                 processor="yield_life_cycle_data",
+                nullable=True,
+            ),
+            # Metrics defined *by* the table rather than computed from it: semantic
+            # layers (Snowflake semantic views, Databricks metric views) expose named
+            # measures that belong to the table they are declared on. Runs after the
+            # Table stage so the Metric can reference the table it came from.
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=Metric,
+                processor="yield_table_metrics",
                 nullable=True,
             ),
         ],
@@ -200,7 +205,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database", "database_schema"],
                 store_all_in_context=True,
                 store_fqn=True,
-                use_cache=True,
             ),
         ],
     )
@@ -223,6 +227,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
+
+    # Set by sources that own their connection lifecycle; `None` keeps the
+    # legacy `connection_obj` test path for non-migrated sources.
+    _connection: Optional[BaseConnection] = None  # noqa: UP045
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
@@ -451,7 +459,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
-    @calculate_execution_time()
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
         This will only get executed if the tags context
@@ -484,7 +491,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
-    @calculate_execution_time()
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
@@ -582,6 +588,32 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def _is_database_filtered(self, database_name: str) -> bool:
+        """Whether a database fails ``databaseFilterPattern``. Pure predicate — no
+        status side effects — so the totals hook and the walk can share it."""
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.context.get().database_service,
+            database_name=database_name,
+        )
+        filter_name = database_fqn if self.source_config.useFqnForFiltering and database_fqn else database_name
+        return filter_by_database(self.source_config.databaseFilterPattern, filter_name)
+
+    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
+        """Whether a schema fails ``schemaFilterPattern``, matched the same way as the
+        walk (FQN or bare name per ``useFqnForFiltering``). Context-free: the FQN is
+        built from the explicit database name."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+            database_name=database_name,
+            schema_name=schema_name,
+        )
+        filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
+        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
+
     def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
         """
         Check if a stored procedure should be filtered based on the filter pattern.
@@ -589,7 +621,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         stored_procedure_fqn = fqn.build(
             self.metadata,
             entity_type=StoredProcedure,
-            service_name=self.context.get().database_service,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
             procedure_name=stored_procedure_name,
@@ -671,7 +703,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
         return None
 
-    @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get owner for table entity using ownerConfig.
@@ -705,7 +736,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 if owner_ref and owner_ref.root:
                     return owner_ref
 
-            if self.source_config.includeOwners and hasattr(self.inspector, "get_table_owner"):
+            # The Postgres source patches `get_table_owner` onto SQLAlchemy's global
+            # `Inspector` class, so probing the inspector reports True on every
+            # connector. Only the dialect carries a real implementation.
+            if self.source_config.includeOwners and hasattr(self.inspector.dialect, "get_table_owner"):
                 owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
@@ -734,8 +768,8 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=Table,
                     entity_source_state=self.database_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
-                    params={"database": schema_fqn},
+                    recursive=self.source_config.markDeletedTables,
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def mark_stored_procedures_as_deleted(self):
@@ -752,7 +786,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     metadata=self.metadata,
                     entity_type=StoredProcedure,
                     entity_source_state=self.stored_procedure_source_state,
-                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    recursive=self.source_config.markDeletedStoredProcedures,
                     params={"databaseSchema": schema_fqn},
                 )
 
@@ -788,7 +822,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=Database,
                 entity_source_state=complete_db_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDatabases,
+                recursive=self.source_config.markDeletedDatabases,
                 params={"service": self.context.get().database_service},
             )
 
@@ -825,7 +859,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 metadata=self.metadata,
                 entity_type=DatabaseSchema,
                 entity_source_state=complete_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSchemas,
+                recursive=self.source_config.markDeletedSchemas,
                 params={"database": database_fqn},
             )
 
@@ -833,6 +867,17 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         Get the life cycle data of the table
         """
+
+    def yield_table_metrics(
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+    ) -> Iterable[Either[CreateMetricRequest]]:
+        """
+        From topology. Yield the Metric entities a table declares, for sources with a
+        semantic layer. No-op by default -- the stage is in the shared topology, so a
+        source that does not override this must still resolve the processor.
+        """
+        yield from ()
 
     def clear_schema_tag_scope(self):
         """Drop tag-registry state for the current schema scope."""
@@ -878,4 +923,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+
+    def close(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None

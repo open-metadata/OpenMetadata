@@ -4,7 +4,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.limits.Limits;
@@ -44,6 +43,7 @@ public class GlossaryTermTool implements McpTool {
     if (params.containsKey("reviewers")) {
       createGlossaryTerm.setReviewers(CommonUtils.getTeamsOrUsers(params.get("reviewers")));
     }
+    createGlossaryTerm.setExtension(CommonUtils.extension(params));
 
     GlossaryTerm glossaryTerm =
         glossaryTermMapper.createToEntity(
@@ -60,13 +60,16 @@ public class GlossaryTermTool implements McpTool {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     glossaryTermRepository.prepareInternal(glossaryTerm, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.GLOSSARY_TERM, glossaryTerm);
 
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 
     String userName = securityContext.getUserPrincipal().getName();
+    // createOrUpdate silently overwrites an existing term at this FQN — tools.json marks
+    // this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<GlossaryTerm> response =
         glossaryTermRepository.createOrUpdate(null, glossaryTerm, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return JsonUtils.getMap(response.getEntity());
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
   }
 }

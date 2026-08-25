@@ -18,11 +18,11 @@ import {
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import WorkflowsTable from './WorkflowsTable';
 
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../../utils/EntityUtils');
+jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No data available</div>)
 );
@@ -54,7 +54,7 @@ jest.mock('../../../common/Table/Table', () =>
     </div>
   ))
 );
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(),
 }));
 

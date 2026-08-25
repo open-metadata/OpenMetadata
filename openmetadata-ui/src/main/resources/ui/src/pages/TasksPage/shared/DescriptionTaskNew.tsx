@@ -22,7 +22,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { getDescriptionDiff } from '../../../utils/TasksUtils';
+import { getDescriptionDiff } from '../../../utils/TaskPayloadUtils';
 import { DescriptionTabs } from './DescriptionTabs';
 import { DiffViewNew } from './DiffViewNew';
 

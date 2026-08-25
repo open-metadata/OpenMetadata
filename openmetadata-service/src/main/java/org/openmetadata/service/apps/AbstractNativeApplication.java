@@ -16,7 +16,9 @@ import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -74,11 +76,11 @@ public class AbstractNativeApplication implements NativeApplication {
   public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
     if (Boolean.TRUE.equals(app.getDeleted())
-        || (app.getAppSchedule() == null)
         || Set.of(ScheduleType.NoSchedule, ScheduleType.OnlyManual)
             .contains(app.getScheduleType())) {
       LOG.debug("App {} does not support scheduling.", app.getName());
     } else if (app.getAppType().equals(AppType.Internal)
+        && app.getAppSchedule() != null
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
@@ -196,6 +198,18 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
+  private static String deriveInterval(AppSchedule schedule) {
+    String result = null;
+    if (schedule != null
+        && schedule.getScheduleTimeline() != null
+        && schedule.getScheduleTimeline() != ScheduleTimeline.NONE
+        && schedule.getCronExpression() != null
+        && !schedule.getCronExpression().isBlank()) {
+      result = schedule.getCronExpression();
+    }
+    return result;
+  }
+
   protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
     if (configMap == null || configMap.isEmpty()) {
       return;
@@ -222,6 +236,12 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    AirflowConfig airflowConfig = updated.getAirflowConfig();
+    if (airflowConfig == null) {
+      airflowConfig = new AirflowConfig();
+      updated.setAirflowConfig(airflowConfig);
+    }
+    airflowConfig.withScheduleInterval(deriveInterval(this.getApp().getAppSchedule()));
     repository.update(null, original, updated, updatedBy);
   }
 
@@ -250,7 +270,7 @@ public class AbstractNativeApplication implements NativeApplication {
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
-                    .withScheduleInterval(this.getApp().getAppSchedule().getCronExpression()))
+                    .withScheduleInterval(deriveInterval(this.getApp().getAppSchedule())))
             .withService(service);
 
     // Get Pipeline

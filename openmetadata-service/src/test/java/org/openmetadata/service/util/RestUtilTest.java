@@ -114,6 +114,11 @@ class RestUtilTest {
     assertEquals(
         "service.sales.orders",
         RestUtil.decodeCursor(RestUtil.encodeCursor("service.sales.orders")));
+
+    // Name-based cursors can carry non-ASCII FQNs, so encode/decode must both use UTF-8 to stay
+    // symmetric. Decoding with the JVM-default charset would corrupt these on non-UTF-8 platforms.
+    assertEquals("café", RestUtil.decodeCursor(RestUtil.encodeCursor("café")));
+    assertEquals("工程.数据", RestUtil.decodeCursor(RestUtil.encodeCursor("工程.数据")));
   }
 
   @Test

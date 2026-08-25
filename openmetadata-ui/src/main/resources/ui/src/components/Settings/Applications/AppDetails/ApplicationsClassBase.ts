@@ -12,8 +12,9 @@
  */
 
 import { ComponentType, FC, lazy } from 'react';
+import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
 import { AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
@@ -49,8 +50,12 @@ class ApplicationsClassBase {
       },
     };
   }
-  public importAppLogo(appName: string) {
-    return import(`../../../../assets/svg/${appName}.svg`);
+  public async importAppLogo(appName: string) {
+    try {
+      return await import(`../../../../assets/svg/${appName}.svg`);
+    } catch {
+      return { ReactComponent: DefaultAppLogo };
+    }
   }
   /**
    * Used to pass extra elements from installed Apps.

@@ -568,21 +568,36 @@ make unit_ingestion_dev_env  # For Python changes
 
 **IMPORTANT: When reviewing UI pull requests, you MUST follow the comprehensive guidelines in [/openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) and [/openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md](../openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md)**
 
+**Folder structure and file naming are specified in
+[/openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md](../openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md)**
+— consult it for any newly added file under `ui/src/`.
+
+#### Structure & Naming
+- ✅ **REQUIRE**: new files placed as `<layer>/<domain>/<feature>/` — layers are `components/`,
+  `pages/`, `rest/`, `utils/`, `hooks/`; domains are `discovery`, `governance`, `observability`,
+  `insights`, `platform`. Cross-cutting features (`lineage`, `data-contract`, `entity`,
+  `activity-feed`) sit at the domain level.
+- ✅ **REQUIRE**: new files named with one stem + role suffix — `GlossaryList.tsx`, `.types.ts`,
+  `.utils.ts`, `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`
+- ❌ **REJECT**: an `index.ts` barrel inside a component folder (`no-internal-barrel-imports`)
+- ⚠️ **DO NOT** ask for existing `.component.tsx` / `.interface.ts` files to be renamed — the suffix
+  marks migration status
+
 ### Critical UI Standards to Enforce
 
 #### Type Safety (Zero Tolerance)
 - ❌ **REJECT**: Any use of `any` type in TypeScript
 - ✅ **REQUIRE**: Proper type imports from `generated/` or `@rjsf/utils`
-- ✅ **REQUIRE**: Defined interfaces for all component props in `.interface.ts` files
+- ✅ **REQUIRE**: Defined types for all component props — `.types.ts` for new files, `.interface.ts` in legacy ones
 
 #### Internationalization (Zero Tolerance)
 - ❌ **REJECT**: Any hardcoded string literals in UI components
 - ✅ **REQUIRE**: All user-facing text uses `useTranslation` hook: `const { t } = useTranslation()`
 - ✅ **REQUIRE**: Translation keys like `t('label.key')` from locale files
 
-#### MUI Migration (Preferred)
-- ⚠️ **FLAG**: New features using Ant Design components (should use MUI v7.3.1)
-- ✅ **PREFER**: MUI components and theme tokens from `openmetadata-ui-core-components`
+#### Component Library (Preferred)
+- ⚠️ **FLAG**: New features using Ant Design components (should use `openmetadata-ui-core-components`)
+- ✅ **PREFER**: Components and theme tokens from `openmetadata-ui-core-components`
 - ❌ **REJECT**: Hardcoded colors instead of theme tokens
 
 #### Code Quality (Must Pass)
@@ -599,9 +614,12 @@ make unit_ingestion_dev_env  # For Python changes
 - ✅ **REQUIRE**: Navigation with `useNavigate`, not direct history manipulation
 
 #### File Naming (Must Follow)
-- ✅ **REQUIRE**: Components named as `ComponentName.component.tsx`
-- ✅ **REQUIRE**: Interfaces named as `ComponentName.interface.ts`
-- ✅ **REQUIRE**: Custom hooks prefixed with `use` and placed in `src/hooks/`
+- ✅ **REQUIRE**: new files use one stem + role suffix — `GlossaryList.tsx`, `GlossaryList.types.ts`,
+  `GlossaryList.utils.ts`, `GlossaryList.constants.ts`, `GlossaryList.style.less`,
+  `GlossaryList.test.tsx`, `GlossaryList.mock.ts`
+- ⚠️ **DO NOT** ask for existing `.component.tsx` / `.interface.ts` files to be renamed — the suffix
+  marks migration status
+- ✅ **REQUIRE**: Custom hooks prefixed with `use` and placed in `src/hooks/<domain>/`
 
 ### PR Review Checklist
 
@@ -617,7 +635,7 @@ When reviewing a UI PR, verify ALL of these:
 2. **Type Safety**: Search for `any` type usage - must be zero occurrences
 3. **i18n Compliance**: Search for hardcoded strings - must use translation keys
 4. **Import Organization**: Check import order follows standard
-5. **MUI Usage**: New components prefer MUI over Ant Design
+5. **Component Library Usage**: New components prefer `openmetadata-ui-core-components` over Ant Design
 6. **No Debug Code**: No console.log, commented code, or debug statements
 7. **Performance**: Proper memoization, no unnecessary re-renders
 8. **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation
@@ -656,7 +674,7 @@ Use this template when reviewing UI PRs:
 - [ ] `yarn build` succeeds
 - [ ] No `any` types
 - [ ] No hardcoded strings
-- [ ] Proper MUI usage
+- [ ] Proper `openmetadata-ui-core-components` usage
 - [ ] Screenshots provided
 
 See [UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) for complete checklist.

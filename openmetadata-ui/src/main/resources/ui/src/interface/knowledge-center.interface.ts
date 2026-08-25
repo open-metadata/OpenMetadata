@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
 import React, { ReactNode } from 'react';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -116,6 +116,7 @@ export interface KnowledgeCenterPageHandlers {
   onSetThreadLink: (link: string) => void;
   onToggleDelete: () => void;
   onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
   contentChangeState: ContentChangeState;
 }
 
@@ -129,7 +130,6 @@ export interface ArticleTab {
 export interface KnowledgeCenterPageProps {
   title: string;
   rightPanel: React.ReactNode;
-  header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
   feedCount?: number;

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Graph } from '@antv/g6';
+import type { Graph } from '@antv/g6';
 import {
   GlossaryTermRelationType,
   RelationCategory,

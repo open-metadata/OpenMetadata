@@ -16,22 +16,22 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 RULES = [
-    ("connector:mssql",         r"\b(mssql|ms ?sql|sql ?server)\b"),
-    ("connector:mysql",         r"\bmysql\b"),
-    ("connector:s3",            r"\b(aws )?s3\b"),
-    ("connector:bigquery",      r"\b(big ?query|gcp bigquery)\b"),
-    ("connector:snowflake",     r"\bsnowflake\b"),
-    ("connector:redshift",      r"\b(aws )?redshift\b"),
+    ("connector:mssql", r"\b(mssql|ms ?sql|sql ?server)\b"),
+    ("connector:mysql", r"\bmysql\b"),
+    ("connector:s3", r"\b(aws )?s3\b"),
+    ("connector:bigquery", r"\b(big ?query|gcp bigquery)\b"),
+    ("connector:snowflake", r"\bsnowflake\b"),
+    ("connector:redshift", r"\b(aws )?redshift\b"),
     ("connector:unity-catalog", r"\bunity ?catalog\b"),
-    ("connector:powerbi",       r"\bpower ?bi\b"),
-    ("connector:postgres",      r"\bpostgres(ql)?\b"),
-    ("connector:athena",        r"\b(aws )?athena\b"),
-    ("connector:tableau",       r"\btableau\b"),
-    ("connector:looker",        r"\blooker\b"),
-    ("connector:airflow",       r"\b(apache )?airflow\b"),
-    ("connector:dbt",           r"\bdbt( ?cloud| ?core)?\b"),
-    ("connector:databricks",    r"\bdatabricks\b"),
-    ("connector:fabric",        r"\b(microsoft |ms )?fabric\b"),
+    ("connector:powerbi", r"\bpower ?bi\b"),
+    ("connector:postgres", r"\bpostgres(ql)?\b"),
+    ("connector:athena", r"\b(aws )?athena\b"),
+    ("connector:tableau", r"\btableau\b"),
+    ("connector:looker", r"\blooker\b"),
+    ("connector:airflow", r"\b(apache )?airflow\b"),
+    ("connector:dbt", r"\bdbt( ?cloud| ?core)?\b"),
+    ("connector:databricks", r"\bdatabricks\b"),
+    ("connector:fabric", r"\b(microsoft |ms )?fabric\b"),
 ]
 
 OTHER = "connector:other"
@@ -45,7 +45,8 @@ def gh(method, path, body=None, ok=(200, 201, 204)):
     data = json.dumps(body).encode() if body else None
     req = Request(
         f"https://api.github.com/repos/{REPO}{path}",
-        data=data, method=method,
+        data=data,
+        method=method,
         headers={
             "Authorization": f"Bearer {TOKEN}",
             "Accept": "application/vnd.github+json",
@@ -83,10 +84,18 @@ def main():
     print(f'Resolved to "{target}"')
 
     if gh("GET", f"/labels/{quote(target, safe='')}", ok=(200, 404)) == 404:
-        gh("POST", "/labels", {"name": target, "color": "aaaaaa", "description": "Connector"})
+        gh(
+            "POST",
+            "/labels",
+            {"name": target, "color": "aaaaaa", "description": "Connector"},
+        )
 
     for label in current & MANAGED - {target}:
-        gh("DELETE", f"/issues/{issue['number']}/labels/{quote(label, safe='')}", ok=(200, 404))
+        gh(
+            "DELETE",
+            f"/issues/{issue['number']}/labels/{quote(label, safe='')}",
+            ok=(200, 404),
+        )
         print(f'Removed "{label}"')
 
     if target not in current:

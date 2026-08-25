@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
 from typing import Any, Generator  # noqa: UP035
 
-import httpx
+import requests
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.credentials import URL
@@ -36,12 +36,25 @@ class SSEClient:
         self.stream_completed: bool = False
         self.logger: Logger = ometa_logger()
 
-    def stream(self, method: str, path: str, data: None | dict[str, Any] = None) -> Generator[Any, Any, None]:
+    def stream(
+        self,
+        method: str,
+        path: str,
+        data: None | dict[str, Any] = None,
+        timeout: None | float | tuple[float, float] = None,
+    ) -> Generator[Any, Any, None]:
         """Connect to the SSE stream and yield events.
 
         Args:
             method (str): The HTTP method to use.
             path (str): The path to the SSE stream.
+            data (dict | None): Request body sent as JSON for non-GET methods, or as
+                query parameters for GET. Defaults to None (no body / no params).
+            timeout (float | tuple[float, float] | None): Per-call timeout passed to
+                ``requests``. ``None`` (the default) disables timeouts, which matches
+                SSE semantics where streams can have long idle periods between events.
+                Pass a single float to set both connect and read timeouts, or a
+                ``(connect, read)`` tuple to set them independently.
 
         Returns:
             Generator[Any, Any, None]: A generator of events.
@@ -87,35 +100,54 @@ class SSEClient:
                 if self.last_event_id:
                     headers["Last-Event-ID"] = self.last_event_id
 
-                with httpx.Client(timeout=None) as client:  # noqa: SIM117
-                    with client.stream(
-                        method,
-                        url,
-                        headers=headers,
-                        json=opts.get("json"),
-                        params=opts.get("params"),
-                    ) as response:
-                        response.raise_for_status()
-                        self.logger.info("Connected to SSE stream")
+                request_kwargs = {
+                    "method": method,
+                    "url": str(url),
+                    "headers": headers,
+                    "json": opts.get("json"),
+                    "params": opts.get("params"),
+                    "stream": True,
+                    "timeout": timeout,
+                    "verify": (self.config.verify if self.config.verify is not None else True),
+                    "allow_redirects": (
+                        self.config.allow_redirects if self.config.allow_redirects is not None else True
+                    ),
+                    "cookies": self.config.cookies,
+                    "cert": self.config.cert,
+                }
+                with requests.Session() as session, session.request(**request_kwargs) as response:
+                    response.raise_for_status()
+                    self.logger.info("Connected to SSE stream")
 
-                        event_buffer = []
-                        for line in response.iter_lines():
-                            if not line:
-                                if event_buffer:
-                                    parsed_event = self._parse_sse_event(event_buffer)
-                                    yield parsed_event
-                                    event_buffer = []
+                    # SSE payloads are UTF-8. ``requests`` defaults a charset-less
+                    # ``text/event-stream`` response to ISO-8859-1, which corrupts
+                    # multi-byte characters (e.g. emoji in model output) and decodes
+                    # UTF-8 continuation bytes such as 0x85 into codepoints that
+                    # ``str.splitlines()`` treats as line breaks. Forcing UTF-8 plus
+                    # splitting only on ``\n`` keeps a single ``data:`` line intact;
+                    # without this an emoji like ``✅`` (bytes e2 9c 85) truncates
+                    # the JSON mid-string, surfacing as ``Unterminated string``.
+                    response.encoding = "utf-8"
 
-                                    if self.stream_completed:
-                                        self.logger.info(
-                                            f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
-                                        )
-                                        return
-                            else:  # noqa: PLR5501
-                                if not line.startswith(":"):
-                                    event_buffer.append(line)
+                    event_buffer = []
+                    for raw_line in response.iter_lines(decode_unicode=True, delimiter="\n"):
+                        line = raw_line.rstrip("\r")
+                        if not line:
+                            if event_buffer:
+                                parsed_event = self._parse_sse_event(event_buffer)
+                                yield parsed_event
+                                event_buffer = []
 
-            except httpx.HTTPStatusError as e:
+                                if self.stream_completed:
+                                    self.logger.info(
+                                        f"Stream terminated with event: {parsed_event.get('event', 'unknown')}"
+                                    )
+                                    return
+                        else:  # noqa: PLR5501
+                            if not line.startswith(":"):
+                                event_buffer.append(line)
+
+            except requests.exceptions.HTTPError as e:
                 self.logger.error(f"HTTP error: {e.response.status_code}")
                 raise
             except Exception as e:
@@ -137,16 +169,24 @@ class SSEClient:
             dict[str, Any]: The parsed event.
         """
         event: dict[str, Any] = {}
+        data_lines: list[str] = []
         for line in event_buffer:
             if line.startswith("event:"):
                 event["event"] = line.split(":", 1)[1].strip()
                 if "complete" in event["event"] or "error" in event["event"]:
                     self.stream_completed = True
             elif line.startswith("data:"):
-                event["data"] = line.split(":", 1)[1].strip()
+                # Per the SSE spec a single event's `data` field may span multiple
+                # `data:` lines that must be concatenated with `\n`. Accumulate them
+                # instead of overwriting: keeping only the last line truncated large
+                # payloads (e.g. the Quality agent's createTestCase blob) mid-string,
+                # surfacing downstream as `json.JSONDecodeError: Unterminated string`.
+                data_lines.append(line.split(":", 1)[1].strip())
             elif line.startswith("id:"):
                 event["id"] = line.split(":", 1)[1].strip()
                 self.last_event_id = event["id"]
+        if data_lines:
+            event["data"] = "\n".join(data_lines)
         return event
 
     def _validate_access_token(self):

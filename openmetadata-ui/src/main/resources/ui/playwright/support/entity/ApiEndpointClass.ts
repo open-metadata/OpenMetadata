@@ -19,8 +19,9 @@ import {
 } from '../../../src/generated/entity/data/apiEndpoint';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -206,6 +207,7 @@ export class ApiEndpointClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
+    this.exploreTabName = 'API Endpoints';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].fullyQualifiedName ?? '';
   }
@@ -229,9 +231,18 @@ export class ApiEndpointClass extends EntityClass {
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.apiCollectionResponseData = await apiCollectionResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'ApiEndpointClass.create'
+    );
+    this.apiCollectionResponseData = await okJson(
+      apiCollectionResponse,
+      'ApiEndpointClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'ApiEndpointClass.create'
+    );
 
     this.childrenSelectorId =
       this.entityResponseData.requestSchema?.schemaFields?.[0]
@@ -251,17 +262,19 @@ export class ApiEndpointClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/apiEndpoints/name/${this.entityResponseData?.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/apiEndpoints/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'ApiEndpointClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -287,12 +300,10 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

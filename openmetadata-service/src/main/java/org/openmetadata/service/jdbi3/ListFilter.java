@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -24,7 +25,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
-  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
+
+  // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
+  // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
+  private String sortField;
+  private String sortOrder;
+
+  private static final String TASK_STATUS_GROUP_OPEN = "open";
+  private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String TASK_STATUS_GROUP_CLOSED = "closed";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -32,6 +41,20 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getSortField() {
+    return sortField;
+  }
+
+  public String getSortOrder() {
+    return sortOrder;
+  }
+
+  public ListFilter withSort(String sortField, String sortOrder) {
+    this.sortField = sortField;
+    this.sortOrder = sortOrder;
+    return this;
   }
 
   public String getCondition(String tableName) {
@@ -55,17 +78,24 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getDomainSelfCondition(tableName));
     conditions.add(getOwnerCondition(tableName));
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getTestDefinitionCondition());
+    conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getIncidentAssigneeCondition());
+    conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -76,6 +106,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition(tableName));
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getExcludeProviderCondition(tableName));
+    conditions.add(getConnectorTypeCondition(tableName));
     conditions.add(getTaskStatusCondition(tableName));
     conditions.add(getTaskFormTypeCondition(tableName));
     conditions.add(getTaskFormCategoryCondition(tableName));
@@ -84,10 +116,13 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskApproverCondition());
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
-    conditions.add(getServerIdCondition(tableName));
+    conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
+    conditions.add(getPrimaryEntityCondition());
+    conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -127,6 +162,41 @@ public class ListFilter extends Filter<ListFilter> {
     return null;
   }
 
+  /**
+   * Filters context memories down to the knowledge pills whose primaryEntity is the given asset.
+   * Edge direction: primaryEntity --APPLIED_TO--> contextMemory, so the memory is the {@code toId}.
+   */
+  private String getPrimaryEntityCondition() {
+    String primaryEntityId = queryParams.get("primaryEntityId");
+    String result = "";
+    if (!nullOrEmpty(primaryEntityId)) {
+      queryParams.put("primaryEntityIdParam", primaryEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :primaryEntityIdParam "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.APPLIED_TO.ordinal());
+    }
+    return result;
+  }
+
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
+    }
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
+  }
+
   private String getAssignee() {
     String assigneeIds = queryParams.get("assigneeIds");
     if (assigneeIds != null) {
@@ -157,7 +227,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(assigneeFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
@@ -175,6 +245,19 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -229,7 +312,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(createdBy.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
@@ -239,6 +322,23 @@ public class ListFilter extends Filter<ListFilter> {
             + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
         inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -337,6 +437,39 @@ public class ListFilter extends Filter<ListFilter> {
     }
   }
 
+  // Negated mirror of getProviderCondition, used to hide platform-managed services (provider
+  // 'system') from user-facing listings. COALESCE is required: user-created entities have no
+  // provider key at all, and in SQL `NULL <> 'system'` is NULL, which would drop every such row.
+  public String getExcludeProviderCondition(String tableName) {
+    String provider = queryParams.get("excludeProvider");
+    String result = "";
+    if (!nullOrEmpty(provider)) {
+      String column = tableName == null ? "json" : tableName + ".json";
+      result =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? String.format(
+                  "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider')), '') <> :excludeProvider",
+                  column)
+              : String.format("COALESCE(%s->>'provider', '') <> :excludeProvider", column);
+    }
+    return result;
+  }
+
+  // Filters service entities by connector type (e.g. 'Snowflake'). Deliberately separate from
+  // getServiceTypeCondition, whose `serviceType` param means "the service a pipeline belongs to"
+  // and which is a no-op for every table except pipeline_entity. Every service table exposes
+  // serviceType as a generated column, so this reads the column rather than the JSON blob.
+  public String getConnectorTypeCondition(String tableName) {
+    String connectorTypes = queryParams.get("connectorType");
+    String result = "";
+    if (!nullOrEmpty(connectorTypes)) {
+      String inCondition = buildIndexedBindParams("connectorType", connectorTypes);
+      String column = tableName == null ? "serviceType" : tableName + ".serviceType";
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
+  }
+
   private String getEventSubscriptionAlertType() {
     String alertType = queryParams.get("alertType");
     if (alertType == null) {
@@ -365,9 +498,106 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
-    return testFailureStatus == null
-        ? ""
-        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
+    String result = "";
+    if (!nullOrEmpty(testFailureStatus)) {
+      String inCondition =
+          buildIndexedBindParams("testCaseResolutionStatusType", testFailureStatus);
+      result = String.format("testCaseResolutionStatusType IN (%s)", inCondition);
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases contained in
+  // a test definition; testDefinitionId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestDefinitionCondition() {
+    String testDefinitionId = queryParams.get("testDefinitionId");
+    String result = "";
+    if (!nullOrEmpty(testDefinitionId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tdtc.fqnHash FROM test_case tdtc "
+                  + "INNER JOIN entity_relationship tder ON tder.toId = tdtc.id "
+                  + "WHERE tder.fromId = :testDefinitionId AND tder.fromEntity = '%s' "
+                  + "AND tder.toEntity = '%s' AND tder.relation = %d)",
+              Entity.TEST_DEFINITION, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases directly owned
+  // by a user or team (owners inherited from the table are resolved at read time and are not
+  // visible to SQL); testCaseOwnerId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseOwnerCondition() {
+    String testCaseOwnerId = queryParams.get("testCaseOwnerId");
+    String result = "";
+    if (!nullOrEmpty(testCaseOwnerId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tcotc.fqnHash FROM test_case tcotc "
+                  + "INNER JOIN entity_relationship tcoer ON tcoer.toId = tcotc.id "
+                  + "WHERE tcoer.fromId = :testCaseOwnerId AND tcoer.fromEntity IN ('%s', '%s') "
+                  + "AND tcoer.toEntity = '%s' AND tcoer.relation = %d)",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
+  // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
+  // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
+  // joins test_case as {@code tc}. The incident* query params below are only set by
+  // TestCaseResolutionStatusResource (incidentAssignee also by the flat list, where it compares
+  // the record's assignee column — the generic "assignee" param belongs to the task listing).
+  private String getIncidentAssigneeCondition() {
+    String assignee = queryParams.get("incidentAssignee");
+    return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";
+  }
+
+  private String getIncidentDomainCondition() {
+    String domainId = queryParams.get("incidentDomainId");
+    String result = "";
+    if (!nullOrEmpty(domainId)) {
+      result =
+          String.format(
+              "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :incidentDomainId "
+                  + "AND dr.fromEntity = 'domain' AND dr.relation = %d "
+                  + "AND dr.toId = tc.id AND dr.toEntity = 'testCase')",
+              Relationship.HAS.ordinal());
+    }
+    return result;
+  }
+
+  private String getIncidentDateRangeCondition() {
+    String start = queryParams.get("incidentStartTs");
+    String end = queryParams.get("incidentEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start) || !nullOrEmpty(end)) {
+      String column = getIncidentDateColumn(queryParams.get("incidentDateField"));
+      if (!nullOrEmpty(start)) {
+        clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+      }
+      if (!nullOrEmpty(end)) {
+        clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+      }
+    }
+    return String.join(" AND ", clauses);
+  }
+
+  private String getIncidentDateColumn(String dateField) {
+    String defaulted =
+        dateField == null
+            ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
+            : dateField;
+    return switch (defaulted) {
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "i.createdAt";
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "i.updatedAt";
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Invalid dateField '%s'. Must be one of [%s, %s]",
+              dateField,
+              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT));
+    };
   }
 
   public String getIncludeCondition(String tableName) {
@@ -498,6 +728,35 @@ public class ListFilter extends Filter<ListFilter> {
         entityIdColumn, domainInClause);
   }
 
+  private String getDomainSelfCondition(String tableName) {
+    String domainIds = getQueryParam("restrictToDomainIds");
+    String result = "";
+    if (domainIds != null) {
+      String idColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+      String idInClause = buildIndexedBindParams("restrictDomainId", domainIds.replace("'", ""));
+      List<String> clauses = new ArrayList<>();
+      clauses.add(String.format("%s IN (%s)", idColumn, idInClause));
+      clauses.addAll(buildDomainFqnPrefixClauses(tableName));
+      result = "(" + String.join(" OR ", clauses) + ")";
+    }
+    return result;
+  }
+
+  private List<String> buildDomainFqnPrefixClauses(String tableName) {
+    List<String> clauses = new ArrayList<>();
+    String fqnHashes = getQueryParam("restrictToDomainFqnHashes");
+    if (!nullOrEmpty(fqnHashes)) {
+      String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+      int index = 0;
+      for (String fqnHash : fqnHashes.split(",")) {
+        String key = "restrictDomainFqn_" + index++;
+        queryParams.put(key, fqnHash.trim() + Entity.SEPARATOR + "%");
+        clauses.add(String.format("%s LIKE :%s", fqnHashColumn, key));
+      }
+    }
+    return clauses;
+  }
+
   private String getOwnerCondition(String tableName) {
     String ownerId = getQueryParam("ownerId");
     if (ownerId == null) {
@@ -593,11 +852,9 @@ public class ListFilter extends Filter<ListFilter> {
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
-  private String getServerIdCondition(String tableName) {
+  private String getServerIdCondition() {
     String serverId = queryParams.get("serverId");
-    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
-        ? ""
-        : "serverId = :serverId";
+    return serverId == null ? "" : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {
@@ -651,10 +908,9 @@ public class ListFilter extends Filter<ListFilter> {
       }
     } else {
       if (disabled) {
-        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+        disabledCondition = "(json->>'disabled')::boolean = TRUE";
       } else {
-        disabledCondition =
-            "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+        disabledCondition = "(json->>'disabled' IS NULL OR (json->>'disabled')::boolean = FALSE)";
       }
     }
     return disabledCondition;
@@ -977,45 +1233,119 @@ public class ListFilter extends Filter<ListFilter> {
     return name.replace("'", "''");
   }
 
+  /**
+   * Defence-in-depth: when a value is embedded inside a single-quoted SQL string literal,
+   * escape backslashes before apostrophes (MySQL treats {@code \} as a string-literal escape
+   * by default, and Postgres does too when {@code standard_conforming_strings = off}). Run
+   * this BEFORE {@link #escapeApostrophe} so the {@code \\} we just inserted isn't itself
+   * re-doubled.
+   */
+  public static String escapeBackslashAndApostrophe(String name) {
+    return escapeApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
+   * Escape a string for use as the <em>replacement</em> argument to MySQL's
+   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
+   * <ol>
+   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
+   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
+   *       Each literal backslash in the input needs to become {@code \\} for the regex
+   *       engine to emit a single {@code \}.</li>
+   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
+   *       single-quoted SQL string, so each remaining {@code \} doubles again
+   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
+   * </ol>
+   * Net effect: one input backslash → four backslashes in the SQL statement text, which
+   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
+   * folds to one literal backslash in the replacement output. Apostrophes just double
+   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   *
+   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
+   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
+   * re-escape the apostrophes we already doubled.
+   */
+  public static String escapeForMySqlRegexReplacement(String name) {
+    // Step 1: double backslashes for the regex replacement layer.
+    String regexEscaped = name.replace("\\", "\\\\");
+    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
+    return escapeBackslashAndApostrophe(regexEscaped);
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
-    name = escapeApostrophe(name);
+    name = escapeBackslashAndApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }
 
   private String getTaskStatusCondition(String tableName) {
     String statusGroup = queryParams.get("taskStatusGroup");
-    if (statusGroup != null) {
-      String column = tableName == null ? "status" : tableName + ".status";
-      if ("open".equalsIgnoreCase(statusGroup)) {
-        return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
-      } else if ("active".equalsIgnoreCase(statusGroup)) {
-        return String.format(
-            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
-      } else if ("closed".equalsIgnoreCase(statusGroup)) {
-        // 'Approved' is intentionally a member of both 'active' and 'closed' because the
-        // same status maps to different lifecycle meanings depending on the task type:
-        //   - Glossary/DescriptionUpdate/etc.: 'Approved' is the terminal state and must
-        //     surface in the existing Closed tab.
-        //   - DataAccessRequest: 'Approved' means "awaiting grant" — non-terminal — and
-        //     callers reach those tasks via the 'active' group instead.
-        // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
-        // A future refactor could make status group resolution task-type aware.
-        return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
-            column);
-      }
-    }
-
-    String taskStatus = queryParams.get("taskStatus");
-    if (nullOrEmpty(taskStatus)) {
-      return "";
-    }
     String column = tableName == null ? "status" : tableName + ".status";
-    String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
-    return String.format("%s IN (%s)", column, inCondition);
+    String typeCol = tableName == null ? "type" : tableName + ".type";
+    String condition = null;
+    if (statusGroup != null) {
+      condition = buildTaskStatusGroupCondition(statusGroup, column, typeCol);
+    }
+    if (condition == null) {
+      condition = buildExplicitTaskStatusCondition(column);
+    }
+    return condition;
+  }
+
+  /**
+   * Row-aware bucket predicates driven by {@link TaskBucketSql}. See that class for the bucket
+   * definitions and drift-guard test. Every {@code (type, status)} combination lands in exactly
+   * one of {@code open}/{@code closed} so {@code All = Open + Closed} reconciles for the mixed
+   * inbox. Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary}.
+   */
+  private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
+    return switch (statusGroup.toLowerCase(Locale.ROOT)) {
+      case TASK_STATUS_GROUP_OPEN -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_OPEN_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      case TASK_STATUS_GROUP_ACTIVE -> String.format(
+          "%s IN (%s)", column, TaskBucketSql.ACTIVE_STATUSES);
+      case TASK_STATUS_GROUP_CLOSED -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s <> '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_TERMINAL_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      default -> null;
+    };
+  }
+
+  private String buildExplicitTaskStatusCondition(String column) {
+    String taskStatus = queryParams.get("taskStatus");
+    String result = "";
+    if (!nullOrEmpty(taskStatus)) {
+      String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
+  }
+
+  // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the
+  // validated Long values so the bigint comparison works on MySQL and PostgreSQL.
+  private String getTaskCreatedAtRangeCondition(String tableName) {
+    String column = tableName == null ? "createdAt" : tableName + ".createdAt";
+    String start = queryParams.get("taskStartTs");
+    String end = queryParams.get("taskEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
   }
 
   private String getTaskApproverCondition() {
@@ -1033,7 +1363,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(approverFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
     return String.format(

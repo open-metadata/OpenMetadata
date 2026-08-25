@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -36,8 +37,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
@@ -48,6 +49,7 @@ import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.const
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -59,6 +61,7 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   followKnowledgePage,
   getListKnowledgePages,
@@ -66,9 +69,12 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {
@@ -82,6 +88,9 @@ interface KnowledgePageListComponentProps {
   permissions: OperationPermission;
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
+  searchQuery?: string;
+  onEmptyStateChange?: (isEmpty: boolean) => void;
+  isPermissionsLoading?: boolean;
 }
 
 const KnowledgePageListComponent = forwardRef<
@@ -89,7 +98,15 @@ const KnowledgePageListComponent = forwardRef<
   KnowledgePageListComponentProps
 >(
   (
-    { onPageChange, permissions, hideAddButton = false, rightPanelSlot },
+    {
+      onPageChange,
+      permissions,
+      hideAddButton = false,
+      rightPanelSlot,
+      searchQuery,
+      onEmptyStateChange,
+      isPermissionsLoading = false,
+    },
     ref
   ) => {
     const { currentUser, theme } = useApplicationStore();
@@ -101,6 +118,7 @@ const KnowledgePageListComponent = forwardRef<
     const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
     const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
     const [paging, setPaging] = useState<Paging>({ total: 0 });
+    const [pageOffset, setPageOffset] = useState<number>(0);
     const [isCreatingNewPage, setIsCreatingNewPage] = useState<boolean>(false);
     const [showAddLinkModal, setShowAddLinkModal] = useState<boolean>(false);
     const { getResourceLimit } = useLimitStore();
@@ -116,22 +134,38 @@ const KnowledgePageListComponent = forwardRef<
     const handleRefreshTagsCategory = (value: boolean) =>
       setRefreshTagsCategory(value);
 
-    const fetchKnowledgePages = async (after?: string) => {
-      if (after) {
+    const fetchKnowledgePages = async (offset = 0) => {
+      if (offset > 0) {
         setIsLoadingMore(true);
       } else {
         setIsLoading(true);
       }
       try {
-        const { data, paging: pagingObj } = await getListKnowledgePages({
-          fields: getKnowledgePageFields(),
-          after,
-          limit: PAGE_SIZE_MEDIUM,
-        });
-        setKnowledgePages((prev) =>
-          uniqBy(after ? [...prev, ...data] : data, 'id')
-        );
-        setPaging(pagingObj);
+        if (searchQuery) {
+          const results = await fetchSearchResults({
+            query: searchQuery,
+            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+            sortField: 'updatedAt',
+            sortOrder: 'desc',
+            pageSize: PAGE_SIZE_MEDIUM,
+          });
+          setKnowledgePages(
+            results.hits.hits.map((hit) => hit._source as KnowledgePage)
+          );
+          setPaging({ total: results.hits.total.value });
+        } else {
+          const { data, paging: pagingObj } = await getListKnowledgePages({
+            fields: getKnowledgePageFields(),
+            limit: PAGE_SIZE_MEDIUM,
+            offset,
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+          });
+          setKnowledgePages((prev) =>
+            uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
+          );
+          setPaging(pagingObj);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -165,6 +199,9 @@ const KnowledgePageListComponent = forwardRef<
           ],
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         getResourceLimit('knowledgeCenter', true, true);
         navigate({
           pathname: contextCenterClassBase.getArticlePath(
@@ -208,6 +245,9 @@ const KnowledgePageListComponent = forwardRef<
           relatedEntities: formData?.relatedEntities,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         setKnowledgePages((prevPages) => [response, ...prevPages]);
         setRefreshTagsCategory(true);
       } catch (error) {
@@ -298,22 +338,50 @@ const KnowledgePageListComponent = forwardRef<
     );
 
     useEffect(() => {
+      if (isPermissionsLoading) {
+        return;
+      }
       if (hasViewPermission) {
-        fetchKnowledgePages();
+        setPageOffset(0);
+        fetchKnowledgePages(0);
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission]);
+    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
 
-    /**
-     * Handle infinite scrolling
-     */
     useEffect(() => {
-      const after = paging.after;
-      if (isInView && after && !isLoadingMore && hasViewPermission) {
-        fetchKnowledgePages(after);
+      if (!isLoading && !isPermissionsLoading && !searchQuery) {
+        onEmptyStateChange?.(isEmpty(knowledgePages));
       }
-    }, [isInView, paging, isLoadingMore, hasViewPermission]);
+    }, [
+      isLoading,
+      isPermissionsLoading,
+      searchQuery,
+      knowledgePages,
+      onEmptyStateChange,
+    ]);
+
+    useEffect(() => {
+      const hasMore = knowledgePages.length < paging.total;
+      if (
+        isInView &&
+        hasMore &&
+        !isLoadingMore &&
+        !searchQuery &&
+        hasViewPermission
+      ) {
+        const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
+        setPageOffset(nextOffset);
+        fetchKnowledgePages(nextOffset);
+      }
+    }, [
+      isInView,
+      paging.total,
+      knowledgePages.length,
+      isLoadingMore,
+      searchQuery,
+      hasViewPermission,
+    ]);
 
     const items: MenuProps['items'] = [
       {
@@ -371,10 +439,9 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       onPageChange({
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         rightPanel: getRightPanelElement(),
         data: undefined,
-        header: null,
       });
     }, [getRightPanelElement]);
 
@@ -384,7 +451,7 @@ const KnowledgePageListComponent = forwardRef<
         setKnowledgePages((prevPages) => [knowledgePage, ...prevPages]),
     }));
 
-    if (isLoading || isCreatingNewPage) {
+    if (isLoading || isCreatingNewPage || isPermissionsLoading) {
       return (
         <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
           {Array.from({ length: 4 }).map(() => (
@@ -439,10 +506,23 @@ const KnowledgePageListComponent = forwardRef<
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.knowledge-article-plural'),
+            entity: t('label.article-plural'),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
+      );
+    }
+
+    if (!isLoading && isEmpty(knowledgePages) && searchQuery) {
+      return (
+        <div className="tw:relative tw:min-h-[320px] tw:py-12">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
+        </div>
       );
     }
 
@@ -469,7 +549,7 @@ const KnowledgePageListComponent = forwardRef<
               <div className="text-center text-sm font-normal">
                 <Typography.Paragraph>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.knowledge-page'),
+                    entity: t('label.article'),
                   })}
                 </Typography.Paragraph>
 
@@ -478,6 +558,7 @@ const KnowledgePageListComponent = forwardRef<
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
                       <a
+                        aria-label={t('label.documentation')}
                         href={KNOWLEDGE_CENTER_DOC_LINK}
                         rel="noreferrer"
                         style={{ color: theme.primaryColor }}
@@ -531,7 +612,7 @@ const KnowledgePageListComponent = forwardRef<
             </Col>
           ))}
         </Row>
-        {isLoadingMore ? <Loader /> : null}
+        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
         <div
           className="w-full"
           data-testid="observer-element"

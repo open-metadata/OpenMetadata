@@ -10,99 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
-
-/**
- * Mock MUI components that have Jest compatibility issues
- */
-jest.mock('@mui/material', () => ({
-  Box: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Card: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Stack: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Grid: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Typography: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <span data-testid={props['data-testid']}>{children}</span>,
-  Tabs: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Tab: ({ label, ...props }: { label: string; 'data-testid'?: string }) => (
-    <button data-testid={props['data-testid']}>{label}</button>
-  ),
-  Divider: () => <hr />,
-  Skeleton: () => <div data-testid="skeleton">Loading...</div>,
-  styled: (component: unknown) => () => component,
-  useTheme: () => ({
-    palette: {
-      grey: {
-        50: '#fafafa',
-        100: '#f5f5f5',
-        200: '#eeeeee',
-        700: '#616161',
-        900: '#212121',
-      },
-      common: {
-        white: '#ffffff',
-        black: '#000000',
-      },
-      allShades: {
-        white: '#ffffff',
-        gray: {
-          300: '#d1d1d1',
-        },
-      },
-    },
-    typography: {
-      pxToRem: (size: number) => `${size}px`,
-      fontWeightMedium: 500,
-    },
-  }),
-}));
 
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+const mockNavigate = jest.fn();
 
 const COMMON_API_FIELDS =
   'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
@@ -138,11 +63,25 @@ jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../utils/RecentActivityUtils'),
+  addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
+}));
+jest.mock('../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn().mockReturnValue('/table/fqn/sample_data'),
+  getVersionPath: jest.fn(),
   refreshPage: jest.fn(),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -166,8 +105,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
+jest.mock('../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -187,9 +126,14 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest
-      .fn()
-      .mockImplementation(() => <p>testDataAssetsHeader</p>),
+    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
+      <div>
+        testDataAssetsHeader
+        <span data-testid="header-breadcrumb-data">
+          {JSON.stringify(breadcrumbData)}
+        </span>
+      </div>
+    )),
   })
 );
 
@@ -273,14 +217,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: 'mockPath',
-    search: '',
-    hash: '',
-    state: null,
-    key: 'default',
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
@@ -291,9 +228,13 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.useFakeTimers();
 
@@ -320,7 +261,7 @@ jest.mock(
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <TableDetailsPageV1 />
       </MemoryRouter>
@@ -330,7 +271,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should not fetch table details if permission is there', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <TableDetailsPageV1 />
       </MemoryRouter>
@@ -347,7 +288,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -369,7 +310,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -389,7 +330,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -435,7 +376,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -464,7 +405,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -493,7 +434,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -522,7 +463,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -551,7 +492,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -579,14 +520,20 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
+    // useQuery resolves its promise on a microtask after the initial render — use findByText
+    // (waits up to the testing-library default timeout) rather than getByText, which would
+    // otherwise race the cache settle. The act-wrapper flushes effects but not the chained
+    // promise inside react-query's internal scheduler.
+    expect(
+      await screen.findByText('label.schema-definition')
+    ).toBeInTheDocument();
     expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
   });
 
@@ -608,14 +555,16 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(screen.getByText('label.view-definition')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.view-definition')
+    ).toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {
@@ -626,7 +575,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -659,18 +608,168 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: 'test-table',
-      }),
-      expect.anything()
+    // Same reason as the schema-definition test above — useQuery's data is available on a
+    // subsequent render, not immediately after `act` flushes. waitFor polls until the page
+    // re-renders with the resolved title.
+    await waitFor(() =>
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-table',
+        }),
+        expect.anything()
+      )
     );
+  });
+
+  it('should preserve the table suite breadcrumb in the header and tab navigation', async () => {
+    const breadcrumbData = [
+      {
+        name: 'Test Suites',
+        url: '/data-quality/test-suites/table-suites',
+      },
+      {
+        name: 'orders',
+        url: '/table/service.database.schema.orders/profiler/data-quality',
+      },
+    ];
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        ViewBasic: true,
+      }),
+    }));
+    mockNavigate.mockClear();
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/table/fqn/profiler/data-quality',
+              state: { breadcrumbData },
+            },
+          ]}>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(
+      await screen.findByTestId('header-breadcrumb-data')
+    ).toHaveTextContent(JSON.stringify(breadcrumbData));
+
+    fireEvent.click(screen.getByText('label.sample-data'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/table/fqn/sample_data', {
+      replace: true,
+      state: { breadcrumbData },
+    });
+  });
+
+  describe('Queries tab count', () => {
+    const getQueriesTabProps = () =>
+      (TabsLabel as unknown as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+
+    const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
+
+    const renderOnSchemaTab = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      (TabsLabel as unknown as jest.Mock).mockClear();
+      (getQueriesList as jest.Mock).mockClear();
+    });
+
+    it('should fetch the count on mount without activating the Queries tab', async () => {
+      (getQueriesList as jest.Mock).mockResolvedValue({
+        paging: { total: 7 },
+      });
+
+      await renderOnSchemaTab();
+
+      // tableDetails resolves on a later render, so the count query starts after the act
+      // flush — poll rather than asserting synchronously.
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: '123',
+        })
+      );
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should render the skeleton instead of a count while the request is in flight', async () => {
+      let resolveCount: (value: { paging: { total: number } }) => void = () =>
+        undefined;
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      // Every render so far, not just the latest — one frame with isLoading false is the
+      // 0 flash this guards against.
+      expect(getQueriesTabProps()).not.toHaveLength(0);
+      expect(
+        getQueriesTabProps().every((props) => props.isLoading)
+      ).toBeTruthy();
+
+      await act(async () => {
+        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
+        resolveCount({ paging: { total: 7 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should fall back to 0 when the count request fails', async () => {
+      (getQueriesList as jest.Mock).mockRejectedValue(new Error('failed'));
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
+    });
   });
 });

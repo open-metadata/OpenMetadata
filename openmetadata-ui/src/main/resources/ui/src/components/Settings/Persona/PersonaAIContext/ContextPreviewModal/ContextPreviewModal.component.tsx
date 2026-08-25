@@ -1,0 +1,586 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Badge,
+  Box,
+  Button,
+  CloseButton,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Copy01, RefreshCcw01, Stars01 } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { CACHE_STATE_BADGE_COLOR } from '../../../../../constants/PersonaAIContext.constants';
+import { useClipboard } from '../../../../../hooks/useClipBoard';
+import {
+  getPersonaAIContextDocument,
+  PersonaContextDocument,
+  refreshPersonaAIContextDocument,
+} from '../../../../../rest/PersonaAPI';
+import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
+import Loader from '../../../../common/Loader/Loader';
+import RichTextEditorPreviewNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
+import './context-preview-modal.less';
+
+interface ContextPreviewModalProps {
+  open: boolean;
+  personaDisplayName: string;
+  personaId: string;
+  onClose: () => void;
+  onDocumentLoaded?: (document: PersonaContextDocument) => void;
+}
+
+type PreviewMode = 'rendered' | 'raw';
+
+const FRONT_MATTER_CLASS = [
+  'tw:mb-6 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary',
+  'tw:bg-secondary tw:px-5 tw:py-4 tw:font-mono tw:text-[13px]',
+  'tw:leading-relaxed tw:wrap-break-word tw:whitespace-pre-wrap tw:text-tertiary',
+].join(' ');
+
+const HEADING_BASE_CLASS =
+  'tw:block tw:cursor-pointer tw:rounded-md tw:text-left tw:transition tw:hover:bg-secondary_hover';
+
+const getHeadingStateClass = (isActive: boolean, isNested: boolean) => {
+  let stateClass = 'tw:font-medium tw:text-primary';
+  if (isActive) {
+    stateClass = 'tw:bg-brand-primary tw:font-semibold tw:text-brand-secondary';
+  } else if (isNested) {
+    stateClass = 'tw:font-normal tw:text-quaternary';
+  }
+
+  return stateClass;
+};
+
+const getHeadingClassName = (isActive: boolean, isNested: boolean) => {
+  const sizeClass = isNested
+    ? 'persona-context-toc-mono tw:ml-5.5 tw:w-[calc(100%-1.375rem)] tw:truncate tw:px-2 tw:py-0.75 tw:text-[12px]'
+    : 'tw:w-full tw:truncate tw:px-2.5 tw:py-1.75 tw:text-[13px]';
+
+  return [
+    HEADING_BASE_CLASS,
+    sizeClass,
+    getHeadingStateClass(isActive, isNested),
+  ].join(' ');
+};
+
+// A number possibly grouped with locale-specific separators: comma (en),
+// period (de), regular/no-break/narrow-no-break space (fr). Keeping the whole
+// grouped run together avoids bolding only fragments in non-English locales.
+const STAT_NUMBER_PATTERN = '[~]?\\d(?:[\\d.,\\u00A0\\u202F ]*\\d)?';
+const STAT_NUMBER_SPLIT = new RegExp(`(${STAT_NUMBER_PATTERN})`, 'g');
+const STAT_NUMBER_TEST = new RegExp(`^${STAT_NUMBER_PATTERN}$`);
+
+const renderStatWithBoldNumbers = (stat: string): ReactNode =>
+  stat.split(STAT_NUMBER_SPLIT).map((part, index) =>
+    STAT_NUMBER_TEST.test(part) ? (
+      <strong
+        className="tw:font-semibold tw:text-primary"
+        key={`${part}-${index}`}>
+        {part}
+      </strong>
+    ) : (
+      part
+    )
+  );
+
+// djb2 hash — gives each section a stable key derived from its content so React
+// keeps section identity across re-renders without relying on array position.
+const hashString = (value: string): string => {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index++) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+
+  return (hash >>> 0).toString(36);
+};
+
+// Render each heading section only once it nears the viewport; a 400KB+ document
+// parsed through BlockEditor in one shot blocks the main thread for seconds.
+// Preload generously below the viewport for smooth downward scroll, but only a
+// little above it, so sections above a TOC target don't expand and shove it away.
+const LAZY_SECTION_ROOT_MARGIN = '300px 0px 800px 0px';
+const LAZY_SECTION_MIN_HEIGHT = 120;
+// Render the first few sections up front so the top of the document paints
+// immediately without waiting for an IntersectionObserver callback.
+const EAGER_SECTION_COUNT = 3;
+
+interface LazyMarkdownSectionProps {
+  eager: boolean;
+  index: number;
+  markdown: string;
+  scrollRoot: HTMLElement | null;
+  onRef: (index: number, node: HTMLDivElement | null) => void;
+}
+
+const LazyMarkdownSection = ({
+  eager,
+  index,
+  markdown,
+  scrollRoot,
+  onRef,
+}: LazyMarkdownSectionProps) => {
+  const [isVisible, setIsVisible] = useState(eager);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || isVisible || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true);
+        }
+      },
+      { root: scrollRoot, rootMargin: LAZY_SECTION_ROOT_MARGIN }
+    );
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [isVisible, scrollRoot]);
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      nodeRef.current = node;
+      onRef(index, node);
+    },
+    [index, onRef]
+  );
+
+  return (
+    <div
+      className="tw:min-w-0"
+      ref={setRefs}
+      style={
+        isVisible ? undefined : { minHeight: `${LAZY_SECTION_MIN_HEIGHT}px` }
+      }>
+      {isVisible ? (
+        <RichTextEditorPreviewNew
+          isDescriptionExpanded
+          enableSeeMoreVariant={false}
+          markdown={markdown}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+export const ContextPreviewModal = ({
+  open,
+  personaDisplayName,
+  personaId,
+  onClose,
+  onDocumentLoaded,
+}: ContextPreviewModalProps) => {
+  const { t, i18n } = useTranslation();
+  const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const sectionRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const onDocumentLoadedRef = useRef(onDocumentLoaded);
+  const previewRequestRef = useRef(0);
+  const [loadError, setLoadError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [contextDocument, setContextDocument] =
+    useState<PersonaContextDocument>();
+  const [mode, setMode] = useState<PreviewMode>('rendered');
+  const [activeHeading, setActiveHeading] = useState(0);
+  const [contentReady, setContentReady] = useState(false);
+  const markdown = contextDocument?.markdown ?? '';
+  const { hasCopied, onCopyToClipBoard } = useClipboard(markdown);
+
+  useEffect(() => {
+    onDocumentLoadedRef.current = onDocumentLoaded;
+  }, [onDocumentLoaded]);
+
+  const fetchPreview = useCallback(
+    async (refresh = false) => {
+      const requestId = ++previewRequestRef.current;
+      try {
+        setLoadError(false);
+        setLoading(true);
+        const response = refresh
+          ? await refreshPersonaAIContextDocument(personaId)
+          : await getPersonaAIContextDocument(personaId);
+        if (requestId === previewRequestRef.current) {
+          setContextDocument(response);
+          onDocumentLoadedRef.current?.(response);
+        }
+      } catch (error) {
+        if (requestId === previewRequestRef.current) {
+          setLoadError(true);
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === previewRequestRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [personaId]
+  );
+
+  useEffect(() => {
+    if (open) {
+      setMode('rendered');
+      fetchPreview();
+    } else {
+      previewRequestRef.current++;
+      setLoading(false);
+    }
+
+    return () => {
+      previewRequestRef.current++;
+    };
+  }, [fetchPreview, open]);
+
+  const { frontMatterText, bodyMarkdown } = useMemo(() => {
+    const frontMatter = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+    if (!frontMatter) {
+      return { bodyMarkdown: markdown, frontMatterText: '' };
+    }
+
+    return {
+      bodyMarkdown: markdown.slice(frontMatter[0].length).trimStart(),
+      frontMatterText: `---\n${frontMatter[1].trim()}\n---`,
+    };
+  }, [markdown]);
+
+  useEffect(() => {
+    setContentReady(false);
+    if (!contextDocument || mode !== 'rendered') {
+      return undefined;
+    }
+    const frame = requestAnimationFrame(() => setContentReady(true));
+
+    return () => cancelAnimationFrame(frame);
+  }, [contextDocument, mode]);
+
+  // Derive the TOC from the rendered body only (not the frontmatter) and ignore
+  // heading-looking lines inside fenced code blocks, so the positional index
+  // stays aligned with the h1/h2 elements react-markdown renders.
+  const headings = useMemo(() => {
+    const result: { label: string; level: number }[] = [];
+    let insideFence = false;
+    for (const line of bodyMarkdown.split('\n')) {
+      if (/^\s*(```|~~~)/.test(line)) {
+        insideFence = !insideFence;
+
+        continue;
+      }
+      const match = insideFence ? null : line.match(/^(#{1,2})\s+(.*)/);
+      if (!match) {
+        continue;
+      }
+      const level = match[1].length;
+      const text = match[2].trim();
+      const label =
+        level > 1
+          ? text
+              .replace(/^[\w &/-]+:\s*/, '')
+              .split('.')
+              .pop() ?? text
+          : text;
+      result.push({ label, level });
+      if (result.length >= 40) {
+        break;
+      }
+    }
+
+    return result;
+  }, [bodyMarkdown]);
+
+  // Split the body at each h1/h2 boundary so every heading section can be
+  // rendered lazily and independently. Any pre-heading preamble is folded into
+  // the first section to keep indices aligned 1:1 with `headings`.
+  const sections = useMemo(() => {
+    if (!bodyMarkdown) {
+      return [];
+    }
+    const result: string[] = [];
+    let current: string[] = [];
+    let insideFence = false;
+    for (const line of bodyMarkdown.split('\n')) {
+      if (/^\s*(```|~~~)/.test(line)) {
+        insideFence = !insideFence;
+      }
+      const isHeading = !insideFence && /^#{1,2}\s+/.test(line);
+      if (isHeading && current.length > 0) {
+        result.push(current.join('\n'));
+        current = [];
+      }
+      current.push(line);
+    }
+    if (current.length > 0) {
+      result.push(current.join('\n'));
+    }
+    const startsWithHeading = /^#{1,2}\s+/.test(
+      result[0]?.split('\n')[0] ?? ''
+    );
+    if (!startsWithHeading && result.length > 1) {
+      const [preamble, ...rest] = result;
+      rest[0] = `${preamble}\n${rest[0]}`;
+      result.splice(0, result.length, ...rest);
+    }
+
+    const seen = new Map<string, number>();
+
+    return result.map((sectionMarkdown) => {
+      const base = hashString(sectionMarkdown);
+      const occurrence = seen.get(base) ?? 0;
+      seen.set(base, occurrence + 1);
+
+      return {
+        id: occurrence > 0 ? `${base}-${occurrence}` : base,
+        markdown: sectionMarkdown,
+      };
+    });
+  }, [bodyMarkdown]);
+
+  const handleSectionRef = useCallback(
+    (index: number, node: HTMLDivElement | null) => {
+      sectionRefs.current[index] = node;
+    },
+    []
+  );
+
+  const scrollToHeading = useCallback((index: number) => {
+    setActiveHeading(index);
+    sectionRefs.current[index]?.scrollIntoView({ block: 'start' });
+  }, []);
+
+  const stats = [
+    t('message.persona-context-entities-included', {
+      count: contextDocument?.entitiesIncluded ?? 0,
+    }),
+    t('message.persona-context-truncated-count', {
+      count: contextDocument?.truncatedCount ?? 0,
+    }),
+    t('message.persona-context-token-estimate', {
+      count: contextDocument?.tokensEst ?? 0,
+      formattedCount: (contextDocument?.tokensEst ?? 0).toLocaleString(
+        i18n?.language
+      ),
+    }),
+    t('message.persona-context-size', {
+      count: Math.max(1, Math.ceil((contextDocument?.bytes ?? 0) / 1024)),
+    }),
+    ...(contextDocument?.generatedAt
+      ? [
+          t('message.persona-context-generated-time', {
+            time: getRelativeTime(contextDocument.generatedAt),
+          }),
+        ]
+      : []),
+  ];
+
+  const renderPreviewContent = (): ReactNode => {
+    if (loadError && !contextDocument) {
+      return (
+        <Box
+          align="center"
+          className="tw:min-h-0 tw:flex-1 tw:p-10"
+          direction="col"
+          gap={4}
+          justify="center">
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('server.unexpected-error')}
+          </Typography>
+          <Button color="primary" onClick={() => fetchPreview()}>
+            {t('label.try-again')}
+          </Button>
+        </Box>
+      );
+    }
+
+    if (loading && !contextDocument) {
+      return (
+        <Box
+          align="center"
+          className="tw:min-h-0 tw:flex-1 tw:p-10"
+          data-testid="persona-context-preview-loading"
+          justify="center">
+          <Loader />
+        </Box>
+      );
+    }
+
+    if (mode === 'raw') {
+      return (
+        <pre
+          className="tw:m-0 tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-9 tw:py-7 tw:font-mono tw:text-[13px] tw:leading-relaxed tw:wrap-break-word tw:whitespace-pre-wrap tw:text-tertiary"
+          data-testid="persona-context-raw-document">
+          {markdown}
+        </pre>
+      );
+    }
+
+    return (
+      <Box className="tw:grid! tw:min-h-0 tw:flex-1 tw:grid-cols-[240px_1fr] tw:overflow-hidden">
+        <Box
+          className="tw:min-w-0 tw:gap-0.5 tw:overflow-auto tw:border-r tw:border-secondary tw:bg-secondary_subtle tw:px-3 tw:py-4"
+          direction="col">
+          <Box className="tw:px-2.5 tw:pb-2">
+            <Typography
+              className="tw:text-[11px] tw:tracking-wider tw:text-quaternary tw:uppercase"
+              weight="semibold">
+              {t('label.content')}
+            </Typography>
+          </Box>
+          {headings.map((heading, index) => (
+            <Typography
+              as="button"
+              className={getHeadingClassName(
+                activeHeading === index,
+                heading.level > 1
+              )}
+              key={`${heading.label}-${index}`}
+              onClick={() => scrollToHeading(index)}>
+              {heading.label}
+            </Typography>
+          ))}
+        </Box>
+        <Box
+          className="tw:min-w-0 tw:overflow-auto tw:px-9 tw:py-7"
+          direction="col"
+          ref={setScrollRoot}>
+          {frontMatterText && (
+            <pre className={FRONT_MATTER_CLASS}>{frontMatterText}</pre>
+          )}
+          {contentReady ? (
+            sections.map((section, index) => (
+              <LazyMarkdownSection
+                eager={index < EAGER_SECTION_COUNT}
+                index={index}
+                key={section.id}
+                markdown={section.markdown}
+                scrollRoot={scrollRoot}
+                onRef={handleSectionRef}
+              />
+            ))
+          ) : (
+            <Box align="center" className="tw:min-h-40" justify="center">
+              <Loader />
+            </Box>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}>
+      <Modal>
+        <Dialog data-testid="persona-context-preview-modal" width={1150}>
+          <Box className="tw:max-h-[85vh]" direction="col">
+            <Dialog.Header className="tw:flex tw:flex-col tw:gap-3 tw:border-b tw:border-secondary tw:pb-4">
+              <Box align="center" gap={4} justify="between">
+                <Box align="center" className="tw:min-w-0" gap={2}>
+                  <Stars01 className="tw:size-5 tw:shrink-0 tw:text-brand-secondary" />
+                  <Typography ellipsis size="text-lg" weight="semibold">
+                    {t('label.ai-context-for-entity', {
+                      entity: personaDisplayName,
+                    })}
+                  </Typography>
+                </Box>
+                <Box align="center" className="tw:shrink-0" gap={2}>
+                  <Tabs
+                    className="tw:w-max"
+                    data-testid="persona-context-preview-mode"
+                    selectedKey={mode}
+                    onSelectionChange={(key) => setMode(key as PreviewMode)}>
+                    <Tabs.List size="sm" type="button-border">
+                      <Tabs.Item
+                        className="tw:py-1!"
+                        data-testid="persona-context-preview-rendered"
+                        id="rendered">
+                        {t('label.rendered')}
+                      </Tabs.Item>
+                      <Tabs.Item
+                        className="tw:py-1!"
+                        data-testid="persona-context-preview-raw"
+                        id="raw">
+                        {t('label.raw')}
+                      </Tabs.Item>
+                    </Tabs.List>
+                  </Tabs>
+                  <Button
+                    color="secondary"
+                    data-testid="refresh-persona-context"
+                    iconLeading={RefreshCcw01}
+                    isLoading={loading}
+                    size="sm"
+                    onClick={() => fetchPreview(true)}>
+                    {t('label.refresh')}
+                  </Button>
+                  <Button
+                    color="secondary"
+                    data-testid="copy-persona-context"
+                    iconLeading={Copy01}
+                    size="sm"
+                    onClick={() => onCopyToClipBoard()}>
+                    {hasCopied ? t('label.copied') : t('label.copy')}
+                  </Button>
+                  <CloseButton size="md" onClick={onClose} />
+                </Box>
+              </Box>
+              <Box align="center" gap={2} wrap="wrap">
+                {stats.map((stat, index) => (
+                  <Box align="center" gap={2} key={stat}>
+                    {index > 0 && (
+                      <Typography className="tw:text-quaternary" size="text-sm">
+                        ·
+                      </Typography>
+                    )}
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {renderStatWithBoldNumbers(stat)}
+                    </Typography>
+                  </Box>
+                ))}
+                {contextDocument?.cacheState && (
+                  <Badge
+                    color={CACHE_STATE_BADGE_COLOR[contextDocument.cacheState]}
+                    size="sm">
+                    {contextDocument.cacheState.toLowerCase()}
+                  </Badge>
+                )}
+              </Box>
+            </Dialog.Header>
+
+            {renderPreviewContent()}
+          </Box>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};

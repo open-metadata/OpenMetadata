@@ -1,0 +1,13 @@
+{
+  "name": "BotNonAdminImpersonationRole",
+  "displayName": "Bot role with non-admin impersonation",
+  "description": "Role for bots that are allowed to impersonate users except admins. Grants the Impersonate operation scoped by BotNonAdminImpersonationPolicy; the bot keeps its other roles for regular permissions.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "BotNonAdminImpersonationPolicy"
+    }
+  ]
+}

@@ -14,10 +14,15 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   addSampleDataViaApi,
+  buildReservedNameColumns,
   navigateToSampleDataTab,
+  RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
 import { test } from '../fixtures/pages';
 
@@ -25,17 +30,22 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
   const tableWithData = new TableClass();
   const tableForDelete = new TableClass();
   const tableEmpty = new TableClass();
+  const tableWithReservedColumns = new TableClass();
 
   test.beforeAll('Setup tables with sample data', async ({ browser }) => {
     test.slow();
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
+    tableWithReservedColumns.entity.columns = buildReservedNameColumns();
+
     await tableWithData.create(apiContext);
     await tableForDelete.create(apiContext);
     await tableEmpty.create(apiContext);
+    await tableWithReservedColumns.create(apiContext);
 
     await addSampleDataViaApi(apiContext, tableWithData);
     await addSampleDataViaApi(apiContext, tableForDelete);
+    await addSampleDataViaApi(apiContext, tableWithReservedColumns);
 
     await afterAction();
   });
@@ -47,6 +57,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     await tableWithData.delete(apiContext);
     await tableForDelete.delete(apiContext);
     await tableEmpty.delete(apiContext);
+    await tableWithReservedColumns.delete(apiContext);
 
     await afterAction();
   });
@@ -70,6 +81,46 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(
         page.getByTestId('sample-data-table').getByRole('row').nth(1)
       ).toBeVisible();
+    });
+  });
+
+  test('should render sample data for columns with reserved names', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Navigate to sample data tab', async () => {
+      await navigateToSampleDataTab(page, tableWithReservedColumns);
+    });
+
+    await test.step('Verify the tab renders instead of crashing', async () => {
+      await expect(page.getByTestId('sample-data')).toBeVisible();
+      await expect(page.getByTestId('sample-data-table')).toBeVisible();
+    });
+
+    await test.step('Verify every reserved column header is rendered in order', async () => {
+      const headers = page.getByTestId('sample-data-table').locator('thead th');
+
+      for (const [
+        index,
+        columnName,
+      ] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        await expect(headers.nth(index)).toContainText(columnName);
+      }
+    });
+
+    await test.step('Verify each cell value sits under its own column', async () => {
+      const rows = page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr.ant-table-row');
+
+      for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        for (const rowIndex of [0, 2]) {
+          await expect(
+            rows.nth(rowIndex).locator('td').nth(columnIndex)
+          ).toContainText(`sample_value_${columnIndex}_${rowIndex}`);
+        }
+      }
     });
   });
 
@@ -178,9 +229,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
   });
 
-  test('should open delete confirmation modal and require DELETE confirmation', async ({
-    page,
-  }) => {
+  test('should open delete confirmation modal', async ({ page }) => {
     test.slow();
 
     await test.step('Navigate to sample data tab', async () => {
@@ -195,21 +244,14 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('modal-header')).toBeVisible();
     });
 
-    await test.step('Verify confirm button is disabled without typing DELETE', async () => {
+    await test.step('Verify confirm button is enabled', async () => {
       const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeVisible();
-      await expect(confirmButton).toBeDisabled();
-    });
-
-    await test.step('Type DELETE to enable confirm button', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-      const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeEnabled();
     });
 
     await test.step('Close modal by clicking cancel', async () => {
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
       await expect(page.getByTestId('sample-data')).toBeVisible();
     });
@@ -234,8 +276,6 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteResponse = page.waitForResponse(
         (response) =>
           response
@@ -258,6 +298,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
           response.status() === 200
       );
 
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteResponse;
       await refetchResponse;
@@ -285,7 +326,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
 
       await expect(page.getByTestId('modal-header')).toBeVisible();
 
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
 
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
     });

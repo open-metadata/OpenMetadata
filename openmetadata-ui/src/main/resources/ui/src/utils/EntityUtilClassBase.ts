@@ -11,43 +11,24 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { Operation } from 'fast-json-patch';
+import type { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
-import { FC } from 'react';
-import { NavigateFunction } from 'react-router-dom';
-import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
+import type { FC } from 'react';
+import type { NavigateFunction } from 'react-router-dom';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
-  OperationPermission,
   ResourceEntity,
+  type OperationPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { APICollection } from '../generated/entity/data/apiCollection';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
-import { ServicesType } from '../interface/service.interface';
-import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
-import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
-import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
-import ContainerPage from '../pages/ContainerPage/ContainerPage';
-import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
-import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
-import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
-import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
-import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
-import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
-import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
-import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
-import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
-import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
-import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
-import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
-import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
+import { ServiceCategoryPlural } from '../enums/service.enum';
+import type { APICollection } from '../generated/entity/data/apiCollection';
+import type { Database } from '../generated/entity/data/database';
+import type { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import type { ServicesType } from '../interface/service.interface';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
 import { patchApplication } from '../rest/applicationAPI';
@@ -77,11 +58,12 @@ import { patchTableDetails } from '../rest/tableAPI';
 import { patchClassification, patchTag } from '../rest/tagAPI';
 import { patchTeamDetail } from '../rest/teamsAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
-import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseDropdownOptions } from './Database/DatabaseDropdownOptions';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
-import { EntityTypeName } from './EntityUtils';
+import { getEntityDetailComponent as getLazyEntityDetailComponent } from './EntityDetailComponentUtils';
+import { EntityTypeName } from './EntityNameUtils';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
@@ -95,7 +77,7 @@ import {
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
-import { getKnowledgePagePath } from './KnowledgePageUtils';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -118,10 +100,13 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
-import { ExtraTableDropdownOptions } from './TableUtils';
+import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
-
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
+
+const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
+  Object.values(ServiceCategoryPlural)
+);
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
@@ -213,14 +198,40 @@ class EntityUtilClassBase {
     );
   }
 
+  /**
+   * Plural route segment for a caller-supplied service category. Accepts the plural segment
+   * (`databaseServices`) and the singular entity type (`databaseService`) — chat entity links
+   * carry either — and returns undefined for anything that is not a service category.
+   */
+  private getServiceRouteCategory(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    if (SERVICE_ROUTE_CATEGORIES.has(value)) {
+      return value;
+    }
+
+    // The value is model-authored, so it can be a prototype key ("constructor") whose lookup
+    // returns a truthy non-category; validate the result rather than the input.
+    const plural =
+      ServiceCategoryPlural[value as keyof typeof ServiceCategoryPlural];
+
+    return SERVICE_ROUTE_CATEGORIES.has(plural) ? plural : undefined;
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
     tab?: string,
     subTab?: string,
     isExecutableTestSuite?: boolean,
-    isObservabilityAlert?: boolean
+    isObservabilityAlert?: boolean,
+    serviceCategory?: string,
+    serviceFqn?: string
   ) {
+    const serviceRouteCategory = this.getServiceRouteCategory(serviceCategory);
+
     switch (indexType) {
       case SearchIndex.TOPIC:
       case EntityType.TOPIC:
@@ -288,6 +299,8 @@ class EntityUtilClassBase {
       case EntityType.STORAGE_SERVICE:
       case EntityType.SEARCH_SERVICE:
       case EntityType.API_SERVICE:
+      case EntityType.DRIVE_SERVICE:
+      case EntityType.SECURITY_SERVICE:
         return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
       case EntityType.WEBHOOK:
@@ -453,6 +466,20 @@ class EntityUtilClassBase {
       case EntityType.KNOWLEDGE_PAGE:
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
 
+      case EntityType.INGESTION_PIPELINE:
+        // No standalone detail page for a pipeline: route to the owning service's agents
+        // tab. Callers without service context (prepareFeedLink) and unrecognised
+        // categories must fall through, or the URL matches no route.
+        if (serviceFqn && serviceRouteCategory) {
+          return getServiceDetailsPath(
+            serviceFqn,
+            serviceRouteCategory,
+            EntityTabs.AGENTS
+          );
+        }
+
+      // falls through
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -483,51 +510,10 @@ class EntityUtilClassBase {
   }
 
   public getEntityDetailComponent(entityType: string): FC | null {
-    switch (entityType) {
-      case EntityType.DATABASE:
-        return DatabaseDetailsPage;
-      case EntityType.DATABASE_SCHEMA:
-        return DatabaseSchemaPageComponent;
-      case EntityType.PIPELINE:
-        return PipelineDetailsPage;
-      case EntityType.TOPIC:
-        return TopicDetailsPage;
-      case EntityType.DASHBOARD:
-        return DashboardDetailsPage;
-      case EntityType.CHART:
-        return ChartDetailsPage;
-      case EntityType.STORED_PROCEDURE:
-        return StoredProcedurePage;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return DataModelsPage;
-      case EntityType.MLMODEL:
-        return MlModelPage;
-      case EntityType.CONTAINER:
-        return ContainerPage;
-      case EntityType.SEARCH_INDEX:
-        return SearchIndexDetailsPage;
-      case EntityType.DATA_PRODUCT:
-        return DataProductsPage;
-      case EntityType.TABLE:
-        return TableDetailsPageV1;
-      case EntityType.API_COLLECTION:
-        return APICollectionPage;
-      case EntityType.API_ENDPOINT:
-        return APIEndpointPage;
-      case EntityType.METRIC:
-        return MetricDetailsPage;
-      case EntityType.DIRECTORY:
-        return DirectoryDetailsPage;
-      case EntityType.FILE:
-        return FileDetailsPage;
-      case EntityType.SPREADSHEET:
-        return SpreadsheetDetailsPage;
-      case EntityType.WORKSHEET:
-        return WorksheetDetailsPage;
-
-      default:
-        return null;
-    }
+    // Entity detail pages are large route-level surfaces. Delegate to the lazy
+    // registry so importing EntityUtilClassBase for links/patch APIs does not
+    // pull every detail page into the startup bundle.
+    return getLazyEntityDetailComponent(entityType);
   }
 
   public getResourceEntityFromEntityType(entityType: string): string {
@@ -634,7 +620,8 @@ class EntityUtilClassBase {
 
       case EntityType.API_ENDPOINT:
       case EntityType.DATABASE_SCHEMA:
-        // Service.ApiCollection.Endpoint
+      case EntityType.DASHBOARD_DATA_MODEL:
+        // 3-level parent FQN (e.g. Service.Database.Schema)
         if (fqnParts.length > 3) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));
           columnFqn = Fqn.build(...fqnParts.slice(3));
@@ -655,15 +642,6 @@ class EntityUtilClassBase {
         if (fqnParts.length > 2) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 2));
           columnFqn = Fqn.build(...fqnParts.slice(2));
-        }
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        // Service.Dashboard.DataModel
-        if (fqnParts.length > 3) {
-          entityFqn = Fqn.build(...fqnParts.slice(0, 3));
-          columnFqn = Fqn.build(...fqnParts.slice(3));
         }
 
         break;
@@ -759,6 +737,10 @@ class EntityUtilClassBase {
 
   public shouldShowEntityStatus(_entityType: string): boolean {
     return false;
+  }
+
+  public getEntityTypes(): string[] {
+    return Object.values(EntityType);
   }
 }
 

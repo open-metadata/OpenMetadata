@@ -14,14 +14,14 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import validators
-from cached_property import cached_property
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
     ProjectItem,
+    RequestOptions,
     Server,
     TableauAuth,
     ViewItem,
@@ -46,6 +46,13 @@ from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
+# GetSourceTables samples a few workbooks rather than reading the whole site. Every test
+# connection step shares one timeout, so the sample is capped. Breadth matters more than
+# depth here: the first workbook is often a sample one over a spreadsheet, whose names are
+# readable even when every database asset is withheld.
+SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
+MAX_SAMPLED_WORKBOOKS = 3
+
 
 class TableauWorkBookException(Exception):  # noqa: N818
     """
@@ -68,6 +75,16 @@ class TableauOwnersNotFound(Exception):  # noqa: N818
 class TableauDataModelsException(Exception):  # noqa: N818
     """
     Raise when Data Source information is not retrieved from the Tableau Graphql Query
+    """
+
+
+class TableauUpstreamTablesRedacted(Exception):  # noqa: N818
+    """
+    Raise when the Metadata API returns a source table with its name withheld.
+
+    Tableau does not omit assets the account may not read. It returns them with the table
+    and database names nulled and only the identifiers left, so the table cannot be
+    resolved and its lineage is silently dropped for the whole run.
     """
 
 
@@ -96,9 +113,8 @@ class TableauClient:
         self.all_projects: List[ProjectItem] = []  # noqa: UP006
         self.ssl_manager = ssl_manager
 
-    @cached_property
-    def server_info(self) -> Callable:
-        return self.tableau_server.server_info.get
+    def server_info(self):
+        return self.tableau_server.server_info.get()
 
     def server_api_version(self) -> str:
         return self.tableau_server.version
@@ -107,16 +123,16 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+    def get_tableau_owner(self, owner_id: Optional[str], include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
         """
         Get tableau owner with optional include_owners flag
         """
         try:
-            if not include_owners:
+            if not include_owners or not owner_id:
                 return None
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
-            owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
+            owner = self.tableau_server.users.get_by_id(owner_id)
             if owner:
                 owner_obj = TableauOwner(id=str(owner.id), name=owner.name, email=owner.email)
                 self.owner_cache[owner_id] = owner_obj
@@ -199,6 +215,13 @@ class TableauClient:
         except Exception as e:
             logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
         return None
+
+    def get_workbook_count(self) -> int:
+        """Total workbooks available server-side via the pagination summary — a
+        single page-size-1 request, no full workbook materialization. This is the
+        pre-filter denominator for Dashboard progress."""
+        _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
+        return pagination_item.total_available
 
     def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
         """
@@ -295,6 +318,65 @@ class TableauClient:
             "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
             "#enable-the-tableau-metadata-api-for-tableau-server\n"
         )
+
+    def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
+        """
+        Names of the data sources on a workbook whose upstream tables cannot be resolved.
+
+        Mirrors _get_database_tables: a table with no name is still resolved through its
+        referencedByQueries, so only a table with neither is lineage that cannot be built.
+        """
+        datasources = self._query_datasources(
+            dashboard_id=workbook_id,
+            entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+            offset=0,
+        )
+        withheld = []
+        for datasource in (datasources.nodes if datasources else None) or []:
+            withheld.extend(
+                datasource.name or datasource.id
+                for table in datasource.upstreamTables or []
+                if not table.name and not table.referencedByQueries
+            )
+        return withheld
+
+    def test_get_source_tables(self):
+        """
+        Check that the Metadata API returns usable source tables.
+
+        Tableau withholds table and database names from accounts without Catalog
+        permissions on external assets, returning the table objects with only their
+        identifiers. Lineage to those tables cannot be built, so this is worth catching at
+        connection time instead of after a run that looks successful.
+
+        View is granted per external asset, so one withheld table is already lost lineage
+        even when others are readable. Reports the first sampled workbook that has one.
+
+        Passes when there is nothing to judge, meaning no sampled workbook declares a
+        source table at all, which is normal for file backed data sources.
+        """
+        sampled = 0
+
+        for workbook in Pager(self.tableau_server.workbooks):
+            if sampled >= MAX_SAMPLED_WORKBOOKS:
+                break
+            if workbook.id is None:
+                continue
+            sampled += 1
+
+            withheld = self._withheld_source_tables(workbook.id)
+            if withheld:
+                raise TableauUpstreamTablesRedacted(
+                    f"Tableau returned {len(withheld)} source table(s) with no name in workbook "
+                    f"[{workbook.name}], for data source(s): {', '.join(sorted(set(withheld))[:5])}"
+                )
+
+        if not sampled:
+            raise TableauWorkBookException(
+                "Unable to fetch Dashboards from tableau\n"
+                "Please check if the user has permissions to access the Dashboards information"
+            )
+        return True
 
     def _query_datasources(
         self, dashboard_id: str, entities_per_page: int, offset: int

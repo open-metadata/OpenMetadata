@@ -1,5 +1,6 @@
 package org.openmetadata.sdk.services.teams;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
@@ -19,6 +20,14 @@ public class UserService extends EntityServiceBase<User> {
   @Override
   protected Class<User> getEntityClass() {
     return User.class;
+  }
+
+  @Override
+  protected void normalizePatchNodes(JsonNode originalNode, JsonNode updatedNode, User entity) {
+    if (entity.getDefaultPersona() == null) {
+      removeField(originalNode, "defaultPersona");
+      removeField(updatedNode, "defaultPersona");
+    }
   }
 
   // Create user using CreateUser request

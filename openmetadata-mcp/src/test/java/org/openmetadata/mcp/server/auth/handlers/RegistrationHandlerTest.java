@@ -91,6 +91,7 @@ class RegistrationHandlerTest {
     OAuthClientInformation result = handler.handle(metadata).join();
 
     assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("client_secret_post");
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
   }
 
   @Test
@@ -254,6 +255,46 @@ class RegistrationHandlerTest {
 
     assertThat(result.getTokenEndpointAuthMethod()).isEqualTo("none");
     verify(clientRepository).register(any());
+  }
+
+  /**
+   * Regression for PR #28552: a public client (token_endpoint_auth_method=none) MUST NOT be issued a
+   * client secret. Before the fix the secret was generated unconditionally, so the token endpoint
+   * then demanded a secret the public PKCE client (Cursor, ChatGPT) never had, failing with
+   * "Client secret required" (401). Public clients are secured by PKCE, not a secret.
+   */
+  @Test
+  void testPublicClient_none_issuesNoSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("none");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNull();
+    assertThat(result.getClientSecretExpiresAt()).isNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
+  void testConfidentialClient_clientSecretPost_issuesSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_post");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
+    assertThat(result.getClientSecretExpiresAt()).isEqualTo(0L);
+  }
+
+  @Test
+  void testConfidentialClient_clientSecretBasic_issuesSecret() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setTokenEndpointAuthMethod("client_secret_basic");
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientSecret()).isNotNull().isNotEmpty();
+    assertThat(result.getClientSecretExpiresAt()).isEqualTo(0L);
   }
 
   @Test

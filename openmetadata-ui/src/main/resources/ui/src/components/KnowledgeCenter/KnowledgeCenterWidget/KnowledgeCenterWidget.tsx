@@ -17,10 +17,10 @@ import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';
-import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/ic-knowledge-center-widget.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-quick-link.svg';
+import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
+import { ReactComponent as ContextCenterWidgetIcon } from '../../../assets/svg/widget/context-center.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
@@ -36,12 +36,11 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
-
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -96,7 +95,7 @@ const KnowledgeCenterWidget = ({
             width={SIZE.MEDIUM}
           />
         }
-        title={t('label.no-knowledge-articles-available')}
+        title={t('label.no-articles-available')}
       />
     );
   }, [t]);
@@ -127,7 +126,7 @@ const KnowledgeCenterWidget = ({
                 <Col className="d-flex items-center gap-2" span={24}>
                   <span>
                     <Icon
-                      className="knowledge-icon d-flex align-items-center justify-center"
+                      className="knowledge-icon d-flex align-items-center justify-center tw:text-brand-tertiary"
                       component={isQuickLink ? LinkIcon : IconArticle}
                       data-testid={`${
                         isQuickLink ? 'link-icon' : 'article-icon'
@@ -186,9 +185,9 @@ const KnowledgeCenterWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<KnowledgeCenterWidgetIcon height={22} width={22} />}
+        icon={<ContextCenterWidgetIcon height={24} width={24} />}
         isEditView={isEditView}
-        title={t('label.knowledge-center')}
+        title={t('label.context-center')}
         widgetKey={widgetKey}
         onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />

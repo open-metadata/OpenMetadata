@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -106,20 +106,19 @@ const DataProductsSelectList = ({
     const { currentTarget } = e;
     if (
       currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
+        currentTarget.scrollHeight &&
+      options.length < paging.total
     ) {
-      if (options.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
+      try {
+        setHasContentLoading(true);
+        const res = await fetchOptions(searchValue, currentPage + 1);
+        setOptions((prev) => [...prev, ...res.data]);
+        setPaging(res.paging);
+        setCurrentPage((prev) => prev + 1);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setHasContentLoading(false);
       }
     }
   };
@@ -175,6 +174,7 @@ const DataProductsSelectList = ({
   return (
     <Select
       allowClear
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the selector when it mounts for quick entry
       autoFocus
       showSearch
       className="w-full"

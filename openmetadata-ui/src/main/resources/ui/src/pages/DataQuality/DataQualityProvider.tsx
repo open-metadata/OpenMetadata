@@ -25,7 +25,7 @@ import {
   fetchTestCaseSummary,
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
-import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -38,7 +38,23 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+  isActive = true,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+  /**
+   * Whether this page currently owns the URL. Filters here are derived from the
+   * query string, which is global — so a host that keeps the page mounted while
+   * routing elsewhere (AI mode caches visited routes) must pass `false`, or the
+   * backgrounded page re-derives its filters from whatever route now owns the
+   * query string and refetches with another page's params. Defaults to `true`
+   * for hosts that unmount the page on navigation.
+   */
+  isActive?: boolean;
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -59,6 +75,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       currentPage: _currentPage,
       pageSize: _pageSize,
+      searchValue: _searchValue,
       ...filters
     } = params;
 
@@ -83,10 +100,14 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
-  const fetchTestSummary = async (params?: DataQualityPageParams) => {
+  const fetchTestSummary = async (
+    params?: DataQualityPageParams,
+    shouldIgnore = () => false
+  ) => {
     const filters = {
       ...pick(params, [
         'tags',
@@ -96,6 +117,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         'testCaseStatus',
         'testCaseType',
       ]),
+      dataProductFqns: params?.dataProductFqn
+        ? [params.dataProductFqn]
+        : undefined,
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
@@ -105,17 +129,17 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await fetchTestCaseSummary(filters);
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        filters,
-        true
-      );
-      const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
-        filters,
-        false
-      );
-
-      const { data: entityCount } = await fetchTotalEntityCount(filters);
+      const [
+        { data },
+        { data: unhealthyData },
+        { data: totalDQCoverage },
+        { data: entityCount },
+      ] = await Promise.all([
+        fetchTestCaseSummary(filters),
+        fetchEntityCoveredWithDQ(filters, true),
+        fetchEntityCoveredWithDQ(filters, false),
+        fetchTotalEntityCount(filters),
+      ]);
 
       const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
       const total = parseInt(totalDQCoverage[0].originEntityFQN);
@@ -125,28 +149,51 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         totalEntityCount = total;
       }
 
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary({
-        ...updatedData,
-        unhealthy,
-        healthy: total - unhealthy,
-        totalDQEntities: total,
-        totalEntityCount,
-      });
+      // A newer filter request can finish first; do not let this older response
+      // replace the summary that belongs to the current URL filters.
+      if (!shouldIgnore()) {
+        const updatedData = transformToTestCaseStatusObject(data);
+        setTestCaseSummary({
+          ...updatedData,
+          unhealthy,
+          healthy: total - unhealthy,
+          totalDQEntities: total,
+          totalEntityCount,
+        });
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!shouldIgnore()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTestCaseSummaryLoading(false);
+      if (!shouldIgnore()) {
+        setIsTestCaseSummaryLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    let ignore = false;
+
+    // The dashboard owns its chart requests. When this provider is backgrounded
+    // or the dashboard is active, retain the last summary instead of issuing
+    // duplicate requests with query parameters owned by another view.
+    if (!isActive || activeTab === DataQualityPageTabs.DASHBOARD) {
+      setIsTestCaseSummaryLoading(false);
+
+      return;
+    }
+
     if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
-      fetchTestSummary(filterParams);
+      fetchTestSummary(filterParams, () => ignore);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [filterKey]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, filterKey, isActive]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

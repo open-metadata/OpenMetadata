@@ -49,17 +49,18 @@ import {
   queryGlossaryTerms,
   searchGlossaryTerms,
 } from '../../../rest/glossaryAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
   findItemByFqn,
-} from '../../../utils/GlossaryUtils';
+} from '../../../utils/GlossaryPureUtils';
+import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
-import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
+} from '../../../utils/StringUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -70,7 +71,6 @@ import {
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
-
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;
@@ -78,6 +78,8 @@ interface TreeAsyncSelectListProps
   newLook?: boolean;
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
+  dropdownMatchSelectWidth?: boolean | number;
+  getPopupContainer?: TreeSelectProps['getPopupContainer'];
 }
 
 interface ExtendedTreeNode {
@@ -496,6 +498,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       {...(isMultiSelect
         ? { treeCheckable: true, treeCheckStrictly: true }
         : { allowClear: true })}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the tag selector when it opens
       autoFocus={open}
       className={classNames('async-select-list', {
         'new-chip-style': newLook,

@@ -31,11 +31,10 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
+import { getBotByName, updateBotDetail } from '../../rest/botsAPI';
 import {
-  getBotByName,
   getUserByName,
   revokeUserToken,
-  updateBotDetail,
   updateUserDetail,
 } from '../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -105,7 +104,7 @@ const BotDetailsPage = () => {
           ...response,
         }));
       } else {
-        throw t('message.unexpected-error');
+        throw t('server.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -121,7 +120,7 @@ const BotDetailsPage = () => {
       if (response) {
         setBotUserData((prevData) => ({ ...prevData, ...response }));
       } else {
-        throw t('message.unexpected-error');
+        throw t('server.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

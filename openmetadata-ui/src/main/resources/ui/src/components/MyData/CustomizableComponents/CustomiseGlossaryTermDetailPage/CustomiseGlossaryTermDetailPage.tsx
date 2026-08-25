@@ -14,18 +14,41 @@
 import { Col, Row } from 'antd';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { CustomizeTabWidget } from '../../../Customization/CustomizeTabWidget/CustomizeTabWidget';
-import { GlossaryHeaderWidget } from '../../../Glossary/GlossaryHeader/GlossaryHeaderWidget';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
+
+const CustomizablePageHeader = withSuspenseFallback(
+  lazy(() =>
+    import('../CustomizablePageHeader/CustomizablePageHeader').then(
+      (module) => ({ default: module.CustomizablePageHeader })
+    )
+  )
+);
+
+const CustomizeTabWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Customization/CustomizeTabWidget/CustomizeTabWidget').then(
+      (module) => ({ default: module.CustomizeTabWidget })
+    )
+  )
+);
+
+const GlossaryHeaderWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Glossary/GlossaryHeader/GlossaryHeaderWidget').then(
+      (module) => ({ default: module.GlossaryHeaderWidget })
+    )
+  )
+);
 
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
@@ -69,27 +92,29 @@ function CustomizeGlossaryTermDetailPage({
   }
 
   return (
-    <PageLayoutV1
-      mainContainerClassName="p-t-0"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.' + kebabCase(currentPageType)),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col span={24}>
-          <GlossaryHeaderWidget isGlossary={isGlossary} />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.' + kebabCase(currentPageType)),
+        })}>
+        <Row className="customize-details-page" gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Col>
+          <Col span={24}>
+            <GlossaryHeaderWidget isGlossary={isGlossary} />
+          </Col>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 }
 

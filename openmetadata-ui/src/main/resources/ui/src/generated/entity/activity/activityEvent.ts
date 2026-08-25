@@ -22,9 +22,10 @@ export interface ActivityEvent {
      */
     about?: string;
     /**
-     * User or bot who performed the action.
+     * User or bot who performed the action. May be absent for system events or hard-deleted
+     * users.
      */
-    actor: EntityReference;
+    actor?: EntityReference;
     /**
      * Optional structured change description with field-level details.
      */
@@ -73,7 +74,8 @@ export interface ActivityEvent {
 }
 
 /**
- * User or bot who performed the action.
+ * User or bot who performed the action. May be absent for system events or hard-deleted
+ * users.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

@@ -38,10 +38,10 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import CodeEditor from '../../components/Database/SchemaEditor/CodeEditor';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
@@ -81,6 +81,10 @@ import { getDefaultTaskFormSchema } from '../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import TaskFormBuilderSection from './components/TaskFormBuilderSection';
 import './task-form-settings.less';
+
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/CodeEditor'))
+);
 
 const EMPTY_SCHEMA: TaskFormSchema = {
   name: '',
@@ -221,10 +225,10 @@ const TaskFormSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.GOVERNANCE,
-        'Task Forms',
+        t('label.task-form-plural'),
         GlobalSettingOptions.TASK_FORMS
       ),
-    []
+    [t]
   );
 
   const setSchemaEditors = (schema: TaskFormSchema) => {
@@ -466,7 +470,9 @@ const TaskFormSettingsPage = () => {
     }
   };
 
-  const pageTitle =
+  // The heading for the schema being edited — distinct from the document
+  // title, which names the settings page itself.
+  const schemaHeading =
     watchedDisplayName?.trim() ||
     watchedName?.trim() ||
     selectedSchema.displayName ||
@@ -481,7 +487,7 @@ const TaskFormSettingsPage = () => {
     .join(' / ');
 
   return (
-    <PageLayoutV1 pageTitle="Task Forms">
+    <PageLayoutV1 pageTitle={t('label.task-form-plural')}>
       <div
         className="task-form-settings-page"
         data-testid="task-form-settings-page">
@@ -553,7 +559,7 @@ const TaskFormSettingsPage = () => {
                   <Typography.Title
                     className="task-form-settings-hero__title"
                     level={2}>
-                    {pageTitle}
+                    {schemaHeading}
                   </Typography.Title>
                   <Typography.Paragraph className="task-form-settings-hero__description">
                     {pageDescription}

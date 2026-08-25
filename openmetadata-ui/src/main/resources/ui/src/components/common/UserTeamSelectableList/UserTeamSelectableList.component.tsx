@@ -31,12 +31,10 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import { getCountBadge } from '../../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -225,11 +223,11 @@ export const UserTeamSelectableList = ({
   const init = async () => {
     if (popupVisible || popoverProps?.open) {
       if (ownerType === EntityType.USER) {
-        await getTeamCount();
         setActiveTab('users');
+        await getTeamCount();
       } else {
-        await getUserCount();
         setActiveTab('teams');
+        await getUserCount();
       }
     }
   };

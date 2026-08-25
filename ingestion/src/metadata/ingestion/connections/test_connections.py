@@ -138,7 +138,7 @@ def _test_connection_steps_automation_workflow(
                 logger.debug(traceback.format_exc())
                 logger.error(f"{step.name}-{err}")
                 test_connection_result.steps.append(
-                    TestConnectionStepResult(
+                    TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                         name=step.name,
                         mandatory=step.mandatory,
                         passed=False,
@@ -209,7 +209,7 @@ def _test_connection_steps_during_ingestion(
             logger.debug(traceback.format_exc())
             logger.error(f"{step.name}-{err}")
             test_connection_result.steps.append(
-                TestConnectionStepResult(
+                TestConnectionStepResult(  # pyright: ignore[reportCallIssue]
                     name=step.name,
                     mandatory=step.mandatory,
                     passed=False,

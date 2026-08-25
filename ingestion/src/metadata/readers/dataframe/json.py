@@ -73,7 +73,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_lines(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream JSON Lines in batches. Memory efficient."""
-        from pandas import DataFrame  # noqa: PLC0415
+        from pandas import DataFrame
 
         batch = []
         while True:
@@ -99,8 +99,8 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_array(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream large JSON arrays using ijson. Memory efficient."""
-        import ijson  # noqa: PLC0415
-        from pandas import DataFrame  # noqa: PLC0415
+        import ijson
+        from pandas import DataFrame
 
         batch = []
         for record in ijson.items(file_obj, "item"):
@@ -112,15 +112,24 @@ class JSONDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
+    def _is_iceberg_delta_shape(obj: Any) -> bool:
+        return (
+            isinstance(obj, dict)
+            and isinstance(obj.get("schema"), dict)
+            and isinstance(obj["schema"].get("fields"), list)
+        )
+
+    @staticmethod
     def _read_json_object(
         content: bytes,
     ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:  # noqa: F821, UP045
         """Load entire JSON object/array. Non-streaming fallback for small files."""
-        from pandas import DataFrame  # noqa: PLC0415
+        from pandas import DataFrame
 
         content = content.decode(UTF_8, errors="ignore") if isinstance(content, bytes) else content
         data = json.loads(content)
-        raw_data = content if isinstance(data, dict) and data.get("$schema") else None
+        is_json_schema = isinstance(data, dict) and data.get("$schema")
+        raw_data = content if (is_json_schema or JSONDataFrameReader._is_iceberg_delta_shape(data)) else None
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
@@ -140,7 +149,11 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
+                return False
+            return True  # noqa:TRY300
         except json.JSONDecodeError:
             return False
 
@@ -206,7 +219,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from gcsfs import GCSFileSystem  # noqa: PLC0415
+        from gcsfs import GCSFileSystem
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -220,7 +233,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
+        from adlfs import AzureBlobFileSystem
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(

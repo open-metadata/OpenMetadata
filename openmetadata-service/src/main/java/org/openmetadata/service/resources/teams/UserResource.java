@@ -54,9 +54,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -81,6 +84,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -95,6 +99,8 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.teams.UserPreferences;
+import org.openmetadata.schema.api.teams.preferences.AppModePreference;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.CreatePersonalToken;
@@ -114,7 +120,6 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -133,6 +138,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserPreferencesRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.limits.Limits;
@@ -141,6 +147,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
@@ -154,6 +161,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -181,6 +189,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
+  private final UserPreferencesRepository preferencesRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -207,6 +216,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
+    preferencesRepository = new UserPreferencesRepository();
     UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
@@ -214,7 +224,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_TEAMS);
+    return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
   }
 
   @Override
@@ -292,6 +302,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("isBot")
           Boolean isBot,
       @Parameter(
+              description =
+                  "When fields contains owns, only include owned entities of this entity type.",
+              schema = @Schema(type = "string", example = "pipeline"))
+          @QueryParam("ownsEntityType")
+          String ownsEntityType,
+      @Parameter(
+              description =
+                  "When fields contains owns, only include entities directly owned by the user.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("directOwnsOnly")
+          Boolean directOwnsOnly,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
@@ -303,6 +325,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
+    }
+    if (ownsEntityType != null) {
+      filter.addQueryParam("ownsEntityType", ownsEntityType);
+    }
+    if (directOwnsOnly != null) {
+      filter.addQueryParam("directOwnsOnly", String.valueOf(directOwnsOnly));
     }
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -578,6 +606,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response logoutUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletRequest httpServletRequest,
+      @Context HttpServletResponse httpServletResponse,
       @Valid LogoutRequest request) {
     Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
     JwtTokenCacheManager.getInstance()
@@ -589,6 +619,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBasicAuth() && request.getRefreshToken() != null) {
       // need to clear the refresh token as well
       tokenRepository.deleteToken(request.getRefreshToken());
+    }
+    SessionService sessionService =
+        AuthServeletHandlerRegistry.getSessionService(httpServletRequest.getServletContext());
+    if (sessionService != null) {
+      sessionService.revokeSession(httpServletRequest, httpServletResponse);
     }
     return Response.status(200).entity("Logout Successful").build();
   }
@@ -705,7 +740,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
@@ -741,7 +775,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return authenticationConfiguration.getProvider().equals(AuthProvider.BASIC);
+    return SecurityConfigurationManager.isNativePasswordProvider(
+        authenticationConfiguration.getProvider());
   }
 
   @PUT
@@ -1084,6 +1119,142 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
+  private static final Map<String, Class<?>> PREFERENCE_TYPES =
+      Map.of(AppModePreference.Type.APP_MODE.value(), AppModePreference.class);
+
+  @GET
+  @Path("/{userId}/preferences")
+  @Operation(
+      operationId = "getUserPreferences",
+      summary = "Get user preferences",
+      description =
+          "Get the per-user UI preferences list. Users can read their own; admins can read anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences getPreferences(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    List<Object> preferences = preferencesRepository.get(userId);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @PUT
+  @Path("/{userId}/preferences/{type}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "putUserPreference",
+      summary = "Create or replace a user preference",
+      description =
+          "Create or replace the preference entry of the given `type`. The request body is a "
+              + "typed discriminated union `{type, config}` (see "
+              + "`api/teams/preferences/*.json`). Users can update their own; admins can update "
+              + "anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences putPreference(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type,
+      @RequestBody(
+              description = "Typed preference entry `{type, config}`",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      examples = {
+                        @ExampleObject("{\"type\": \"appMode\", \"config\": {\"value\": \"ai\"}}")
+                      }))
+          Map<String, Object> preference) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    Object typedPreference = convertPreference(type, preference);
+    List<Object> preferences = preferencesRepository.putByType(userId, type, typedPreference);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @DELETE
+  @Path("/{userId}/preferences/{type}")
+  @Operation(
+      operationId = "deleteUserPreference",
+      summary = "Delete a user preference",
+      description =
+          "Remove the preference entry of the given `type`, if present. Users can update their "
+              + "own; admins can update anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences deletePreference(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    List<Object> preferences = preferencesRepository.deleteByType(userId, type);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  /**
+   * Converts the raw request body into the concrete POJO registered for {@code type} in {@link
+   * #PREFERENCE_TYPES}, so JAX-RS can accept a single generic body shape for the `{type}`
+   * path-templated endpoint while still storing (and returning) fully typed preference entries.
+   * Adding a new preference type only requires a new schema + a new map entry here.
+   */
+  private static Object convertPreference(String type, Map<String, Object> preference) {
+    Class<?> preferenceClass = PREFERENCE_TYPES.get(type);
+    if (preferenceClass == null) {
+      throw new BadRequestException("Unsupported user preference type: " + type);
+    }
+    Object bodyType = preference == null ? null : preference.get("type");
+    if (!type.equals(bodyType)) {
+      throw new BadRequestException(
+          String.format(
+              "Preference type in path (%s) does not match request body (%s)", type, bodyType));
+    }
+    return JsonUtils.convertValue(preference, preferenceClass);
+  }
+
+  /** Users can act on their own preferences; anyone else requires admin. */
+  private void authorizeSelfOrAdmin(UriInfo uriInfo, SecurityContext securityContext, UUID userId) {
+    String authenticatedUserName = securityContext.getUserPrincipal().getName();
+    User authenticatedUser =
+        repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+    if (!authenticatedUser.getId().equals(userId)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -1336,16 +1507,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
-    String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(
-              uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          repository.getByEmail(
+              uriInfo,
+              request.getEmail().toLowerCase(),
+              new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}",
-          userName,
+          request.getEmail(),
           ex.getMessage());
       return Response.status(Response.Status.OK)
           .entity("Please check your mail to for Reset Password Link.")
@@ -1445,8 +1617,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     User user =
-        repository.getByName(
-            uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
+        repository.getByEmail(
+            uriInfo, request.getEmail().toLowerCase(), getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
 

@@ -4,6 +4,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -3034,25 +3035,29 @@ public class WorkflowDefinitionResourceIT {
     Glossary glossary = client.glossaries().create(createGlossary);
     LOG.debug("Created glossary: {}", glossary.getName());
 
-    // Create glossary term that SHOULD trigger workflow (has description)
+    // Trigger filter is an EXCLUSION filter: a matching JsonLogic tells the workflow to
+    // NOT trigger for that entity. A term whose description contains "workflow" therefore
+    // matches the filter and is EXCLUDED; a term without "workflow" in its description does
+    // not match, so the workflow runs and rewrites its displayName.
     CreateGlossaryTerm createTermToMatch =
         new CreateGlossaryTerm()
             .withName("createTermToMatch")
-            .withDisplayName("Complete Term")
-            .withDescription("This term has a description and should trigger workflow")
+            .withDisplayName("Excluded Term")
+            .withDescription("This term description contains workflow so it is excluded")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termToMatch = client.glossaryTerms().create(createTermToMatch);
-    LOG.debug("Created glossary term that should match filter: {}", termToMatch.getName());
+    LOG.debug("Created glossary term that matches filter (excluded): {}", termToMatch.getName());
 
-    // Create glossary term that should NOT trigger workflow (will not match filter)
     CreateGlossaryTerm createTermNotToMatch =
         new CreateGlossaryTerm()
             .withName("createTermNotToMatch")
-            .withDisplayName("Incomplete Term")
+            .withDisplayName("Triggering Term")
             .withDescription("Simple description without the magic word")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termNotToMatch = client.glossaryTerms().create(createTermNotToMatch);
-    LOG.debug("Created glossary term that should NOT match filter: {}", termNotToMatch.getName());
+    LOG.debug(
+        "Created glossary term that does not match filter (triggers): {}",
+        termNotToMatch.getName());
 
     // Ensure WorkflowEventConsumer is active
     ensureWorkflowEventConsumerIsActive(client);
@@ -3083,31 +3088,32 @@ public class WorkflowDefinitionResourceIT {
             .withDatabase(database.getFullyQualifiedName());
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
 
-    // Create table that SHOULD trigger workflow (production table)
+    // Same exclusion semantics for the table entity: names containing "production" match the
+    // table filter and are EXCLUDED; names without "production" do not match, so the workflow
+    // triggers and rewrites the displayName.
     CreateTable createProdTable =
         new CreateTable()
             .withName("production_customer_data")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Production table that should trigger workflow")
+            .withDescription("Production table (matches filter -> excluded)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("data").withDataType(ColumnDataType.STRING)));
     Table prodTable = client.tables().create(createProdTable);
-    LOG.debug("Created production table that should match filter: {}", prodTable.getName());
+    LOG.debug("Created production table that matches filter (excluded): {}", prodTable.getName());
 
-    // Create table that should NOT trigger workflow (dev/test table)
     CreateTable createDevTable =
         new CreateTable()
             .withName("dev_test_table")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Dev table that should NOT trigger workflow")
+            .withDescription("Dev table (does not match filter -> triggers)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("test_data").withDataType(ColumnDataType.STRING)));
     Table devTable = client.tables().create(createDevTable);
-    LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
+    LOG.debug("Created dev table that does not match filter (triggers): {}", devTable.getName());
 
     // Create workflow with entity-specific filters - using raw JSON like reference test
     String workflowJson =
@@ -3226,8 +3232,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode devTablePatch = MAPPER.readTree(devTablePatchStr);
     client.tables().patch(devTableId, devTablePatch);
 
-    // Wait for workflow processing using Awaitility
-    LOG.info("Waiting for workflow to process entities...");
+    // Wait for the non-matching entities to be processed by the workflow. Matching entities are
+    // silently excluded by the trigger filter, so we cannot wait on them — they never change.
+    LOG.info("Waiting for workflow to process non-matching entities...");
     await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -3235,19 +3242,18 @@ public class WorkflowDefinitionResourceIT {
         .until(
             () -> {
               try {
-                // Check if entities that match filters got processed
-                GlossaryTerm updatedTermToMatch = client.glossaryTerms().get(termToMatchId);
-                Table updatedProdTable = client.tables().get(prodTableId);
+                GlossaryTerm updatedTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
+                Table updatedDevTable = client.tables().get(devTableId);
 
                 boolean termProcessed =
-                    updatedTermToMatch.getDisplayName() != null
-                        && updatedTermToMatch.getDisplayName().startsWith("[FILTERED]");
+                    updatedTermNotToMatch.getDisplayName() != null
+                        && updatedTermNotToMatch.getDisplayName().startsWith("[FILTERED]");
                 boolean tableProcessed =
-                    updatedProdTable.getDisplayName() != null
-                        && updatedProdTable.getDisplayName().startsWith("[FILTERED]");
+                    updatedDevTable.getDisplayName() != null
+                        && updatedDevTable.getDisplayName().startsWith("[FILTERED]");
 
                 if (termProcessed && tableProcessed) {
-                  LOG.debug("Both matching entities have been processed by workflow");
+                  LOG.debug("Both non-matching entities have been processed by workflow");
                   return true;
                 }
 
@@ -3265,35 +3271,34 @@ public class WorkflowDefinitionResourceIT {
     // Verify results
     LOG.info("Verifying workflow results");
 
-    // Entities that match filter should be processed
-    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
-    assertTrue(
-        finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm with description should have been processed by workflow");
-    LOG.info(
-        "✓ GlossaryTerm with description was correctly processed using glossaryterm-specific filter");
-
-    Table finalProdTable = client.tables().get(prodTableId);
-    assertTrue(
-        finalProdTable.getDisplayName().startsWith("[FILTERED]"),
-        "Production table should have been processed by workflow");
-    LOG.info(
-        "✓ Table with 'production' in name was correctly processed using table-specific filter");
-
-    // Entities that don't match filter should NOT be processed
+    // Entities that do NOT match filter should be processed (exclusion filter fell through).
     GlossaryTerm finalTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
-    assertFalse(
-        finalTermNotToMatch.getDisplayName() != null
-            && finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm without description should NOT have been processed by workflow");
-    LOG.info("✓ GlossaryTerm without description was correctly filtered out");
+    assertTrue(
+        finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm without the excluded keyword should have been processed by workflow");
+    LOG.info(
+        "✓ GlossaryTerm without 'workflow' in description was processed (exclusion filter did not match)");
 
     Table finalDevTable = client.tables().get(devTableId);
+    assertTrue(
+        finalDevTable.getDisplayName().startsWith("[FILTERED]"),
+        "Table without 'production' in name should have been processed by workflow");
+    LOG.info("✓ Table without 'production' in name was processed (exclusion filter did not match)");
+
+    // Entities that MATCH the filter must be excluded — the workflow must not touch them.
+    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
     assertFalse(
-        finalDevTable.getDisplayName() != null
-            && finalDevTable.getDisplayName().startsWith("[FILTERED]"),
-        "Dev table should NOT have been processed by workflow");
-    LOG.info("✓ Table without 'production' in name was correctly filtered out");
+        finalTermToMatch.getDisplayName() != null
+            && finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm matching the exclusion filter should NOT have been processed by workflow");
+    LOG.info("✓ GlossaryTerm with 'workflow' in description was correctly excluded");
+
+    Table finalProdTable = client.tables().get(prodTableId);
+    assertFalse(
+        finalProdTable.getDisplayName() != null
+            && finalProdTable.getDisplayName().startsWith("[FILTERED]"),
+        "Production table matching the exclusion filter should NOT have been processed");
+    LOG.info("✓ Table with 'production' in name was correctly excluded");
 
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
@@ -3463,12 +3468,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3575,12 +3580,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3972,12 +3977,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approval",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "approval",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4055,12 +4060,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "false"
+                  "condition": "reject"
                 },
                 {
                   "from": "setTask",
@@ -4698,7 +4703,7 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approvalTask",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4712,8 +4717,8 @@ public class WorkflowDefinitionResourceIT {
           assertThrows(
               OpenMetadataException.class,
               () -> client.workflowDefinitions().validate(missingTrueConditionWorkflow));
-      assertTrue(missingTrueEx.getMessage().contains("must have both TRUE and FALSE"));
-      LOG.debug("UserApprovalTask missing TRUE condition correctly rejected");
+      assertTrue(missingTrueEx.getMessage().contains("must have both approve and reject"));
+      LOG.debug("UserApprovalTask missing approve condition correctly rejected");
 
       // Test 16 (Test 10 in original): Valid conditional task with both TRUE and FALSE
       String validConditionalJson =
@@ -5338,9 +5343,9 @@ public class WorkflowDefinitionResourceIT {
                       ],
                       "edges": [
                         {"from": "StartNode", "to": "UserApproval"},
-                        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+                        {"from": "UserApproval", "to": "SetDescription", "condition": "approve"},
                         {"from": "SetDescription", "to": "EndNode"},
-                        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                        {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
                       ],
                       "config": {"storeStageStatus": true}
                     }
@@ -5841,9 +5846,9 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "StartNode", "to": "UserApproval"},
-                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
+                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "approve"},
                 {"from": "SetStatusApproved", "to": "EndNode"},
-                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -6128,8 +6133,8 @@ public class WorkflowDefinitionResourceIT {
                   ],
                   "edges": [
                     {"from": "Start", "to": "UserApproval"},
-                    {"from": "UserApproval", "to": "End", "condition": "true"},
-                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                    {"from": "UserApproval", "to": "End", "condition": "approve"},
+                    {"from": "UserApproval", "to": "End", "condition": "reject"}
                   ],
                   "config": {"storeStageStatus": true}
                 }
@@ -6360,12 +6365,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -7530,8 +7535,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -7856,8 +7861,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -8144,8 +8149,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -9394,6 +9399,8 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.info("✓ Approval task created for tag change");
 
+    UUID tagChangeTaskId = listOpenApprovalTasks(client, tableFqn).getData().getFirst().getId();
+
     // Test 2: Update table with domain - should also trigger workflow
     String domainPatchJson =
         String.format(
@@ -9407,7 +9414,9 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info("✓ Table updated with domain: {}", domain.getFullyQualifiedName());
 
-    // Wait for workflow to process and check if approval task was created for domain change
+    // Wait for workflow to process. The domain change also triggers the workflow (OR logic across
+    // include fields), creating a NEW approval task that supersedes the tag-change task — one live
+    // approval per (entity, workflow). So exactly one task stays open, and it is a different task.
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
@@ -9415,12 +9424,15 @@ public class WorkflowDefinitionResourceIT {
         .untilAsserted(
             () -> {
               ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              assertTrue(
-                  tasks.getData().size() >= 2,
-                  "Approval task should be created for domain field change");
+              assertEquals(
+                  1, tasks.getData().size(), "Exactly one approval task should remain open");
+              assertNotEquals(
+                  tagChangeTaskId,
+                  tasks.getData().getFirst().getId(),
+                  "Domain change should create a new approval task that supersedes the tag-change task");
             });
     LOG.info(
-        "✓ Approval task created for domain change - OR logic verified for multiple include fields");
+        "✓ Domain change created a new approval task that superseded the prior one - OR logic verified");
 
     // Cleanup workflow
     try {
@@ -9690,12 +9702,12 @@ public class WorkflowDefinitionResourceIT {
             {
               "from": "userApproval",
               "to": "setApproved",
-              "condition": "true"
+              "condition": "approve"
             },
             {
               "from": "userApproval",
               "to": "setRejected",
-              "condition": "false"
+              "condition": "reject"
             },
             {
               "from": "setApproved",
@@ -10117,8 +10129,8 @@ public class WorkflowDefinitionResourceIT {
           "edges": [
             {"from": "start", "to": "setStatusInReview"},
             {"from": "setStatusInReview", "to": "ApprovalTask"},
-            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "true"},
-            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "false"},
+            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "approve"},
+            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "reject"},
             {"from": "setStatusApproved", "to": "endApproved"},
             {"from": "setStatusRejected", "to": "endRejected"}
           ],
@@ -10279,5 +10291,671 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("✓ Deleted test users");
 
     LOG.info("test_SelfApprovalPrevention completed successfully");
+  }
+
+  /**
+   * Bug 2: a no-op change event must not invalidate a pending approval.
+   *
+   * <p>CE1 (admin) changes a gated field (tag) → approval task T1 is created and parked. CE2 is a
+   * genuinely separate session: a DIFFERENT user (the schema owner) edits a non-gated trigger field
+   * (description). It passes the entity-level trigger filter but fails checkChangeDescription, so it
+   * creates no task. Using a different user is essential — OpenMetadata consolidates consecutive
+   * same-user edits within the session window into a single change-set, which would fold the
+   * pending gated tag into CE2 and make it (correctly) re-trigger approval. With a separate session,
+   * CE2 is a true no-op: T1 must survive AND stay resolvable. Resolving it is the discriminator —
+   * before the fix, the trigger-time terminate killed CE1's Flowable process, leaving T1 orphaned.
+   */
+  @Test
+  void test_NoOpEventDoesNotInvalidatePendingApproval(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NoOpEventDoesNotInvalidatePendingApproval");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    SupersedeFixtures fx = createTagApprovalFixtures(client, ns, suffix, "noop");
+    try {
+      String schemaFqn = fx.schema.getFullyQualifiedName();
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Task originalTask = awaitSingleOpenApprovalTask(client, schemaFqn);
+      LOG.debug("CE1 created approval task {}", originalTask.getId());
+
+      // CE2: a different user (the owner) edits the description — a trigger field, so it passes the
+      // entity filter, but it is not gated, so the workflow creates no task. The different user
+      // keeps it out of admin's session consolidation, so CE2 carries only the description change.
+      patchDescription(ownerClient, fx.schema.getId(), "no-op edit by owner " + suffix);
+
+      await("no-op event must leave the original approval task untouched")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                ListResponse<Task> open = listOpenApprovalTasks(client, schemaFqn);
+                assertEquals(
+                    1, open.getData().size(), "Exactly one approval task should remain open");
+                assertEquals(
+                    originalTask.getId(),
+                    open.getData().getFirst().getId(),
+                    "The original pending approval task must be the one still open");
+              });
+
+      ownerClient
+          .tasks()
+          .resolve(
+              originalTask.getId().toString(),
+              new org.openmetadata.schema.api.tasks.ResolveTask()
+                  .withResolutionType(TaskResolutionType.Approved));
+
+      await("surviving task must resolve and drive the workflow to Approved")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Approved));
+
+      LOG.info("test_NoOpEventDoesNotInvalidatePendingApproval completed successfully");
+    } finally {
+      cleanupSupersedeFixtures(client, fx);
+    }
+  }
+
+  /**
+   * Bug 1: a new approval run supersedes the stale pending task.
+   *
+   * <p>CE1 creates and parks an approval task. CE3 makes another gated change, producing a new
+   * approval run. When the new run materializes its task, the prior task must be Cancelled (no
+   * orphaned OM task) and exactly one new open task must remain. The new task must be resolvable,
+   * proving its Flowable process is live.
+   */
+  @Test
+  void test_NewApprovalRunSupersedesStalePendingTask(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NewApprovalRunSupersedesStalePendingTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    SupersedeFixtures fx = createTagApprovalFixtures(client, ns, suffix, "supersede");
+    try {
+      String schemaFqn = fx.schema.getFullyQualifiedName();
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Task firstTask = awaitSingleOpenApprovalTask(client, schemaFqn);
+      LOG.debug("CE1 created approval task {}", firstTask.getId());
+
+      patchAddTag(client, fx.schema.getId(), "PII.None");
+
+      await("new approval run must supersede the prior task")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                ListResponse<Task> open = listOpenApprovalTasks(client, schemaFqn);
+                assertEquals(1, open.getData().size(), "Exactly one approval task should be open");
+                assertNotEquals(
+                    firstTask.getId(),
+                    open.getData().getFirst().getId(),
+                    "A new approval task should have replaced the prior one");
+                assertTrue(
+                    hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Cancelled),
+                    "The superseded approval task must be Cancelled, not orphaned");
+              });
+
+      Task supersedingTask = listOpenApprovalTasks(client, schemaFqn).getData().getFirst();
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+      ownerClient
+          .tasks()
+          .resolve(
+              supersedingTask.getId().toString(),
+              new org.openmetadata.schema.api.tasks.ResolveTask()
+                  .withResolutionType(TaskResolutionType.Approved));
+
+      await("superseding task must resolve and drive the workflow to Approved")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Approved));
+
+      LOG.info("test_NewApprovalRunSupersedesStalePendingTask completed successfully");
+    } finally {
+      cleanupSupersedeFixtures(client, fx);
+    }
+  }
+
+  private static class SupersedeFixtures {
+    final User owner;
+    final DatabaseService dbService;
+    final Database database;
+    final DatabaseSchema schema;
+    final WorkflowDefinition workflow;
+
+    SupersedeFixtures(
+        User owner,
+        DatabaseService dbService,
+        Database database,
+        DatabaseSchema schema,
+        WorkflowDefinition workflow) {
+      this.owner = owner;
+      this.dbService = dbService;
+      this.database = database;
+      this.schema = schema;
+      this.workflow = workflow;
+    }
+  }
+
+  private SupersedeFixtures createTagApprovalFixtures(
+      OpenMetadataClient client, TestNamespace ns, String suffix, String label) throws Exception {
+    User owner =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(label + "_owner_" + suffix)
+                    .withEmail(label + "_owner_" + suffix + "@example.com")
+                    .withDisplayName("Supersede Owner"));
+
+    DatabaseService dbService =
+        client
+            .databaseServices()
+            .create(
+                new CreateDatabaseService()
+                    .withName(ns.prefix(label + "-db-service"))
+                    .withServiceType(DatabaseServiceType.Mysql)
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withHostPort("localhost:3306")
+                                    .withUsername("test")
+                                    .withAuthType(new basicAuth().withPassword("test")))));
+
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix(label + "-database"))
+                    .withService(dbService.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix(label + "-schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+
+    String workflowName = "SupersedeApprovalWorkflow_" + label + "_" + suffix;
+    CreateWorkflowDefinition workflowRequest =
+        MAPPER.readValue(tagApprovalWorkflowJson(workflowName), CreateWorkflowDefinition.class);
+    WorkflowDefinition workflow = client.workflowDefinitions().create(workflowRequest);
+    trackWorkflow(workflowName, workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflowName);
+
+    return new SupersedeFixtures(owner, dbService, database, schema, workflow);
+  }
+
+  private String tagApprovalWorkflowJson(String workflowName) {
+    return """
+        {
+          "name": "%s",
+          "displayName": "Supersede Approval Workflow",
+          "description": "Creates an approval task only when gated tags change",
+          "type": "eventBasedEntity",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": { "events": ["Updated"], "entityTypes": ["databaseSchema"] },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            { "name": "start", "type": "startEvent", "subType": "startEvent" },
+            {
+              "name": "checkChangeDesc",
+              "type": "automatedTask",
+              "subType": "checkChangeDescriptionTask",
+              "displayName": "Check Gated Tags Changed",
+              "config": { "condition": "OR", "rules": { "tags": ["PII.Sensitive", "PII.None"] } },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": { "relatedEntity": "global" },
+              "branches": ["true", "false"]
+            },
+            {
+              "name": "userApproval",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "displayName": "Approve Changes",
+              "input": ["relatedEntity"],
+              "output": ["updatedBy"],
+              "branches": ["true", "false"],
+              "config": {
+                "assignees": { "addReviewers": true, "addOwners": true, "candidates": [] },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "inputNamespaceMap": { "relatedEntity": "global" }
+            },
+            {
+              "name": "setApproved",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Approved",
+              "config": { "fieldName": "status", "fieldValue": "Approved" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setRejected",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Rejected",
+              "config": { "fieldName": "status", "fieldValue": "Rejected" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setDraft",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Draft",
+              "config": { "fieldName": "status", "fieldValue": "Draft" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "global" }
+            },
+            { "name": "end", "type": "endEvent", "subType": "endEvent" }
+          ],
+          "edges": [
+            { "from": "start", "to": "checkChangeDesc" },
+            { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
+            { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "approve" },
+            { "from": "userApproval", "to": "setRejected", "condition": "reject" },
+            { "from": "setApproved", "to": "end" },
+            { "from": "setRejected", "to": "end" },
+            { "from": "setDraft", "to": "end" }
+          ]
+        }
+        """
+        .formatted(workflowName);
+  }
+
+  private void patchAddTag(OpenMetadataClient client, UUID schemaId, String tagFqn)
+      throws Exception {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[{\"tagFQN\":\"%s\","
+                + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]",
+            tagFqn);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private void patchDescription(OpenMetadataClient client, UUID schemaId, String description)
+      throws Exception {
+    String patch =
+        String.format("[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"%s\"}]", description);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private Task awaitSingleOpenApprovalTask(OpenMetadataClient client, String schemaFqn) {
+    await("approval task to be created for " + schemaFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> !listOpenApprovalTasks(client, schemaFqn).getData().isEmpty());
+    try {
+      return listOpenApprovalTasks(client, schemaFqn).getData().getFirst();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private boolean hasApprovalTaskWithStatus(
+      OpenMetadataClient client, String schemaFqn, TaskEntityStatus status) {
+    boolean found;
+    try {
+      Map<String, String> filters = new HashMap<>();
+      filters.put("status", status.value());
+      filters.put("category", TaskCategory.Approval.value());
+      filters.put("aboutEntity", schemaFqn);
+      found = !client.tasks().listWithFilters(filters).getData().isEmpty();
+    } catch (Exception e) {
+      found = false;
+    }
+    return found;
+  }
+
+  private void cleanupSupersedeFixtures(OpenMetadataClient client, SupersedeFixtures fx) {
+    try {
+      client.workflowDefinitions().delete(fx.workflow.getId().toString());
+      client.databaseSchemas().delete(fx.schema.getId().toString());
+      client.databases().delete(fx.database.getId().toString());
+      client.databaseServices().delete(fx.dbService.getId().toString());
+      client.users().delete(fx.owner.getId().toString());
+    } catch (Exception e) {
+      LOG.warn("Cleanup error: {}", e.getMessage());
+    }
+  }
+
+  /**
+   * Trigger filter is an EXCLUSION filter: if the JsonLogic evaluates to TRUE for the entity, the
+   * workflow does NOT trigger; if it evaluates to FALSE, or the filter is unparseable garbage
+   * (returns false from RuleEngine on any exception), the workflow triggers normally.
+   *
+   * <p>Original design: PR #22437 (return {@code !jsonFilter}, comment: "if jsonLogic evaluates
+   * to true, then don't trigger the workflow"). Task Redesign (PR #25894) accidentally dropped
+   * the {@code !} inversion and flipped this to inclusion, breaking every customer with a real
+   * JsonLogic filter or a legacy poisoned filter value like {@code "\"\""}.
+   *
+   * <p>Test exercises three cases end to end against the real trigger BPMN + FilterEntityImpl:
+   * a valid filter that does NOT match (triggers), a valid filter that matches (excludes), and
+   * a poisoned filter that fails to parse (falls open, triggers).
+   */
+  @Test
+  @Order(200)
+  void test_EventTriggerFilterIsExclusionAndFailsOpen(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("exclusionFilterWorkflow").substring(0, 30);
+    String glossaryName = ns.prefix("exclusionGlossary").substring(0, 30);
+    String triggerMarker = "trigger";
+    String excludeMarker = "skipme";
+
+    createExclusionFilterWorkflow(client, workflowName, excludeMarker);
+    Glossary glossary = createExclusionGlossary(client, glossaryName);
+
+    GlossaryTerm triggeringTerm =
+        createTerm(client, glossary, "triggering_term", triggerMarker + " content");
+    GlossaryTerm excludedTerm =
+        createTerm(client, glossary, "excluded_term", excludeMarker + " content");
+
+    awaitDisplayNamePrefixedWith(client, triggeringTerm.getId(), "[TRIGGERED]");
+    assertDisplayNameUnchangedAfterQuietPeriod(client, excludedTerm.getId());
+
+    patchFilterOn(client, workflowName, "\"\\\"\\\"\"");
+    GlossaryTerm poisonedTerm =
+        createTerm(client, glossary, "poisoned_term", "any content, filter is broken");
+    awaitDisplayNamePrefixedWith(client, poisonedTerm.getId(), "[TRIGGERED]");
+  }
+
+  private void createExclusionFilterWorkflow(
+      OpenMetadataClient client, String workflowName, String excludeMarker) throws Exception {
+    // JsonLogic: description contains excludeMarker → excludes term from workflow trigger.
+    String filterLogic =
+        String.format(
+            "{\\\"in\\\": [\\\"%s\\\", {\\\"var\\\": \\\"description\\\"}]}", excludeMarker);
+    String workflowJson =
+        String.format(
+            """
+            {
+              "name": "%s",
+              "displayName": "Exclusion Filter Test Workflow",
+              "description": "Verifies the trigger filter behaves as an exclusion filter",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["glossaryTerm"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["reviewers"],
+                  "filter": {"glossaryTerm": "%s"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "Start"},
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "MarkTriggered",
+                  "displayName": "Mark Triggered",
+                  "config": {"fieldName": "displayName", "fieldValue": "[TRIGGERED]"},
+                  "input": ["relatedEntity", "updatedBy"],
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                  "output": []
+                },
+                {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "End"}
+              ],
+              "edges": [
+                {"from": "start", "to": "MarkTriggered"},
+                {"from": "MarkTriggered", "to": "end"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """,
+            workflowName, filterLogic);
+    CreateWorkflowDefinition workflow =
+        MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(response));
+    waitForWorkflowDeployment(client, workflowName);
+  }
+
+  private Glossary createExclusionGlossary(OpenMetadataClient client, String name)
+      throws Exception {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription("Glossary for exclusion filter test");
+    return client.glossaries().create(create);
+  }
+
+  private GlossaryTerm createTerm(
+      OpenMetadataClient client, Glossary glossary, String name, String description)
+      throws Exception {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription(description)
+            .withGlossary(glossary.getFullyQualifiedName());
+    return client.glossaryTerms().create(create);
+  }
+
+  private void patchFilterOn(
+      OpenMetadataClient client, String workflowName, String filterMapJsonValue) throws Exception {
+    WorkflowDefinition workflow = client.workflowDefinitions().getByName(workflowName, null);
+    String patchStr =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryTerm\":%s}}]",
+            filterMapJsonValue);
+    client.workflowDefinitions().patch(workflow.getId(), MAPPER.readTree(patchStr));
+  }
+
+  private void awaitDisplayNamePrefixedWith(
+      OpenMetadataClient client, UUID termId, String expectedPrefix) {
+    await("glossary term " + termId + " displayName starts with " + expectedPrefix)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              GlossaryTerm current = client.glossaryTerms().get(termId);
+              return current.getDisplayName() != null
+                  && current.getDisplayName().startsWith(expectedPrefix);
+            });
+  }
+
+  /**
+   * A userApprovalTask node whose {@code config.transitionMetadata} is empty must still resolve.
+   * Verifies the end-to-end contract: task creation projects the default approve/reject pair onto
+   * {@code availableTransitions}, {@code POST /tasks/{id}/resolve} with {@code transitionId=approve}
+   * succeeds, and Flowable routes the signal (task closes as Approved rather than staying Open).
+   */
+  @Test
+  @Order(210)
+  void test_UserApprovalTask_EmptyTransitionMetadata_TaskResolvesWithDefaultTransitions(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("emptyTransitionMeta").substring(0, 30);
+    String dbServiceName = ns.prefix("emptyTransitionMetaSvc").substring(0, 30);
+
+    String reviewerSuffix = UUID.randomUUID().toString().substring(0, 8);
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("empty_meta_rvwr_" + reviewerSuffix)
+                    .withEmail("empty_meta_rvwr_" + reviewerSuffix + "@example.com")
+                    .withDisplayName("Empty Meta Reviewer")
+                    .withPassword("password123"));
+
+    // userApprovalTask with NO transitionMetadata. branches ["true","false"] mirrors legacy BPMN
+    // edge conditions (v200 migration rewrites those to approve/reject on redeploy).
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Empty Transition Metadata Workflow",
+              "description": "userApprovalTask with no transitionMetadata — must still resolve",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {"entityTypes": ["table"], "events": ["Created"]},
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "TaskReview",
+                  "displayName": "Task Review",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user",
+                         "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open"
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "endApproved", "type": "endEvent", "subType": "endEvent"},
+                {"name": "endRejected", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "TaskReview"},
+                {"from": "TaskReview", "to": "endApproved", "condition": "approve"},
+                {"from": "TaskReview", "to": "endRejected", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """
+            .formatted(
+                workflowName,
+                reviewer.getId(),
+                reviewer.getFullyQualifiedName(),
+                reviewer.getName());
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    waitForWorkflowDeployment(client, workflowName);
+
+    DatabaseService dbService =
+        client.databaseServices().create(createDatabaseServiceRequest(dbServiceName));
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(dbService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("empty_meta_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+
+    String tableFqn = table.getFullyQualifiedName();
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> !listOpenApprovalTasks(client, tableFqn).getData().isEmpty());
+
+    Task task =
+        listOpenApprovalTasks(client, tableFqn).getData().stream()
+            .filter(
+                t ->
+                    t.getAssignees() != null
+                        && t.getAssignees().stream()
+                            .anyMatch(a -> reviewer.getName().equals(a.getName())))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("Task with expected reviewer assignee not found"));
+
+    // Empty transitionMetadata on the userApprovalTask node triggers
+    // resolveTransitionsForStage's default fallback at CreateTask time, so the task row must
+    // carry the default approve/reject pair.
+    assertEquals(
+        2,
+        task.getAvailableTransitions().size(),
+        "userApprovalTask with empty transitionMetadata must project approve/reject");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "approve".equals(t.getId())),
+        "availableTransitions must contain default 'approve'");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "reject".equals(t.getId())),
+        "availableTransitions must contain default 'reject'");
+
+    // /resolve on transitionId=approve returns 200 and Flowable routes the signal (redeployed
+    // BPMN's approve/reject edge conditions match the projected id).
+    OpenMetadataClient reviewerClient =
+        SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
+    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withTransitionId("approve")
+            .withResolutionType(TaskResolutionType.Approved);
+    reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              Task refetched = client.tasks().get(task.getId().toString());
+              return refetched.getStatus() == TaskEntityStatus.Approved;
+            });
+  }
+
+  private void assertDisplayNameUnchangedAfterQuietPeriod(OpenMetadataClient client, UUID termId)
+      throws Exception {
+    String originalDisplayName = client.glossaryTerms().get(termId).getDisplayName();
+    simulateWork(Duration.ofSeconds(20).toMillis());
+    GlossaryTerm current = client.glossaryTerms().get(termId);
+    assertEquals(
+        originalDisplayName,
+        current.getDisplayName(),
+        "Excluded term must not be touched by workflow, but displayName changed to "
+            + current.getDisplayName());
   }
 }

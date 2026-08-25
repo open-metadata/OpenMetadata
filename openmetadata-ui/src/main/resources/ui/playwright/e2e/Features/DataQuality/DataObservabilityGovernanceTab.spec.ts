@@ -12,7 +12,6 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
@@ -24,8 +23,10 @@ import {
   DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
   ENTITY_HEALTH_PIE_CHART_TEST_ID,
   goToDataQualityDashboard,
+  isDashboardReportBatchResponse,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -49,10 +50,8 @@ const testCaseResult = {
  * API call containing the given filter key.
  */
 const watchDashboardResponse = (page: Page, filterKey: string) =>
-  page.waitForResponse(
-    (r) =>
-      r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport') &&
-      r.url().includes(filterKey)
+  page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, decodeURIComponent(filterKey))
   );
 
 test.beforeAll('setup', async ({ browser }) => {
@@ -98,13 +97,15 @@ test.beforeAll('setup', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
       },
     ],
   });
@@ -188,7 +189,9 @@ test.describe('Tag detail page — Data Observability tab', () => {
       await page.getByRole('tab', { name: /data observability/i }).click();
       const response = await apiResponse;
       expect(response.ok()).toBeTruthy();
-      expect(response.url()).toContain(filterKey);
+      expect(
+        isDashboardReportBatchResponse(response, decodeURIComponent(filterKey))
+      ).toBeTruthy();
     });
   });
 
@@ -278,12 +281,12 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
   });
 
   test('DQ dashboard API carries glossaryTerms filter', async ({ page }) => {
-    const capturedDqUrls: string[] = [];
-    page.on('response', (r) => {
+    const capturedDqBodies: string[] = [];
+    page.on('request', (req) => {
       if (
-        r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport')
+        req.url().includes('/dataQuality/testSuites/dataQualityReport/batch')
       ) {
-        capturedDqUrls.push(r.url());
+        capturedDqBodies.push(req.postData() ?? '');
       }
     });
 
@@ -300,12 +303,10 @@ test.describe('GlossaryTerm detail page — Data Observability tab', () => {
 
     await test.step('DQ API carries glossaryTerms as tags filter', async () => {
       await expect
-        .poll(() => capturedDqUrls.length, { timeout: 30000 })
+        .poll(() => capturedDqBodies.length, { timeout: 30000 })
         .toBeGreaterThan(0);
       expect(
-        capturedDqUrls.some((url) =>
-          decodeURIComponent(url).includes('tags.tagFQN')
-        )
+        capturedDqBodies.some((body) => body.includes('tags.tagFQN'))
       ).toBeTruthy();
     });
   });
@@ -420,7 +421,9 @@ test.describe('Domain detail page — Data Observability tab', () => {
     await test.step('DQ API response carries domainFqn filter', async () => {
       const response = await apiResponse;
       expect(response.ok()).toBeTruthy();
-      expect(response.url()).toContain(filterKey);
+      expect(
+        isDashboardReportBatchResponse(response, decodeURIComponent(filterKey))
+      ).toBeTruthy();
     });
   });
 
@@ -531,12 +534,8 @@ test.describe('Standalone DQ Dashboard — regression', () => {
     });
 
     await test.step('applying tag filter returns successful DQ API responses', async () => {
-      const apiResponse = page.waitForResponse(
-        (r) =>
-          r
-            .url()
-            .includes('/api/v1/dataQuality/testSuites/dataQualityReport') &&
-          r.url().includes('tags.tagFQN')
+      const apiResponse = page.waitForResponse((res) =>
+        isDashboardReportBatchResponse(res, 'tags.tagFQN')
       );
       await page.getByTestId('update-btn').click();
       expect((await apiResponse).ok()).toBeTruthy();

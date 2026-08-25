@@ -49,11 +49,13 @@
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
       "description": "How the memory was created.",
       "type": "string",
-      "enum": ["Manual", "ChatPromotion", "RememberRequest"],
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction"],
       "javaEnums": [
         { "name": "MANUAL" },
         { "name": "CHAT_PROMOTION" },
-        { "name": "REMEMBER_REQUEST" }
+        { "name": "REMEMBER_REQUEST" },
+        { "name": "FILE_EXTRACTION" },
+        { "name": "PAGE_EXTRACTION" }
       ],
       "default": "Manual"
     },
@@ -158,6 +160,39 @@
         }
       },
       "additionalProperties": false
+    },
+    "memoryProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryProcessingStatus",
+      "description": "Lifecycle status of the asynchronous Memory Agent derivation for a memory.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
+    },
+    "memoryStats": {
+      "type": "object",
+      "description": "Telemetry + hash-gate for the Memory Agent derivation of this memory.",
+      "javaType": "org.openmetadata.schema.entity.context.MemoryStats",
+      "properties": {
+        "status": {
+          "description": "Status of the most recent Memory Agent derivation run on this memory.",
+          "$ref": "#/definitions/memoryProcessingStatus"
+        },
+        "error": {
+          "description": "Error message from the most recent failed Memory Agent derivation run, if any.",
+          "type": "string"
+        },
+        "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
+        "derivedTermCount": { "type": "integer", "default": 0 },
+        "derivedMetricCount": { "type": "integer", "default": 0 },
+        "reusedCount": { "type": "integer", "default": 0 },
+        "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -206,6 +241,11 @@
     "status": {
       "$ref": "#/definitions/memoryStatus"
     },
+    "pinned": {
+      "description": "Whether this memory is globally pinned in Context Center.",
+      "type": "boolean",
+      "default": false
+    },
     "shareConfig": {
       "$ref": "#/definitions/shareConfig"
     },
@@ -232,6 +272,14 @@
       "description": "Assistant message identifier used to produce this memory.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "sourceFile": {
+      "description": "Deprecated: use sourceEntity. The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceEntity": {
+      "description": "The Context Center entity (file or page) this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
     "rootMemory": {
       "description": "Root memory in an append-style memory thread.",
       "$ref": "../../type/entityReference.json"
@@ -242,6 +290,17 @@
     },
     "machineRepresentation": {
       "$ref": "#/definitions/machineRepresentation"
+    },
+    "memoryStats": {
+      "$ref": "#/definitions/memoryStats"
+    },
+    "derivedEntities": {
+      "description": "Derived: glossary terms and metrics created by the Memory Agent from this memory (DERIVED_FROM edges, agent-owned).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reusedEntities": {
+      "description": "Derived: glossary terms and metrics reused (not created) by the Memory Agent from this memory (RELATED_TO edges).",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "How many times this memory has been used in AI-assisted retrieval.",

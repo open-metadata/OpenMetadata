@@ -14,6 +14,7 @@ one urllib3 Retry for transient transport failures.
 """
 
 import socket
+from typing import Any
 
 import requests
 from requests.adapters import DEFAULT_POOLBLOCK, HTTPAdapter
@@ -31,7 +32,7 @@ def _socket_optname(name: str) -> int:
     return getattr(socket, name, -1)
 
 
-def build_keepalive_socket_options() -> list[tuple[int, int, int]]:
+def build_keepalive_socket_options() -> list[tuple[int, int, int | bytes]]:
     """TCP keepalive socket options, guarded for platform differences."""
     options = list(HTTPConnection.default_socket_options) + [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
 
@@ -62,14 +63,14 @@ def build_transport_retry() -> Retry:
     )
 
 
-_KEEPALIVE_SOCKET_OPTIONS: list[tuple[int, int, int]] = build_keepalive_socket_options()
+_KEEPALIVE_SOCKET_OPTIONS: list[tuple[int, int, int | bytes]] = build_keepalive_socket_options()
 
 
 class KeepAliveRetryAdapter(HTTPAdapter):
     """HTTPAdapter that enables TCP keepalive on every pooled connection."""
 
     def init_poolmanager(
-        self, connections: int, maxsize: int, block: bool = DEFAULT_POOLBLOCK, **pool_kwargs: object
+        self, connections: int, maxsize: int, block: bool = DEFAULT_POOLBLOCK, **pool_kwargs: Any
     ) -> None:
         """Build the pool manager with keepalive socket options applied."""
         pool_kwargs["socket_options"] = _KEEPALIVE_SOCKET_OPTIONS

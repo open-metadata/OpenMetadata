@@ -1,336 +1,272 @@
-# OpenMetadata Python SDK - Improved Version
+# OpenMetadata Python SDK Compatibility Notes
 
-## Overview
+This file captures the current Python SDK API shape and the most common
+migration corrections for examples written against earlier design drafts.
 
-The improved Python SDK provides a clean, consistent API for interacting with OpenMetadata entities, following the successful patterns from the Java SDK. This redesign addresses key issues:
+## Use Plural Facade Classes
 
-1. **Clean API without Pydantic conflicts** - Static methods instead of instance methods
-2. **Full PATCH support** - Proper JSON Patch operations for partial updates
-3. **Complete entity coverage** - Support for all 44+ entity types
-4. **Comprehensive testing** - Mock-based tests without server dependencies
-5. **Async support** - Built-in async operations for all CRUD methods
-
-## Key Improvements from Original SDK
-
-### 1. No Pydantic Model Conflicts
-
-The original SDK mixed Pydantic models with custom methods, causing conflicts. The new design uses **static methods** on wrapper classes:
+SDK operations live on plural facade classes. The singular generated entity
+classes are Pydantic models and do not expose SDK methods.
 
 ```python
-# Old way (conflicts with Pydantic)
-table = Table(name="users")  # Pydantic validation issues
-table.save()  # Method conflicts
+from metadata.sdk import Databases, Tables, Users
+from metadata.generated.schema.entity.data.table import Table
 
-# New way (clean separation)
-create_request = CreateTableRequest(name="users", ...)
-table = Table.create(create_request)  # Static method, no conflicts
+table: Table = Tables.retrieve_by_name("service.database.schema.orders")
 ```
 
-### 2. Proper PATCH Support
+Do not import singular facade names such as `Table`, `Database`, or
+`Dashboard` from `metadata.sdk.entities`; they are not exported SDK classes.
 
-Full JSON Patch (RFC 6902) support for partial updates:
+Use:
 
 ```python
-# PATCH operation - only update what changed
-patch = [
-    {"op": "replace", "path": "/description", "value": "New description"},
-    {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.Sensitive"}}
-]
-table = Table.patch(table_id, patch)
-
-# vs PUT operation - full replacement
-table.description = "New description"
-table = Table.update(table_id, table)  # Sends entire entity
+from metadata.sdk import Dashboards, Databases, Tables
 ```
 
-### 3. Consistent API Across All Entities
-
-Every entity follows the same pattern via `BaseEntity`:
+or module-specific imports:
 
 ```python
-# Same API for all entities
-table = Table.create(request)
-database = Database.create(request)
-dashboard = Dashboard.create(request)
-pipeline = Pipeline.create(request)
-user = User.create(request)
-team = Team.create(request)
-
-# All support the same operations
-entity = EntityClass.retrieve(id)
-entity = EntityClass.retrieve_by_name(fqn)
-entity = EntityClass.update(id, entity)
-entity = EntityClass.patch(id, json_patch)
-EntityClass.delete(id)
-entities = EntityClass.list()
+from metadata.sdk.entities.tables import Tables
 ```
 
-### 4. Built-in Async Support
+## Configure Once
 
-All operations have async variants:
+Use `configure()` for most scripts and applications.
 
 ```python
-# Synchronous
-table = Table.create(request)
+from metadata.sdk import configure
 
-# Asynchronous
-table = await Table.create_async(request)
-
-# Batch operations with async
-tables = await asyncio.gather(
-    Table.create_async(request1),
-    Table.create_async(request2),
-    Table.create_async(request3)
-)
+configure(host="http://localhost:8585/api", jwt_token="your-jwt-token")
 ```
 
-## Installation
-
-```bash
-pip install openmetadata-ingestion
-```
-
-## Quick Start
+Manual initialization is available for advanced setup or tests.
 
 ```python
 from metadata.sdk import OpenMetadata, OpenMetadataConfig
-from metadata.sdk.entities import Table, Database, Dashboard
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 
-# Initialize the SDK
 config = OpenMetadataConfig(
-    server_url="http://localhost:8585",
-    jwt_token="your-jwt-token"
+    server_url="http://localhost:8585/api",
+    jwt_token="your-jwt-token",
 )
-OpenMetadata.initialize(config)
+client = OpenMetadata.initialize(config)
+```
 
-# Create a table
-create_request = CreateTableRequest(
-    name="users",
-    databaseSchema="prod.analytics",
+Both paths initialize the default client used by the facade classes.
+
+## CRUD Examples
+
+```python
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.basic import Markdown
+from metadata.sdk import Tables
+
+request = CreateTableRequest(
+    name="orders",
+    databaseSchema="service.database.schema",
     columns=[
-        Column(name="id", dataType="INTEGER"),
-        Column(name="email", dataType="VARCHAR", dataLength=255)
-    ]
-)
-table = Table.create(create_request)
-
-# Retrieve entities
-table = Table.retrieve("550e8400-e29b-41d4-a716-446655440000")
-table = Table.retrieve_by_name("prod.analytics.users")
-
-# Update with PATCH
-patch = [
-    {"op": "add", "path": "/description", "value": "User data table"},
-    {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.Sensitive"}}
-]
-table = Table.patch(table.id, patch)
-
-# List with pagination
-tables = Table.list(limit=50, fields=["owner", "tags"])
-
-# Delete
-Table.delete(table.id, recursive=True)
-```
-
-## Entity Coverage
-
-The SDK provides wrappers for all OpenMetadata entities:
-
-### Data Assets
-- `Table` - Database tables
-- `Database` - Databases
-- `DatabaseSchema` - Database schemas
-- `Dashboard` - BI dashboards
-- `DashboardDataModel` - Dashboard data models
-- `Chart` - Dashboard charts
-- `Pipeline` - Data pipelines
-- `Topic` - Messaging topics
-- `Container` - Storage containers
-- `SearchIndex` - Search indexes
-- `Query` - SQL queries
-- `MlModel` - Machine learning models
-- `Metric` - Business metrics
-
-### Services
-- `DatabaseService` - Database services (MySQL, Postgres, etc.)
-- `DashboardService` - Dashboard services (Tableau, Looker, etc.)
-- `MessagingService` - Messaging services (Kafka, Pulsar, etc.)
-- `PipelineService` - Pipeline services (Airflow, Dagster, etc.)
-- `StorageService` - Storage services (S3, GCS, etc.)
-- `SearchService` - Search services (Elasticsearch, OpenSearch)
-- `MlModelService` - ML services (MLflow, Sagemaker, etc.)
-- `MetadataService` - Metadata services
-
-### Governance
-- `Glossary` - Business glossaries
-- `GlossaryTerm` - Glossary terms
-- `Classification` - Data classifications
-- `Tag` - Classification tags
-- `Policy` - Access control policies
-- `Role` - User roles
-
-### Teams & Users
-- `User` - User accounts
-- `Team` - Teams and departments
-- `Bot` - Service accounts
-
-### Data Quality
-- `TestCase` - Data quality test cases
-- `TestSuite` - Test suite collections
-- `TestDefinition` - Test definitions
-
-### Lineage & Discovery
-- `DataProduct` - Data products
-- `Domain` - Data domains
-- `Workflow` - Workflows
-- `APICollection` - API collections
-- `APIEndpoint` - API endpoints
-
-## Advanced Features
-
-### Batch Operations
-
-```python
-# Create multiple tables efficiently
-tables_to_create = [
-    CreateTableRequest(name=f"table_{i}", ...) 
-    for i in range(100)
-]
-
-# Synchronous batch
-tables = [Table.create(req) for req in tables_to_create]
-
-# Asynchronous batch (much faster)
-tables = await asyncio.gather(
-    *[Table.create_async(req) for req in tables_to_create]
-)
-```
-
-### Field Selection
-
-```python
-# Only fetch specific fields for performance
-table = Table.retrieve(
-    table_id, 
-    fields=["name", "description", "owner", "tags"]
+        Column(name="id", dataType=DataType.BIGINT),
+        Column(name="status", dataType=DataType.VARCHAR, dataLength=255),
+    ],
 )
 
-# List with field selection
-tables = Table.list(
-    fields=["name", "owner"],
-    limit=100
+table = Tables.create(request)
+table = Tables.retrieve(str(table.id.root), fields=["owners", "tags"])
+table = Tables.retrieve_by_name("service.database.schema.orders")
+
+updated_table = table.model_copy(deep=True)
+updated_table.description = Markdown("Curated order facts")
+table = Tables.update(updated_table)
+
+Tables.delete(str(table.id.root), recursive=True, hard_delete=True)
+```
+
+`update()` takes only the entity. The facade reads `entity.id`, fetches the
+current entity, and patches the changed fields through the underlying client.
+
+## Listing and Pagination
+
+`list()` returns a single `EntityList` page.
+
+```python
+from metadata.sdk import Tables
+
+page = Tables.list(
+    limit=50,
+    fields=["owners", "tags"],
+    filters={"databaseSchema": "service.database.schema"},
+)
+
+for table in page.entities:
+    print(table.name)
+
+if page.after:
+    next_page = Tables.list(limit=50, after=page.after)
+```
+
+Use `list_all()` for automatic pagination.
+
+```python
+from metadata.sdk import Tables
+
+for table in Tables.list_all(batch_size=100):
+    print(table.fullyQualifiedName)
+```
+
+There is no `TableListParams` class and `EntityList` does not have an
+`auto_paging_iterable()` method.
+
+## Patch Behavior
+
+Facade classes do not expose `patch(entity_id, json_patch)`. Use
+`update(entity)` for ordinary partial updates:
+
+```python
+from metadata.generated.schema.type.basic import Markdown
+from metadata.sdk import Tables
+
+table = Tables.retrieve_by_name("service.database.schema.orders")
+destination = table.model_copy(deep=True)
+destination.description = Markdown("Updated description")
+
+patched = Tables.update(destination)
+```
+
+For lower-level patch flows, use the default OpenMetadata client:
+
+```python
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk import client
+
+metadata = client().ometa
+source = metadata.get_by_id(entity=Table, entity_id="table-id", fields=["tags"])
+destination = source.model_copy(deep=True)
+destination.tags = []
+
+patched = metadata.patch(entity=Table, source=source, destination=destination)
+```
+
+## Async Support
+
+Search and lineage expose async helpers such as `Search.search_async()` and
+`Lineage.get_lineage_async()`. Entity CRUD facades currently expose synchronous
+methods only; examples should not use `Tables.create_async()` or
+`Tables.retrieve_async()`.
+
+```python
+from metadata.sdk.api import Search
+
+results = await Search.search_async("customer", index="table_search_index")
+```
+
+## Governance Tags
+
+Use `Classifications` and `Tags` for governance taxonomy CRUD. Use
+`Tables.add_tag(table_id, "Classification.Tag")` to append a table tag, or
+retrieve the table with `fields=["tags"]`, replace `tags` on a copied entity,
+and call `Tables.update(destination)` when reassignment is required.
+
+```python
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.sdk import Classifications, Tables, Tags
+
+classification = Classifications.create(
+    CreateClassificationRequest(name="PII", description="PII taxonomy")
+)
+tag = Tags.create(
+    CreateTagRequest(
+        classification=classification.fullyQualifiedName.root,
+        name="Sensitive",
+        description="Sensitive data",
+    )
+)
+
+table = Tables.add_tag("table-id", tag.fullyQualifiedName.root)
+```
+
+## Lineage
+
+Lineage operations live under `metadata.sdk.api.Lineage`, not the entity
+facades. Add edges by entity IDs and types, or retrieve lineage by FQN or ID.
+
+```python
+from metadata.generated.schema.entity.data.table import Table
+from metadata.sdk.api import Lineage
+
+Lineage.add_lineage(
+    from_entity_id="source-table-id",
+    from_entity_type="table",
+    to_entity_id="target-table-id",
+    to_entity_type="table",
+    description="Curated order facts",
+)
+
+lineage = Lineage.get_entity_lineage(
+    entity_type=Table,
+    entity_id="target-table-id",
+    upstream_depth=2,
+    downstream_depth=1,
 )
 ```
 
-### Complex PATCH Operations
+## CSV Operations
+
+CSV helpers return operation objects.
 
 ```python
-# Advanced JSON Patch operations
-patch = [
-    # Replace description
-    {"op": "replace", "path": "/description", "value": "New description"},
-    
-    # Add multiple tags
-    {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.Sensitive"}},
-    {"op": "add", "path": "/tags/1", "value": {"tagFQN": "Tier.Tier1"}},
-    
-    # Update owner
-    {"op": "replace", "path": "/owner", "value": {"id": "user-id", "type": "user"}},
-    
-    # Add custom properties
-    {"op": "add", "path": "/extension/customProperty", "value": "custom-value"}
-]
+from metadata.sdk import Glossaries, Tables
 
-table = Table.patch(table_id, patch)
+csv_text = Tables.export_csv("service.database.schema.orders").execute()
+dry_run = (
+    Glossaries.import_csv("BusinessGlossary")
+    .with_data(csv_text)
+    .set_dry_run(True)
+    .execute()
+)
 ```
 
-### CSV Import/Export
+## Current Facade Coverage
+
+The SDK currently exports:
 
 ```python
-# Export entities to CSV
-csv_data = Table.export_csv("table_export")
-
-# Import entities from CSV
-import_status = Table.import_csv(csv_data, dry_run=True)
+from metadata.sdk import (
+    APICollections,
+    APIEndpoints,
+    Charts,
+    Classifications,
+    Containers,
+    DashboardDataModels,
+    DashboardServices,
+    Dashboards,
+    DatabaseSchemas,
+    DatabaseServices,
+    Databases,
+    DataContracts,
+    DataProducts,
+    Domains,
+    Glossaries,
+    GlossaryTerms,
+    Metrics,
+    MLModels,
+    Pipelines,
+    Queries,
+    SearchIndexes,
+    StorageServices,
+    StoredProcedures,
+    Tables,
+    Tags,
+    Teams,
+    TestCases,
+    TestDefinitions,
+    TestSuites,
+    Users,
+)
 ```
 
-## Testing
-
-The SDK includes comprehensive mock-based tests that don't require a running server:
-
-```python
-import unittest
-from unittest.mock import MagicMock
-from metadata.sdk.entities import Table
-
-class TestTableOperations(unittest.TestCase):
-    def setUp(self):
-        self.mock_client = MagicMock()
-        Table.set_default_client(self.mock_client)
-    
-    def test_create_table(self):
-        # Mock response
-        expected_table = TableEntity(id="123", name="test")
-        self.mock_client.ometa.create_or_update.return_value = expected_table
-        
-        # Test
-        result = Table.create(CreateTableRequest(...))
-        self.assertEqual(result.name, "test")
-```
-
-## Migration from Original SDK
-
-### Old Pattern
-```python
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-client = OpenMetadata(config)
-table = client.create_or_update(CreateTableRequest(...))
-table = client.get_by_name(Table, "fqn")
-client.patch(Table, table_id, json_patch)
-```
-
-### New Pattern
-```python
-from metadata.sdk import OpenMetadata, OpenMetadataConfig
-from metadata.sdk.entities import Table
-
-OpenMetadata.initialize(config)
-table = Table.create(CreateTableRequest(...))
-table = Table.retrieve_by_name("fqn")
-table = Table.patch(table_id, json_patch)
-```
-
-## Benefits Summary
-
-1. **Type Safety** - Full type hints and IDE support
-2. **Consistency** - Same API pattern for all entities
-3. **Performance** - Async support for batch operations
-4. **Testability** - Easy mocking without server dependencies
-5. **Maintainability** - Clear separation of concerns
-6. **Completeness** - All entities and operations supported
-7. **Documentation** - Self-documenting API design
-
-## Contributing
-
-To add a new entity:
-
-1. Create a new file in `metadata/sdk/entities/`
-2. Extend `BaseEntity` with proper type parameters
-3. Override `entity_type()` method
-4. Add tests in `tests/unit/sdk/`
-
-Example:
-```python
-from metadata.sdk.entities.base import BaseEntity
-
-class NewEntity(BaseEntity[NewEntitySchema, CreateNewEntityRequest]):
-    @classmethod
-    def entity_type(cls) -> Type[NewEntitySchema]:
-        return NewEntitySchema
-```
-
-## License
-
-Apache 2.0
+For entities without a facade, use `metadata.sdk.client()` or the ingestion
+OpenMetadata client until a facade is added.

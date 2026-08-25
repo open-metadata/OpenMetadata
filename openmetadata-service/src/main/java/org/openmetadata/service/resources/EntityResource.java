@@ -32,6 +32,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
@@ -47,15 +49,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -63,6 +64,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -70,9 +72,16 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.aicontext.AIContextBuilder;
+import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.csv.BulkImportVersioning;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -86,12 +95,14 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
@@ -103,6 +114,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.RestoreEntityResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -350,9 +362,46 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     return addHref(
         uriInfo,
-        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+        authorized != null
+            ? authorized
+            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * Returns the entity the authorization decision already loaded, reduced to the caller's
+   * projection, or null when policy evaluation never resolved it.
+   *
+   * <p>A GET builds its context from the same field set it serves, so the authorization load is a
+   * superset of the response projection and re-reading it would fetch the same row twice. That
+   * coupling is not enforced by the type system — the terminal overloads are public and a caller
+   * could pass a projection the context never loaded — so it is checked here rather than assumed:
+   * anything not covered falls back to a normal load. Fields the caller did not request are cleared
+   * so the payload is identical to a freshly loaded entity.
+   */
+  @SuppressWarnings("unchecked")
+  private T reuseAuthorizedEntity(
+      UriInfo uriInfo, ResourceContextInterface resourceContext, Fields fields) {
+    EntityInterface resolved = resourceContext == null ? null : resourceContext.getResolvedEntity();
+    boolean coversProjection =
+        resolved != null && resourceContext.getLoadedFields().containsAll(fields.getFieldList());
+    T result = null;
+    if (coversProjection && entityClass.isInstance(resolved)) {
+      result = (T) resolved;
+      repository.clearFieldsInternal(result, fields);
+      // clearFieldsInternal does not reset certification, and the authorization load always
+      // requests it, so an entity resolved for the decision would carry it into a response that
+      // never asked for it. Mirror the rule a normal read applies: present only when the caller
+      // requested tags or certification.
+      if (!fields.contains(Entity.FIELD_TAGS) && !fields.contains(Entity.FIELD_CERTIFICATION)) {
+        result.setCertification(null);
+      }
+      // The authorization load runs without a UriInfo, so the entity carries no self link yet.
+      result = repository.withHref(uriInfo, result);
+    }
+    return result;
   }
 
   /**
@@ -472,9 +521,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     return addHref(
         uriInfo,
-        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
+        authorized != null
+            ? authorized
+            : repository.getByName(
+                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -717,26 +770,45 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                DeleteResponse<T> deleteResponse =
-                    repository.delete(userName, id, recursive, hardDelete);
-                if (hardDelete) {
-                  limits.invalidateCache(entityType);
-                }
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId,
-                    securityContext,
-                    entity,
-                    e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    DeleteResponse<T> deleteResponse =
+                        repository.delete(userName, id, recursive, hardDelete);
+                    if (hardDelete) {
+                      limits.invalidateCache(entityType);
+                    }
+                    repository.storeChangeEventForAsyncOperation(
+                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    // Log before notifying. The WebSocket notification is the ONLY report this path
+                    // had, so a failed async delete was invisible to anyone not holding a live
+                    // socket
+                    // — no stack trace, no error line, nothing. A 100k-table service delete that
+                    // dies
+                    // here looks exactly like one still grinding, which is precisely the ambiguity
+                    // that made the nightly scale failures undiagnosable.
+                    LOG.error(
+                        "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                        entityType,
+                        id,
+                        jobId,
+                        recursive,
+                        hardDelete,
+                        e);
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        entity,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
 
     response =
         Response.accepted()
@@ -771,11 +843,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    // Read ?async=true off uriInfo so subclass resources that haven't (yet) declared the
+    // QueryParam still honor the async contract. Lets SDK callers opt into async restore
+    // universally regardless of which Resource subclass forwarded the parameter.
+    boolean asyncFromQuery =
+        uriInfo != null && Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("async"));
+    return restoreEntity(uriInfo, securityContext, id, asyncFromQuery);
+  }
+
+  public Response restoreEntity(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean async) {
+    if (async) {
+      return restoreEntityAsync(uriInfo, securityContext, id);
+    }
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
+    if (response == null) {
+      // EntityRepository.restoreEntity now calls find(id, Include.ALL) up front, so a truly
+      // missing id has already propagated EntityNotFoundException (→ 404) before we got
+      // here. A null response can only mean "entity exists but is not in DELETED state" —
+      // map that to 400.
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
@@ -785,36 +878,130 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /**
+   * Async restore variant. Returns 202 Accepted with a job ID and runs the restore on the
+   * shared async executor. The caller can subscribe to
+   * {@link org.openmetadata.service.socket.WebSocketManager#RESTORE_ENTITY_CHANNEL} to be
+   * notified when the restore completes or fails. Used to avoid proxy / ALB idle timeouts on
+   * large hierarchies (issue #4003).
+   */
+  public Response restoreEntityAsync(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    // Cheap pre-check so we return a synchronous error instead of 202 + delayed WebSocket
+    // FAILED for a request that can't succeed. Distinguish the two failure modes that the
+    // raw EntityNotFoundException would conflate: 404 if the entity truly doesn't exist
+    // (Include.ALL still finds nothing) and 400 if it exists but is already restored.
+    // Capturing the entity here also yields a meaningful name for any later FAILED
+    // notification.
+    T preCheck;
+    try {
+      preCheck = repository.find(id, Include.DELETED);
+    } catch (EntityNotFoundException notDeleted) {
+      // Probe with Include.ALL to distinguish 404-missing from 400-not-deleted. Narrow
+      // catch so unrelated failures (DB connectivity, auth) propagate naturally rather
+      // than being mis-mapped to 400 "not in deleted state".
+      boolean entityExists;
+      try {
+        repository.find(id, Include.ALL);
+        entityExists = true;
+      } catch (EntityNotFoundException missing) {
+        entityExists = false;
+      }
+      if (entityExists) {
+        throw new BadRequestException(
+            String.format("Entity %s:%s is not in deleted state", entityType, id));
+      }
+      throw notDeleted;
+    }
+    String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
+    String jobId = UUID.randomUUID().toString();
+    String userName = securityContext.getUserPrincipal().getName();
+    // Resolve the WebSocket user id on the request thread, while the SecurityContext is
+    // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
+    // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
+    UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
+    // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
+    // WebSocket notification only needs name/status, not HREFs.
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    PutResponse<T> response = repository.restoreEntity(userName, id);
+                    if (response == null) {
+                      // Pre-check saw the entity in DELETED state; a null response now means a
+                      // concurrent restore won the race. Treat as idempotent success — the
+                      // operator's request is satisfied. If the entity has since been hard-
+                      // deleted, surface that as a real failure.
+                      handleAlreadyRestored(jobId, id, entityName, notifyUserId);
+                      return;
+                    }
+                    repository.restoreFromSearch(response.getEntity());
+                    repository.storeChangeEventForAsyncOperation(
+                        response.getEntity(), response.getChangeType(), false, userName);
+                    LOG.info(
+                        "[AsyncRestore] Restored {}:{} (jobId={})",
+                        Entity.getEntityTypeFromObject(response.getEntity()),
+                        response.getEntity().getId(),
+                        jobId);
+                    WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                        jobId, notifyUserId, response.getEntity());
+                  } catch (Exception e) {
+                    LOG.error(
+                        "[AsyncRestore] Failed to restore {}:{} (name={})",
+                        entityType,
+                        id,
+                        entityName,
+                        e);
+                    WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                        jobId,
+                        notifyUserId,
+                        entityName,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
+    RestoreEntityResponse response =
+        new RestoreEntityResponse(jobId, "Restore initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private void handleAlreadyRestored(String jobId, UUID id, String entityName, UUID notifyUserId) {
+    try {
+      T restored = repository.find(id, Include.NON_DELETED);
+      LOG.info(
+          "[AsyncRestore] {} {} was already restored by another request (jobId={})",
+          entityType,
+          id,
+          jobId);
+      WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+          jobId, notifyUserId, restored);
+    } catch (EntityNotFoundException missing) {
+      WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+          jobId, notifyUserId, entityName, "Entity was hard-deleted before restore");
+    }
+  }
+
   public Response exportCsvInternalAsync(
       SecurityContext securityContext, String name, boolean recursive) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                CsvExportProgressCallback progressCallback =
-                    (exported, total, message) ->
-                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
-                            jobId, securityContext, exported, total, message);
-
-                String csvData =
-                    repository.exportToCsv(
-                        name,
-                        securityContext.getUserPrincipal().getName(),
-                        recursive,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                    jobId, securityContext, csvData);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while exporting.", e);
-                WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.EXPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            false,
+            recursive,
+            null,
+            null);
+    String jobId = job.getJobId();
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
@@ -853,20 +1040,24 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
 
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                BulkOperationResult result =
-                    repository.bulkAddAndValidateTagsToAssets(entityId, request);
-                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
@@ -904,20 +1095,24 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
     }
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                BulkOperationResult result =
-                    repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
-                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");
@@ -945,43 +1140,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.IMPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            recursive,
+            csv,
+            versioningEntityType);
+    String jobId = job.getJobId();
     CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
-    Response response =
-        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                WebsocketNotificationHandler.sendCsvImportStartedNotification(
-                    jobId, securityContext);
-
-                CsvImportProgressCallback progressCallback =
-                    (rowsProcessed, totalRows, batchNumber, message) ->
-                        WebsocketNotificationHandler.sendCsvImportProgressNotification(
-                            jobId, securityContext, rowsProcessed, totalRows, message);
-
-                CsvImportResult result =
-                    importCsvInternal(
-                        uriInfo,
-                        securityContext,
-                        name,
-                        csv,
-                        dryRun,
-                        recursive,
-                        versioningEntityType,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while importing.", e);
-                WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
-
-    return response;
+    return Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
@@ -1070,15 +1242,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       String name,
       CsvImportResult result) {
-    versioningRepo.createChangeEventForBulkOperation(
-        versioningRepo.getByName(
-            uriInfo,
-            name,
-            new Fields(versioningRepo.getAllowedFields(), ""),
-            Include.NON_DELETED,
-            false),
-        result,
-        securityContext.getUserPrincipal().getName());
+    BulkImportVersioning.recordVersion(
+        versioningRepo, uriInfo, name, securityContext.getUserPrincipal().getName(), result);
   }
 
   protected ResourceContext<T> getResourceContext() {
@@ -1157,11 +1322,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<T> entities,
       String userName,
       Map<String, T> existingByFqn,
+      boolean overrideMetadata,
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
     repository
         .submitAsyncBulkOperation(
-            uriInfo, entities, userName, existingByFqn, authFailedResponses, totalRequests)
+            uriInfo,
+            entities,
+            userName,
+            existingByFqn,
+            overrideMetadata,
+            authFailedResponses,
+            totalRequests)
         .thenAccept(
             result ->
                 LOG.info(
@@ -1175,6 +1347,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     result.setNumberOfRowsProcessed(totalRequests);
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(authFailedResponses.size());
+    List<BulkResponse> acceptedResponses = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      BulkResponse accepted = new BulkResponse();
+      accepted.setRequest(entity.getFullyQualifiedName());
+      accepted.setStatus(202);
+      acceptedResponses.add(accepted);
+    }
+    result.setSuccessRequest(acceptedResponses);
     if (!authFailedResponses.isEmpty()) {
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       result.setFailedRequest(authFailedResponses);
@@ -1186,9 +1366,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected Response bulkCreateOrUpdateSync(
-      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
     BulkOperationResult result =
-        repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName, existingByFqn);
+        repository.bulkCreateOrUpdateEntities(
+            uriInfo, entities, userName, existingByFqn, overrideMetadata);
+    return Response.ok(result).build();
+  }
+
+  /**
+   * Reads the {@code overrideMetadata} query param from the bulk request URI. When true, the bulk
+   * update path is allowed to overwrite user-curated metadata (description, displayName) that a bot
+   * PUT would otherwise preserve, and the sourceHash fast-path is disabled. Read from {@link
+   * UriInfo} so the flag is honored uniformly across every {@code /bulk} endpoint without changing
+   * each resource method signature.
+   */
+  protected boolean isOverrideMetadata(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("overrideMetadata"));
+  }
+
+  /**
+   * Deletes entities of this type within the request scope that the ingestion connector did not
+   * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
+   * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
+   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   */
+  protected Response deleteStaleEntities(
+      SecurityContext securityContext, BulkDeleteStaleRequest request) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    BulkOperationResult result =
+        repository.bulkDeleteStaleEntities(request, securityContext.getUserPrincipal().getName());
     return Response.ok(result).build();
   }
 
@@ -1199,6 +1410,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       EntityMapper<T, C> mapper,
       boolean async) {
 
+    boolean overrideMetadata = isOverrideMetadata(uriInfo);
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
@@ -1264,6 +1476,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       }
     }
 
+    // On-demand policy fields are batch-loaded once for the whole request rather than per entity:
+    // the first policy that reads tags hydrates them for every existing entity in a single query,
+    // avoiding an N+1. A field no policy inspects is never loaded. New on-demand fields are added
+    // here as another entry, with no change to ResourceContext.
+    BulkFieldHydrator bulkFieldHydrator =
+        new BulkFieldHydrator(
+            Map.of(
+                Entity.FIELD_TAGS,
+                () -> repository.batchLoadTags(new ArrayList<>(existingByFqn.values()))));
+
     // Phase 3: Auth check using batch results
     for (T entity : preparedEntities) {
       try {
@@ -1280,7 +1502,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           OperationContext operationContext = new OperationContext(entityType, operation);
           T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
           ResourceContext<T> resourceContext =
-              new ResourceContext<>(entityType, existingEntity, repository);
+              new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
         }
 
@@ -1319,11 +1541,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               validEntities,
               userName,
               existingByFqn,
+              overrideMetadata,
               failedResponses,
               createRequests.size());
     } else {
       BulkOperationResult result =
-          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName, existingByFqn);
+          repository.bulkCreateOrUpdateEntities(
+              uriInfo, validEntities, userName, existingByFqn, overrideMetadata);
 
       if (!failedResponses.isEmpty()) {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);
@@ -1352,6 +1576,96 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
+  }
+
+  @GET
+  @Path("/{id}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextById",
+      summary = "Get the AI context for an entity by id",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity — its attached "
+              + "business knowledge (glossary terms, Context Center articles, applied metrics), "
+              + "type-specific structural context, and depth-1 lineage — as an OKF-style markdown "
+              + "document (default) or the structured AIContext JSON (`?format=json`).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity id", required = true) @PathParam("id") UUID id,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    EntityReference reference = Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
+    return renderAiContext(reference.getFullyQualifiedName(), securityContext, format, query);
+  }
+
+  @GET
+  @Path("/name/{fqn}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextByName",
+      summary = "Get the AI context for an entity by fully qualified name",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity by FQN — see "
+              + "getEntityAiContextById. Returns an OKF-style markdown document by default, or the "
+              + "structured AIContext JSON with `?format=json`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity fully qualified name", required = true) @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextByName(fqn));
+    return renderAiContext(fqn, securityContext, format, query);
+  }
+
+  private Response renderAiContext(
+      String fqn, SecurityContext securityContext, String format, String query) {
+    AIContext context =
+        new AIContextBuilder(entityType, fqn)
+            .withQuery(query)
+            .withSecurity(authorizer, securityContext)
+            .build();
+    Response response;
+    if (AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)) {
+      response = Response.ok(context, MediaType.APPLICATION_JSON).build();
+    } else {
+      response =
+          Response.ok(AIContextMarkdown.render(context), AIContextMarkdown.TEXT_MARKDOWN).build();
+    }
+    return response;
   }
 
   @GET

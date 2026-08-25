@@ -1,5 +1,6 @@
 {
   "settings": {
+    "index": {},
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -10,6 +11,17 @@
             "letter",
             "digit"
           ]
+        },
+        "substring_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 4,
+          "token_chars": [
+            "letter",
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       },
       "normalizer": {
@@ -48,6 +60,13 @@
             "compound_word_delimiter_graph",
             "lowercase",
             "flatten_graph"
+          ]
+        },
+        "om_substring": {
+          "type": "custom",
+          "tokenizer": "substring_ngram_tokenizer",
+          "filter": [
+            "lowercase"
           ]
         }
       },
@@ -91,6 +110,24 @@
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -122,6 +159,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -153,6 +194,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -455,6 +500,9 @@
           }
         }
       },
+      "testSuitesRevision": {
+        "type": "long"
+      },
       "testSuites": {
         "type": "nested",
         "properties": {
@@ -577,7 +625,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

@@ -57,7 +57,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def base() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the base source"""
-        from metadata.profiler.source.database.base.profiler_source import (  # noqa: PLC0415
+        from metadata.profiler.source.database.base.profiler_source import (
             ProfilerSource,
         )
 
@@ -66,7 +66,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def bigquery() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the BigQuery source"""
-        from metadata.profiler.source.database.bigquery.profiler_source import (  # noqa: PLC0415
+        from metadata.profiler.source.database.bigquery.profiler_source import (
             BigQueryProfilerSource,
         )
 
@@ -75,7 +75,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def databricks() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the Databricks source"""
-        from metadata.profiler.source.database.databricks.profiler_source import (  # noqa: PLC0415
+        from metadata.profiler.source.database.databricks.profiler_source import (
             DataBricksProfilerSource,
         )
 
@@ -84,7 +84,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def pinotdb() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the PinotDB source"""
-        from metadata.profiler.source.database.pinotdb.profiler_source import (  # noqa: PLC0415
+        from metadata.profiler.source.database.pinotdb.profiler_source import (
             PinotProfilerSource,
         )
 
@@ -93,7 +93,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def mssql() -> Type[ProfilerSourceInterface]:  # noqa: UP006
         """Lazy loading of the MSSQL source"""
-        from metadata.profiler.source.database.mssql.profiler_source import (  # noqa: PLC0415
+        from metadata.profiler.source.database.mssql.profiler_source import (
             MssqlProfilerSource,
         )
 

@@ -1,0 +1,103 @@
+name: Cache openmetadata-ui dist
+description: >
+  Restore (and later save) the built openmetadata-ui and
+  openmetadata-ui-core-components dist output across workflow runs. On a
+  cache HIT this action exports `SKIP_UI_BUILD=true` to the job env; the
+  poms' `skip-ui-build` profile activates only when that env is set AND the
+  restored dist file is present, so the ~5 min frontend-maven-plugin phase
+  is skipped and the reactor pays only for the Java compile. On a cache
+  MISS the env is left unset and mvn runs the full frontend build — this
+  prevents a stale on-disk dist (e.g. from a prior local build in a dev
+  workspace) from silently suppressing a rebuild when sources changed.
+
+  SECURITY: the cache steps are skipped entirely when the workflow is a
+  fork PR running under `pull_request_target`. That event runs in the base
+  branch's context (so `actions/cache` writes to main's cache scope) while
+  the checkout deliberately fetches untrusted fork code — a poisoned dist
+  saved under such a run would be served to browsers by any later workflow
+  that hashes to the same key (CodeQL rule `actions/actions/cache-poisoning`).
+  Fork PRs pay the full ~5 min build; same-repo PRs, merge_group, push,
+  and schedule runs are unaffected.
+
+  The cache is scoped to the repository (GitHub Actions cache always is), so
+  the first workflow of the day that builds a given UI source tree populates
+  the cache; every other workflow triggered by the same push, and every
+  future workflow whose UI sources haven't changed, hits the cache.
+
+  Usage — add this step BEFORE the mvn build in any workflow whose maven
+  goal transitively builds openmetadata-ui:
+
+    - uses: ./.github/actions/cache-ui-dist
+
+  If the workflow builds a non-default vite variant (e.g. sets PW_E2E_BUILD
+  or PW_E2E_BUNDLE to alter chunking), pass a distinct variant so the cache
+  does not mix incompatible dist outputs:
+
+    - uses: ./.github/actions/cache-ui-dist
+      with:
+        variant: pw-e2e-bundle
+
+inputs:
+  variant:
+    description: >
+      Optional cache-key discriminator for builds that produce a different
+      vite output (Playwright e2e bundle mode, custom modes). Default is a
+      standard production build.
+    required: false
+    default: default
+
+runs:
+  using: composite
+  steps:
+    - name: Restore openmetadata-ui dist cache
+      id: cache
+      # Fork-PR-under-pull_request_target runs base-branch privileged with
+      # untrusted checked-out code — skip cache entirely so no poisoned dist
+      # can enter (or be restored into) the base-branch cache scope. Every
+      # other event (same-repo pull_request, merge_group, push, schedule,
+      # workflow_dispatch) uses the cache normally.
+      if: >-
+        !(github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository)
+      uses: actions/cache@v5
+      with:
+        # Both modules' dist dirs; the poms' skip-ui-build profile requires
+        # BOTH the SKIP_UI_BUILD=true env we export below AND index.html
+        # (app) / index.es.js (library) present on disk.
+        path: |
+          openmetadata-ui/src/main/resources/ui/dist
+          openmetadata-ui-core-components/src/main/resources/ui/dist
+        # Content hash of every input that can affect the vite output plus
+        # the variant. Includes core-components' vite.config.ts and
+        # tsconfig.json so a build-config-only edit invalidates the cache
+        # instead of silently reusing dist produced under the old config.
+        key: ui-dist-v1-${{ runner.os }}-${{ inputs.variant }}-${{ hashFiles(
+              'openmetadata-ui/src/main/resources/ui/src/**',
+              'openmetadata-ui/src/main/resources/ui/public/**',
+              'openmetadata-ui/src/main/resources/ui/package.json',
+              'openmetadata-ui/src/main/resources/ui/yarn.lock',
+              'openmetadata-ui/src/main/resources/ui/vite.config.ts',
+              'openmetadata-ui/src/main/resources/ui/tsconfig.json',
+              'openmetadata-ui/src/main/resources/ui/postcss.config.js',
+              'openmetadata-ui/src/main/resources/ui/index.html',
+              'openmetadata-ui/src/main/resources/ui/parseSchemas.js',
+              'openmetadata-ui/src/main/resources/json/data/**',
+              'openmetadata-ui/pom.xml',
+              'openmetadata-ui-core-components/src/main/resources/ui/src/**',
+              'openmetadata-ui-core-components/src/main/resources/ui/package.json',
+              'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock',
+              'openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts',
+              'openmetadata-ui-core-components/src/main/resources/ui/tsconfig.json',
+              'openmetadata-ui-core-components/pom.xml',
+              'openmetadata-spec/src/main/resources/json/schema/**',
+              'openmetadata-spec/src/main/antlr4/**') }}
+
+    # Signal mvn to skip the frontend build ONLY when we actually restored a
+    # fresh dist for this exact source tree. On cache miss, any dist that
+    # happens to exist on disk (e.g. leftover from a prior local build in a
+    # dev workspace) is not guaranteed to match the current sources, so
+    # leave the env unset and let the frontend-maven-plugin rebuild.
+    - name: Signal skip-ui-build to maven on cache hit
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "SKIP_UI_BUILD=true" >> "$GITHUB_ENV"

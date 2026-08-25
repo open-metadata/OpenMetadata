@@ -154,9 +154,10 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     boolean acceptsJson = accept != null && accept.contains(APPLICATION_JSON);
     boolean acceptsSse = accept != null && accept.contains(TEXT_EVENT_STREAM);
     if (!acceptsJson && !acceptsSse) {
-      this.responseError(
+      responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
               .message("Accept header must include application/json or text/event-stream")
               .build());
@@ -183,18 +184,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .block();
 
           String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          if (acceptsSse) {
+          if (shouldEmitSse(acceptsJson, acceptsSse)) {
             writeSseResponse(response, jsonResponseText);
           } else {
             writeJsonResponse(response, jsonResponseText);
           }
         } catch (Exception e) {
-          logger.error("Failed to handle request: {}", e.getMessage());
-          this.responseError(
+          logger.error("Failed to handle request", e);
+          responseError(
               response,
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              jsonrpcRequest.id(),
               McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle request: " + e.getMessage())
+                  .message("Failed to handle request")
                   .build());
         }
       } else if (message instanceof McpSchema.JSONRPCNotification jsonrpcNotification) {
@@ -205,57 +207,77 @@ public class HttpServletStatelessServerTransport extends HttpServlet
               .block();
           response.setStatus(HttpServletResponse.SC_ACCEPTED);
         } catch (Exception e) {
-          logger.error("Failed to handle notification: {}", e.getMessage());
-          this.responseError(
+          logger.error("Failed to handle notification", e);
+          responseError(
               response,
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              null,
               McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle notification: " + e.getMessage())
+                  .message("Failed to handle notification")
                   .build());
         }
       } else {
-        this.responseError(
+        responseError(
             response,
             HttpServletResponse.SC_BAD_REQUEST,
+            null,
             McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
                 .message("The server accepts either requests or notifications")
                 .build());
       }
     } catch (IllegalArgumentException | IOException e) {
-      logger.error("Failed to deserialize message: {}", e.getMessage());
-      this.responseError(
+      logger.error("Failed to deserialize message", e);
+      responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
               .message("Invalid message format")
               .build());
     } catch (Exception e) {
-      logger.error("Unexpected error handling message: {}", e.getMessage());
-      this.responseError(
+      logger.error("Unexpected error handling message", e);
+      responseError(
           response,
           HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+          null,
           McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-              .message("Unexpected error: " + e.getMessage())
+              .message("Internal server error")
               .build());
     }
   }
 
   /**
    * Sends an error response to the client.
+   *
+   * <p>Only the JSON-RPC error payload goes out; serializing {@code mcpError} itself would put its
+   * stack trace on the wire. See {@link JsonRpcErrorBody}.
+   *
    * @param response The HTTP servlet response
    * @param httpCode The HTTP status code
+   * @param requestId The id of the request being answered, or null where it is not yet known
    * @param mcpError The MCP error to send
    * @throws IOException If an I/O error occurs
    */
-  private void responseError(HttpServletResponse response, int httpCode, McpError mcpError)
+  static void responseError(
+      HttpServletResponse response, int httpCode, Object requestId, McpError mcpError)
       throws IOException {
     response.setContentType(APPLICATION_JSON);
     response.setCharacterEncoding(UTF_8);
     response.setStatus(httpCode);
-    String jsonError = jsonMapper.writeValueAsString(mcpError);
     PrintWriter writer = response.getWriter();
-    writer.write(jsonError);
+    writer.write(JsonRpcErrorBody.of(requestId, mcpError));
     writer.flush();
+  }
+
+  /**
+   * Picks the response media type via Accept-header content negotiation. JSON is preferred whenever
+   * the client accepts it, because the MCP Streamable HTTP spec has clients send {@code Accept:
+   * application/json, text/event-stream} and most (e.g. the ai-sdk Python client) cannot parse an
+   * SSE {@code data: } framed body. SSE is emitted only for clients that accept event-stream but
+   * NOT JSON (e.g. the Databricks Supervisor Agent client).
+   */
+  static boolean shouldEmitSse(boolean acceptsJson, boolean acceptsSse) {
+    return acceptsSse && !acceptsJson;
   }
 
   static void writeJsonResponse(HttpServletResponse response, String jsonResponseText)

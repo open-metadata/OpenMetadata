@@ -35,7 +35,7 @@ const mockGenericContextProps = {
   onUpdate: mockOnUpdate,
 };
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
 }));
 
@@ -59,8 +59,11 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/Customization/GenericProvider/GenericProvider',
+  '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest
       .fn()
       .mockImplementation(() => mockGenericContextProps),

@@ -14,9 +14,10 @@ import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -27,15 +28,17 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  entityDisplayName,
   getActivityEventHeaderText,
-  getEntityFQN,
-  getEntityType,
   getFeedHeaderTextFromCardStyle,
 } from '../../../utils/FeedUtils';
+import {
+  entityDisplayName,
+  getEntityFQN,
+  getEntityType,
+} from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
@@ -44,10 +47,12 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import ActivityEventFooter from '../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
-import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import CommentCard from './CommentCard.component';
+const ActivityFeedEditorNew = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
+);
 
 interface ActivityFeedCardNewProps {
   feed?: Thread;
@@ -98,14 +103,8 @@ const ActivityFeedCardNew = ({
 
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const {
-    selectedThread,
-    postFeed,
-    updateFeed,
-    isPostsLoading,
-    postActivityComment,
-    activityThread,
-  } = useActivityFeedProvider();
+  const { selectedThread, postFeed, updateFeed, isPostsLoading } =
+    useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [, , user] = useUserProfile({
@@ -118,16 +117,12 @@ const ActivityFeedCardNew = ({
   }, [feedId]);
 
   const onSave = (message: string) => {
-    if (isActivityEvent && activity) {
-      postActivityComment(message, activity).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-      });
-    } else {
-      postFeed(message, selectedThread?.id ?? '').catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
-    }
+    // Change-event activities are read-only (no discussion thread); only
+    // conversation threads accept replies.
+    postFeed(message, selectedThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
     setShowFeedEditor(false);
   };
 
@@ -182,8 +177,11 @@ const ActivityFeedCardNew = ({
               'max-one-line': !showThread,
             })}>
             {searchClassBase.getEntityIcon(entityType ?? '') && (
-              <span className="w-4 h-4 d-inline-flex align-middle">
-                {searchClassBase.getEntityIcon(entityType ?? '')}
+              <span className="d-inline-flex align-middle">
+                {searchClassBase.getEntityIcon(
+                  entityType ?? '',
+                  'tw:h-4 tw:w-4'
+                )}
               </span>
             )}
             <Link
@@ -245,12 +243,12 @@ const ActivityFeedCardNew = ({
   };
 
   const posts = useMemo(() => {
-    if (!showThread) {
+    // Activities are read-only change events — never render replies for them.
+    if (!showThread || isActivityEvent) {
       return null;
     }
 
-    // For activity events, use activityThread; for regular feeds, use feed
-    const threadToDisplay = isActivityEvent ? activityThread : feed;
+    const threadToDisplay = feed;
 
     if (!threadToDisplay) {
       return null;
@@ -285,14 +283,7 @@ const ActivityFeedCardNew = ({
         ))}
       </Col>
     );
-  }, [
-    feed,
-    showThread,
-    closeFeedEditor,
-    isPostsLoading,
-    isActivityEvent,
-    activityThread,
-  ]);
+  }, [feed, showThread, closeFeedEditor, isPostsLoading, isActivityEvent]);
 
   const feedMessage = useMemo(() => {
     if (isActivityEvent) {
@@ -524,7 +515,7 @@ const ActivityFeedCardNew = ({
           )}
         </Space>
       </Space>
-      {(showThread || isOpenInDrawer) && (
+      {!isActivityEvent && (showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">

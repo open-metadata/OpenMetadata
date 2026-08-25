@@ -73,6 +73,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  CARDINALITY_AWARE_LINE_EDGE_TYPE,
   getCanvasColor,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
@@ -1066,7 +1067,7 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: 'line',
+        type: () => CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
           enter: false,
         },
@@ -1443,7 +1444,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
 
         return;
       } catch {
@@ -1606,7 +1609,9 @@ export function useOntologyGraph({
       if (newEdges.length > 0) {
         graph.addEdgeData(newEdges);
       }
-      graph.draw();
+      graph.draw().catch(() => {
+        // fire-and-forget paint; graph may be destroyed if tab was changed
+      });
 
       return;
     }
@@ -1623,7 +1628,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
       } catch {
         // ignore
       }
@@ -1738,6 +1745,9 @@ export function useOntologyGraph({
         if (cancelled) {
           return;
         }
+        if (graph.destroyed) {
+          return;
+        }
         await graph.draw();
 
         if (cancelled) {
@@ -1749,6 +1759,9 @@ export function useOntologyGraph({
         }
         recomputeGraphBounds();
         emitPagePositions(graph);
+      } catch {
+        // Swallow rejections from graph.draw() that arrive after the graph was
+        // destroyed (tab navigation while a draw was in flight).
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;

@@ -22,6 +22,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
+      # Development default only. Production needs 2-3x the live dataset size
+      # because TDB2 compaction creates a replacement dataset before deleting the old one.
       storage: 10Gi
   storageClassName: standard
 ---
@@ -59,17 +61,19 @@ spec:
                 secretKeyRef:
                   name: fuseki-secrets
                   key: openmetadata-password
-            - name: JAVA_OPTIONS
-              value: "-Xmx2g -Xms1g"
+            - name: JVM_ARGS
+              value: "-Xmx4g -Xms2g"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki-data
           resources:
+            # TDB2 memory-maps indexes outside the JVM heap. Keep the heap modest
+            # and reserve container memory for the OS page cache.
             requests:
-              memory: "1Gi"
+              memory: "4Gi"
               cpu: "500m"
             limits:
-              memory: "3Gi"
+              memory: "8Gi"
               cpu: "2000m"
           livenessProbe:
             httpGet:

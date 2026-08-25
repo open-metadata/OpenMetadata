@@ -16,21 +16,27 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FC, useCallback } from 'react';
+import { isUndefined } from 'lodash';
+import { FC, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsForm from './TagsForm';
 import { ClassificationFormDrawerProps } from './TagsPage.interface';
 
 const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   open,
-  formRef,
+  form,
   classifications,
   isTier,
   isLoading,
+  editClassification,
+  isSystemClassification,
+  permissions,
   onClose,
   onSubmit,
 }) => {
   const { t } = useTranslation();
+  const submitRef = useRef<() => void>(() => void 0);
+  const isEditing = !isUndefined(editClassification);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -52,7 +58,11 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
         <>
           <SlideoutMenu.Header data-testid="drawer-header" onClose={close}>
             <Typography as="h4" data-testid="drawer-heading">
-              {t('label.adding-new-classification')}
+              {isEditing
+                ? t('label.edit-entity', {
+                    entity: t('label.classification'),
+                  })
+                : t('label.adding-new-classification')}
             </Typography>
           </SlideoutMenu.Header>
 
@@ -61,9 +71,13 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
               isClassification
               showMutuallyExclusive
               data={classifications}
-              formRef={formRef}
-              isEditing={false}
+              form={form}
+              initialValues={editClassification}
+              isEditing={isEditing}
+              isSystemTag={isSystemClassification}
               isTier={isTier}
+              permissions={permissions}
+              submitRef={submitRef}
               onSubmit={onSubmit}
             />
           </SlideoutMenu.Content>
@@ -81,7 +95,7 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
                 data-testid="save-button"
                 isDisabled={isLoading}
                 isLoading={isLoading}
-                onClick={() => formRef.submit()}>
+                onClick={() => submitRef.current()}>
                 {t('label.save')}
               </Button>
             </div>

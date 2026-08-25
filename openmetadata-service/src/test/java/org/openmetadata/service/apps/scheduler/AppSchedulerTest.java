@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,24 +20,31 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import sun.misc.Unsafe;
 
 @ExtendWith(MockitoExtension.class)
@@ -286,5 +295,241 @@ class AppSchedulerTest {
     assertNotEquals(identity1, identity2);
     assertTrue(identity1.contains(workflowId1));
     assertTrue(identity2.contains(workflowId2));
+  }
+
+  @Test
+  void testNonConcurrentApp_clearsStaleJobAndReschedulesWhenNoActiveRun() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+    String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("stale"))
+        .thenReturn(null);
+
+    AppRunRecord staleRun = new AppRunRecord().withStatus(AppRunRecord.Status.FAILED);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(staleRun)))) {
+      appScheduler.triggerOnDemandApplication(app, new HashMap<>());
+    }
+
+    verify(mockScheduler).deleteJob(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP));
+    verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
+  }
+
+  @Test
+  void testNonConcurrentApp_rethrowsWhenRunGenuinelyActive() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    AppRunRecord activeRun = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(activeRun)))) {
+      assertThrows(
+          UnhandledServerException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
+    }
+
+    verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  @Test
+  void testNonConcurrentApp_treatsActiveErrorRunAsActive() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexApp");
+
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    AppRunRecord erroredRun = new AppRunRecord().withStatus(AppRunRecord.Status.ACTIVE_ERROR);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(erroredRun)))) {
+      assertThrows(
+          UnhandledServerException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
+    }
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  @Test
+  void testConcurrentApp_rethrowsCollisionWithoutClearing() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+
+    App concurrentApp =
+        new App()
+            .withId(UUID.randomUUID())
+            .withName("QueryRunner")
+            .withFullyQualifiedName("QueryRunner")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAllowConcurrentExecution(true)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("running"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
+  // --- Tests for the reindex/ops path: clear a stale on-demand job, then trigger ---
+
+  private App nonConcurrentApp(String name) {
+    return new App()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withClassName("org.openmetadata.service.resources.apps.TestApp")
+        .withAllowConcurrentExecution(false)
+        .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+  }
+
+  @Test
+  void testDeleteOnDemandJob_removesOnDemandJobAndTrigger() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+
+    appScheduler.deleteOnDemandJob(app);
+
+    String onDemandIdentity =
+        String.format("SearchIndexingApplication-%s", AppScheduler.ON_DEMAND_JOB);
+    verify(mockScheduler).deleteJob(new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP));
+    verify(mockScheduler)
+        .unscheduleJob(new TriggerKey(onDemandIdentity, AppScheduler.APPS_TRIGGER_GROUP));
+  }
+
+  @Test
+  void testDeleteOnDemandJob_skipsWhenJobCurrentlyExecuting() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+    String onDemandIdentity =
+        String.format("SearchIndexingApplication-%s", AppScheduler.ON_DEMAND_JOB);
+    JobKey onDemandKey = new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP);
+
+    // The on-demand job is genuinely executing right now.
+    JobDetail running =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    JobExecutionContext execContext = mock(JobExecutionContext.class);
+    when(execContext.getJobDetail()).thenReturn(running);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(execContext));
+
+    appScheduler.deleteOnDemandJob(app);
+
+    // A running job must never be cleared.
+    verify(mockScheduler, never()).deleteJob(onDemandKey);
+    verify(mockScheduler, never()).unscheduleJob(any(TriggerKey.class));
+  }
+
+  @Test
+  void testDeleteOnDemandJob_isBestEffortOnSchedulerException() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+    when(mockScheduler.deleteJob(any(JobKey.class)))
+        .thenThrow(new SchedulerException("store unavailable"));
+
+    // Clearing a leftover is best-effort; a failure here must not break the reindex flow.
+    assertDoesNotThrow(() -> appScheduler.deleteOnDemandJob(app));
+  }
+
+  @Test
+  void testStaleOnDemandJob_blocksTriggerWithoutClear() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+    String onDemandIdentity =
+        String.format("SearchIndexingApplication-%s", AppScheduler.ON_DEMAND_JOB);
+    JobKey onDemandKey = new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP);
+
+    // A leftover on-demand job persisted by a previous run that died (not currently running).
+    JobDetail stale =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    when(mockScheduler.getJobDetail(
+            new JobKey("SearchIndexingApplication", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(onDemandKey)).thenReturn(stale);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    // Quartz rejects scheduling a duplicate key while the stale job is still persisted.
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("duplicate job key"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
+  }
+
+  @Test
+  void testReindexPath_clearStaleThenTriggerSucceeds() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App app = nonConcurrentApp("SearchIndexingApplication");
+    String onDemandIdentity =
+        String.format("SearchIndexingApplication-%s", AppScheduler.ON_DEMAND_JOB);
+    JobKey onDemandKey = new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP);
+
+    // Stale leftover present until deleteOnDemandJob removes it, mirroring the JDBC job store.
+    AtomicBoolean stalePresent = new AtomicBoolean(true);
+    JobDetail stale =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    when(mockScheduler.getJobDetail(
+            new JobKey("SearchIndexingApplication", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(onDemandKey))
+        .thenAnswer(inv -> stalePresent.get() ? stale : null);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.deleteJob(onDemandKey))
+        .thenAnswer(
+            inv -> {
+              stalePresent.set(false);
+              return true;
+            });
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenAnswer(
+            inv -> {
+              if (stalePresent.get()) {
+                throw new ObjectAlreadyExistsException("duplicate job key");
+              }
+              return null;
+            });
+
+    // The reindex CLI path: clear the leftover, then trigger.
+    appScheduler.deleteOnDemandJob(app);
+    appScheduler.triggerOnDemandApplication(app, new HashMap<>());
+
+    verify(mockScheduler).deleteJob(onDemandKey);
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+    assertEquals(onDemandIdentity, jobCaptor.getValue().getKey().getName());
   }
 }

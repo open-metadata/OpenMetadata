@@ -15,7 +15,7 @@ import { Domain, DomainType } from '../generated/entity/domains/domain';
 import {
   getQueryFilterToIncludeDomain,
   isDomainExist,
-} from '../utils/DomainUtils';
+} from '../utils/DomainFilterUtils';
 
 jest.mock('../hooks/useDomainStore');
 jest.mock('./RouterUtils');

@@ -36,6 +36,8 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
   private StreamableLogsMetrics streamableLogsMetrics;
   private IngestionProgressTracker ingestionProgressTracker;
 
+  private static volatile IngestionProgressTracker sharedProgressTracker;
+
   @Override
   public void initialize(Bootstrap<?> bootstrap) {
     // Create Prometheus registry
@@ -47,6 +49,12 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
   @Override
   public void run(OpenMetadataApplicationConfig configuration, Environment environment) {
+    EventMonitorConfiguration eventMonitorConfiguration =
+        configuration.getEventMonitorConfiguration();
+    RequestLatencyContext.configure(
+        eventMonitorConfiguration != null
+            && eventMonitorConfiguration.isRequestLatencyPercentileHistogram());
+
     // Configure common tags
     String clusterName =
         configuration.getClusterName() != null ? configuration.getClusterName() : "default";
@@ -67,6 +75,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
     // Create IngestionProgressTracker instance for real-time progress updates
     ingestionProgressTracker = new IngestionProgressTracker(prometheusMeterRegistry);
+    sharedProgressTracker = ingestionProgressTracker;
 
     // Register Prometheus endpoint on admin connector
     registerPrometheusEndpoint(environment);
@@ -201,6 +210,10 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
   public IngestionProgressTracker getIngestionProgressTracker() {
     return ingestionProgressTracker;
+  }
+
+  public static IngestionProgressTracker getSharedProgressTracker() {
+    return sharedProgressTracker;
   }
 
   /**

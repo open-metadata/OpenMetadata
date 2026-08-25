@@ -61,6 +61,9 @@ class LineageUtilTest {
     when(searchRepository.getIndexMapping(Entity.DOMAIN))
         .thenReturn(IndexMapping.builder().indexName("domain_search").build());
     when(searchRepository.getClusterAlias()).thenReturn("cluster");
+    when(searchRepository.getWriteIndexName(any(IndexMapping.class)))
+        .thenAnswer(
+            invocation -> invocation.getArgument(0, IndexMapping.class).getIndexName("cluster"));
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -171,6 +174,9 @@ class LineageUtilTest {
     when(searchRepository.getIndexMapping(Entity.DOMAIN))
         .thenReturn(IndexMapping.builder().indexName("domain_search").build());
     when(searchRepository.getClusterAlias()).thenReturn("cluster");
+    when(searchRepository.getWriteIndexName(any(IndexMapping.class)))
+        .thenAnswer(
+            invocation -> invocation.getArgument(0, IndexMapping.class).getIndexName("cluster"));
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -259,7 +265,7 @@ class LineageUtilTest {
       verify(searchClient)
           .updateChildren(
               eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), updateCaptor.capture());
-      assertEquals("upstreamLineage.docUniqueId.keyword", fieldCaptor.getValue().getLeft());
+      assertEquals("upstreamLineage.docUniqueId", fieldCaptor.getValue().getLeft());
       assertEquals(
           dataProduct.getId() + "--->" + downstreamProduct.getId(),
           fieldCaptor.getValue().getRight());

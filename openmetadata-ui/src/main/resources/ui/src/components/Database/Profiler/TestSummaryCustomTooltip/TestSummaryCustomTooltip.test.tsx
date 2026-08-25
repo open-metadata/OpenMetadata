@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import {
+  TaskType as ThreadTaskType,
+  Thread,
+} from '../../../../generated/entity/feed/thread';
+import { Task } from '../../../../generated/entity/tasks/task';
+import {
+  getTaskDetailPath,
+  getTaskDetailPathFromTask,
+} from '../../../../utils/TaskNavigationUtils';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 const mockProps = {
@@ -73,8 +80,10 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  getTaskDetailPath: jest.fn(),
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  getTaskDetailPath: jest.fn().mockReturnValue('/legacy/issues'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/test-case/issues'),
+  getTaskDisplayId: jest.fn().mockReturnValue('244'),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -87,20 +96,80 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
+  OwnerLabel: jest.fn().mockReturnValue(null),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/HistoryUtils', () => ({
+  ...jest.requireActual('../../../../utils/HistoryUtils'),
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 
 describe('Test TestSummaryCustomTooltip component', () => {
+  it('should display a compact task-first incident link', async () => {
+    const incidentId = '9c479412-ebdf-4ad0-b1db-c030a7857492';
+    const task = {
+      id: incidentId,
+      taskId: 'TASK-00244',
+    } as Task;
+
+    render(
+      <TestSummaryCustomTooltip
+        active
+        payload={[
+          {
+            payload: {
+              incidentId,
+              name: 1748045364386,
+              status: 'Failed',
+              task,
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByTestId('incident')).toHaveTextContent('#244');
+    expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
+    expect(getTaskDetailPathFromTask).toHaveBeenCalledWith(task);
+  });
+
+  it('should preserve legacy thread incident details', async () => {
+    const thread: Thread = {
+      about: '<#E::testCase::service.database.schema.table.testCase>',
+      id: 'thread-id',
+      message: 'Resolve the test failure',
+      task: {
+        assignees: [],
+        id: 42,
+        type: ThreadTaskType.RequestTestCaseFailureResolution,
+      },
+    };
+
+    render(
+      <TestSummaryCustomTooltip
+        active
+        payload={[
+          {
+            payload: {
+              name: 1748045364386,
+              status: 'Failed',
+              task: thread,
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByTestId('incident')).toHaveTextContent('#42');
+    expect(getTaskDetailPath).toHaveBeenCalledWith(thread);
+  });
+
   it('should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
-    expect(
-      await screen.findByTestId('test-summary-tooltip-container')
-    ).toBeInTheDocument();
     expect(
       await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
@@ -131,18 +200,17 @@ describe('Test TestSummaryCustomTooltip component', () => {
     );
   });
 
-  describe('observabilityRouterClassBase migration', () => {
-    it('incident link should use observabilityRouterClassBase.getTestCaseDetailPagePath with ISSUES tab', async () => {
-      const fqn = 'svc.db.schema.table.test_case_freshness';
+  describe('incident fallback', () => {
+    it('should not expose the incident UUID when task metadata is unavailable', () => {
+      const incidentId = 'incident-123';
       const propsWithIncident = {
         active: true,
-        testCaseFqn: fqn,
         payload: [
           {
             payload: {
               name: 1748045364386,
               status: 'Failed',
-              incidentId: 'incident-123',
+              incidentId,
             },
           },
         ],
@@ -150,16 +218,8 @@ describe('Test TestSummaryCustomTooltip component', () => {
 
       render(<TestSummaryCustomTooltip {...propsWithIncident} />);
 
-      const incidentCell = await screen.findByTestId('incident');
-      const link = incidentCell.querySelector('a');
-
-      expect(link).not.toBeNull();
-      expect(link?.getAttribute('data-to')).toBe(
-        observabilityRouterClassBase.getTestCaseDetailPagePath(
-          fqn,
-          TestCasePageTabs.ISSUES
-        )
-      );
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.queryByText(incidentId)).not.toBeInTheDocument();
     });
   });
 });

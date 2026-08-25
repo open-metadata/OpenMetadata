@@ -17,7 +17,7 @@ import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
-import { getNormalizedTaskPayload } from '../../../utils/TasksUtils';
+import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';

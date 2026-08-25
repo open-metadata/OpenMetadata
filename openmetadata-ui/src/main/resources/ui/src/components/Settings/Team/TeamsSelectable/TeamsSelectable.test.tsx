@@ -23,11 +23,11 @@ const mockProps = {
 };
 
 jest.mock('antd', () => ({
-  TreeSelect: jest
-    .fn()
-    .mockImplementation(({ onChange }) => (
-      <div onClick={() => onChange([])}>TreeSelect.component</div>
-    )),
+  TreeSelect: jest.fn().mockImplementation(({ onChange }) => (
+    <div role="presentation" onClick={() => onChange([])}>
+      TreeSelect.component
+    </div>
+  )),
   Alert: jest.fn().mockImplementation(() => <div>Alert</div>),
 }));
 
@@ -39,7 +39,7 @@ jest.mock('../../../../rest/teamsAPI', () => ({
   ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'entityName'),
 }));
 

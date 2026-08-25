@@ -91,10 +91,11 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(adminPage);
 
-      const entityName = entity.entityResponseData?.['displayName'];
+      const entityName =
+        entity.entityResponseData?.['displayName'] ?? entity.entity.name;
 
       await followEntity(adminPage, entity.endpoint);
-      await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
+      await validateFollowedEntityToWidget(adminPage, entityName, true);
     });
   });
 });

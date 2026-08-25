@@ -20,6 +20,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -75,6 +76,32 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
 
+  /*
+   * Inflight-Promise caches. The settled values live in React state
+   * ({@code entitiesPermission} / {@code resourcesPermission}) so renders
+   * re-evaluate when permissions resolve, but state writes are deferred to
+   * the next render — meaning two components calling
+   * {@code getEntityPermissionByFqn(table, fqn)} on the SAME mount commit
+   * both see {@code entitiesPermission[fqn]} as undefined and both fire the
+   * network call. With these refs, the second caller picks up the Promise
+   * the first caller stored synchronously and {@code await}s the same
+   * response — one network round-trip instead of N.
+   *
+   * Keyed by entityId / entityFqn / ResourceEntity — same keys the React
+   * state uses. Entries are cleared in the Promise's then/catch so a
+   * subsequent call after settlement reads from React state (fast path)
+   * and doesn't keep the Promise hanging around forever.
+   */
+  const entityPermissionByIdInflight = useRef<
+    Map<string, Promise<ReturnType<typeof getOperationPermissions>>>
+  >(new Map());
+  const entityPermissionByFqnInflight = useRef<
+    Map<string, Promise<ReturnType<typeof getOperationPermissions>>>
+  >(new Map());
+  const resourcePermissionInflight = useRef<
+    Map<ResourceEntity, Promise<ReturnType<typeof getOperationPermissions>>>
+  >(new Map());
+
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
@@ -104,16 +131,30 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const entityPermission = entitiesPermission[entityId];
       if (entityPermission) {
         return entityPermission;
-      } else {
-        const response = await getEntityPermissionById(resource, entityId);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityId]: operationPermission,
-        }));
-
-        return operationPermission;
       }
+      const inflight = entityPermissionByIdInflight.current.get(entityId);
+      if (inflight) {
+        return inflight;
+      }
+      const promise = getEntityPermissionById(resource, entityId)
+        .then((response) => {
+          const operationPermission = getOperationPermissions(response);
+          setEntitiesPermission((prev) => ({
+            ...prev,
+            [entityId]: operationPermission,
+          }));
+          entityPermissionByIdInflight.current.delete(entityId);
+
+          return operationPermission;
+        })
+        .catch((err) => {
+          entityPermissionByIdInflight.current.delete(entityId);
+
+          throw err;
+        });
+      entityPermissionByIdInflight.current.set(entityId, promise);
+
+      return promise;
     },
     [entitiesPermission, setEntitiesPermission]
   );
@@ -123,16 +164,30 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const entityPermission = entitiesPermission[entityFqn];
       if (entityPermission) {
         return entityPermission;
-      } else {
-        const response = await getEntityPermissionByFqn(resource, entityFqn);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityFqn]: operationPermission,
-        }));
-
-        return operationPermission;
       }
+      const inflight = entityPermissionByFqnInflight.current.get(entityFqn);
+      if (inflight) {
+        return inflight;
+      }
+      const promise = getEntityPermissionByFqn(resource, entityFqn)
+        .then((response) => {
+          const operationPermission = getOperationPermissions(response);
+          setEntitiesPermission((prev) => ({
+            ...prev,
+            [entityFqn]: operationPermission,
+          }));
+          entityPermissionByFqnInflight.current.delete(entityFqn);
+
+          return operationPermission;
+        })
+        .catch((err) => {
+          entityPermissionByFqnInflight.current.delete(entityFqn);
+
+          throw err;
+        });
+      entityPermissionByFqnInflight.current.set(entityFqn, promise);
+
+      return promise;
     },
     [entitiesPermission, setEntitiesPermission]
   );
@@ -142,19 +197,30 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       const resourcePermission = resourcesPermission[resource];
       if (resourcePermission) {
         return resourcePermission;
-      } else {
-        const response = await getResourcePermission(resource);
-        const operationPermission = getOperationPermissions(response);
-        /**
-         * Store resource permission if it's not exits
-         */
-        setResourcesPermission((prev) => ({
-          ...prev,
-          [resource]: operationPermission,
-        }));
-
-        return operationPermission;
       }
+      const inflight = resourcePermissionInflight.current.get(resource);
+      if (inflight) {
+        return inflight;
+      }
+      const promise = getResourcePermission(resource)
+        .then((response) => {
+          const operationPermission = getOperationPermissions(response);
+          setResourcesPermission((prev) => ({
+            ...prev,
+            [resource]: operationPermission,
+          }));
+          resourcePermissionInflight.current.delete(resource);
+
+          return operationPermission;
+        })
+        .catch((err) => {
+          resourcePermissionInflight.current.delete(resource);
+
+          throw err;
+        });
+      resourcePermissionInflight.current.set(resource, promise);
+
+      return promise;
     },
     [resourcesPermission, setResourcesPermission]
   );
@@ -163,6 +229,13 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     setEntitiesPermission({} as EntityPermissionMap);
     setPermissions({} as UIPermission);
     setResourcesPermission({} as UIPermission);
+    // Drop any unresolved Promises too — after a logout/login boundary the
+    // old principal's inflight calls would resolve into a cache that another
+    // user can read, which is wrong. Clearing the refs here ensures the
+    // next caller fires a fresh request scoped to the new session.
+    entityPermissionByIdInflight.current.clear();
+    entityPermissionByFqnInflight.current.clear();
+    resourcePermissionInflight.current.clear();
   }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
 
   useEffect(() => {

@@ -657,3 +657,112 @@ class TestProcedureGraphProcessing(unittest.TestCase):
             # Verify same graph is reused
             second_graph = procedure_graph_map[test_procedure.fullyQualifiedName.root].graph
             self.assertIs(first_graph, second_graph)
+
+
+class TestMatchProcedureDisambiguation:
+    """Cross-database matching of stored procedures when a name collides.
+
+    On an ingest-all run the same procedure name can exist in several databases
+    or schemas, so the match must use the database and schema the query reported.
+    """
+
+    @staticmethod
+    def _procedure(name, database, schema):
+        return StoredProcedure(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=f"service.{database}.{schema}.{name}",
+            storedProcedureCode=StoredProcedureCode(code=f"CREATE PROCEDURE {name}", language="SQL"),
+            database=EntityReference(id=uuid.uuid4(), type="database", name=database),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema", name=schema),
+            service=EntityReference(id=uuid.uuid4(), type="databaseService", name="service"),
+        )
+
+    @staticmethod
+    def _query(procedure_name, database=None, schema=None):
+        return QueryByProcedure(
+            procedure_name=procedure_name,
+            query_type="INSERT",
+            query_text="INSERT INTO t_sp SELECT id, val FROM src1",
+            procedure_text=f"CALL {procedure_name}()",
+            procedure_start_time=datetime(2026, 7, 6),
+            procedure_end_time=datetime(2026, 7, 6),
+            query_database_name=database,
+            query_schema_name=schema,
+        )
+
+    def test_single_candidate_matches_regardless_of_context(self):
+        procedure = self._procedure("usp_load", "db_a", "dbo")
+
+        assert StoredProcedureLineageMixin._match_procedure([procedure], self._query("usp_load")) is procedure
+
+    def test_same_name_disambiguated_by_database(self):
+        procedure_a = self._procedure("usp_load", "hyb_qs_a", "dbo")
+        procedure_b = self._procedure("usp_load", "hyb_qs_b", "dbo")
+        candidates = [procedure_a, procedure_b]
+
+        assert (
+            StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "hyb_qs_b", "dbo"))
+            is procedure_b
+        )
+        assert (
+            StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "hyb_qs_a", "dbo"))
+            is procedure_a
+        )
+
+    def test_same_name_disambiguated_by_schema(self):
+        procedure_dbo = self._procedure("usp_load", "db_a", "dbo")
+        procedure_sales = self._procedure("usp_load", "db_a", "sales")
+        candidates = [procedure_dbo, procedure_sales]
+
+        result = StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load", "db_a", "sales"))
+
+        assert result is procedure_sales
+
+    def test_ambiguous_without_context_returns_none(self):
+        candidates = [
+            self._procedure("usp_load", "db_a", "dbo"),
+            self._procedure("usp_load", "db_b", "dbo"),
+        ]
+
+        assert StoredProcedureLineageMixin._match_procedure(candidates, self._query("usp_load")) is None
+
+    def test_no_candidates_returns_none(self):
+        assert StoredProcedureLineageMixin._match_procedure(None, self._query("usp_load")) is None
+        assert StoredProcedureLineageMixin._match_procedure([], self._query("usp_load")) is None
+
+    @staticmethod
+    def _row(procedure_name, database, schema="dbo"):
+        row = {
+            "PROCEDURE_NAME": procedure_name,
+            "QUERY_TYPE": "INSERT",
+            "QUERY_TEXT": "INSERT INTO t_sp SELECT id, val FROM src1",
+            "QUERY_DATABASE_NAME": database,
+            "QUERY_SCHEMA_NAME": schema,
+            "PROCEDURE_TEXT": f"CALL {procedure_name}()",
+            "PROCEDURE_START_TIME": datetime(2026, 7, 6),
+            "PROCEDURE_END_TIME": datetime(2026, 7, 6),
+        }
+        mock_row = Mock()
+        mock_row._asdict.return_value = row
+        mock_row.keys.return_value = list(row.keys())
+        return mock_row
+
+    def test_producer_attributes_collided_names_by_reporting_database(self):
+        """End-to-end producer flow: three databases each own a usp_load, and each
+        query row is attributed to the procedure in the database it reported."""
+        mixin = TestableStoredProcedureMixin()
+        mixin.metadata.paginate_es.return_value = iter(
+            [self._procedure("usp_load", database, "dbo") for database in ("db_a", "db_b", "db_c")]
+        )
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            self._row("usp_load", "db_c"),
+            self._row("usp_load", "db_a"),
+        ]
+
+        results = list(mixin.procedure_lineage_producer())
+
+        attributed = {
+            result.query_by_procedure.query_database_name: result.procedure.database.name for result in results
+        }
+        assert attributed == {"db_c": "db_c", "db_a": "db_a"}

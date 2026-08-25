@@ -23,9 +23,8 @@ import {
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
   resolveFieldType,
-} from './QueryBuilderUtils';
-
-jest.mock('./StringsUtils', () => ({
+} from './QueryBuilderPureUtils';
+jest.mock('./StringUtils', () => ({
   generateUUID: jest.fn(),
 }));
 
@@ -37,7 +36,7 @@ describe('getJsonTreeFromQueryFilter', () => {
   it('should return a valid JSON tree structure for a given query filter', () => {
     const mockUUIDs = ['uuid1', 'uuid2', 'uuid3', 'uuid4'];
     (
-      jest.requireMock('./StringsUtils').generateUUID as jest.Mock
+      jest.requireMock('./StringUtils').generateUUID as jest.Mock
     ).mockImplementation(() => mockUUIDs.shift());
     const queryFilter: QueryFilterInterface = {
       query: {
@@ -254,6 +253,53 @@ describe('getEntityTypeAggregationFilter', () => {
       },
     },
   };
+
+  it('should return the original filter unchanged when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    expect(result).toEqual(baseQueryFilter);
+  });
+
+  it('should not inject entityType.keyword term into the filter when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    const firstMustBlock = (
+      result.query?.bool?.must as QueryFieldInterface[]
+    )?.[0];
+    const innerMust = firstMustBlock?.bool?.must as QueryFieldInterface[];
+
+    const hasEntityTypeKeyword = innerMust?.some(
+      (item) => item.term?.['entityType.keyword'] !== undefined
+    );
+
+    expect(hasEntityTypeKeyword).toBe(false);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and must array is empty', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(queryFilter, EntityType.ALL);
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and query is empty', () => {
+    const emptyFilter = {} as QueryFilterInterface;
+    const result = getEntityTypeAggregationFilter(emptyFilter, EntityType.ALL);
+
+    expect(result).toEqual(emptyFilter);
+  });
 
   it('should add entity type to the first must block', () => {
     const result = getEntityTypeAggregationFilter(

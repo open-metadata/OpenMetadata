@@ -39,7 +39,9 @@ export const getAllFeeds = async (
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus,
   userId?: string,
-  limit?: number
+  limit?: number,
+  startTs?: number,
+  endTs?: number
 ) => {
   const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
 
@@ -54,6 +56,8 @@ export const getAllFeeds = async (
         taskStatus,
         userId: isFilterAll ? undefined : userId,
         limit,
+        startTs,
+        endTs,
       },
     }
   );
@@ -240,12 +244,23 @@ export const getUserActivity = async (
 export const getMyActivityFeed = async (params?: {
   days?: number;
   limit?: number;
-  domain?: string;
 }) => {
   const response = await APIClient.get<{
     data: ActivityEvent[];
     paging: Paging;
   }>(`${ACTIVITY_BASE_URL}/my-feed`, { params });
+
+  return response.data;
+};
+
+export const getFollowingActivityFeed = async (params?: {
+  days?: number;
+  limit?: number;
+}) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/following`, { params });
 
   return response.data;
 };

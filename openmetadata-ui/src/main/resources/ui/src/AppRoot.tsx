@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -27,6 +28,7 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
+import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
@@ -84,12 +86,15 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter basename={getBasePath()}>
+        <BrowserRouter
+          basename={getBasePath()}
+          useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>
                 <ErrorBoundary>
                   <App />
+                  <ToastProvider />
                 </ErrorBoundary>
               </HelmetProvider>
             </AntDConfigProvider>

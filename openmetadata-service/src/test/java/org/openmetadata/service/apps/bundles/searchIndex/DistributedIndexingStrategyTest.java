@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.EntityCompletionTracker;
@@ -100,6 +102,7 @@ class DistributedIndexingStrategyTest {
     String reportDataType = ReportData.ReportDataType.ENTITY_REPORT_DATA.value();
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(7);
     when(timeSeriesRepository.getTimeSeriesDao()).thenReturn(timeSeriesDao);
     when(timeSeriesDao.listCount(any(ListFilter.class))).thenReturn(3);
@@ -224,9 +227,11 @@ class DistributedIndexingStrategyTest {
     assertEquals(18, stats.getReaderStats().getSuccessRecords());
     assertEquals(1, stats.getReaderStats().getFailedRecords());
     assertEquals(1, stats.getReaderStats().getWarningRecords());
-    assertEquals(17, stats.getProcessStats().getTotalRecords());
+    // 18 rows reached the doc build: 14 indexed, 3 failed, and the remaining one warned
+    assertEquals(18, stats.getProcessStats().getTotalRecords());
     assertEquals(14, stats.getProcessStats().getSuccessRecords());
     assertEquals(3, stats.getProcessStats().getFailedRecords());
+    assertEquals(1, stats.getProcessStats().getWarningRecords());
     assertEquals(17, stats.getSinkStats().getTotalRecords());
     assertEquals(15, stats.getSinkStats().getSuccessRecords());
     assertEquals(2, stats.getSinkStats().getFailedRecords());
@@ -483,6 +488,7 @@ class DistributedIndexingStrategyTest {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext("user");
 
     when(tracker.getPromotedEntities()).thenReturn(Set.of());
@@ -511,10 +517,12 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
-  void finalizeAllEntityReindexSkipsPromotedEntitiesAndFailsMissingEntityStats() throws Exception {
+  void finalizeAllEntityReindexSkipsPromotedEntitiesAndPromotesMissingEntityStats()
+      throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = new ReindexContext();
     stagedIndexContext.add(
         "table", "table_index", "table_original", "table_staged", Set.of(), "table", List.of());
@@ -575,15 +583,14 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
-    assertEquals(
-        Boolean.FALSE,
-        outcomes.get("user"),
-        "user has no entityStats entry — finalizer can't evaluate; default to not fully successful");
-    assertEquals(
-        Boolean.FALSE,
-        outcomes.get("dashboard"),
-        "dashboard 4/5 (ratio 0.80) is below 0.95 — finalizer reports NOT fully successful;"
-            + " DefaultRecreateHandler's doc-count rescue then decides whether to promote");
+    // 084c5c2205 flipped the contract: an entity with no stats recorded means the reader
+    // did zero work (source had 0 rows, or the entity is driven by a parallel pipeline like
+    // vectorEmbedding/RecreateWithEmbeddings). Such entities are now promoted as success so
+    // the staged index gets swapped in instead of the job rolling up to FAILED on something
+    // that had nothing to fail on. `dashboard` still fails because PromotionPolicy reports its
+    // 4/5 (ratio 0.80) below the 0.95 threshold.
+    assertEquals(Boolean.TRUE, outcomes.get("user"));
+    assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
   }
 
   @Test
@@ -637,6 +644,7 @@ class DistributedIndexingStrategyTest {
                         .build()))
             .build();
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
     ReindexingConfiguration reindexConfig =
         ReindexingConfiguration.builder()
@@ -647,6 +655,7 @@ class DistributedIndexingStrategyTest {
             .build();
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
@@ -715,6 +724,7 @@ class DistributedIndexingStrategyTest {
                         .build()))
             .build();
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.QUERY_COST_RECORD);
     ReindexingConfiguration reindexConfig =
         ReindexingConfiguration.builder()
@@ -770,6 +780,7 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -802,9 +813,11 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
@@ -852,9 +865,11 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);

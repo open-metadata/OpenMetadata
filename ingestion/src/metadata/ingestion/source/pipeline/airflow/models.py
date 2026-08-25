@@ -31,7 +31,11 @@ class AirflowBaseModel(BaseModel):
 
 class AirflowTask(BaseModel):
     pool: Optional[str] = None  # noqa: UP045
+    doc: Optional[str] = None  # noqa: UP045
     doc_md: Optional[str] = None  # noqa: UP045
+    doc_json: Optional[str] = None  # noqa: UP045
+    doc_yaml: Optional[str] = None  # noqa: UP045
+    doc_rst: Optional[str] = None  # noqa: UP045
     inlets: Optional[List[Any]] = Field(None, alias="_inlets")  # noqa: UP006, UP045
     task_id: str
     outlets: Optional[List[Any]] = Field(None, alias="_outlets")  # noqa: UP006, UP045

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, isNodeSelection } from '@tiptap/core';
+import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,

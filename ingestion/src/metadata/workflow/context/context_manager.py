@@ -10,6 +10,7 @@ import threading
 from enum import Enum
 from typing import Any, Optional
 
+from metadata.workflow.context.app_metadata_context import AppMetadataContext
 from metadata.workflow.context.base import BaseContext, BaseContextFieldsEnum
 from metadata.workflow.context.workflow_context import WorkflowContext
 
@@ -25,6 +26,7 @@ class ContextsEnum(Enum):
     """
 
     WORKFLOW = "workflow"
+    APP_METADATA = "appMetadata"
 
 
 class ContextManager:
@@ -37,6 +39,7 @@ class ContextManager:
 
     # List of Contexts
     workflow: WorkflowContext = WorkflowContext()
+    appMetadata: AppMetadataContext = AppMetadataContext()  # noqa: N815
 
     def __new__(cls):
         if cls._instance is None:

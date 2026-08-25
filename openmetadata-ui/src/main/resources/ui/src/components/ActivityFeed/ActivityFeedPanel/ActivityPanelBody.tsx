@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 
-import { Input, Typography } from 'antd';
 import classNames from 'classnames';
-import { FC, useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { FC, lazy } from 'react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
-import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
-import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './feed-panel-body-v1.less';
+
+const ActivityFeedCardNew = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedCardNew/ActivityFeedcardNew.component'))
+);
 
 interface ActivityPanelBodyProps {
   activity: ActivityEvent;
@@ -33,61 +30,10 @@ const ActivityPanelBody: FC<ActivityPanelBodyProps> = ({
   activity,
   className,
 }) => {
-  const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-  const { postActivityComment } = useActivityFeedProvider();
-  const [showFeedEditor, setShowFeedEditor] = useState(false);
-
-  const onSave = useCallback(
-    async (message: string) => {
-      await postActivityComment(message, activity);
-      setShowFeedEditor(false);
-    },
-    [postActivityComment, activity]
-  );
-
+  // Activities are read-only change-event notifications — no comment editor.
   return (
     <div className={classNames('activity-panel-body', className)}>
-      <ActivityFeedCardNew
-        isForFeedTab
-        isOpenInDrawer
-        showThread
-        activity={activity}
-      />
-
-      <div className="activity-feed-comments-container d-flex flex-col m-t-md">
-        <Typography.Text className="activity-feed-comments-title m-b-md">
-          {t('label.comment-plural')}
-        </Typography.Text>
-
-        {showFeedEditor ? (
-          <ActivityFeedEditorNew
-            className="m-t-md feed-editor activity-feed-editor-container-new m-b-md"
-            onSave={onSave}
-          />
-        ) : (
-          <div className="d-flex gap-2">
-            <div>
-              <UserPopOverCard userName={currentUser?.name ?? ''}>
-                <div className="d-flex items-center">
-                  <ProfilePicture
-                    key={activity.id}
-                    name={currentUser?.name ?? ''}
-                    width="32"
-                  />
-                </div>
-              </UserPopOverCard>
-            </div>
-
-            <Input
-              className="comments-input-field"
-              data-testid="comments-input-field"
-              placeholder={t('message.input-placeholder')}
-              onClick={() => setShowFeedEditor(true)}
-            />
-          </div>
-        )}
-      </div>
+      <ActivityFeedCardNew isForFeedTab isOpenInDrawer activity={activity} />
     </div>
   );
 };

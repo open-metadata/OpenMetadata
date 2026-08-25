@@ -15,7 +15,8 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_analyzer_jp": {
@@ -38,8 +39,8 @@
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
             "flatten_graph"
           ]
         }
@@ -60,6 +61,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -168,7 +173,8 @@
         "type": "keyword"
       },
       "tableType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "columns": {
         "properties": {
@@ -230,7 +236,8 @@
             "type": "integer"
           },
           "extension": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           },
           "customPropertiesTyped": {
             "type": "nested",
@@ -275,12 +282,17 @@
             }
           },
           "children": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           }
         }
       },
       "columnNames": {
         "type": "keyword"
+      },
+      "columnNamesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "databaseSchema": {
         "properties": {
@@ -537,7 +549,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "dataProducts": {
         "properties": {
@@ -691,6 +704,26 @@
             }
           },
           "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
             "type": "keyword"
           }
         }
@@ -851,7 +884,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -1049,6 +1083,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

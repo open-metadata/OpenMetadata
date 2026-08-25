@@ -36,10 +36,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -147,34 +151,50 @@ public class RdfGlossaryGraphIT {
     GlossaryTerm termB1 = GlossaryTermTestFactory.createWithName(ns, glossaryB, "b1");
     GlossaryTerm termB2 = GlossaryTermTestFactory.createWithName(ns, glossaryB, "b2");
 
-    // Wait for RDF projection of all four terms before asserting against SPARQL.
-    Awaitility.await()
+    // Await the scoped graphs, not the unscoped one. Scoping filters on the term -> glossary
+    // membership edge, which is projected separately from the term node, so node presence in the
+    // unscoped graph does not imply the scoped query can see the term yet. The unscoped graph is
+    // also capped at limit=500 and shared with every other test writing glossary terms in this
+    // lane, while a scoped graph is bounded to its own glossary.
+    //
+    // glossaryB goes first so the exclusion assertions below mean "filtered out" rather than
+    // "not written yet".
+    awaitScopedTerms(glossaryB, termB1, termB2);
+    Set<UUID> scopedToA = awaitScopedTerms(glossaryA, termA1, termA2);
+
+    assertFalse(
+        scopedToA.contains(termB1.getId()),
+        "Scoped graph must NOT contain termB1 from a different glossary");
+    assertFalse(
+        scopedToA.contains(termB2.getId()),
+        "Scoped graph must NOT contain termB2 from a different glossary");
+  }
+
+  /**
+   * Polls the glossary-scoped graph until every expected term is present and returns that graph's
+   * node ids. Awaiting the scoped read is what makes the exclusion assertions meaningful: a term
+   * missing from the scoped graph because it has not been projected yet is indistinguishable from
+   * one correctly filtered out.
+   */
+  private Set<UUID> awaitScopedTerms(Glossary glossary, GlossaryTerm... expectedTerms) {
+    Set<UUID> scopedIds = new HashSet<>();
+    Awaitility.await("terms scoped to " + glossary.getName())
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
             () -> {
-              Set<UUID> ids = nodeIds(fetchGlossaryGraph(null));
-              assertTrue(ids.contains(termA1.getId()), "RDF should contain termA1");
-              assertTrue(ids.contains(termA2.getId()), "RDF should contain termA2");
-              assertTrue(ids.contains(termB1.getId()), "RDF should contain termB1");
-              assertTrue(ids.contains(termB2.getId()), "RDF should contain termB2");
+              scopedIds.clear();
+              scopedIds.addAll(nodeIds(fetchGlossaryGraph(glossary.getId())));
+              for (GlossaryTerm term : expectedTerms) {
+                assertTrue(
+                    scopedIds.contains(term.getId()),
+                    "Scoped graph should contain "
+                        + term.getName()
+                        + " from "
+                        + glossary.getName());
+              }
             });
-
-    JsonNode scoped = fetchGlossaryGraph(glossaryA.getId());
-    Set<UUID> scopedIds = nodeIds(scoped);
-
-    assertTrue(
-        scopedIds.contains(termA1.getId()),
-        "Scoped graph should contain termA1 from the requested glossary");
-    assertTrue(
-        scopedIds.contains(termA2.getId()),
-        "Scoped graph should contain termA2 from the requested glossary");
-    assertFalse(
-        scopedIds.contains(termB1.getId()),
-        "Scoped graph must NOT contain termB1 from a different glossary");
-    assertFalse(
-        scopedIds.contains(termB2.getId()),
-        "Scoped graph must NOT contain termB2 from a different glossary");
+    return scopedIds;
   }
 
   @Test
@@ -188,37 +208,39 @@ public class RdfGlossaryGraphIT {
     Glossary glossary = GlossaryTestFactory.createWithName(ns, "labeled");
     GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "t1");
 
+    // The term node and its `group`/`glossaryId` projection land in RDF separately, so wait for the
+    // full projection — not just node presence — before asserting. Otherwise the node can already
+    // be
+    // present while `group` is still null on a slower run, which is exactly the flake this guards.
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(glossary.getId())).contains(term.getId()),
-                    "Term should be projected to RDF before assertion"));
+            () -> {
+              JsonNode scoped = fetchGlossaryGraph(glossary.getId());
+              JsonNode termNode = null;
+              for (JsonNode node : scoped.get("nodes")) {
+                JsonNode idNode = node.get("id");
+                if (idNode != null && term.getId().toString().equals(idNode.asText())) {
+                  termNode = node;
+                  break;
+                }
+              }
+              assertNotNull(termNode, "Scoped response should include the created term");
 
-    JsonNode scoped = fetchGlossaryGraph(glossary.getId());
-    JsonNode termNode = null;
-    for (JsonNode node : scoped.get("nodes")) {
-      JsonNode idNode = node.get("id");
-      if (idNode != null && term.getId().toString().equals(idNode.asText())) {
-        termNode = node;
-        break;
-      }
-    }
-    assertNotNull(termNode, "Scoped response should include the created term");
+              JsonNode groupNode = termNode.get("group");
+              assertNotNull(
+                  groupNode,
+                  "Term node should carry a `group` field with the parent glossary's name");
+              assertEquals(
+                  glossary.getName(),
+                  groupNode.asText(),
+                  "Group label should match the parent glossary's name");
 
-    JsonNode groupNode = termNode.get("group");
-    assertNotNull(
-        groupNode, "Term node should carry a `group` field with the parent glossary's name");
-    assertEquals(
-        glossary.getName(),
-        groupNode.asText(),
-        "Group label should match the parent glossary's name");
-
-    JsonNode glossaryIdNode = termNode.get("glossaryId");
-    assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
-    assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+              JsonNode glossaryIdNode = termNode.get("glossaryId");
+              assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
+              assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+            });
   }
 
   @Test
@@ -391,6 +413,9 @@ public class RdfGlossaryGraphIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void customRdfPredicateRelationSurfacesInGraphEndpoint(TestNamespace ns) throws Exception {
     // Regression: GlossaryTermRelationSettings lets operators define custom
     // relation types with arbitrary rdfPredicate URIs (e.g. "Enrolls In" with
@@ -431,11 +456,15 @@ public class RdfGlossaryGraphIT {
       // term — exactly the customer's symptom.
       awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       removeCustomRelationTypeFromSettings(customTypeName);
     }
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void customRelationWithNullRdfPredicateSurfacesInGraphEndpoint(TestNamespace ns)
       throws Exception {
     // Companion to customRdfPredicateRelationSurfacesInGraphEndpoint covering
@@ -463,6 +492,7 @@ public class RdfGlossaryGraphIT {
       // this edge (written as om:regressionNullPredRel) is filtered out.
       awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       removeCustomRelationTypeFromSettings(customTypeName);
     }
   }
@@ -486,6 +516,13 @@ public class RdfGlossaryGraphIT {
     }
     com.fasterxml.jackson.databind.node.ObjectNode custom = MAPPER.createObjectNode();
     custom.put("name", name);
+    custom.put("displayName", name);
+    custom.put("isSymmetric", false);
+    custom.put("isTransitive", false);
+    custom.put("isCrossGlossaryAllowed", true);
+    custom.put("category", "associative");
+    custom.put("isSystemDefined", false);
+    custom.put("color", "#4f46e5");
     if (rdfPredicate != null) {
       custom.put("rdfPredicate", rdfPredicate.toString());
     }
@@ -507,35 +544,35 @@ public class RdfGlossaryGraphIT {
         () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
   }
 
-  private void removeCustomRelationTypeFromSettings(String name) {
-    try {
-      JsonNode existing = fetchGlossaryTermRelationSettings();
-      if (existing == null || !existing.has("relationTypes")) {
-        return;
-      }
-      com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
-      payload.put("config_type", "glossaryTermRelationSettings");
-      com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
-      com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
-      for (JsonNode t : existing.get("relationTypes")) {
-        if (!name.equals(t.path("name").asText(null))) {
-          kept.add(t);
-        }
-      }
-      value.set("relationTypes", kept);
-      payload.set("config_value", value);
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .header("Content-Type", "application/json")
-              .timeout(Duration.ofSeconds(30))
-              .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
-              .build();
-      HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    } catch (Exception e) {
-      LOG.warn("Failed to remove custom relation type {} from settings", name, e);
+  private void removeCustomRelationTypeFromSettings(String name) throws Exception {
+    JsonNode existing = fetchGlossaryTermRelationSettings();
+    if (existing == null || !existing.has("relationTypes")) {
+      return;
     }
+    com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
+    for (JsonNode t : existing.get("relationTypes")) {
+      if (!name.equals(t.path("name").asText(null))) {
+        kept.add(t);
+      }
+    }
+    value.set("relationTypes", kept);
+    payload.set("config_value", value);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
   }
 
   private JsonNode fetchGlossaryTermRelationSettings() throws Exception {

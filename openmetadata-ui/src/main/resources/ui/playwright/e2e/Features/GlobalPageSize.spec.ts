@@ -28,8 +28,18 @@ test.describe('Table & Data Model columns table pagination', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    const tablePageSizeDropdown = page.getByTestId(
+      'page-size-selection-dropdown'
+    );
+    await tablePageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(tablePageSizeDropdown).toBeVisible();
+    await tablePageSizeDropdown.hover();
+
+    const tablePageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '25 / Page' });
+    await expect(tablePageSizeOption).toBeVisible();
+    await tablePageSizeOption.click();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -38,11 +48,13 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText('25 / page')).toBeVisible();
+    const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
+    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
 
     // Change page size to 50
-    await page.locator('.ant-pagination-options-size-changer').click();
-    await page.getByTitle('50 / Page').click();
+    await rowsPerPageDropdown.click();
+    await page.getByTestId('rows-per-page-option-50').click();
+    await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page
     await settingClick(page, GlobalSettingOptions.USERS);

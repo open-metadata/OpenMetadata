@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.db2.connection import Db2Connection
 from metadata.ingestion.source.database.db2.lineage import Db2LineageSource
 from metadata.ingestion.source.database.db2.metadata import Db2Source
 from metadata.profiler.interface.sqlalchemy.db2.profiler_interface import (
@@ -9,4 +10,5 @@ ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=Db2Source,
     profiler_class=DB2ProfilerInterface,
     lineage_source_class=Db2LineageSource,
+    connection_class=Db2Connection,  # pyright: ignore[reportArgumentType]
 )

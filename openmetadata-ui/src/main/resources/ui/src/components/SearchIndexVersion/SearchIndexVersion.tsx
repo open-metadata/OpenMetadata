@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -28,12 +28,12 @@ import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TagSource } from '../../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
@@ -44,7 +44,6 @@ import { GenericProvider } from '../Customization/GenericProvider/GenericProvide
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
-
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,
@@ -146,7 +145,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.SEARCH_INDEX}
                     showActions={false}

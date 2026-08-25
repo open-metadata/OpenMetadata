@@ -11,7 +11,7 @@
     "config": {
       "entityTypes": ["glossaryTerm"],
       "events": ["Created", "Updated"],
-      "exclude": [],
+      "exclude": ["entityStatus"],
       "include": [],
       "filter": {}
     },

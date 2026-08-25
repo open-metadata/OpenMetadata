@@ -7,10 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +46,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
 import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -51,6 +60,7 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -222,6 +232,23 @@ public class IngestionPipelineResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().ingestionPipelines().getVersionList(id);
+  }
+
+  @Test
+  void delete_forceWithoutHardDelete_nonAdminReturnsForbidden(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+    Map<String, String> params = Map.of("hardDelete", "false", "force", "true");
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .ingestionPipelines()
+                    .delete(pipeline.getId().toString(), params));
+
+    assertEquals(403, exception.getStatusCode());
+    assertNotNull(getEntity(pipeline.getId().toString()));
   }
 
   @Override
@@ -836,6 +863,118 @@ public class IngestionPipelineResourceIT
     assertEquals(expectedLatestRunIds, actualRunIds);
     for (int i = 1; i < actualTimestamps.size(); i++) {
       assertTrue(actualTimestamps.get(i - 1) >= actualTimestamps.get(i));
+    }
+  }
+
+  @Test
+  void test_pipelineStatusesFieldReturnsRecentRunsNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("statuses_field_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String statusPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    long baseTimestamp = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+    List<String> runIdsInAscendingTimestamp = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      String runId = UUID.randomUUID().toString();
+      runIdsInAscendingTimestamp.add(runId);
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000L));
+      client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+    }
+
+    String entityPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getId() + "?fields=pipelineStatuses";
+    IngestionPipeline withStatuses =
+        client.getHttpClient().execute(HttpMethod.GET, entityPath, null, IngestionPipeline.class);
+
+    List<PipelineStatus> statuses = withStatuses.getPipelineStatuses();
+    assertNotNull(statuses);
+    assertEquals(5, statuses.size());
+
+    List<String> expectedNewestFirst = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));
+    Collections.reverse(expectedNewestFirst);
+    List<String> actualRunIds = statuses.stream().map(PipelineStatus::getRunId).toList();
+    assertEquals(expectedNewestFirst, actualRunIds);
+  }
+
+  /**
+   * Needs more than one pipeline: the single-entity read above binds a one-element hash list, where
+   * a query ordered only by entity hash still looks correct. Timestamps are interleaved across the
+   * two pipelines so a globally-sorted query fails too.
+   */
+  @Test
+  void test_listWithPipelineStatusesOrdersEachPipelineNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    long base = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+
+    Map<String, List<String>> expectedNewestFirst = new LinkedHashMap<>();
+    for (int p = 0; p < 2; p++) {
+      CreateIngestionPipeline request =
+          new CreateIngestionPipeline()
+              .withName(ns.prefix("list_statuses_order_" + p))
+              .withPipelineType(PipelineType.METADATA)
+              .withService(service.getEntityReference())
+              .withSourceConfig(
+                  new SourceConfig()
+                      .withConfig(
+                          new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+              .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+      IngestionPipeline pipeline = createEntity(request);
+      String statusPath =
+          "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+      List<String> runIds = new ArrayList<>();
+      for (int i = 0; i < 3; i++) {
+        String runId = UUID.randomUUID().toString();
+        runIds.add(runId);
+        PipelineStatus status =
+            new PipelineStatus()
+                .withPipelineState(PipelineStatusType.SUCCESS)
+                .withRunId(runId)
+                .withTimestamp(base + (i * 2000L) + (p * 1000L));
+        client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+      }
+      Collections.reverse(runIds);
+      expectedNewestFirst.put(pipeline.getFullyQualifiedName(), runIds);
+    }
+
+    ListResponse<IngestionPipeline> listed =
+        listEntities(
+            new ListParams()
+                .setFields("pipelineStatuses")
+                .setLimit(1000)
+                .setService(service.getFullyQualifiedName()));
+
+    for (Map.Entry<String, List<String>> expected : expectedNewestFirst.entrySet()) {
+      IngestionPipeline pipeline =
+          listed.getData().stream()
+              .filter(candidate -> expected.getKey().equals(candidate.getFullyQualifiedName()))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("pipeline missing from list: " + expected));
+      List<String> actual =
+          pipeline.getPipelineStatuses().stream().map(PipelineStatus::getRunId).toList();
+      assertEquals(
+          expected.getValue(), actual, "runs must be newest-first for " + expected.getKey());
     }
   }
 
@@ -1684,5 +1823,164 @@ public class IngestionPipelineResourceIT
     List<Object> data = (List<Object>) response.get("data");
     assertNotNull(data, "Data array should not be null");
     assertEquals(statusCount, data.size(), "Should return all " + statusCount + " status records");
+  }
+
+  @Test
+  void get_ingestionLogs_acceptsIdOrFqn(TestNamespace ns) throws Exception {
+    // The log endpoints accept either the pipeline Id (UUID) or its fullyQualifiedName. Create a
+    // pipeline, then confirm both forms resolve to the same pipeline (not 404) while unknown
+    // identifiers 404 — exercising the id-vs-fqn dispatch through the real endpoint.
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+
+    int byId = logsLastStatus(pipeline.getId().toString());
+    int byFqn = logsLastStatus(pipeline.getFullyQualifiedName());
+    assertNotEquals(404, byId, "a real Id must resolve the pipeline (not 404)");
+    assertNotEquals(404, byFqn, "a real fqn must resolve the pipeline (not 404)");
+    assertEquals(byId, byFqn, "Id and fqn must resolve to the same pipeline");
+
+    assertEquals(404, logsLastStatus(UUID.randomUUID().toString()), "an unknown Id must 404");
+    assertEquals(
+        404, logsLastStatus(ns.prefix("missing") + ".no_such_pipeline"), "an unknown fqn must 404");
+
+    // The download endpoint takes the same id-or-fqn path segment.
+    assertNotEquals(
+        404,
+        logsLastDownloadStatus(pipeline.getFullyQualifiedName()),
+        "download by fqn must resolve the pipeline (not 404)");
+    assertEquals(
+        404,
+        logsLastDownloadStatus(ns.prefix("missing") + ".no_such_pipeline"),
+        "download by unknown fqn must 404");
+  }
+
+  private static int logsLastStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last");
+  }
+
+  private static int logsLastDownloadStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last/download");
+  }
+
+  private static int logEndpointStatus(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HttpClient.newHttpClient()
+        .send(request, HttpResponse.BodyHandlers.ofString())
+        .statusCode();
+  }
+
+  private static String encodeSegment(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * A run the orchestrator accepts but never starts leaves a `queued` status behind that no worker
+   * will ever supersede, so it is hidden once older than `queuedStatusTimeoutSeconds`. That cutoff
+   * has to hold for the `pipelineStatuses` entity field too, not just the pipelineStatus endpoint —
+   * the Agents page reads the field, and shows the newest entry as the pipeline's current state.
+   */
+  @Test
+  void test_staleQueuedStatusIsHiddenFromThePipelineStatusesField(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createRequest(ns.prefix("staleQueued"), ns));
+    String fqn = pipeline.getFullyQualifiedName();
+    String serviceFqn = pipeline.getService().getFullyQualifiedName();
+    long twoHoursAgo = System.currentTimeMillis() - Duration.ofHours(2).toMillis();
+    long ninetyMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(90).toMillis();
+
+    addStatus(fqn, "stale-queued-run", PipelineStatusType.QUEUED, twoHoursAgo);
+    addStatus(fqn, "finished-run", PipelineStatusType.SUCCESS, ninetyMinutesAgo);
+
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+                    PipelineStatusList.class)
+                .getData()),
+        "pipelineStatus endpoint must hide the stale queued run");
+
+    // setFields path: single entity read with the field requested
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(
+            get(
+                    "/v1/services/ingestionPipelines/name/"
+                        + encodeSegment(fqn)
+                        + "?fields=pipelineStatuses",
+                    IngestionPipeline.class)
+                .getPipelineStatuses()),
+        "pipelineStatuses field must hide it too, or the Agents page shows Queued forever");
+
+    // setFieldsInBulk path: the list call the Agents page actually makes
+    IngestionPipeline fromList =
+        get(
+                "/v1/services/ingestionPipelines?limit=100&fields=pipelineStatuses&service="
+                    + encodeSegment(serviceFqn),
+                IngestionPipelineList.class)
+            .getData()
+            .stream()
+            .filter(p -> fqn.equals(p.getFullyQualifiedName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("pipeline missing from the list response"));
+    assertEquals(
+        List.of("finished-run"),
+        runIdsOf(fromList.getPipelineStatuses()),
+        "the bulk field fetch must apply the same cutoff as the single-entity read");
+  }
+
+  private static List<String> runIdsOf(List<PipelineStatus> statuses) {
+    return statuses == null ? List.of() : statuses.stream().map(PipelineStatus::getRunId).toList();
+  }
+
+  private static <T> T get(String path, Class<T> type) {
+    return SdkClients.adminClient().getHttpClient().execute(HttpMethod.GET, path, null, type);
+  }
+
+  private void addStatus(String fqn, String runId, PipelineStatusType state, long timestamp) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/ingestionPipelines/" + encodeSegment(fqn) + "/pipelineStatus",
+            new PipelineStatus()
+                .withRunId(runId)
+                .withPipelineState(state)
+                .withStartDate(timestamp)
+                .withTimestamp(timestamp),
+            IngestionPipeline.class);
+  }
+
+  static class PipelineStatusList extends ResultList<PipelineStatus> {}
+
+  static class IngestionPipelineList extends ResultList<IngestionPipeline> {}
+
+  /**
+   * Creating an application pipeline reads the app type off `appConfig` to pick a specific create
+   * permission. With no `appConfig` there is no type to read, and that used to escape as a 500
+   * before authorization even ran instead of falling back to the generic create permission.
+   */
+  @Test
+  void test_createApplicationPipelineWithoutAppConfig(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("appNoConfig"))
+            .withPipelineType(PipelineType.APPLICATION)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new ApplicationPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    assertNotNull(pipeline.getId());
+    assertEquals(PipelineType.APPLICATION, pipeline.getPipelineType());
   }
 }

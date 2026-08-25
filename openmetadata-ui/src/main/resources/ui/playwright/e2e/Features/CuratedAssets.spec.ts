@@ -16,15 +16,18 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { redirectToHomePage, removeLandingBanner } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addCuratedAssetPlaceholder,
+  CURATED_ASSETS_WIDGET_KEY,
   ENTITY_TYPE_CONFIGS,
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
+  toNameableEntity,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
   getEntityDisplayName,
@@ -57,19 +60,6 @@ const entityTypeToTestEntity: Record<string, TestEntity> = {
   Table: EntityDataClass.table1,
   Topic: EntityDataClass.topic1,
 };
-
-function toNameableEntity(
-  entity: TestEntity
-): { name?: string; displayName?: string } | undefined {
-  if (!entity) {
-    return undefined;
-  }
-  const holder = entity as unknown as {
-    entityResponseData?: { name?: string; displayName?: string };
-  };
-
-  return holder?.entityResponseData;
-}
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -111,7 +101,6 @@ test.describe('Curated Assets Widget', () => {
 
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await page.getByTestId('sidebar-toggle').click();
   });
@@ -133,10 +122,12 @@ test.describe('Curated Assets Widget', () => {
         personaName: persona.responseData.name,
       });
 
-      await page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('Create')
-        .click();
+      let curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
+
+      await curatedAssetsWidget.getByText('Create').click();
 
       // Update widget name
       await page.locator('[data-testid="title-input"]').clear();
@@ -183,34 +174,42 @@ test.describe('Curated Assets Widget', () => {
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
+
       await expect(
-        page
-          .getByTestId('KnowledgePanel.CuratedAssets')
+        curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
           .first()
       ).toBeVisible();
 
       await redirectToHomePage(page);
-      await removeLandingBanner(page);
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      await expect(
-        page.getByTestId('KnowledgePanel.CuratedAssets')
-      ).toBeVisible();
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
 
       await expect(
-        page
-          .getByTestId('KnowledgePanel.CuratedAssets')
-          .getByText(`${entityType.displayName} - Display Name Filter`)
+        curatedAssetsWidget.getByText(
+          `${entityType.displayName} - Display Name Filter`
+        )
       ).toBeVisible();
 
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
+      curatedAssetsWidget = await waitForLandingPageWidget(
+        page,
+        CURATED_ASSETS_WIDGET_KEY
+      );
+
       await expect(
-        page
-          .getByTestId('KnowledgePanel.CuratedAssets')
+        curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
           .first()
@@ -237,10 +236,12 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    await page
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .getByText('Create')
-      .click();
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
+    await curatedAssetsWidget.getByText('Create').click();
 
     await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -287,14 +288,13 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Save and verify widget creation
-    await expect(
-      page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('All Entity Types - Initial')
+      curatedAssetsWidget.getByText('All Entity Types - Initial')
     ).toBeVisible();
 
     // Delete the widget at the end
@@ -314,10 +314,12 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    await page
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .getByText('Create')
-      .click();
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
+    await curatedAssetsWidget.getByText('Create').click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -378,26 +380,21 @@ test.describe('Curated Assets Widget', () => {
 
     await queryResponse;
 
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    await waitForLandingPageWidget(page, CURATED_ASSETS_WIDGET_KEY);
 
     // Wait for auto-save to complete before navigating
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
+      curatedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -419,10 +416,12 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    await page
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .getByText('Create')
-      .click();
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
+    await curatedAssetsWidget.getByText('Create').click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -488,34 +487,29 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
+      curatedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Wait for auto-save to complete before navigating
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
+      curatedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -537,10 +531,12 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    await page
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .getByText('Create')
-      .click();
+    let curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
+    await curatedAssetsWidget.getByText('Create').click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -633,34 +629,29 @@ test.describe('Curated Assets Widget', () => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     // Verify on customize page: widget and at least one entity item
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
+      curatedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Wait for auto-save to complete before navigating
 
     // Navigate to landing page to verify widget
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-    await expect(
-      page.getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
+    curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
 
     await expect(
-      page
-        .getByTestId('KnowledgePanel.CuratedAssets')
-        .locator('.entity-list-item-title')
-        .first()
+      curatedAssetsWidget.locator('.entity-list-item-title').first()
     ).toBeVisible();
 
     // Navigate back, delete the widget and save at the end
@@ -689,7 +680,6 @@ test.describe('Curated Assets Widget', () => {
     await page.locator('[data-testid="save-button"]').click();
 
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
 
     // Verify placeholder is not visible when no widget is configured
     await expect(

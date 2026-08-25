@@ -13,10 +13,9 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ContainerSearchSource } from 'interface/search.interface';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
@@ -50,6 +49,7 @@ import {
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
+import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -58,7 +58,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './suggestions.less';
@@ -131,8 +131,6 @@ const Suggestions = ({
     metricSuggestions,
     columnSuggestions,
   } = suggestions;
-
-  const isMounting = useRef(true);
 
   const updateSuggestions = (options: Array<Option>) => {
     setSuggestions(() => ({
@@ -363,6 +361,8 @@ const Suggestions = ({
 
   const fetchSearchData = useCallback(async () => {
     if (isNLPActive) {
+      setIsLoading(false);
+
       return;
     }
 
@@ -375,7 +375,7 @@ const Suggestions = ({
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
         includeDeleted: false,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       });
 
       setOptions(res.hits.hits as unknown as Option[]);
@@ -390,20 +390,15 @@ const Suggestions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
+  }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {
-    if (!isMounting.current && searchText && !isTourOpen) {
+    if (searchText && !isTourOpen) {
       fetchSearchData();
     } else {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
-
-  // always Keep this useEffect at the end...
-  useEffect(() => {
-    isMounting.current = false;
-  }, []);
+  }, [fetchSearchData, searchText, isTourOpen]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {

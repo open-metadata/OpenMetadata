@@ -71,16 +71,18 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
-@Tag(name = "Knowledge", description = "APIs related knowledge pages of data assets.")
-@Path("/v1/knowledgeCenter")
+@Tag(
+    name = "Context Center Pages",
+    description = "APIs related to Context Center pages (articles and quick links).")
+@Path("/v1/contextCenter/pages")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "KnowledgeCenter")
+@Collection(name = "contextCenterPages")
 public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRepository> {
   public static final String INVALID_ENTITY_MSG =
       "Given Entity Type : %s does not support Knowledge Pages.";
   public static final Set<String> EXCLUDED_ENTITIES = Set.of(USER, BOT, TEST_SUITE, TEST_CASE);
-  public static final String COLLECTION_PATH = "v1/knowledgeCenter";
+  public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
       "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
@@ -396,13 +398,37 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description =
                   "FQN of the active page to show the active page correctly in  the hierarchy , while showing other root nodes at level 1.")
           @QueryParam("activeFqn")
-          String activeFqn) {
+          String activeFqn,
+      @Parameter(
+              description = "Field to sort by. Supported: name, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported: asc, desc. Defaults to desc.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder) {
+    SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit);
     } else {
-      return repository.getHierarchyWithSearch(parent, knowledgePageType, offset, limit);
+      return repository.getHierarchyWithSearch(
+          parent, knowledgePageType, sortFilter, offset, limit);
     }
+  }
+
+  private static SearchSortFilter buildHierarchySortFilter(String sortBy, String sortOrder) {
+    String effectiveSortBy = CommonUtil.nullOrEmpty(sortBy) ? "updatedAt" : sortBy;
+    return new SearchSortFilter(
+        resolveSortField(effectiveSortBy), resolveSortOrder(sortOrder), null, null);
   }
 
   @GET

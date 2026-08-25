@@ -1,11 +1,13 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
+import com.google.api.gax.rpc.NotFoundException;
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
 import com.google.cloud.secretmanager.v1.Secret;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
@@ -142,5 +144,15 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
     boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
     assertFalse(
         hasEmptyPayload, "Token revocation with null should not create empty secret payloads");
+  }
+
+  @Test
+  void isNotFoundExceptionRecognizesGaxNotFoundButNotOtherErrors() {
+    assertTrue(
+        secretsManager.isNotFoundException(mock(NotFoundException.class)),
+        "A gax NotFoundException must be classified as a genuine not-found");
+    assertFalse(
+        secretsManager.isNotFoundException(new RuntimeException("permission denied")),
+        "Other read failures must not be mistaken for a missing secret");
   }
 }

@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { ASSET_FILTER_NAMES } from '../constant/common';
+import { ASSET_FILTER_KEYS } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -59,6 +59,116 @@ import {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
+const GLOSSARY_TERM_APPROVAL_WORKFLOW = 'GlossaryTermApprovalWorkflow';
+const AUTO_APPROVED_BY_REVIEWER_STAGE = 'Auto-Approved by Reviewer';
+
+// The approval workflow itself finishes in tens of milliseconds, but the change event that triggers
+// it is only consumed once a second (WorkflowEvents.json pollInterval), so the first sample almost
+// always misses. A coarse interval therefore charges a whole interval per miss against the caller's
+// budget, and every caller here is a `test.slow()` (180s) or `test.setTimeout(5m)` test that polls
+// up to twice - which is how waiting for a one-second event produced a 180s test timeout.
+const WORKFLOW_POLL = {
+  timeout: 60_000,
+  intervals: [1_000, 2_000, 5_000],
+};
+
+type WorkflowInstanceStateRow = {
+  stage?: { name?: string; displayName?: string };
+};
+
+type GlossaryApprovalInstance = {
+  id: string;
+  status?: string;
+  statesHttpStatus: number;
+  stages: string[];
+};
+
+type GlossaryApprovalSnapshot = {
+  instancesHttpStatus: number;
+  instances: GlossaryApprovalInstance[];
+};
+
+// A term gets one instance per Created/Updated event, so a handful at most in these tests. The cap
+// keeps the per-poll fan-out bounded; instances come back newest first, so the ones that matter are
+// never the ones dropped.
+const APPROVAL_INSTANCE_LIMIT = 10;
+
+/**
+ * Read the most recent GlossaryTermApprovalWorkflow instances for a term - newest first, at most
+ * APPROVAL_INSTANCE_LIMIT of them - together with every stage of each, so callers can assert
+ * against the whole set instead of a single row.
+ */
+export const getGlossaryApprovalWorkflowSnapshot = async (
+  apiContext: APIRequestContext,
+  glossaryTermFqn: string
+): Promise<GlossaryApprovalSnapshot> => {
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+  const endTs = Date.now();
+  const startTs = endTs - 24 * 60 * 60 * 1000;
+
+  // `workflowDefinitionName` is the only definition filter WorkflowInstanceResource#list declares.
+  // Any other name is dropped silently, which widens the result to every workflow anchored to this
+  // term - task workflows included - whose states live under a different definition hash and so
+  // read back empty.
+  const instancesResponse = await apiContext.get(
+    `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowDefinitionName=${GLOSSARY_TERM_APPROVAL_WORKFLOW}&limit=${APPROVAL_INSTANCE_LIMIT}`
+  );
+
+  if (!instancesResponse.ok()) {
+    return { instancesHttpStatus: instancesResponse.status(), instances: [] };
+  }
+
+  const instancesBody = await instancesResponse.json();
+  const instances: GlossaryApprovalInstance[] = [];
+
+  for (const instance of instancesBody?.data ?? []) {
+    if (!instance?.id) {
+      continue;
+    }
+
+    const statesResponse = await apiContext.get(
+      `/api/v1/governance/workflowInstanceStates/${GLOSSARY_TERM_APPROVAL_WORKFLOW}/${instance.id}?startTs=${startTs}&endTs=${endTs}&limit=100`
+    );
+    const statesBody = statesResponse.ok()
+      ? await statesResponse.json()
+      : undefined;
+
+    instances.push({
+      id: instance.id,
+      status: instance.status,
+      statesHttpStatus: statesResponse.status(),
+      // Stage rows come back ordered by timestamp DESC with no tie-break, and the auto-approve path
+      // writes several stages inside the same millisecond, so never trust the first row alone.
+      stages: ((statesBody?.data ?? []) as WorkflowInstanceStateRow[])
+        .map((state) => state.stage?.displayName ?? state.stage?.name)
+        .filter((stage): stage is string => Boolean(stage)),
+    });
+  }
+
+  return { instancesHttpStatus: instancesResponse.status(), instances };
+};
+
+const describeGlossaryApprovalSnapshot = (
+  snapshot: GlossaryApprovalSnapshot
+): string => {
+  if (snapshot.instances.length === 0) {
+    return `workflowInstances HTTP ${snapshot.instancesHttpStatus}, 0 ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance(s) found`;
+  }
+
+  const detail = snapshot.instances
+    .map(
+      (instance, index) =>
+        `[${index}] ${instance.id} status=${instance.status} statesHTTP=${
+          instance.statesHttpStatus
+        } stages=[${instance.stages.join(' | ')}]`
+    )
+    .join('; ');
+
+  return `workflowInstances HTTP ${snapshot.instancesHttpStatus}, ${snapshot.instances.length} instance(s): ${detail}`;
+};
+
 export const checkName = async (page: Page, name: string) => {
   await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
@@ -101,7 +211,9 @@ export const selectActiveGlossaryTerm = async (
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
-  await glossaryTermEntry.click({ force: true }).catch(async () =>
+  // A plain click drives the term link's navigation on the TableV2 (react-aria)
+  // rows; a forced click is swallowed by the draggable row's pointer handling.
+  await glossaryTermEntry.click().catch(async () =>
     glossaryTermEntry.evaluate((node) => {
       (node as HTMLElement).click();
     })
@@ -390,16 +502,12 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.getByTestId('delete-confirmation-modal').waitFor();
+  await page.locator('[role="dialog"]').waitFor();
 
   await expect(page.locator('[role="dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="modal-header"]')).toBeVisible();
-
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     glossary.displayName
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteGlossary = page.waitForResponse(
     (response) =>
@@ -543,9 +651,8 @@ export const verifyTaskCreated = async (
         return arr;
       },
       {
-        message: 'To get the last run execution status as success',
-        timeout: 350_000,
-        intervals: [40_000, 30_000],
+        message: `an Open Approval task for "${glossaryTermData}" on ${glossaryTermFqn}`,
+        ...WORKFLOW_POLL,
       }
     )
     .toContain(glossaryTermData);
@@ -556,31 +663,39 @@ export const verifyWorkflowInstanceExists = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(
-    `<#E::glossaryTerm::${glossaryTermFqn}>`
-  );
 
-  await expect
-    .poll(
-      async () => {
-        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
-        const endTs = new Date().getTime();
+  try {
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+            apiContext,
+            glossaryTermFqn
+          );
 
-        const workflowInstanceResponse = await apiContext
-          .get(
-            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-          )
-          .then((res) => res.json());
+          return snapshot.instances.length;
+        },
+        {
+          message: `a ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance to exist for ${glossaryTermFqn}`,
+          ...WORKFLOW_POLL,
+        }
+      )
+      .toBeGreaterThan(0);
+  } catch (error) {
+    // Re-read at failure time and surface it: a bare poll timeout cannot tell "the workflow never
+    // ran" apart from "we stopped waiting too early", and that ambiguity is what kept this test
+    // mislabelled as flaky.
+    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+      apiContext,
+      glossaryTermFqn
+    );
 
-        return workflowInstanceResponse?.data?.length > 0;
-      },
-      {
-        message: 'To verify workflow instance exists',
-        timeout: 200_000,
-        intervals: [50_000],
-      }
-    )
-    .toBe(true);
+    throw new Error(
+      `No ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance for ${glossaryTermFqn}. ${describeGlossaryApprovalSnapshot(
+        snapshot
+      )}. Original error: ${(error as Error).message}`
+    );
+  }
 };
 
 export const verifyGlossaryWorkflowReviewerCase = async (
@@ -588,47 +703,40 @@ export const verifyGlossaryWorkflowReviewerCase = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(
-    `<#E::glossaryTerm::${glossaryTermFqn}>`
-  );
 
-  await expect
-    .poll(
-      async () => {
-        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
-        const endTs = new Date().getTime();
+  try {
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+            apiContext,
+            glossaryTermFqn
+          );
 
-        const workflowInstanceResponse = await apiContext
-          .get(
-            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-          )
-          .then((res) => res.json());
-
-        if (workflowInstanceResponse?.data?.length === 0) {
-          return '';
+          // The newest instance is the reviewer's edit, matching what the Workflow History widget
+          // reads; the trigger excludes entityStatus so the workflow's own write spawns no newer run.
+          return snapshot.instances[0]?.stages ?? [];
+        },
+        {
+          message: `the newest ${GLOSSARY_TERM_APPROVAL_WORKFLOW} run to record "${AUTO_APPROVED_BY_REVIEWER_STAGE}" for ${glossaryTermFqn}`,
+          ...WORKFLOW_POLL,
         }
+      )
+      .toContain(AUTO_APPROVED_BY_REVIEWER_STAGE);
+  } catch (error) {
+    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+      apiContext,
+      glossaryTermFqn
+    );
 
-        const workflowInstanceId = workflowInstanceResponse?.data[0]?.id;
-
-        if (!workflowInstanceId) {
-          return '';
-        }
-
-        const workflowInstanceState = await apiContext
-          .get(
-            `api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
-          )
-          .then((res) => res.json());
-
-        return workflowInstanceState?.data[0]?.stage?.displayName ?? '';
-      },
-      {
-        message: 'To verify workflow instance exists',
-        timeout: 200_000,
-        intervals: [50_000],
-      }
-    )
-    .toEqual('Auto-Approved by Reviewer');
+    throw new Error(
+      `Glossary term ${glossaryTermFqn} never reached "${AUTO_APPROVED_BY_REVIEWER_STAGE}". ${describeGlossaryApprovalSnapshot(
+        snapshot
+      )}. A newest run still parked on an approval task means the reviewer's edit did not take the CheckIfGlossaryTermUpdatedByIsReviewer=true branch. Original error: ${
+        (error as Error).message
+      }`
+    );
+  }
 };
 
 export const approveGlossaryTermTask = async (
@@ -696,26 +804,10 @@ export const validateGlossaryTerm = async (
   ).toBeHidden();
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Terms' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Description' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Owners' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Status' })
-  ).toBeVisible();
+  const termsTable = page.getByTestId('glossary-terms-table');
+  for (const header of ['Terms', 'Description', 'Owners', 'Status']) {
+    await expect(termsTable.locator('th', { hasText: header })).toBeVisible();
+  }
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
@@ -783,18 +875,16 @@ export const addAssetToGlossaryTerm = async (
   hasExistingAssets = false
 ) => {
   if (!hasExistingAssets) {
-    await page
-      .getByText("Looks like you haven't added any data assets yet.")
-      .waitFor();
+    await page.getByTestId('empty-placeholder').waitFor();
   }
 
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -825,7 +915,7 @@ export const addAssetToGlossaryTerm = async (
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
-
+    await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
         `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
@@ -841,12 +931,23 @@ const testFilterWithSpecificOption = async (
   filterWrapper: Locator,
   filterName: string,
   optionTestId: string,
-  expectedQueryFilterValue: string
+  expectedQueryFilterValue: string,
+  searchText?: string
 ) => {
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
   await page.getByTestId('drop-down-menu').waitFor();
+
+  if (searchText) {
+    const aggregateResponse = page.waitForResponse(
+      '/api/v1/search/aggregate?*'
+    );
+    await page
+      .getByRole('textbox', { name: 'Search Service Type...' })
+      .fill(searchText);
+    await aggregateResponse;
+  }
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
@@ -858,15 +959,11 @@ const testFilterWithSpecificOption = async (
 
   await filterResponse;
 
-  await expect(
-    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-  ).toBeVisible();
+  await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
   const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
 
-  await page
-    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-    .click();
+  await filterWrapper.getByTestId('clear-filters').click();
 
   await clearFilterResponse;
 };
@@ -879,14 +976,16 @@ const testFilterWithFirstOption = async (
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const dropdownMenu = page.getByTestId('drop-down-menu');
+  await dropdownMenu.waitFor();
 
-  const options = page.locator('[data-testid="drop-down-menu"]');
+  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
     await page.getByTestId('close-btn').click();
+    await page.getByTestId('close-btn').waitFor({ state: 'detached' });
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
@@ -899,17 +998,13 @@ const testFilterWithFirstOption = async (
 
       await filterResponse;
 
-      await expect(
-        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-      ).toBeVisible();
+      await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
       const clearFilterResponse = page.waitForResponse(
         '/api/v1/search/query?*'
       );
 
-      await page
-        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-        .click();
+      await filterWrapper.getByTestId('clear-filters').click();
 
       await clearFilterResponse;
     }
@@ -921,18 +1016,16 @@ export const verifyAssetModalFilters = async (
   hasExistingAssets = false
 ) => {
   if (!hasExistingAssets) {
-    await page
-      .getByText("Looks like you haven't added any data assets yet.")
-      .waitFor();
+    await page.getByTestId('empty-placeholder').waitFor();
   }
 
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -946,9 +1039,9 @@ export const verifyAssetModalFilters = async (
 
   await expect(filterButton).not.toBeVisible();
 
-  for (const filterName of ASSET_FILTER_NAMES) {
+  for (const filterKey of ASSET_FILTER_KEYS) {
     await expect(
-      page.locator(`[data-testid="search-dropdown-${filterName}"]`)
+      page.locator(`[data-testid="search-dropdown-${filterKey}"]`)
     ).toBeVisible();
   }
 
@@ -958,25 +1051,30 @@ export const verifyAssetModalFilters = async (
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Entity Type',
-    'table',
+    'entityType',
+    'table-checkbox',
     'table'
   );
 
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Service Type',
+    'serviceType',
+    'Mysql-checkbox',
     'mysql',
-    'mysql'
+    'Mysql'
   );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tag');
+  await testFilterWithFirstOption(page, filterWrapper, 'tags.tagFQN');
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Domains');
+  await testFilterWithFirstOption(
+    page,
+    filterWrapper,
+    'domains.displayName.keyword'
+  );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
-  await testFilterWithFirstOption(page, filterWrapper, 'Owners');
+  await testFilterWithFirstOption(page, filterWrapper, 'tier.tagFQN');
+  await testFilterWithFirstOption(page, filterWrapper, 'ownerDisplayName');
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1072,8 +1170,14 @@ export const confirmationDragAndDropGlossary = async (
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Move' }).click();
-  await patchGlossaryTermResponse;
+  // Scope to the modal: TableV2 drag handles expose aria-label "Move the term",
+  // which otherwise also matches getByRole('button', { name: 'Move' }).
+  await page
+    .getByTestId('confirmation-modal')
+    .getByRole('button', { name: 'Move' })
+    .click();
+  const patchResponse = await patchGlossaryTermResponse;
+  expect(patchResponse.status()).toBe(200);
 };
 
 export const changeTermHierarchyFromModal = async (
@@ -1085,16 +1189,29 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
+  // that never satisfies toBeVisible even while the dialog is on screen — the
+  // dialog itself is the element with a box. Scoping still matters: the bare
+  // `Select Parent` label also matches the control of a hierarchy modal left in
+  // the DOM by an earlier step, and clicking that waits out the whole test on a
+  // hidden element.
+  const hierarchyModal = page
+    .locator('[data-testid="change-parent-hierarchy-modal"]')
+    .getByRole('dialog');
+  await expect(hierarchyModal).toBeVisible();
 
-  await page.getByLabel('Select Parent').click();
+  const parentSelect = hierarchyModal.getByLabel('Select Parent');
+  await expect(parentSelect).toBeVisible();
+  await expect(parentSelect).toBeEnabled();
+  await parentSelect.click();
+
   await page.locator('.async-tree-select-list-dropdown').waitFor({
     state: 'visible',
   });
 
   if (isGlossaryTerm) {
     const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
+    await parentSelect.fill(entityDisplayName);
     await searchRes;
   }
 
@@ -1124,8 +1241,6 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     entityName
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
     ? '/api/v1/glossaryTerms/async/*'
@@ -1470,38 +1585,46 @@ export async function openColumnDropdown(page: Page): Promise<void> {
 
   await dropdownButton.click();
 
-  await page
-    .locator('.ant-dropdown [role="menu"]')
-    .getByTestId('column-dropdown-title')
-    .waitFor({
-      state: 'visible',
-    });
+  await page.getByTestId('column-dropdown-title').waitFor({
+    state: 'visible',
+  });
 }
 
 export async function selectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
 }
 
 export async function deselectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
+}
+
+export async function ensureColumnsVisible(
+  page: Page,
+  columns: { key: string; label: string }[]
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  for (const column of columns) {
+    const columnHeader = glossaryTermsTable.locator('th', {
+      hasText: column.label,
+    });
+    if (!(await columnHeader.isVisible().catch(() => false))) {
+      await page.getByTestId(`column-menu-item-${column.key}`).click();
+      await expect(columnHeader).toBeVisible();
+    }
+  }
 }
 
 export async function verifyColumnsVisibility(
@@ -1580,22 +1703,17 @@ export const filterStatus = async (
   await dropdownButton.click();
 
   for (const label of statusLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
-      hasText: label,
-    });
-    await checkbox.click();
+    const optionValue = label === 'All' ? 'all' : label;
+    await page.getByTestId(`glossary-status-option-${optionValue}`).click();
   }
 
-  const saveButton = page.locator('.ant-btn-primary', {
-    hasText: 'Save',
-  });
-  await saveButton.click();
+  await page.getByTestId('glossary-status-save-btn').click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
   // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
   // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
   const rows = glossaryTermsTable.locator(
-    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+    'tbody > tr:not([aria-hidden="true"])'
   );
   const statusColumnIndex = 2;
 
@@ -1697,25 +1815,26 @@ export const addMultiOwnerInDialog = async (data: {
 
 export const dragAndDropColumn = async (
   page: Page,
-  dragColumn: string,
-  dropColumn: string
+  dragColumnKey: string,
+  dropColumnKey: string
 ) => {
-  await page.locator(`.draggable-menu-item:has-text("${dragColumn}")`).waitFor({
+  const dragColumn = page.getByTestId(`column-menu-item-${dragColumnKey}`);
+  const dropColumn = page.getByTestId(`column-menu-item-${dropColumnKey}`);
+
+  await dragColumn.waitFor({
     state: 'visible',
   });
 
-  await page
-    .locator('.draggable-menu-item', { hasText: dragColumn })
-    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }), {
-      sourcePosition: {
-        x: 16,
-        y: 16,
-      },
-      targetPosition: {
-        x: 16,
-        y: 16,
-      },
-    });
+  await dragColumn.dragTo(dropColumn, {
+    sourcePosition: {
+      x: 16,
+      y: 16,
+    },
+    targetPosition: {
+      x: 16,
+      y: 16,
+    },
+  });
 };
 
 export const getEscapedTermFqn = (term: GlossaryTermData) => {
@@ -2008,9 +2127,10 @@ export const verifyMutualExclusivitySelection = async (
   await expect(deselectedRadio).not.toBeChecked();
 };
 
-// -- MUI Glossary Tree Select helpers --
+// -- Glossary Tree Select helpers --
 
-export const getTreeDropdown = (page: Page) => page.getByRole('tooltip');
+export const getTreeDropdown = (page: Page) =>
+  page.getByTestId('glossary-terms-popover');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2018,20 +2138,37 @@ export const getTreeNode = (page: Page, nodeId: string) =>
 export const getSelectionControl = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(new RegExp(`^(radio|checkbox)-${nodeId}$`));
 
-export const expandTreeNodeByName = async (page: Page, displayName: string) => {
-  const tooltip = getTreeDropdown(page);
-  const nodeText = tooltip.getByText(displayName, { exact: true });
+export const expandTreeNodeByName = async (
+  page: Page,
+  displayName: string,
+  options: { search?: boolean } = {}
+) => {
+  const { search = true } = options;
+
+  // Searching re-queries the API and only returns matched terms one level
+  // deep, so a node found via a *nested* search looks like a leaf and its
+  // expand chevron never becomes interactive. Only search at the top level
+  // (the full glossary tree is virtualized, so a plain scroll can miss an
+  // off-screen glossary); nested lookups rely on the parent's already-loaded
+  // subtree instead.
+  if (search) {
+    const searchResponse = page.waitForResponse(
+      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+    );
+    await page.getByTestId('glossary-terms').locator('input').fill(displayName);
+    await searchResponse;
+    await waitForAllLoadersToDisappear(page);
+  }
+
+  const popover = getTreeDropdown(page);
+  const nodeText = popover.getByText(displayName, { exact: true });
   await expect(nodeText).toBeVisible({ timeout: 10000 });
   await nodeText.scrollIntoViewIfNeeded();
 
-  const treeItem = nodeText.locator(
-    'xpath=ancestor::li[contains(@class, "MuiTreeItem-root")][1]'
-  );
-  const iconContainer = treeItem.locator(
-    '> .MuiTreeItem-content > .MuiTreeItem-iconContainer'
-  );
-  await expect(iconContainer).toBeVisible({ timeout: 5000 });
-  await iconContainer.click();
+  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
+  const expandButton = treeItem.locator('button').first();
+  await expect(expandButton).toBeVisible({ timeout: 5000 });
+  await expandButton.click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -2044,21 +2181,15 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  await expect(page.locator('.MuiTreeItem-root').first()).toBeVisible({
+  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
     timeout: 10000,
   });
 
+  await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, glossaryDisplayName);
-    await expandTreeNodeByName(page, parentTermDisplayName);
-  } else {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await glossaryField.fill(glossaryDisplayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expandTreeNodeByName(page, glossaryDisplayName);
+    await expandTreeNodeByName(page, parentTermDisplayName, {
+      search: false,
+    });
   }
 };
 
@@ -2076,12 +2207,12 @@ export const expectCheckbox = async (page: Page, nodeId: string) => {
 
 export const expectChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).toHaveClass(/Mui-checked/);
+  await expect(control).toHaveAttribute('data-selected', 'true');
 };
 
 export const expectNotChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).not.toHaveClass(/Mui-checked/);
+  await expect(control).not.toHaveAttribute('data-selected', 'true');
 };
 
 export const clickTreeNode = async (page: Page, nodeId: string) => {

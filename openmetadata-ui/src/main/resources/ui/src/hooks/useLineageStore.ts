@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
-import { Edge, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
 import { create } from 'zustand';
-import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';

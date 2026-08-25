@@ -18,7 +18,9 @@ from unittest.mock import Mock, patch
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
     BurstIQConnection,
 )
-from metadata.ingestion.source.database.burstiq.connection import get_connection
+from metadata.ingestion.source.database.burstiq.connection import (
+    BurstIQConnection as BurstIQConnectionHandler,
+)
 
 
 class TestBurstIQConnection(TestCase):
@@ -41,13 +43,13 @@ class TestBurstIQConnection(TestCase):
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     def test_get_connection(self, mock_post):
-        """Test get_connection creates BurstIQClient properly"""
+        """Test the connection handler creates BurstIQClient properly"""
         mock_response = Mock()
         mock_response.json.return_value = self.mock_token_response
         mock_response.raise_for_status = Mock()
         mock_post.return_value = mock_response
 
-        client = get_connection(self.config)
+        client = BurstIQConnectionHandler(self.config).client
 
         # Verify client was created
         self.assertIsNotNone(client)
@@ -55,7 +57,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(client.config.realmName, "test_realm")
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_connection_check_access_success(self, mock_request, mock_post):
         """Test connection check for dictionary access"""
         # Mock authentication
@@ -83,7 +85,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(dictionaries[0].name, "test_dict")
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_connection_check_access_failure(self, mock_request, mock_post):
         """Test connection check fails when dictionary access fails"""
         # Mock authentication
@@ -110,7 +112,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(len(dictionaries), 0)
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_connection_check_edges_success(self, mock_request, mock_post):
         """Test connection check for edge access"""
         # Mock authentication
@@ -166,14 +168,14 @@ class TestBurstIQConnection(TestCase):
         client = BurstIQClient(self.config)
 
         # Call test_connection directly - import inline to avoid pytest collection issues
-        from metadata.ingestion.source.database.burstiq import (
-            connection as burstiq_conn,
+        from metadata.ingestion.source.database.burstiq.connection import (
+            BurstIQConnection,
         )
 
-        result = burstiq_conn.test_connection(  # noqa: F841
+        handler = BurstIQConnection(self.config)
+        handler._client = client
+        result = handler.test_connection(  # noqa: F841
             metadata=mock_metadata,
-            client=client,
-            service_connection=self.config,
             timeout_seconds=180,
         )
 
@@ -196,7 +198,7 @@ class TestBurstIQConnection(TestCase):
         mock_post.return_value = mock_response
 
         # Should raise exception when authentication is attempted
-        client = get_connection(self.config)
+        client = BurstIQConnectionHandler(self.config).client
         with self.assertRaises(Exception) as context:
             client.test_authenticate()
 

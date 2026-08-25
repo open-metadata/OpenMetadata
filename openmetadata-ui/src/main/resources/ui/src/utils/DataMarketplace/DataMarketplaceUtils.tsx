@@ -11,11 +11,28 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
-import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
-import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
+import { lazy, ReactNode } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+
+const MarketplaceDataProductsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component'
+      )
+  )
+);
+
+const MarketplaceDomainsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component'
+      )
+  )
+);
 
 export const getDataMarketplaceWidgetsFromKey = (
   widgetConfig: WidgetConfig,

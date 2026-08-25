@@ -10,27 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
 
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
-      {
-        name: t('label.column-bulk-operations'),
-        url: '/column-bulk-operations',
-      },
-    ],
-  });
+  const breadcrumbItems = [
+    isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+    { label: t('label.column-bulk-operations') },
+  ];
 
   return (
-    <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
-      <div>
-        {breadcrumbs}
+    <PageLayoutV1
+      pageTitle={t('label.column-bulk-operations')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={classNames('tw:flex tw:flex-col', { 'tw:gap-4': isAiMode })}>
+        {isAiMode ? (
+          <HeaderShell
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                items={breadcrumbItems}
+                showHome={false}
+              />
+            }
+            className="tw:mb-0!"
+            padding="comfortable"
+            subtitle={t('message.column-bulk-operations-subtitle')}
+            title={t('label.column-bulk-operations')}
+            variant="gradient"
+          />
+        ) : (
+          <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+        )}
         <ColumnGrid />
       </div>
     </PageLayoutV1>

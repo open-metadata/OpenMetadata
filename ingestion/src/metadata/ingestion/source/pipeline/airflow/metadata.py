@@ -25,7 +25,7 @@ from urllib.parse import quote
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import SerializedDAG
+from airflow.serialization.definitions.dag import SerializedDAG
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, join, literal
 from sqlalchemy.orm import Session
@@ -63,6 +63,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -96,6 +97,8 @@ class AirflowTaskStatus(Enum):
     QUEUED = "queued"
     REMOVED = "removed"
     SKIPPED = "skipped"
+    RUNNING = "running"
+    UPSTREAM_FAILED = "upstream_failed"
 
 
 STATUS_MAP = {
@@ -103,6 +106,8 @@ STATUS_MAP = {
     AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
     AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
     AirflowTaskStatus.SKIPPED.value: StatusType.Skipped.value,
+    AirflowTaskStatus.RUNNING.value: StatusType.Pending.value,
+    AirflowTaskStatus.UPSTREAM_FAILED.value: StatusType.Failed.value,
 }
 
 # Upper bound on run_ids sent in a single TaskInstance bulk query. Keeps peak
@@ -132,6 +137,8 @@ class AirflowSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
+    _status_cache_dag_id: str | None = None
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -142,8 +149,14 @@ class AirflowSource(PipelineServiceSource):
         self._session = None
         self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}  # noqa: UP006
 
+        # Status and lineage stages request the same DAG's runs back-to-back;
+        # cache the last DAG so we query once per DAG instead of twice.
+        self._status_cache_dag_id = None
+        self._status_cache_runs: list[DagRun] = []
+
         self._execution_date_column = None
         self._is_remote_airflow_3 = None
+        self._dag_listing_complete = True
 
     @property
     def is_remote_airflow_3(self):
@@ -204,7 +217,7 @@ class AirflowSource(PipelineServiceSource):
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # noqa: PLC0415
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
             AirflowRestApiConnection,
         )
 
@@ -213,7 +226,7 @@ class AirflowSource(PipelineServiceSource):
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(f"Expected AirflowConnection, but got {connection}")
         if isinstance(connection.connection, AirflowRestApiConnection):
-            from metadata.ingestion.source.pipeline.airflow.api.source import (  # noqa: PLC0415
+            from metadata.ingestion.source.pipeline.airflow.api.source import (
                 AirflowApiSource,
             )
 
@@ -262,6 +275,8 @@ class AirflowSource(PipelineServiceSource):
         """
         Return the DagRuns of given dag
         """
+        if self._status_cache_dag_id == dag_id:
+            return self._status_cache_runs
         try:
             # The Airflow SDK is always v3.x (which has logical_date on the ORM model),
             # but we may connect to Airflow 2.x databases (which have execution_date column).
@@ -303,6 +318,8 @@ class AirflowSource(PipelineServiceSource):
 
                 dag_runs.append(DagRun(**kwargs))
 
+            self._status_cache_dag_id = dag_id
+            self._status_cache_runs = dag_runs
             return dag_runs  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -429,7 +446,7 @@ class AirflowSource(PipelineServiceSource):
                     task_statuses = [
                         TaskStatus(
                             name=task.task_id,
-                            executionStatus=STATUS_MAP.get(task.state, StatusType.Pending.value),
+                            executionStatus=STATUS_MAP.get(task.state or "", StatusType.Pending.value),
                             startTime=datetime_to_ts(task.start_date),
                             endTime=datetime_to_ts(task.end_date),  # Might be None for running tasks
                         )  # Log link might not be present in all Airflow versions
@@ -486,9 +503,9 @@ class AirflowSource(PipelineServiceSource):
             return None
         try:
             return json.loads(zlib.decompress(compressed_data))
-        except zlib.error as exc:
+        except (zlib.error, json.JSONDecodeError, ValueError, MemoryError) as exc:
             logger.warning(
-                f"Failed to decompress serialized DAG data for '{dag_id}'. "
+                f"Failed to read serialized DAG data for '{dag_id}'. "
                 f"Ensure COMPRESS_SERIALIZED_DAGS uses zlib compression (the Airflow default): {exc}"
             )
             return None
@@ -501,6 +518,7 @@ class AirflowSource(PipelineServiceSource):
         us retrieve all the task and inlets/outlets information
         """
 
+        self._dag_listing_complete = True
         json_data_column = (
             SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data")
@@ -589,7 +607,20 @@ class AirflowSource(PipelineServiceSource):
 
         while True:
             paginated_query = session_query.order_by(SerializedDagModel.dag_id.asc()).limit(limit).offset(offset)
-            results = paginated_query.all()
+            try:
+                results = paginated_query.all()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching DAG page at offset {offset} - {exc}")
+                self.status.failed(
+                    StackTraceError(
+                        name="Airflow DAG Pagination",
+                        error=f"Error fetching DAG page at offset {offset}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                self._dag_listing_complete = False
+                break
             if not results:
                 break
             for serialized_dag in results:
@@ -635,12 +666,36 @@ class AirflowSource(PipelineServiceSource):
                     yield dag
                 except ValidationError as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
+                    logger.warning(f"Error building pydantic model for {serialized_dag[0]} - {err}")
+                    self.status.failed(
+                        StackTraceError(
+                            name=serialized_dag[0],
+                            error=f"Error building pydantic model for DAG '{serialized_dag[0]}': {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+                    logger.warning(f"Wild error yielding dag {serialized_dag[0]} - {err}")
+                    self.status.failed(
+                        StackTraceError(
+                            name=serialized_dag[0],
+                            error=f"Wild error yielding DAG '{serialized_dag[0]}': {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
             offset += limit
+
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._dag_listing_complete:
+            logger.warning(
+                "Skipping stale-pipeline deletion: DAG listing was incomplete due to a "
+                "page-fetch error, so the live set is partial and would delete DAGs that "
+                "still exist."
+            )
+            return
+        yield from super().mark_pipelines_as_deleted()
 
     def fetch_dag_owners(self, data) -> Optional[str]:  # noqa: UP045
         """
@@ -696,6 +751,17 @@ class AirflowSource(PipelineServiceSource):
         """
         return PipelineState[pipeline_details.state]
 
+    @staticmethod
+    def _task_description(task: BaseOperator) -> Markdown | None:
+        """
+        Pick the first populated doc field Airflow exposes for a task.
+        """
+        doc = next(
+            (doc for doc in (task.doc_md, task.doc, task.doc_json, task.doc_yaml, task.doc_rst) if doc),
+            None,
+        )
+        return Markdown(doc) if doc else None
+
     def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:  # noqa: UP006
         """
         Obtain the tasks from a SerializedDAG
@@ -704,9 +770,9 @@ class AirflowSource(PipelineServiceSource):
         :return: List of tasks
         """
         return [
-            Task(
+            Task(  # pyright: ignore[reportCallIssue]
                 name=task.task_id,
-                description=task.doc_md,
+                description=self._task_description(task),
                 sourceUrl=SourceUrl(
                     (  # noqa: UP034
                         f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
@@ -1047,5 +1113,5 @@ class AirflowSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
 
     def close(self):
-        self.metadata.compute_percentile(Pipeline, self.today)
         self.session.close()
+        super().close()

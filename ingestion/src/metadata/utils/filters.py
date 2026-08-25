@@ -45,7 +45,8 @@ def _filter(filter_pattern: Optional[FilterPattern], name: Optional[str]) -> boo
     """
     Return True if the name needs to be filtered, False otherwise
 
-    Include takes precedence over exclude
+    Exclude takes precedence over include: a name matching both an include and an
+    exclude pattern is filtered out.
 
     :param filter_pattern: Model defining filtering logic
     :param name: table or schema name
@@ -274,6 +275,41 @@ def filter_by_classification(classification_pattern: Optional[FilterPattern], cl
     return _filter(classification_pattern, classification_name)
 
 
+def _any_match(regex_list: Optional[List[str]], names: List[str]) -> bool:  # noqa: UP006, UP045
+    """Return True if any name matches any regex in the list (case-insensitive)."""
+    validate_regex(regex_list)
+    return any(re.match(regex, name, re.IGNORECASE) for regex in regex_list or [] for name in names)
+
+
+def filter_by_classifications(
+    classification_pattern: FilterPattern | None,
+    classification_names: List[str],  # noqa: UP006
+) -> bool:
+    """
+    Return True if an entity carrying these classification tags must be filtered
+    out, False otherwise. Unlike ``filter_by_classification`` this evaluates the
+    whole set of tags an entity holds, so a single matching tag is enough to keep
+    (or, for excludes, to drop) the entity.
+
+    Exclude takes precedence over include:
+      - drop if ANY tag matches an exclude pattern
+      - otherwise, when includes are set, drop unless AT LEAST ONE tag matches an
+        include pattern
+
+    :param classification_pattern: Model defining classification filtering logic
+    :param classification_names: the entity's tag names (or FQNs)
+    :return: True for filtering out, False otherwise
+    """
+    result = False
+    if classification_pattern:
+        names = [name for name in classification_names if name]
+        if _any_match(classification_pattern.excludes, names):
+            result = True
+        elif classification_pattern.includes and not _any_match(classification_pattern.includes, names):
+            result = True
+    return result
+
+
 def filter_by_collection(collection_pattern: Optional[FilterPattern], collection_name: str) -> bool:  # noqa: UP045
     """
     Return True if the models needs to be filtered, False otherwise
@@ -376,3 +412,15 @@ def filter_by_server(server_filter_pattern: Optional[FilterPattern], server_name
     :return: True for filtering, False otherwise
     """
     return _filter(server_filter_pattern, server_name)
+
+
+def filter_pattern_enabled(filter_pattern: Optional[FilterPattern]) -> bool:  # noqa: UP045
+    """
+    Return True when the pattern would actually include or exclude something,
+    i.e. the user configured includes or excludes. An unset (None) or empty
+    pattern returns False.
+
+    :param filter_pattern: Model defining filtering logic
+    :return: True when includes/excludes are configured, False otherwise
+    """
+    return bool(filter_pattern and (filter_pattern.includes or filter_pattern.excludes))

@@ -22,7 +22,7 @@ import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
 import './announcements-widget-v1.less';

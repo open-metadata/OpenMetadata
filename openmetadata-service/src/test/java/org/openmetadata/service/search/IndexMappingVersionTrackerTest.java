@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -115,6 +116,28 @@ class IndexMappingVersionTrackerTest {
               eq("tester"));
       assertFalse(hashCaptor.getValue().isBlank());
       assertTrue(jsonCaptor.getValue().contains("\"en\""));
+    }
+  }
+
+  @Test
+  void updateMappingVersionsForSubsetPersistsOnlyReindexedEntities() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+          .updateMappingVersions(Set.of("table"));
+
+      verify(indexMappingVersionDAO)
+          .upsertIndexMappingVersion(
+              eq("table"), anyString(), anyString(), eq("1.13.0"), anyLong(), eq("tester"));
+      verify(indexMappingVersionDAO, never())
+          .upsertIndexMappingVersion(
+              eq("glossaryTerm"), anyString(), anyString(), anyString(), anyLong(), anyString());
     }
   }
 
@@ -414,6 +437,183 @@ class IndexMappingVersionTrackerTest {
       assertTrue(
           secondRun.isEmpty(), "Hashes should be stable — no changes expected on second run");
     }
+  }
+
+  @Test
+  void computeDriftClassifiesCurrentStaleAndUntracked() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      IndexMappingVersionTracker tracker =
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester");
+
+      // Stamp all, capture table's real hash to mark it CURRENT.
+      tracker.updateMappingVersions();
+      verify(indexMappingVersionDAO, times(3))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              hashCaptor.capture(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyString());
+      Map<String, String> realHashes = new HashMap<>();
+      for (int i = 0; i < entityTypeCaptor.getAllValues().size(); i++) {
+        realHashes.put(entityTypeCaptor.getAllValues().get(i), hashCaptor.getAllValues().get(i));
+      }
+
+      // table = current hash, glossaryTerm = stale hash, domain = not stored (untracked).
+      when(indexMappingVersionDAO.getAllMappingVersions())
+          .thenReturn(
+              List.of(
+                  new IndexMappingVersionDAO.IndexMappingVersion("table", realHashes.get("table")),
+                  new IndexMappingVersionDAO.IndexMappingVersion("glossaryTerm", "stale-hash")));
+
+      Map<String, IndexMappingVersionTracker.MappingDriftState> drift = tracker.computeDrift();
+
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.CURRENT, drift.get("table"));
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.STALE, drift.get("glossaryTerm"));
+      assertEquals(IndexMappingVersionTracker.MappingDriftState.UNTRACKED, drift.get("domain"));
+    }
+  }
+
+  @Test
+  void updateMappingVersionsForSubsetStampsOnlyGivenEntities() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester")
+          .updateMappingVersions(List.of("table", "domain"));
+
+      verify(indexMappingVersionDAO, times(2))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              anyString(),
+              anyString(),
+              eq("1.2.3"),
+              anyLong(),
+              eq("tester"));
+      assertEquals(Set.of("domain", "table"), new TreeSet<>(entityTypeCaptor.getAllValues()));
+    }
+  }
+
+  @Test
+  void updateMappingVersionForSingleEntityStampsOnlyThatEntity() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "glossaryTerm", "/elasticsearch/%s/glossary_term_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+
+      new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester")
+          .updateMappingVersion("table");
+
+      verify(indexMappingVersionDAO, times(1))
+          .upsertIndexMappingVersion(
+              eq("table"), anyString(), anyString(), eq("1.2.3"), anyLong(), eq("tester"));
+      verify(indexMappingVersionDAO, never())
+          .upsertIndexMappingVersion(
+              eq("domain"), anyString(), anyString(), anyString(), anyLong(), anyString());
+    }
+  }
+
+  // --- Version-upgrade detection tests (smart vs full reindex) ---
+
+  @Test
+  void patchUpgradeDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.12.9", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void minorUpgradeRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void minorUpgradeWithNonZeroPatchRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.1", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void majorUpgradeRequiresFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "2.0.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void sameVersionDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.8"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.12.8", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void freshInstallWithNoStoredVersionsDoesNotRequireFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of());
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void snapshotQualifierIsIgnoredForPatchUpgrade() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.13.0"));
+
+    assertFalse(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.5-SNAPSHOT", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void snapshotQualifierStillDetectsMinorUpgrade() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions()).thenReturn(List.of("1.12.0"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0-SNAPSHOT", "tester")
+            .requiresFullReindexForVersionUpgrade());
+  }
+
+  @Test
+  void anyStoredVersionCrossingMajorMinorTriggersFullReindex() {
+    when(indexMappingVersionDAO.getDistinctMappingVersions())
+        .thenReturn(List.of("1.13.0", "1.12.8"));
+
+    assertTrue(
+        new IndexMappingVersionTracker(collectionDAO, "1.13.0", "tester")
+            .requiresFullReindexForVersionUpgrade());
   }
 
   private static Set<String> diff(Set<String> expected, Set<String> actual) {

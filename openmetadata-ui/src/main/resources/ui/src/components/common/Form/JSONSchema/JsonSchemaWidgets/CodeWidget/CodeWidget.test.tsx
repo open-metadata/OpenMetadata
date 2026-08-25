@@ -44,9 +44,9 @@ describe('CodeWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('should render SchemaEditor with correct props', () => {
+  it('should render SchemaEditor with correct props', async () => {
     render(<CodeWidget {...mockProps} />);
 
-    expect(screen.getByText('SchemaEditor')).toBeInTheDocument();
+    expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
   });
 });

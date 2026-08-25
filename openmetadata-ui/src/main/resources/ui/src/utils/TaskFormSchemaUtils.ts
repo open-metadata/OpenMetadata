@@ -25,6 +25,7 @@
  */
 
 import { cloneDeep, uniqBy } from 'lodash';
+import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   JsonSchemaObject,
@@ -33,16 +34,13 @@ import {
 } from '../rest/taskFormSchemasAPI';
 import {
   Task,
-  TaskAvailableTransition,
   TaskCategory,
   TaskEntityType,
   TaskPayload,
 } from '../rest/tasksAPI';
+import { isRecognizerFeedbackTask } from './TaskActionUtils';
 import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
-import {
-  getNormalizedTaskPayload,
-  isRecognizerFeedbackTask,
-} from './TasksUtils';
+import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 export { getDefaultTaskFormSchema };
 
@@ -70,6 +68,7 @@ export type TaskFormHandlerConfig = {
   rejectedValue?: string;
 };
 
+const TASK_FORM_SCHEMA_CACHE_MAX = 100;
 const taskFormSchemaCache = new Map<
   string,
   Promise<TaskFormSchema | undefined>
@@ -99,6 +98,12 @@ export const getResolvedTaskFormSchema = async (
     }
   })();
 
+  if (taskFormSchemaCache.size >= TASK_FORM_SCHEMA_CACHE_MAX) {
+    const oldestKey = taskFormSchemaCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      taskFormSchemaCache.delete(oldestKey);
+    }
+  }
   taskFormSchemaCache.set(cacheKey, resolverPromise);
 
   return cloneDeep(await resolverPromise);

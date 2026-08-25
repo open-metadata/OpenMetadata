@@ -24,23 +24,41 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import {
+  visitEntityPage,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
+import {
+  selectOnDemandSchedule,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+  selectScheduleMinute,
+  selectScheduleType,
+  setCustomCron,
+  setScheduleTime,
+} from '../../../utils/scheduleInterval';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
+  advanceToServiceConnectionStep,
   deleteService,
+  getAgentCard,
   getServiceCategoryFromService,
   makeRetryRequest,
+  selectServiceConnector,
   Services,
   testConnection,
+  waitForIngestionWorkflowForm,
+  waitForServiceConnectionForm,
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 
 interface RunnerDetails {
   name: string;
-  displayName?: string;
+  // The react-aria runner Select matches options by their visible label, so a
+  // display name is required — the system `name` (e.g. `CollateSaaS`) is not
+  // rendered and would not match.
+  displayName: string;
 }
 class ServiceBaseClass {
   public category: Services;
@@ -97,19 +115,15 @@ class ServiceBaseClass {
 
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
-
-    const ipPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/ip'
-    );
+    await waitForAllLoadersToDisappear(page);
 
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
-    await ipPromise;
+    await advanceToServiceConnectionStep(page);
+    await waitForServiceConnectionForm(page);
 
     await page.click('[data-testid="service-requirements"]');
-
-    // await airflowStatus;
     await this.fillConnectionDetails(page);
 
     const runnerSelector = page.getByTestId(
@@ -118,31 +132,21 @@ class ServiceBaseClass {
 
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
-      await page.locator('.ant-select-dropdown:visible').first().waitFor({
-        state: 'visible',
-      });
 
-      // Search for the runner using the search input
-      await runnerSelector.locator('input').fill(this.ingestionRunner.name);
-
-      // Using data-key which relies on `name` which is more reliable data in AUTs
-      // instead of data-testid which depends on the `displayName` which can change
-      await page
-        .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
-        )
-        .waitFor({ state: 'visible' });
-      await page
-        .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
-        )
-        .click();
+      // The runner control is now a react-aria Select whose options render as
+      // role="listbox" entries (no more antd `data-key`). Match the option by
+      // its visible label (displayName); the substring match tolerates a
+      // display-name suffix (e.g. "Collate SaaS" matches "Collate SaaS Runner").
+      const runnerLabel = this.ingestionRunner.displayName;
+      const runnerOption = page
+        .getByRole('option', { name: runnerLabel })
+        .first();
+      await runnerOption.waitFor({ state: 'visible' });
+      await runnerOption.click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText(
-        this.ingestionRunner.displayName ?? this.ingestionRunner.name
-      );
+      ).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
@@ -157,30 +161,27 @@ class ServiceBaseClass {
   }
 
   async serviceStep1(serviceType: string, page: Page) {
-    // Storing the created service name and the type of service
-    // Select Service in step 1
-    await page.click(`[data-testid="${serviceType}"]`);
-    await page.click('[data-testid="next-button"]');
+    await selectServiceConnector(page, serviceType);
   }
 
   async serviceStep2(serviceName: string, page: Page) {
-    // validation should work
-    await page.click('[data-testid="next-button"]');
+    // Service name + connection details now share the Configure & Connect step;
+    // the connection form's submit button advances to the next step.
+    const encodedServiceName = encodeURIComponent(serviceName);
+    const serviceNameValidationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes(`/name/${encodedServiceName}`)
+    );
 
-    await page.locator('#name_help').waitFor();
+    await page.fill('#service-name', serviceName);
 
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
+    const response = await serviceNameValidationResponse;
 
-    // invalid name validation should work
-    await page
-      .locator('[data-testid="service-name"]')
-      .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-
-    await page.fill('[data-testid="service-name"]', serviceName);
-
-    await page.click('[data-testid="next-button"]');
+    expect(
+      response.status(),
+      `Expected "${serviceName}" to be available, but service-name validation returned ${response.status()}`
+    ).toBe(404);
   }
 
   async fillConnectionDetails(_page: Page) {
@@ -214,17 +215,30 @@ class ServiceBaseClass {
     await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
-    await page.getByTestId('add-ingestion-container').waitFor();
+    await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
 
-    await page.click('[data-testid="submit-btn"]');
+    // Creating the service triggers AutoPilot, whose success toast renders
+    // bottom-center — directly over the wizard footer — and auto-closes after 5s
+    // (showSuccessToast(..., 5000) in AddServicePage). A click landing inside
+    // that window is intercepted by the toast, and with no per-action timeout
+    // the retry loop runs to the end of the test instead.
+    //
+    // Bounding the click is what fixes it, not waiting the toast out: the toast
+    // is fired by the create call several steps earlier, so whether it is on
+    // screen when we get here depends on how fast those steps ran. Gating on it
+    // being gone is a no-op when it has not rendered yet and when it has already
+    // closed. A bounded click covers every ordering — Playwright retries the
+    // intercepted click for the whole timeout, which outlasts the toast.
+    await page.click('[data-testid="next-button"]', { timeout: 30_000 });
 
     // Go back and data should persist
-    await page.click('[data-testid="back-button"]');
+    await page.click('[data-testid="previous-button"]');
+    await waitForIngestionWorkflowForm(page);
     await this.validateIngestionDetails(page);
 
     // Go Next
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await this.scheduleIngestion(page);
 
     await page.click('[data-testid="view-service-button"]');
@@ -248,8 +262,6 @@ class ServiceBaseClass {
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
 
-    await page.getByTestId('more-actions').first().click();
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
@@ -257,7 +269,7 @@ class ServiceBaseClass {
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
         response.status() === 200
     );
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
 
     await triggerPipeline;
 
@@ -268,7 +280,7 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.getByTestId('submit-btn').getByText('Next').click();
+    await page.getByTestId('next-button').getByText('Next').click();
 
     if (this.shouldAddDefaultFilters) {
       await this.fillIngestionDetails(page);
@@ -286,7 +298,7 @@ class ServiceBaseClass {
         request.method() === 'POST'
     );
 
-    await page.getByTestId('submit-btn').getByText('Save').click();
+    await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
     const savedService = (await saveServiceResponse).response();
 
@@ -298,12 +310,11 @@ class ServiceBaseClass {
   }
 
   async scheduleIngestion(page: Page) {
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    await selectScheduleFrequency(page, 'custom');
     // Check validation error thrown for a cron that is too frequent
     // i.e. having interval less than 1 hour
-    await page.locator('#schedular-form_cron').fill('* * * 2 6');
-    await page.click('[data-testid="deploy-button"]');
+    await setCustomCron(page, '* * * 2 6');
+    await page.click('[data-testid="next-button"]');
 
     await expect(
       page.getByText(
@@ -312,9 +323,7 @@ class ServiceBaseClass {
     ).toBeAttached();
 
     // Check validation error thrown for a cron that is invalid
-    await page.locator('#schedular-form_cron').clear();
-    await page.click('[data-testid="deploy-button"]');
-    await page.locator('#schedular-form_cron').fill('* * * 2 ');
+    await setCustomCron(page, '* * * 2 ');
 
     await expect(
       page.getByText(
@@ -322,33 +331,18 @@ class ServiceBaseClass {
       )
     ).toBeAttached();
 
-    await page.locator('#schedular-form_cron').clear();
+    await selectOnDemandSchedule(page);
 
-    await page.getByTestId('schedular-card-container').waitFor();
-    await page
-      .getByTestId('schedular-card-container')
-      .getByText('On Demand')
-      .click();
+    await expect(page.getByLabel('Raise on Error')).toBeChecked();
+    await page.getByTestId('raise-on-error').click();
 
-    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
-
-    await page.click('#root\\/raiseOnError');
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    await expect(page.getByLabel('Raise on Error')).not.toBeChecked();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
     );
 
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="next-button"]');
 
     await deployPipelinePromise;
 
@@ -402,7 +396,7 @@ class ServiceBaseClass {
       `/api/v1/services/ingestionPipelines?**`
     );
     const statusPromise = page.waitForRequest(
-      `/api/v1/services/ingestionPipelines/**/pipelineStatus?**`
+      `/api/v1/services/ingestionPipelines?fields=**pipelineStatuses**`
     );
 
     await page.reload();
@@ -419,16 +413,11 @@ class ServiceBaseClass {
       await metadataTab2.click();
     }
     await expect(
-      page
-        .locator(`[data-row-key*="${workflowData.name}"]`)
-        .getByTestId('pipeline-type')
+      getAgentCard(page, workflowData.name).getByTestId('pipeline-type')
     ).toContainText(startCase(ingestionType), { ignoreCase: true });
 
     await expect(
-      page
-        .locator(`[data-row-key*="${workflowData.name}"]`)
-        .getByTestId('pipeline-status')
-        .last()
+      getAgentCard(page, workflowData.name).getByTestId('pipeline-status')
     ).toContainText('Success');
   };
 
@@ -471,6 +460,13 @@ class ServiceBaseClass {
     await this.updateDescriptionForIngestedTables(page);
   }
 
+  async openAgentScheduleStep(page: Page) {
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
+    await waitForIngestionWorkflowForm(page);
+    await page.click('[data-testid="next-button"]');
+  }
+
   async updateScheduleOptions(page: Page) {
     await visitServiceDetailsPage(
       page,
@@ -485,52 +481,31 @@ class ServiceBaseClass {
     }
 
     // click and edit pipeline schedule for Hours
-
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await this.openAgentScheduleStep(page);
 
     // select schedule
-    await page.getByTestId('schedular-card-container').waitFor();
-    await page
-      .getByTestId('schedular-card-container')
-      .getByText('Schedule', { exact: true })
-      .click();
-    await page.click('[data-testid="cron-type"]');
-    await page
-      .locator('.ant-select-item-option-content', { hasText: 'Hour' })
-      .click();
-    await page.getByTestId('minute-options').click();
-    await page
-      .locator('#minute-select_list + .rc-virtual-list [title="05"]')
-      .click();
+    await selectScheduleType(page);
+    await selectScheduleFrequency(page, 'hour');
+    await selectScheduleMinute(page, '05');
 
     // Deploy with schedule
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 5 minutes past the hour'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Every hour, every day'
     );
 
     // click and edit pipeline schedule for Day
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Day")');
-
-    await page.click('[data-testid="hour-options"]');
-    await page.click('#hour-select_list + .rc-virtual-list [title="04"]');
-
-    await page.click('[data-testid="minute-options"]');
-    await page.click('#minute-select_list + .rc-virtual-list [title="04"]');
+    await this.openAgentScheduleStep(page);
+    await selectScheduleFrequency(page, 'day');
+    await setScheduleTime(page, { hour: '04', minute: '04', period: 'AM' });
 
     // Deploy with schedule
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="next-button"]');
 
     const getIngestionPipelines = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -540,58 +515,54 @@ class ServiceBaseClass {
 
     await getIngestionPipelines;
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 04:04 AM'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every day'
-    );
+    await expect(page.getByTestId('agent-schedule')).toContainText('Every day');
 
     // click and edit pipeline schedule for Week
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Week")');
-    await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('W')
-      .click();
-    await page.click('[data-testid="hour-options"]');
-    await page.click('#hour-select_list + .rc-virtual-list [title="05"]');
-    await page.click('[data-testid="minute-options"]');
-    await page.click('#minute-select_list + .rc-virtual-list [title="05"]');
+    await this.openAgentScheduleStep(page);
+    await selectScheduleFrequency(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Wednesday');
+    await setScheduleTime(page, { hour: '05', minute: '05', period: 'AM' });
 
     // Deploy with schedule
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 05:05 AM'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Only on wednesday'
     );
 
     // click and edit pipeline schedule for Custom
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    await this.openAgentScheduleStep(page);
+    await selectScheduleFrequency(page, 'custom');
 
     // Schedule & Deploy
-    await page.locator('#schedular-form_cron').fill('0 * * 2 6');
+    await setCustomCron(page, '0 * * 2 6');
 
-    await page.click('[data-testid="deploy-button"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Every hour'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Only on saturday, only in february'
     );
+  }
+
+  async openIngestionFilterSection(page: Page) {
+    await waitForAllLoadersToDisappear(page);
+    const ingestionFilterSection = page.getByTestId(
+      'ingestion-section-filters'
+    );
+    if (await ingestionFilterSection.isVisible()) {
+      await ingestionFilterSection.click();
+    }
   }
 
   async updateDescriptionForIngestedTables(
@@ -637,24 +608,25 @@ class ServiceBaseClass {
       false
     );
 
-    const ingestionResponse = page.waitForResponse(
-      `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
-    );
+    await page
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
     await page.click('[data-testid="agents"]');
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
 
-    await ingestionResponse;
     await page
-      .getByRole('cell', { name: 'Pause Logs' })
-      .waitFor({ state: 'visible' });
+      .getByLabel('agents')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+    await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
-
-    await page.getByTestId('more-actions').first().click();
 
     const triggerPipeline = page.waitForResponse(
       (response) =>
@@ -664,7 +636,7 @@ class ServiceBaseClass {
         response.status() === 200
     );
 
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
     await triggerPipeline;
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results

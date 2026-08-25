@@ -18,11 +18,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (
-    SsrsConnection,
+    SsrsConnection as SsrsConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
@@ -30,30 +31,31 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
-def get_connection(connection: SsrsConnection) -> SsrsClient:
-    verify_ssl = None
-    if connection.verifySSL:
-        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
-        verify_ssl = verify_ssl_fn(connection.sslConfig)
-    return SsrsClient(connection, verify_ssl=verify_ssl)
+class SsrsConnection(BaseConnection[SsrsConnectionConfig, SsrsClient]):
+    def _get_client(self) -> SsrsClient:
+        verify_ssl = None
+        if self.service_connection.verifySSL:
+            verify_ssl_fn = get_verify_ssl_fn(self.service_connection.verifySSL)
+            verify_ssl = verify_ssl_fn(self.service_connection.sslConfig)
+        return SsrsClient(self.service_connection, verify_ssl=verify_ssl)
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        client = self.client
+        service_connection = self.service_connection
+        test_fn = {
+            "CheckAccess": client.test_access,
+            "GetDashboards": client.test_get_reports,
+        }
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: SsrsClient,
-    service_connection: SsrsConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    test_fn = {
-        "CheckAccess": client.test_access,
-        "GetDashboards": client.test_get_reports,
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

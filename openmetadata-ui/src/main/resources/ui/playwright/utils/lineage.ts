@@ -91,7 +91,7 @@ export type LineageEdge = {
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .locator('[data-testid="lineage-layer-column-btn"]:not([data-selected])')
     .waitFor();
   await clickOutside(page); // close Layer popover
 };
@@ -101,7 +101,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
-    .evaluate((el) => el.classList.contains('Mui-selected'));
+    .evaluate((el) => el.hasAttribute('data-selected'));
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
@@ -189,8 +189,10 @@ export const deleteEdge = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 };
 
@@ -199,13 +201,20 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
   await page.waitForTimeout(1000);
+  const originElement = page.locator(originSelector);
   const destinationElement = page.locator(destinationSelector);
-  await destinationElement.waitFor();
-  await page.hover(originSelector);
+  await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);
+  await destinationElement.scrollIntoViewIfNeeded();
+  await originElement.hover();
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox()) as DOMRect;
+  const box = await destinationElement.boundingBox();
+  if (!box) {
+    throw new Error(
+      `Unable to locate lineage destination ${destinationSelector}`
+    );
+  }
   const x = box.x + 250;
   const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
@@ -237,6 +246,11 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+};
+
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -299,6 +313,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   await expect(entityHeaderName).toHaveText(name);
 };
 
+const verifyNodeDepth = async (
+  page: Page,
+  node: EntityClass,
+  expectedDepth: number
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const lineageNode = page.getByTestId(`lineage-node-${nodeFqn}`);
+  await lineageNode.waitFor({ state: 'attached' });
+  await lineageNode.scrollIntoViewIfNeeded();
+  await expect(lineageNode).toBeVisible();
+  const nodeDepth = await lineageNode.getAttribute('data-nodedepth');
+  expect(Number(nodeDepth)).toBe(expectedDepth);
+};
+
 export const performExpand = async (
   page: Page,
   node: EntityClass,
@@ -310,9 +338,15 @@ export const performExpand = async (
   const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
   await nodeLocator.hover();
   const expandBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .getByTestId(`lineage-node-${nodeFqn}`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('plus-icon');
+
+  const existingNodeDepth = Number(
+    await page
+      .getByTestId(`lineage-node-${nodeFqn}`)
+      .getAttribute('data-nodedepth')
+  );
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
@@ -322,6 +356,11 @@ export const performExpand = async (
     // perform a zoom out to have everything in view
     await performZoomOut(page, 5);
     await verifyNodePresent(page, newNode);
+    await verifyNodeDepth(
+      page,
+      newNode,
+      upstream ? existingNodeDepth - 1 : existingNodeDepth + 1
+    );
   }
 };
 
@@ -338,7 +377,7 @@ export const performCollapse = async (
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('minus-icon');
 
-  await collapseBtn.click();
+  await collapseBtn.dispatchEvent('click');
 
   for (const entity of hiddenEntity) {
     const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
@@ -476,7 +515,7 @@ export const verifyPipelineDataInDrawer = async (
     .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -494,7 +533,7 @@ export const verifyPipelineDataInDrawer = async (
 
     await fromNode.visitEntityPage(page);
   } else {
-    await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
+    await page.getByTestId('drawer-close-icon').click();
   }
 };
 
@@ -586,11 +625,23 @@ export const removeColumnLineage = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 
-  await editLineageClick(page);
+  // Reload before asserting. removeColumnEdge optimistically mutates local
+  // React state (setEntityLineage / removeEdgeById / setColumnsHavingLineage),
+  // so the edge disappears from the DOM regardless of what the server did.
+  // Only a fresh /api/v1/lineage/getLineage response proves the removal
+  // actually persisted.
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.reload();
+  await lineageRes;
+
+  await waitForAllLoadersToDisappear(page);
+  await activateColumnLayer(page);
 
   await expect(
     page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
@@ -709,7 +760,7 @@ export const fillLineageConfigForm = async (
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .locator('[data-testid="lineage-layer-column-btn"][data-selected]')
     .waitFor();
   await clickOutside(page); // Close Layer popover
 };
@@ -726,7 +777,9 @@ export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
@@ -734,7 +787,7 @@ export const getLineageCSVData = async (page: Page) => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -811,30 +864,65 @@ export const verifyExportLineagePNG = async (
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
+    await page.getByRole('option', { name: 'PNG' }).click();
   }
 
-  await expect(
-    page.getByTestId('export-type-select').getByText('PNGBeta')
-  ).toBeVisible();
+  await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
-    ),
-  ]);
+  // If the client-side render throws, no download event ever fires and the wait
+  // below expires with nothing to say. Capture page errors so a silent exception
+  // is reported as the cause instead of an anonymous 120s timeout; a genuinely
+  // slow render still surfaces the original timeout untouched.
+  const pageErrors: string[] = [];
+  const collectPageError = (error: Error) =>
+    pageErrors.push(error.stack ?? error.message);
+  page.on('pageerror', collectPageError);
 
-  const filePath = await download.path();
+  try {
+    const [download] = await Promise.all([
+      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+      // render enough headroom before the download event fires.
+      page.waitForEvent('download', { timeout: 120_000 }),
+      page.click(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
+      ),
+    ]);
 
-  expect(filePath).not.toBeNull();
+    const filePath = await download.path();
+
+    expect(filePath).not.toBeNull();
+  } catch (error) {
+    // Only the download wait is ambiguous about its cause. A click or selector
+    // failure already says what went wrong, so a stray page error must never
+    // replace it — and even for a timeout the original message is kept and the
+    // page errors appended, so a slow render still reads as a slow render.
+    const isDownloadTimeout =
+      error instanceof Error &&
+      error.message.includes('waiting for event "download"');
+
+    if (isDownloadTimeout && pageErrors.length > 0) {
+      throw new Error(
+        `${
+          error.message
+        }\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
+          '\n  '
+        )}`
+      );
+    }
+
+    throw error;
+  } finally {
+    page.off('pageerror', collectPageError);
+  }
 };
 
 export const verifyColumnLineageInCSV = async (
@@ -862,8 +950,6 @@ export const verifyColumnLineageInCSV = async (
       (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
     )
   );
-
-  console.log('Expected Row:', expectedRow, parsedData);
 
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };
@@ -929,10 +1015,16 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
+  // React Flow mounts nodes after its own layout pass, which runs well after the
+  // getLineage response the caller waited on. Clicking straight away leaves the
+  // action auto-waiting with no timeout of its own, so a graph that is slow to
+  // lay out surfaces as a bare test timeout with nothing naming the node.
+  const nodeTitle = page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+    .locator(`[data-testid="entity-header-display-name"]`);
+
+  await expect(nodeTitle).toBeVisible();
+  await nodeTitle.click();
 };
 
 export const updateLineageConfigFromModal = async (
@@ -998,10 +1090,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
-  await page.waitForTimeout(500);
-
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
+  await expect(fromNode).toBeVisible();
 
   // ensure node will be visible in the viewport
   await performZoomOut(page);

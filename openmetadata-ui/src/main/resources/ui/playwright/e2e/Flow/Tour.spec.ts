@@ -43,14 +43,14 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
-const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
-  const badge = page.locator('[data-tour-elem="badge"]');
-  await badge.waitFor({ state: 'visible', timeout });
-  await expect
-    .poll(async () => (await badge.textContent())?.trim(), {
-      timeout,
-    })
-    .toBe(step);
+const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
+  // A single web-first assertion. The badge re-renders on every step transition,
+  // so a separate visibility wait followed by a text poll gave the transition two
+  // independent budgets to lose against; toHaveText auto-waits for the element to
+  // attach *and* carry the expected step, and reports the actual step on failure.
+  await expect(page.locator('[data-tour-elem="badge"]')).toHaveText(step, {
+    timeout,
+  });
 };
 
 const validateTourSteps = async (page: Page) => {
@@ -70,16 +70,18 @@ const validateTourSteps = async (page: Page) => {
 
   await page.getByTestId('searchBox').fill('dim_a');
 
-  const [searchResponse] = await Promise.all([
-    page.waitForResponse((res) => res.url().includes('/search/query')),
-    page.getByTestId('searchBox').press('Enter'),
-  ]);
-
-  expect(searchResponse.status()).toBe(200);
+  // The tour search is fully mock-driven and fires no API call; pressing Enter
+  // advances the tour to the Explore step, which must render the mocked result
+  // card without hitting the backend.
+  await page.getByTestId('searchBox').press('Enter');
 
   await waitForAllLoadersToDisappear(page);
 
   await expectTourBadge(page, '4');
+
+  await expect(
+    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
+  ).toBeVisible();
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -171,7 +173,11 @@ test.describe(
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await user.login(page);
+      // Tour is entered from the welcome banner, so this suite must NOT suppress
+      // it. The other tour tests already guard against the banner if present.
+      await user.login(page, undefined, undefined, {
+        suppressWelcomeScreen: false,
+      });
     });
 
     test('Tour should work from help section', async ({ page }) => {

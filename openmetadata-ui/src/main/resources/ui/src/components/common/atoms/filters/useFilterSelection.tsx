@@ -123,7 +123,7 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
 
             return (
               <Badge
-                className="tw:ring-0 tw:gap-1"
+                className="tw:outline-0 tw:gap-1"
                 color="brand"
                 key={filter.key}
                 size="lg"
@@ -131,7 +131,7 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
                 <div
                   className="tw:flex tw:items-center tw:gap-1"
                   data-testid={`filter-chip-${filter.key}`}>
-                  <Typography className="tw:text-gray-600" weight="medium">
+                  <Typography className="tw:text-tertiary" weight="medium">
                     {t(filter.label)}
                     {': '}
                   </Typography>

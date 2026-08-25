@@ -55,6 +55,18 @@ public final class CacheKeys {
     return ns + ":rn:" + type + ":" + fqnHash;
   }
 
+  public String personaContextMarkdown(UUID personaId, String definitionHash) {
+    return ns + ":pctx:" + personaId + ":md:" + definitionHash;
+  }
+
+  public String personaContextJson(UUID personaId, String definitionHash) {
+    return ns + ":pctx:" + personaId + ":json:" + definitionHash;
+  }
+
+  public String personaContextLock(UUID personaId) {
+    return ns + ":pctx:lock:" + personaId;
+  }
+
   /**
    * Redis hash key holding cached listing totals for an entity type. Each ListFilter variant
    * lives as a field (hash of its WHERE clause + bound params) under this single key, so a

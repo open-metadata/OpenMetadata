@@ -9,6 +9,8 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,7 +48,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
@@ -85,6 +87,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -94,6 +97,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -112,6 +116,7 @@ import org.quartz.SchedulerException;
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/";
+  private static final String REDACTED_APP_SNAPSHOT = "{}";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
@@ -215,6 +220,37 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app.setPrivateConfiguration(null);
   }
 
+  private Object stripRuntimeSecretsFromSnapshot(Object snapshot) {
+    Object stripped;
+    try {
+      App app = JsonUtils.readValue((String) snapshot, App.class);
+      unsetAppRuntimeProperties(app);
+      stripped = JsonUtils.pojoToJson(app);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to parse app version snapshot as App; redacting runtime secrets from raw JSON",
+          e);
+      stripped = redactRuntimeSecretsFromRawSnapshot(snapshot);
+    }
+    return stripped;
+  }
+
+  static Object redactRuntimeSecretsFromRawSnapshot(Object snapshot) {
+    Object redacted = REDACTED_APP_SNAPSHOT;
+    try {
+      JsonNode node = JsonUtils.readTree(snapshot.toString());
+      if (node instanceof ObjectNode objectNode) {
+        objectNode.remove(AppRepository.RUNTIME_SECRET_FIELDS);
+        redacted = objectNode.toString();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to redact runtime secrets from raw app version snapshot; dropping snapshot body",
+          e);
+    }
+    return redacted;
+  }
+
   @GET
   @Operation(
       operationId = "listInstalledApplications",
@@ -276,7 +312,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     applications
         .getData()
-        .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
+        .forEach(
+            app -> {
+              app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName()));
+              // Defense-in-depth: the list path does not inject runtime secrets today, but strip
+              // them unconditionally so a future change that decrypts here cannot leak them.
+              unsetAppRuntimeProperties(app);
+            });
     return applications;
   }
 
@@ -441,7 +483,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO =
         Entity.getCollectionDAO().searchIndexRetryQueueDAO();
-    var records = retryQueueDAO.listAll(limitParam, offset);
+    var records =
+        retryQueueDAO.listAll(limitParam, offset).stream()
+            .map(
+                record ->
+                    new CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord(
+                        record.getEntityId(),
+                        record.getEntityFqn(),
+                        SearchIndexRetryQueue.visibleFailureReason(record.getFailureReason()),
+                        record.getStatus(),
+                        record.getEntityType(),
+                        record.getRetryCount(),
+                        record.getClaimedAt()))
+            .toList();
     int total = retryQueueDAO.countAll();
     return Response.ok(new ResultList<>(records, offset, total)).build();
   }
@@ -593,12 +647,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
       String effectiveRunId =
-          !nullOrEmpty(runId)
-              ? runId
-              : (ingestionPipeline.getPipelineStatuses() != null
-                  ? ingestionPipeline.getPipelineStatuses().getRunId()
-                  : null);
+          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
@@ -616,7 +668,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         Object logs = lastLogs.remove("logs");
         if (logs != null) {
           lastLogs.put(
-              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+              PipelineServiceClientInterface.taskKeyOf(
                   ingestionPipeline.getPipelineType().toString()),
               logs.toString());
         }
@@ -701,7 +753,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    // Defense-in-depth: version snapshots are already stripped at storage time
+    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // returned snapshot too so this path never depends on those guarantees alone.
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(this::stripRuntimeSecretsFromSnapshot)
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -737,11 +798,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET
@@ -779,11 +841,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET
@@ -814,7 +877,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    App app = super.getVersionInternal(securityContext, id, version);
+    // Defense-in-depth: no upstream code sets runtime secrets on the version path today, but strip
+    // them so the guarantee holds structurally rather than by that assumption.
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @POST
@@ -1275,6 +1342,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
+        ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+            .recordQueuedPipelineStatus(
+                uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
         return Response.status(response.getCode()).entity(response).build();
       }
     }
@@ -1509,11 +1579,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           service.setIngestionRunner(app.getIngestionRunner());
         }
 
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         PipelineServiceClientResponse status =
-            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+            ingestionPipelineRepository.deployIngestionPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
-          IngestionPipelineRepository ingestionPipelineRepository =
-              (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
           ingestionPipelineRepository.createOrUpdate(
               uriInfo, ingestionPipeline, securityContext.getUserPrincipal().getName());
         } else {
@@ -1604,31 +1674,35 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            ApplicationHandler.getInstance()
-                .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.APP_OPERATION,
+            jobId,
+            () -> {
+              try {
+                ApplicationHandler.getInstance()
+                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
 
-            // Remove from Pipeline Service
-            deleteApp(securityContext, app);
+                // Remove from Pipeline Service
+                deleteApp(securityContext, app);
 
-            // Remove from repository
-            RestUtil.DeleteResponse<App> deleteResponse =
-                repository.delete(userName, id, recursive, hardDelete);
+                // Remove from repository
+                RestUtil.DeleteResponse<App> deleteResponse =
+                    repository.delete(userName, id, recursive, hardDelete);
 
-            if (hardDelete) {
-              limits.invalidateCache(entityType);
-            }
+                if (hardDelete) {
+                  limits.invalidateCache(entityType);
+                }
 
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, app, e.getMessage());
-          }
-        });
+                repository.storeChangeEventForAsyncOperation(
+                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId, securityContext, app, e.getMessage());
+              }
+            });
 
     response =
         Response.accepted()

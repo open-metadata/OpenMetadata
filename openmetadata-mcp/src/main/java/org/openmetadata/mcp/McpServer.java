@@ -69,6 +69,19 @@ public class McpServer implements McpServerProvider {
     addStatelessTransport(contextHandler, tools, prompts, config);
   }
 
+  /**
+   * Advertises only the features this server can actually handle.
+   *
+   * <p>Clients trust what we advertise and call it. If we claim a capability we have no handler for,
+   * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
+   * handler (VSCode used to call it), and no resources, because no resources are registered here.
+   * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
+   * replaced with subscriptions/listen.
+   */
+  protected McpSchema.ServerCapabilities buildServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+  }
+
   protected List<McpSchema.Tool> getTools() {
     return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
   }
@@ -83,12 +96,7 @@ public class McpServer implements McpServerProvider {
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
     try {
-      McpSchema.ServerCapabilities serverCapabilities =
-          McpSchema.ServerCapabilities.builder()
-              .tools(true)
-              .prompts(true)
-              .resources(true, true)
-              .build();
+      McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();
@@ -189,6 +197,41 @@ public class McpServer implements McpServerProvider {
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
 
+      // Register the persister so handleLogin() links the OIDC round-trip state to the MCP pending
+      // request before it redirects to the provider, keeping the returning /callback resolvable.
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+          (request, state, nonce, codeVerifier) -> {
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            Object authRequestId =
+                session == null
+                    ? null
+                    : session.getAttribute(
+                        org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                            .MCP_AUTH_REQUEST_ID);
+            if (authRequestId instanceof String id) {
+              pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+              request.setAttribute(
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider.MCP_STATE_LINKED,
+                  Boolean.TRUE);
+            } else {
+              LOG.warn(
+                  "MCP pending-state persister could not resolve {} from the session; "
+                      + "the returning /callback will not match a pending request",
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                      .MCP_AUTH_REQUEST_ID);
+            }
+          });
+      LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
+
+      // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
+      // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
+      // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
+      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
+          (req, resp, username, email, relayState) ->
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+      LOG.info("Registered MCP SAML callback handler for SAML SSO support");
+
       // Register MCP callback servlet unconditionally — SSO availability is checked at
       // request time, not startup time. This follows the same pattern as the regular auth
       // servlets (AuthCallbackServlet, AuthLoginServlet) which are always registered and
@@ -241,14 +284,23 @@ public class McpServer implements McpServerProvider {
           CatalogSecurityContext securityContext =
               jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
           String userName = securityContext.getUserPrincipal().getName();
-          McpSchema.CallToolResult result = null;
+          String clientName =
+              (String)
+                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
           try {
             ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            result = toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
-            return result;
+            outcome =
+                toolContext.callToolWithMetadata(
+                    authorizer, limits, tool.name(), securityContext, req);
+            return outcome.result();
           } finally {
-            boolean success = result != null && !Boolean.TRUE.equals(result.isError());
-            McpUsageRecorder.record(tool.name(), userName, success);
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
+                outcome != null ? outcome.errorCategory() : null;
+            McpUsageRecorder.record(
+                tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();
           }
         });

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -971,3 +972,34 @@ class SnowflakeBadNameIsolationTest(TestCase):
         # Build a snowflake source we can mutate per-test.
         if not hasattr(self, "sources"):
             self.sources = get_snowflake_sources()
+
+
+def test_test_connection_wires_access_history_and_query_history():
+    """
+    ACCESS_HISTORY is the default lineage source, so the test connection registers a
+    GetAccessHistory check that probes ACCESS_HISTORY, while GetQueries keeps probing
+    query_history for the usage workflow / legacy lineage fallback.
+    """
+    from metadata.core.connections.test_connection.check import collect_checks
+    from metadata.core.connections.test_connection.checks.database import DatabaseStep
+    from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+        SnowflakeConnection as SnowflakeConnectionConfig,
+    )
+    from metadata.ingestion.source.database.snowflake.connection import (
+        SnowflakeChecks,
+    )
+    from metadata.ingestion.source.database.snowflake.queries import (
+        SNOWFLAKE_ACCESS_HISTORY_PROBE,
+        SNOWFLAKE_TEST_GET_QUERIES,
+    )
+
+    checks = SnowflakeChecks(
+        db=Borrowed.of(MagicMock()),
+        service_connection=SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"),
+    )
+    collected = collect_checks(checks)
+
+    assert DatabaseStep.GetAccessHistory in collected
+    assert DatabaseStep.GetQueries in collected
+    assert "ACCESS_HISTORY" in SNOWFLAKE_ACCESS_HISTORY_PROBE
+    assert "query_history" in SNOWFLAKE_TEST_GET_QUERIES.lower()

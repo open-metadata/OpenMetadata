@@ -41,19 +41,103 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public record SubjectContext(User user, String impersonatedBy) {
-  private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
+public record SubjectContext(User user, String impersonatedBy, String requestedPersona) {
+  private static final int MAX_LOGGED_PERSONA_LENGTH = 64;
   public static final String TEAM_FIELDS =
       "defaultRoles, defaultPersona, policies, parents, profile,domains";
 
+  public SubjectContext(User user, String impersonatedBy) {
+    this(user, impersonatedBy, null);
+  }
+
   public static SubjectContext getSubjectContext(String userName) {
-    User user = SubjectCache.getUserContext(userName);
-    return new SubjectContext(user, null);
+    return getSubjectContext(userName, null, null);
   }
 
   public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
+    return getSubjectContext(userName, impersonatedBy, null);
+  }
+
+  public static SubjectContext getSubjectContext(
+      String userName, String impersonatedBy, String requestedPersona) {
     User user = SubjectCache.getUserContext(userName);
-    return new SubjectContext(user, impersonatedBy);
+    return new SubjectContext(user, impersonatedBy, requestedPersona);
+  }
+
+  /**
+   * Returns the validated persona preference for personalization such as UI and AI context.
+   *
+   * <p>This value must never be used for authorization or access-control decisions. Roles and
+   * policies remain the authorization inputs.
+   */
+  public EntityReference getActivePersona() {
+    EntityReference activePersona = findRequestedPersona();
+    if (activePersona == null) {
+      if (!nullOrEmpty(requestedPersona)) {
+        LOG.warn(
+            "Requested persona '{}' is not assigned to user '{}'; using the default persona",
+            sanitizeRequestedPersonaForLog(),
+            user.getName());
+      }
+      activePersona = user.getDefaultPersona();
+    }
+    return activePersona;
+  }
+
+  public boolean hasPersona(UUID personaId) {
+    return listOrEmpty(user.getPersonas()).stream().anyMatch(ref -> personaId.equals(ref.getId()))
+        || listOrEmpty(user.getInheritedPersonas()).stream()
+            .anyMatch(ref -> personaId.equals(ref.getId()))
+        || (user.getDefaultPersona() != null && personaId.equals(user.getDefaultPersona().getId()));
+  }
+
+  private EntityReference findRequestedPersona() {
+    EntityReference requested = findRequestedPersona(user.getPersonas());
+    if (requested == null) {
+      requested = findRequestedPersona(user.getInheritedPersonas());
+    }
+    if (requested == null && matchesRequestedPersona(user.getDefaultPersona())) {
+      requested = user.getDefaultPersona();
+    }
+    return requested;
+  }
+
+  private EntityReference findRequestedPersona(List<EntityReference> personas) {
+    EntityReference requested = null;
+    for (EntityReference persona : listOrEmpty(personas)) {
+      if (matchesRequestedPersona(persona)) {
+        requested = persona;
+        break;
+      }
+    }
+    return requested;
+  }
+
+  private String sanitizeRequestedPersonaForLog() {
+    return requestedPersona
+        .codePoints()
+        .filter(SubjectContext::isSafeLogCodePoint)
+        .limit(MAX_LOGGED_PERSONA_LENGTH)
+        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+        .toString();
+  }
+
+  private static boolean isSafeLogCodePoint(int codePoint) {
+    int characterType = Character.getType(codePoint);
+    return characterType != Character.CONTROL
+        && characterType != Character.FORMAT
+        && characterType != Character.LINE_SEPARATOR
+        && characterType != Character.PARAGRAPH_SEPARATOR
+        && characterType != Character.SURROGATE;
+  }
+
+  private boolean matchesRequestedPersona(EntityReference persona) {
+    return !nullOrEmpty(requestedPersona)
+        && persona != null
+        && (requestedPersona.equalsIgnoreCase(persona.getFullyQualifiedName())
+            || requestedPersona.equalsIgnoreCase(persona.getName())
+            || (persona.getId() != null
+                && requestedPersona.equalsIgnoreCase(persona.getId().toString())));
   }
 
   public boolean isAdmin() {
@@ -157,23 +241,35 @@ public record SubjectContext(User user, String impersonatedBy) {
     return false;
   }
 
-  /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
+  /** Returns true if any of the resource owners is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, List<EntityReference> owners) {
-    for (EntityReference owner : owners) {
-      if (owner.getType().equals(Entity.USER)) {
-        SubjectContext subjectContext = getSubjectContext(owner.getName());
-        return subjectContext.isUserUnderTeam(parentTeam);
-      } else if (owner.getType().equals(Entity.TEAM)) {
-        try {
-          Team team =
-              Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-          return isInTeam(parentTeam, team.getEntityReference());
-        } catch (Exception ex) {
-          // Ignore and return false
-        }
+    boolean isUnderTeam = false;
+    for (EntityReference owner : listOrEmpty(owners)) {
+      if (isOwnerUnderTeam(owner, parentTeam)) {
+        isUnderTeam = true;
+        break;
       }
     }
-    return false;
+    return isUnderTeam;
+  }
+
+  private boolean isOwnerUnderTeam(EntityReference owner, String parentTeam) {
+    boolean result = false;
+    try {
+      if (owner.getType().equals(Entity.USER)) {
+        result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
+      } else if (owner.getType().equals(Entity.TEAM)) {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+        result = isInTeam(parentTeam, team.getEntityReference());
+      }
+    } catch (Exception ex) {
+      // Owner could not be resolved (e.g. a deleted user/team still referenced as an owner).
+      // getSubjectContext(userName) throws EntityNotFoundException for an unresolved user; without
+      // this catch that would propagate out of isTeamAsset and abort the multi-owner scan, so an
+      // asset owned by [deletedUser, matchingTeam] would wrongly deny the matching team. Treat this
+      // owner as not-under-team and let isTeamAsset keep checking the rest (OR semantics).
+    }
+    return result;
   }
 
   /** Return true if the team is part of the hierarchy of parentTeam */

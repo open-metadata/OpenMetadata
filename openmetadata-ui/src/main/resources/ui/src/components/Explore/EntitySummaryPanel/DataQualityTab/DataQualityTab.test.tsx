@@ -145,7 +145,13 @@ jest.mock('../../../common/DataQualitySection', () => {
             data-testid={`test-${test.type}`}
             key={index}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            tabIndex={0}
+            onClick={() => onFilterChange?.(test.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onFilterChange?.(test.type);
+              }
+            }}>
             {test.count}
           </div>
         ))}
@@ -180,6 +186,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label={placeholder}
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -198,12 +205,18 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
+  translateWithNestedKeys: jest.fn().mockReturnValue(''),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => (
       <span data-testid="trans-i18next">{i18nKey}</span>
     )),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];
@@ -229,7 +242,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {

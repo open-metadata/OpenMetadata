@@ -24,6 +24,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final List<String> ACTIVE_DISTRIBUTED_JOB_STATUSES =
       List.of(
           IndexJobStatus.RUNNING.name(),
+          IndexJobStatus.PROMOTING.name(),
           IndexJobStatus.READY.name(),
           IndexJobStatus.INITIALIZING.name());
 

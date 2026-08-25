@@ -14,23 +14,21 @@
 import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
-import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getEntityField,
   getEntityFQN,
   getEntityType,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 import PopoverContent from './PopoverContent';
-
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
   feedType,
@@ -55,7 +53,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityField = getEntityField(entityLink ?? '');
   const { currentUser } = useApplicationStore();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [feedDetail, setFeedDetail] = useState<Post>(feed);
+  const feedDetail = feed;
 
   const [visible, setVisible] = useState<boolean>(false);
   const [isEditPost, setEditPost] = useState<boolean>(false);
@@ -120,10 +118,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const handleVisibleChange = (newVisible: boolean) => setVisible(newVisible);
 
   const onHide = () => setVisible(false);
-
-  useEffect(() => {
-    setFeedDetail(feed);
-  }, [feed]);
 
   return (
     <>

@@ -94,4 +94,14 @@ public final class Announcements {
   public static Announcement getVersion(String id, Double version) {
     return getClient().announcements().getVersion(id, version);
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().announcements().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().announcements().getContextByName(fqn);
+  }
 }

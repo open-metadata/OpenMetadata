@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { DataAssetOption } from 'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 jest.mock(
   'components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',

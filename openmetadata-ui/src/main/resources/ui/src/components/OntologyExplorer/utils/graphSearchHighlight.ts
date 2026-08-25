@@ -18,13 +18,19 @@
 import { includes, toLower } from 'lodash';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
-import { OntologyEdge, OntologyNode } from '../OntologyExplorer.interface';
+import { OntologyNode } from '../OntologyExplorer.interface';
 
 export interface GraphSearchHighlightInput {
   active: boolean;
   highlightedNodeIds: readonly string[];
   highlightedEdgeKeys: readonly string[];
   highlightedGlossaryIds: readonly string[];
+}
+
+export interface EdgeForSearch {
+  from: string;
+  to: string;
+  relationType: string;
 }
 
 function normalize(text: string): string {
@@ -39,7 +45,7 @@ function textMatches(query: string, value: string | undefined): boolean {
   return includes(normalize(value), query);
 }
 
-export function ontologyEdgeKey(edge: OntologyEdge): string {
+export function ontologyEdgeKey(edge: EdgeForSearch): string {
   return `${edge.from}::${edge.to}::${edge.relationType}`;
 }
 
@@ -49,7 +55,7 @@ export function ontologyEdgeKey(edge: OntologyEdge): string {
  */
 export function computeGraphSearchHighlight(
   nodes: OntologyNode[],
-  edges: OntologyEdge[],
+  edges: EdgeForSearch[],
   rawQuery: string,
   glossaries: Glossary[],
   relationTypes: GlossaryTermRelationType[]

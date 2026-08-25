@@ -1,0 +1,246 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Auto-revert failing commit on release branch
+
+on:
+  workflow_run:
+    workflows: ["Release Branch Validate"]
+    types: [completed]
+  # Manual shim so the revert logic can be exercised on a throwaway release
+  # branch (e.g. 9.9.9) before the workflow_run trigger goes live on main.
+  workflow_dispatch:
+    inputs:
+      head_branch:
+        description: "Release branch to act on (e.g. 9.9.9)"
+        required: true
+      head_sha:
+        description: "Commit SHA to treat as the failing tip"
+        required: true
+      workflow_name:
+        description: "Name of the workflow to attribute the failure to"
+        required: false
+        default: "Release Branch Validate (simulated)"
+      run_url:
+        description: "URL to attribute the failure to (defaults to this run)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Skip git push and Slack post; log the plan only"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-revert-${{ github.event.workflow_run.head_branch || github.event.inputs.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  auto-revert:
+    # Fire on: (a) real build failure on a push, or (b) manual dispatch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Normalize event inputs
+        id: ev
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WR_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WR_SHA: ${{ github.event.workflow_run.head_sha }}
+          WR_NAME: ${{ github.event.workflow_run.name }}
+          WR_URL: ${{ github.event.workflow_run.html_url }}
+          IN_BRANCH: ${{ github.event.inputs.head_branch }}
+          IN_SHA: ${{ github.event.inputs.head_sha }}
+          IN_NAME: ${{ github.event.inputs.workflow_name }}
+          IN_URL: ${{ github.event.inputs.run_url }}
+          IN_DRY: ${{ github.event.inputs.dry_run }}
+          # Safety net for the workflow_run path: unless the repo variable
+          # AUTO_REVERT_DRY_RUN is explicitly set to "false", real failures
+          # only produce a dry-run plan (no push, no Slack). Delete the
+          # variable or set it to "false" to arm real reverts.
+          VAR_DRY: ${{ vars.AUTO_REVERT_DRY_RUN }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            BRANCH="$IN_BRANCH"
+            SHA="$IN_SHA"
+            NAME="${IN_NAME:-Release Branch Validate (simulated)}"
+            URL="${IN_URL:-${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}}"
+            DRY="${IN_DRY:-true}"
+          else
+            BRANCH="$WR_BRANCH"
+            SHA="$WR_SHA"
+            NAME="$WR_NAME"
+            URL="$WR_URL"
+            DRY="${VAR_DRY:-true}"
+          fi
+          echo "Event: $EVENT_NAME | branch=$BRANCH sha=$SHA dry_run=$DRY"
+          {
+            echo "branch=$BRANCH"
+            echo "sha=$SHA"
+            echo "name=$NAME"
+            echo "url=$URL"
+            echo "dry=$DRY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check branch matches release pattern (N.N.N)
+        id: match
+        env:
+          BRANCH: ${{ steps.ev.outputs.branch }}
+        run: |
+          set -euo pipefail
+          if [[ "$BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "match=false" >> "$GITHUB_OUTPUT"
+            echo "Branch '$BRANCH' is not a release branch; skipping."
+          fi
+
+      - name: Checkout release branch
+        if: steps.match.outputs.match == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.ev.outputs.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Guard — tip advanced, or tip already a bot revert
+        id: guard
+        if: steps.match.outputs.match == 'true'
+        env:
+          FAILING_SHA: ${{ steps.ev.outputs.sha }}
+        run: |
+          set -euo pipefail
+          CURRENT_SHA=$(git rev-parse HEAD)
+          if [ "$CURRENT_SHA" != "$FAILING_SHA" ]; then
+            echo "Tip advanced (current=$CURRENT_SHA, failing=$FAILING_SHA); skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          AUTHOR_EMAIL=$(git log -1 --pretty=%ae "$FAILING_SHA")
+          if [ "$AUTHOR_EMAIL" = "release-bot@open-metadata.org" ]; then
+            echo "Tip $FAILING_SHA was authored by the release bot; refusing to revert-a-revert."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Collect commit metadata
+        id: meta
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false'
+        env:
+          FAILING_SHA: ${{ steps.ev.outputs.sha }}
+        run: |
+          set -euo pipefail
+          SUBJECT=$(git log -1 --pretty=%s "$FAILING_SHA")
+          AUTHOR_NAME=$(git log -1 --pretty=%an "$FAILING_SHA")
+          AUTHOR_EMAIL=$(git log -1 --pretty=%ae "$FAILING_SHA")
+          PARENT_COUNT=$(git rev-list --parents -n 1 "$FAILING_SHA" | awk '{print NF-1}')
+          {
+            echo "subject=${SUBJECT}"
+            echo "author_name=${AUTHOR_NAME}"
+            echo "author_email=${AUTHOR_EMAIL}"
+            echo "parents=${PARENT_COUNT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Revert failing commit
+        id: revert
+        if: steps.match.outputs.match == 'true' && steps.guard.outputs.skip == 'false'
+        env:
+          FAILING_SHA: ${{ steps.ev.outputs.sha }}
+          BRANCH: ${{ steps.ev.outputs.branch }}
+          RUN_NAME: ${{ steps.ev.outputs.name }}
+          RUN_URL: ${{ steps.ev.outputs.url }}
+          PARENTS: ${{ steps.meta.outputs.parents }}
+          DRY_RUN: ${{ steps.ev.outputs.dry }}
+        run: |
+          set -euo pipefail
+          git config user.email "release-bot@open-metadata.org"
+          git config user.name "OpenMetadata Release Bot"
+          MSG="Auto-revert: ${FAILING_SHA:0:12} — ${RUN_NAME} failed on ${BRANCH}
+
+          Reverted because \"${RUN_NAME}\" reported failure on ${BRANCH}.
+          Failing run: ${RUN_URL}
+          "
+          if [ "${PARENTS}" -gt 1 ]; then
+            git revert --no-edit -m 1 "$FAILING_SHA"
+          else
+            git revert --no-edit "$FAILING_SHA"
+          fi
+          git commit --amend -m "$MSG"
+          REVERT_SHA=$(git rev-parse HEAD)
+          echo "revert_sha=$REVERT_SHA" >> "$GITHUB_OUTPUT"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN — would push $REVERT_SHA to origin/$BRANCH; skipping."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          else
+            git push origin "HEAD:${BRANCH}"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify Slack — reverted
+        if: >-
+          steps.match.outputs.match == 'true' &&
+          steps.guard.outputs.skip == 'false' &&
+          steps.revert.outcome == 'success' &&
+          steps.ev.outputs.dry == 'false'
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": ":rotating_light: *Auto-revert on `${{ steps.ev.outputs.branch }}`*\n*Reason:* `${{ steps.ev.outputs.name }}` failed — <${{ steps.ev.outputs.url }}|failing run>\n*Reverted commit:* `${{ steps.ev.outputs.sha }}` — ${{ steps.meta.outputs.subject }}\n*Original author:* ${{ steps.meta.outputs.author_name }} <${{ steps.meta.outputs.author_email }}>\n*Revert commit:* `${{ steps.revert.outputs.revert_sha }}`"
+            }
+
+      - name: Notify Slack — revert failed
+        if: >-
+          steps.match.outputs.match == 'true' &&
+          steps.guard.outputs.skip == 'false' &&
+          steps.revert.outcome == 'failure' &&
+          steps.ev.outputs.dry == 'false'
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": ":x: *Auto-revert FAILED on `${{ steps.ev.outputs.branch }}`*\n`${{ steps.ev.outputs.name }}` failed on `${{ steps.ev.outputs.sha }}`, but the automatic revert did not succeed (likely a conflict or push rejection). Manual intervention required.\n*Failing run:* <${{ steps.ev.outputs.url }}|link>\n*Auto-revert run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+      - name: Dry-run summary
+        if: steps.ev.outputs.dry == 'true' && steps.revert.outcome == 'success'
+        env:
+          BRANCH: ${{ steps.ev.outputs.branch }}
+          SHA: ${{ steps.ev.outputs.sha }}
+          REVERT_SHA: ${{ steps.revert.outputs.revert_sha }}
+          SUBJECT: ${{ steps.meta.outputs.subject }}
+          AUTHOR: ${{ steps.meta.outputs.author_name }}
+        run: |
+          echo "DRY RUN PLAN"
+          echo "  branch:         $BRANCH"
+          echo "  failing SHA:    $SHA ($AUTHOR — $SUBJECT)"
+          echo "  revert SHA:     $REVERT_SHA (built locally, NOT pushed)"
+          echo "  slack:          suppressed"

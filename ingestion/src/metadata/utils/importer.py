@@ -60,7 +60,7 @@ class DynamicImportException(Exception):  # noqa: N818
 
 class MissingPluginException(Exception):  # noqa: N818
     """
-    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
+    An exception that captures a missing openmetadata-ingestion plugin for a specific connector.
     """
 
     def __init__(self, plugin: str):
@@ -128,9 +128,18 @@ def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:  # no
     logger.debug("Importing: %s", key)
     module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
-        obj = getattr(importlib.import_module(module_name), obj_name)
-        return obj  # noqa: RET504, TRY300
+        module = importlib.import_module(module_name)
     except (ModuleNotFoundError, ImportError) as err:
+        if log_traceback:
+            logger.debug(traceback.format_exc())
+        raise DynamicImportException(module=module_name, key=obj_name, cause=err)  # noqa: B904
+
+    # Scoped to the lookup alone: an AttributeError raised by the module's own top-level
+    # code must keep its original traceback rather than be reported as a missing name.
+    try:
+        obj = getattr(module, obj_name)
+        return obj  # noqa: RET504, TRY300
+    except AttributeError as err:
         if log_traceback:
             logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)  # noqa: B904

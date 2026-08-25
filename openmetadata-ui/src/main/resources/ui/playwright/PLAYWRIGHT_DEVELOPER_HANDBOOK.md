@@ -10,6 +10,7 @@
 - [Test Timeouts](#test-timeouts)
 - [Test File Structure Template](#test-file-structure-template)
 - [Common Test Patterns](#common-test-patterns)
+- [Visual Snapshot Testing](#visual-snapshot-testing)
 - [Support Classes Reference](#support-classes-reference)
 - [Domain Tags](#domain-tags)
 - [ESLint Enforcement](#eslint-enforcement)
@@ -373,6 +374,42 @@ await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
 
 **Why**: Stored `:visible` locators become stale when re-queried. Always chain them inline!
 
+### ⚠️ CRITICAL: Clicking an Ant Design Dropdown Menu Item
+
+**A click on the item you located can select the item above it.**
+
+Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)` around
+`transform-origin: 0 0`, and rc-motion applies the start class one frame before the `-active`
+class that begins the transition. Playwright's actionability check ("bounding box unchanged
+across two consecutive animation frames") can be satisfied on those pre-transition frames, so
+the click point is computed against the 0.8-scaled menu. Once the menu finishes growing, that
+point has slid onto the previous item. Under CI worker contention this happens often.
+
+```typescript
+// ❌ WRONG - clicks while the menu is still scaling open
+await trigger.click();
+const response = page.waitForResponse("/api/v1/activity/following");
+await page.getByRole("menuitem", { name: "Following" }).click();
+await response; // may hang forever - "My Data" was selected and my-feed was fetched
+
+// ✅ CORRECT - wait for the popup to settle, then assert the selection took
+await trigger.click();
+const menuItem = page.getByRole("menuitem", { name: "Following" });
+await expect(menuItem).toBeVisible();
+await waitForAntdPopupToSettle(page); // from playwright/utils/common.ts
+const response = page.waitForResponse("/api/v1/activity/following");
+await menuItem.click();
+await expect(trigger).toContainText("Following"); // fails fast if the click drifted
+await response;
+```
+
+**Always assert the post-click state** (trigger label, `ant-*-item-selected`, rendered content)
+before awaiting a response. A `waitForResponse` whose predicate can never match does not fail —
+it hangs until the test timeout and then reports `Target page, context or browser has been
+closed`, which points nowhere near the real cause.
+
+`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
+
 ### Modal and Scrollable Container Patterns
 
 ```typescript
@@ -581,6 +618,118 @@ await test.step("Verify persistence after reload", async () => {
   await expect(page.getByTestId("description")).toContainText(testValue);
 });
 ```
+
+---
+
+## Visual Snapshot Testing
+
+Use snapshot testing to catch **visual regressions** in rendered output that cannot be verified by DOM assertions alone — primarily downloaded images such as exported PNGs where the visual content (e.g. presence of edge lines in a lineage graph) is what matters.
+
+> **Do not** use snapshot testing for regular page UI. Use `expect(locator).toBeVisible()` and standard Playwright assertions for those cases. Snapshots are brittle for dynamic pages; reserve them for stable, file-based output.
+
+### How It Works
+
+1. **First run** — Playwright saves the downloaded file bytes as a reference PNG inside `__snapshots__/`. You commit this file.
+2. **Subsequent runs** — Playwright reads the reference and compares pixel-by-pixel with a configurable tolerance. If the diff exceeds the threshold the test fails and a diff image is written to `playwright/output/test-results/`.
+3. **Intentional change** — update the reference by running with `--update-snapshots` (see below), inspect the diff, then commit the new reference.
+
+### File Layout
+
+The project's `playwright.config.ts` sets a custom `snapshotPathTemplate` that omits `{projectName}` and `{platform}`, so **one file works on both macOS and Linux**:
+
+```
+playwright/e2e/Features/
+  LineageExportPNGSnapshot.spec.ts
+  __snapshots__/
+    LineageExportPNGSnapshot.spec.ts-snapshots/
+      lineage-export-with-edges.png   ← single committed reference (no platform suffix)
+```
+
+This avoids the common CI failure where a macOS-generated `chromium-darwin.png` reference causes "snapshot doesn't exist" on a Linux runner that looks for `chromium-linux.png`.
+
+### Step 1 — Generate the initial reference snapshot
+
+The test **will fail on the very first run** with `"snapshot doesn't exist"`. That is expected. Run with `--update-snapshots` against a live server to produce the reference:
+
+```bash
+# From the ui/ directory, with a running OpenMetadata server
+yarn playwright:run --update-snapshots \
+  playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts
+```
+
+Inspect the generated PNG in `LineageExportPNGSnapshot.spec.ts-snapshots/` to confirm it looks correct (edges visible, nodes readable), then commit it:
+
+```bash
+git add playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts-snapshots/
+git commit -m "test(lineage): add reference snapshot for PNG export"
+```
+
+### Step 2 — Running the test normally
+
+```bash
+# Run only the snapshot spec
+yarn playwright:run LineageExportPNGSnapshot.spec.ts
+
+# Run against a specific base URL
+PLAYWRIGHT_TEST_BASE_URL=https://your-server:8585 \
+  yarn playwright:run LineageExportPNGSnapshot.spec.ts
+```
+
+A passing run produces no output. A failing run writes diff images to `playwright/output/test-results/` — open them to see exactly which pixels changed.
+
+### Step 3 — Updating the reference after an intentional change
+
+If the lineage layout, node styles, or edge colors change intentionally (e.g. a UI redesign), the snapshot will fail. Update it:
+
+```bash
+yarn playwright:run --update-snapshots \
+  playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts
+```
+
+Review the diff, then commit the updated reference. **Never update snapshots blindly** — always inspect the before/after images to confirm the change is expected.
+
+### Threshold Settings
+
+The current snapshot uses:
+
+```typescript
+expect(buffer).toMatchSnapshot('lineage-export-with-edges.png', {
+  threshold: 0.1,          // per-channel tolerance: 0–1 (0.1 = 10% per channel)
+  maxDiffPixelRatio: 0.05, // at most 5% of pixels may differ
+});
+```
+
+`threshold: 0.1` allows minor sub-pixel anti-aliasing differences between environments. `maxDiffPixelRatio: 0.05` ensures that large-scale regressions (e.g. all edge pixels turning white) always fail. Do not raise `maxDiffPixelRatio` above `0.1` without a strong reason — it would let significant visual regressions pass silently.
+
+### Canvas Readiness — Why We Poll the Canvas
+
+The lineage graph renders nodes in the React DOM and edges on an HTML5 `<canvas>` element via `requestAnimationFrame`. Simply waiting for the API response is not enough — the canvas draw cycle runs asynchronously. The snapshot spec polls until the canvas has non-zero dimensions, which confirms the first draw frame has completed:
+
+```typescript
+await page.waitForFunction(() => {
+  const canvas = document.querySelector(
+    '#lineage-container canvas'
+  ) as HTMLCanvasElement | null;
+  return canvas !== null && canvas.width > 0 && canvas.height > 0;
+});
+```
+
+Do not remove or shorten this wait — doing so may capture a blank canvas before edges are drawn and produce a misleading "passing" snapshot.
+
+### When to Use Snapshot Testing
+
+| Scenario | Use snapshot? | Reason |
+|---|---|---|
+| Exported PNG includes edge lines | ✅ Yes | DOM assertions cannot inspect canvas pixel content |
+| Page component is visible | ❌ No | Use `toBeVisible()` — snapshots of live pages are brittle |
+| CSV export contains correct rows | ❌ No | Parse the CSV and assert on values directly |
+| Chart renders correct colors | ⚠️ Maybe | Only if the chart is SVG/Canvas and color is the critical property |
+
+### Existing Snapshot Tests
+
+| Spec file | Snapshot name | What it guards |
+|---|---|---|
+| `e2e/Features/LineageExportPNGSnapshot.spec.ts` | `lineage-export-with-edges.png` | Edges are present in exported lineage PNG (regression for issue #29124) |
 
 ---
 

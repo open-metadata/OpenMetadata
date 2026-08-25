@@ -12,7 +12,13 @@
  */
 
 import { AxiosError } from 'axios';
-import { createContext, ReactNode, useContext } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -83,81 +89,97 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
     useAuthProvider();
 
-  const handleLogin = async (email: string, password: string) => {
-    try {
+  const handleLogin = useCallback(
+    async (email: string, password: string) => {
       try {
-        const response = await basicAuthSignIn({
-          email,
-          password: btoa(password),
-        });
-
-        if (response.accessToken) {
-          await setOidcToken(response.accessToken);
-
-          handleSuccessfulLogin({
-            id_token: response.accessToken,
-            profile: {
-              email: toLower(email),
-              name: '',
-              picture: '',
-              sub: '',
-            },
-            scope: '',
+        try {
+          const response = await basicAuthSignIn({
+            email,
+            password: btoa(password),
           });
+
+          if (response.accessToken) {
+            await setOidcToken(response.accessToken);
+
+            handleSuccessfulLogin({
+              id_token: response.accessToken,
+              profile: {
+                email: toLower(email),
+                name: '',
+                picture: '',
+                sub: '',
+              },
+              scope: '',
+            });
+          }
+
+          // reset web analytic session
+          resetWebAnalyticSession();
+        } catch (error) {
+          const err = error as AxiosError<{ code: number; message: string }>;
+
+          showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
+          handleFailedLogin();
         }
-
-        // reset web analytic session
-        resetWebAnalyticSession();
-      } catch (error) {
-        const err = error as AxiosError<{ code: number; message: string }>;
-
-        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
-        handleFailedLogin();
+      } catch (err) {
+        showErrorToast(err as AxiosError, t('server.unauthorized-user'));
       }
-    } catch (err) {
-      showErrorToast(err as AxiosError, t('server.unauthorized-user'));
-    }
-  };
+    },
+    [handleSuccessfulLogin, handleFailedLogin, t]
+  );
 
-  const handleRegister = async (request: RegistrationRequest) => {
-    try {
-      await basicAuthRegister(request);
+  const handleRegister = useCallback(
+    async (request: RegistrationRequest) => {
+      try {
+        await basicAuthRegister(request);
 
-      showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.user-account') })
-      );
-      showInfoToast(t('server.email-confirmation'));
-      navigate(ROUTES.SIGNIN);
-    } catch (err) {
-      if (
-        (err as AxiosError).response?.status ===
-        HTTP_STATUS_CODE.FAILED_DEPENDENCY
-      ) {
         showSuccessToast(
           t('server.create-entity-success', { entity: t('label.user-account') })
         );
-        showErrorToast(err as AxiosError, t('server.email-verification-error'));
+        showInfoToast(t('server.email-confirmation'));
         navigate(ROUTES.SIGNIN);
-      } else {
-        showErrorToast(err as AxiosError, t('server.unexpected-response'));
+      } catch (err) {
+        if (
+          (err as AxiosError).response?.status ===
+          HTTP_STATUS_CODE.FAILED_DEPENDENCY
+        ) {
+          showSuccessToast(
+            t('server.create-entity-success', {
+              entity: t('label.user-account'),
+            })
+          );
+          showErrorToast(
+            err as AxiosError,
+            t('server.email-verification-error')
+          );
+          navigate(ROUTES.SIGNIN);
+        } else {
+          showErrorToast(err as AxiosError, t('server.unexpected-response'));
+        }
       }
-    }
-  };
+    },
+    [navigate, t]
+  );
 
-  const handleForgotPassword = async (email: string) => {
+  const handleForgotPassword = useCallback(async (email: string) => {
     await generatePasswordResetLink(email);
-  };
+  }, []);
 
-  const handleResetPassword = async (payload: PasswordResetRequest) => {
-    const response = await resetPassword(payload);
-    if (response) {
-      showSuccessToast(t('server.reset-password-success'));
-    }
-  };
+  const handleResetPassword = useCallback(
+    async (payload: PasswordResetRequest) => {
+      const response = await resetPassword(payload);
+      if (response) {
+        showSuccessToast(t('server.reset-password-success'));
+      }
+    },
+    [t]
+  );
 
-  const handleLogout = async () => {
-    const token = await getOidcToken();
-    const refreshToken = await getRefreshToken();
+  const handleLogout = useCallback(async () => {
+    const [token, refreshToken] = await Promise.all([
+      getOidcToken(),
+      getRefreshToken(),
+    ]);
     const isExpired = extractDetailsFromToken(token).isExpired;
     if (token && !isExpired) {
       try {
@@ -169,15 +191,24 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         handleSuccessfulLogout();
       }
     }
-  };
+  }, [handleSuccessfulLogout]);
 
-  const contextValue = {
-    handleLogin,
-    handleRegister,
-    handleForgotPassword,
-    handleResetPassword,
-    handleLogout,
-  };
+  const contextValue = useMemo(
+    () => ({
+      handleLogin,
+      handleRegister,
+      handleForgotPassword,
+      handleResetPassword,
+      handleLogout,
+    }),
+    [
+      handleLogin,
+      handleRegister,
+      handleForgotPassword,
+      handleResetPassword,
+      handleLogout,
+    ]
+  );
 
   return (
     <BasicAuthContext.Provider value={contextValue}>

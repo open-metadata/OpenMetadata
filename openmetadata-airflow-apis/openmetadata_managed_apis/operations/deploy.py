@@ -17,8 +17,8 @@ from typing import Dict  # noqa: UP035
 import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
-from flask import escape
 from jinja2 import Template
+from markupsafe import escape
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

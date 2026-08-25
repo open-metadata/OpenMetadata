@@ -27,7 +27,7 @@ import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/domains';
@@ -130,11 +130,15 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
-export const listDomainHierarchy = async (params?: ListParams) => {
+export const listDomainHierarchy = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Domain[]>>(
     `${BASE_URL}/hierarchy`,
     {
       params,
+      signal,
     }
   );
 
@@ -167,7 +171,8 @@ export const getDomainChildrenPaginated = async (
 export const searchDomains = async (
   search: string,
   page = 1,
-  queryFilter?: Record<string, unknown>
+  queryFilter?: Record<string, unknown>,
+  signal?: AbortSignal
 ) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
@@ -186,6 +191,7 @@ export const searchDomains = async (
 
   const { data } = await APIClient.get(apiUrl, {
     params,
+    signal,
   });
 
   return data;

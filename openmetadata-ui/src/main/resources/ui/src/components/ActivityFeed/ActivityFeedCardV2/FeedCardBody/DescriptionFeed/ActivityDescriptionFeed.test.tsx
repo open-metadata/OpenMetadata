@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import ActivityDescriptionFeed from './ActivityDescriptionFeed';
 
-jest.mock('../../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: jest.fn((text) => text),
 }));
 

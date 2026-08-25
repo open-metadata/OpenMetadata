@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { TaskClass } from '../../support/entity/TaskClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -57,17 +58,29 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
     await waitForAllLoadersToDisappear(page);
 
+    // Capture the paginated list responses so we wait for the *new* data
+    // before counting rows. Without this, the loader can finish for the
+    // current page while the page-2 fetch is still in flight, and the
+    // row count assertion runs against an empty table mid-transition.
+    const sortedResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByText('Name', { exact: true }).click();
+    await sortedResponse;
 
+    const nextPageResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByTestId('next').click();
+    await nextPageResponse;
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(
-      await page
-        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-        .count()
-    ).toBe(15);
+    // Use toHaveCount instead of .count() === 15 so Playwright auto-retries
+    // the assertion until the table re-renders with the page-2 rows.
+    await expect(
+      page.locator('[data-testid="test-case-table"] tbody tr[data-key]')
+    ).toHaveCount(15);
   });
 
   test('Table search with sorting should work', async ({
@@ -88,13 +101,22 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .waitFor({ state: 'detached' });
 
     await page.getByText('Name', { exact: true }).click();
-    await page.getByTestId('searchbar').click();
+    await page.locator('[data-testid="searchbar-component"] input').click();
 
-    const testSearchResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
-    );
+    const searchTerm = 'temp-test-case';
+    const testSearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
 
-    await page.getByTestId('searchbar').fill('temp-test-case');
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '') === searchTerm
+      );
+    });
+
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(searchTerm);
 
     await testSearchResponse;
     await page
@@ -103,7 +125,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table filter with sorting should work', async ({
@@ -125,7 +147,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByText('Name', { exact: true }).click();
 
-    await page.getByTestId('status-select-filter').locator('div').click();
+    await page.getByTestId('status-select-filter').click();
 
     const filteredResults = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
@@ -140,7 +162,32 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    // Migration static data seeds test cases across every status (including
+    // Queued), so the status filter alone no longer yields an empty list.
+    // Combine it with a search term that matches nothing to deterministically
+    // land on the empty-state placeholder.
+    const noMatchSearch = `no-match-${uuid()}`;
+    const emptySearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) && (responseUrl.searchParams.get('q') ?? '').includes(noMatchSearch)
+      );
+    });
+    await page.locator('[data-testid="searchbar-component"] input').click();
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(noMatchSearch);
+    await emptySearchResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table page should show schema tab with count', async ({
@@ -209,17 +256,17 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    await page
-      .getByTestId('page-size-selection-dropdown')
-      .scrollIntoViewIfNeeded();
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(pageSizeDropdown).toBeVisible();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
 
-    await expect(
-      page.getByRole('menuitem', { name: '15 / Page' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    const pageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '15 / Page' });
+    await expect(pageSizeOption).toBeVisible();
+    await pageSizeOption.click();
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
@@ -362,20 +409,29 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe('Tags and glossary terms should be consistent for search ', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const testClassification = new ClassificationClass();
-  const testTag = new TagClass({
-    classification: testClassification.data.name,
-  });
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let testClassification: ClassificationClass;
+  let testTag: TagClass;
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await performAdminLogin(browser);
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    testClassification = new ClassificationClass();
+    testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
 
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await testClassification.create(apiContext);
-    await testTag.create(apiContext);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Glossary term should be consistent for search', async ({
@@ -446,8 +502,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
     await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
+    // Scoped to the cell: the select keeps its overlay mounted after closing, so the
+    // matching dropdown option carries the same testid and an unscoped locator is
+    // ambiguous under strict mode.
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).toBeVisible();
 
     await page
@@ -500,7 +561,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      glossaryTagsCell.getByTestId(
+        `tag-${glossaryTerm.responseData.fullyQualifiedName}`
+      )
     ).not.toBeVisible();
   });
 
@@ -548,10 +611,12 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await page.waitForResponse('api/v1/columns/name/*');
 
     await expect(
-      page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      page
+        .locator(rowSelector)
+        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    page.reload();
+    await page.reload();
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
@@ -704,35 +769,27 @@ test.describe('Large Table Column Search & Copy Link', () => {
     );
     expect(clipboardText).toContain(targetColumnName);
 
-    // 5. Visit the copied Link
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('fields=') &&
-          response.request().method() === 'GET'
-      ),
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('profile') &&
-          response.request().method() === 'GET',
-        { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-      ),
-      page.goto(clipboardText),
-    ]);
+    // 5. Visit the copied Link — assert single-column GET fires with
+    // entityType/fields query params.
+    const columnGetResponsePromise = page.waitForResponse((response) => {
+      if (
+        !response.url().includes('/api/v1/columns/name/') ||
+        response.request().method() !== 'GET'
+      ) {
+        return false;
+      }
+      const url = new URL(response.url());
+
+      return (
+        url.searchParams.get('entityType') === 'table' &&
+        url.searchParams.get('fields') ===
+          'tags,customMetrics,extension,profile'
+      );
+    });
+    await page.goto(clipboardText);
+    const columnGetResponse = await columnGetResponsePromise;
+
+    expect(columnGetResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open
@@ -861,5 +918,83 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     await expect(
       page.getByTestId('query-entity-copy-button')
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Table source URL header button', () => {
+  const sourceUrlTable = new TableClass();
+  const SOURCE_URL = 'https://example.com/table/source';
+
+  test.beforeAll('Setup table with source URL', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.create(apiContext);
+    await sourceUrlTable.patch({
+      apiContext,
+      patchData: [{ op: 'add', path: '/sourceUrl', value: SOURCE_URL }],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('source URL button links to the configured source', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sourceUrlTable.visitEntityPage(page);
+
+    const sourceUrlButton = page.getByTestId('source-url-button');
+    await expect(sourceUrlButton).toBeVisible();
+    await expect(sourceUrlButton).toHaveAttribute('href', SOURCE_URL);
+    await expect(sourceUrlButton).toHaveAttribute('target', '_blank');
+  });
+});
+
+test.describe('Table open-task header stat', () => {
+  const openTaskTable = new TableClass();
+  let openTask: TaskClass;
+
+  test.beforeAll('Setup table with an open task', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTaskTable.create(apiContext);
+
+    const loggedInUser = await (
+      await apiContext.get('/api/v1/users/loggedInUser')
+    ).json();
+    openTask = new TaskClass({
+      about: `<#E::table::${openTaskTable.entityResponseData.fullyQualifiedName}>`,
+      assignees: [loggedInUser.name],
+    });
+    await openTask.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTask.delete(apiContext);
+    await openTaskTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('open-task stat shows the count and links to the Tasks tab', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await openTaskTable.visitEntityPage(page);
+
+    const openTaskStat = page.getByTestId('open-task-stat');
+    await expect(openTaskStat).toBeVisible();
+    await expect(openTaskStat).toContainText('1');
+
+    await openTaskStat.click();
+
+    await page.waitForURL('**/activity_feed/tasks');
+    await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });

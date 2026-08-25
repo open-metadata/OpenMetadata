@@ -29,15 +29,18 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
-  entityDisplayName: jest.fn().mockReturnValue('entityDisplayName'),
-  getEntityFQN: jest.fn().mockImplementation((data) => data),
-  getEntityType: jest.fn().mockImplementation((data) => data),
   getFeedHeaderTextFromCardStyle: jest
     .fn()
     .mockReturnValue('getFeedHeaderTextFromCardStyle'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  entityDisplayName: jest.fn().mockReturnValue('entityDisplayName'),
+  getEntityFQN: jest.fn().mockImplementation((data) => data),
+  getEntityType: jest.fn().mockImplementation((data) => data),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

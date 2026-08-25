@@ -15,6 +15,17 @@ const DB_NAME = 'AppDataStore';
 const STORE_NAME = 'keyValueStore';
 const DB_VERSION = 1;
 
+// Asset cache for hashed /assets/* responses. Bumping ASSET_CACHE_VERSION on the next deploy
+// is unnecessary — the cache keys are the full request URLs, which include the content hash
+// in the filename (e.g. /assets/index-Z3O_FBkA.js). A new bundle ships under new filenames,
+// so the cache effectively versions itself; the activate handler still prunes truly old
+// caches in case the naming scheme ever changes.
+const ASSET_CACHE = 'om-assets-v1';
+// Match Vite's content-hash filename pattern, e.g. `name-Z3O_FBkA.js`. The 8+ char hash chunk
+// is base64url, which the bundler picks so collisions are vanishingly unlikely. Anything
+// matching is safe to cache forever — the filename changes whenever the body changes.
+const HASHED_ASSET_RE = /\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/;
+
 const swStore = {};
 
 // Pre-load data from IndexedDB when service worker starts
@@ -98,11 +109,59 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Claim control immediately after activation
+  // Claim control immediately after activation; in the same task, drop any old asset cache
+  // versions (in case the cache name scheme changes in a future release).
   event.waitUntil(
-    self.clients.claim().then(() => {
-      // Initialize the store to ensure it's ready for use
-      return initializeSwStore();
+    Promise.all([
+      self.clients.claim(),
+      caches
+        .keys()
+        .then((names) =>
+          Promise.all(
+            names
+              .filter((name) => name.startsWith('om-assets-') && name !== ASSET_CACHE)
+              .map((name) => caches.delete(name))
+          )
+        ),
+      initializeSwStore(),
+    ])
+  );
+});
+
+// Cache-first for hashed /assets/* GETs. The browser's own HTTP cache (driven by the
+// `Cache-Control: immutable` header the server emits for these paths) does the same job;
+// the SW adds a second layer that survives browser-cache eviction under memory pressure and
+// across tab/session lifecycles. Cost: ~1 KB of code, no impact when the browser HTTP cache
+// already has the entry.
+//
+// Everything else — /api/*, the SPA HTML shell, unhashed paths — falls through to the
+// network so revalidation/ETag/auth all keep working as written.
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') {
+    return;
+  }
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+  if (!HASHED_ASSET_RE.test(url.pathname)) {
+    return;
+  }
+  event.respondWith(
+    caches.open(ASSET_CACHE).then(async (cache) => {
+      const cached = await cache.match(request);
+      if (cached) {
+        return cached;
+      }
+      const response = await fetch(request);
+      // Only cache successful, fully-typed responses. {@code response.ok} is false on 4xx/5xx,
+      // {@code response.type === 'basic'} excludes opaque cross-origin responses (we already
+      // gated on same-origin above but belt-and-braces).
+      if (response.ok && response.type === 'basic') {
+        cache.put(request, response.clone()).catch(() => undefined);
+      }
+      return response;
     })
   );
 });

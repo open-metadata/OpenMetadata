@@ -38,23 +38,25 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
-  getNormalizedTaskPayload,
-  getTaskDetailPathFromTask,
-  getTaskDisplayId,
   isDescriptionTaskType,
   isRecognizerFeedbackTask,
   isTagsTaskType,
+} from '../../../utils/TaskActionUtils';
+import {
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
   isTaskPendingFurtherApproval,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
+import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';

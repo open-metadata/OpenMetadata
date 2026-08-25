@@ -44,6 +44,7 @@ export type FetchFilteredQueriesType = {
   tags?: SearchDropdownOption[];
   owners?: SearchDropdownOption[];
   pageNumber?: number;
+  pageSize?: number;
   timeRange?: { startTs: number; endTs: number };
   sortField?: string;
   sortOrder?: SORT_ORDER;
@@ -73,6 +74,8 @@ export interface QueryUsedByOtherTableProps {
 
 export type QuerySearchParams = {
   queryFrom?: number;
+  currentPage?: number;
+  pageSize?: number;
   after?: string;
   tableId?: string;
   query?: string;

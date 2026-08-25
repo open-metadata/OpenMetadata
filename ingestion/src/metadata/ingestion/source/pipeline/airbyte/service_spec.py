@@ -1,4 +1,5 @@
+from metadata.ingestion.source.pipeline.airbyte.connection import AirbyteConnection
 from metadata.ingestion.source.pipeline.airbyte.metadata import AirbyteSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=AirbyteSource)
+ServiceSpec = BaseSpec(metadata_source_class=AirbyteSource, connection_class=AirbyteConnection)  # pyright: ignore[reportArgumentType]

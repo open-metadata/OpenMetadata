@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
+import { waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -27,6 +28,7 @@ export const THUMBS_UP_EMOJI = '👍';
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
 export type ActivityEventType =
+  | 'EntityCreated'
   | 'DescriptionUpdated'
   | 'OwnerUpdated'
   | 'TagsUpdated';
@@ -300,14 +302,15 @@ export const createDescriptionActivityEventFromPage = async (
 };
 
 /**
- * Inserts an activity event directly into the activity stream via the test-only endpoint,
- * bypassing the async change-event pipeline. Use this in test setup when you need a feed
- * item to exist but are not testing the pipeline itself.
+ * Seeds an activity event directly via the test-only endpoint, bypassing the async consumer.
+ * Use for rendering-only tests; the delivery contract is covered by the backend ActivityResourceIT.
+ * Actor name/displayName are set so the feed renders the actor (the UI resolves the actor by name).
  */
 export const insertActivityEventForTest = async (
   apiContext: APIRequestContext,
   table: TableClass,
-  text: string
+  text: string,
+  eventType: ActivityEventType = 'DescriptionUpdated'
 ) => {
   const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
   const adminUser = await userResponse.json();
@@ -318,7 +321,7 @@ export const insertActivityEventForTest = async (
   const response = await apiContext.post('/api/v1/activity/test-insert', {
     data: {
       id: fullUuid(),
-      eventType: 'DescriptionUpdated',
+      eventType,
       about: `<#E::table::${fqn}>`,
       entity: {
         id: tableData.id,
@@ -326,7 +329,13 @@ export const insertActivityEventForTest = async (
         name: tableData.name,
         fullyQualifiedName: fqn,
       },
-      actor: { id: adminUser.id, type: 'user' },
+      actor: {
+        id: adminUser.id,
+        type: 'user',
+        name: adminUser.name,
+        fullyQualifiedName: adminUser.fullyQualifiedName ?? adminUser.name,
+        displayName: adminUser.displayName ?? adminUser.name,
+      },
       timestamp: Date.now(),
       summary: text,
       newValue: text,
@@ -373,13 +382,7 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   await addReactionButton.click();
   await expect(page.locator('.ant-popover-feed-reactions')).toBeVisible();
 
-  const reactionResponse = page.waitForResponse(
-    (response) =>
-      (response.url().includes('/api/v1/activity') ||
-        response.url().includes('/api/v1/feed')) &&
-      response.url().includes(`/reaction/${THUMBS_UP_REACTION}`) &&
-      response.ok()
-  );
+  const reactionResponse = waitForReactionResponse(page, THUMBS_UP_REACTION);
 
   await page
     .locator(`[data-testid="reaction-button"][title="${THUMBS_UP_REACTION}"]`)

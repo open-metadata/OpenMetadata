@@ -13,7 +13,7 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
-import { Column } from '../../../generated/entity/data/table';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -32,9 +32,12 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   currentVersionData?: T;
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
-  muiTags?: boolean;
+  newTagsUI?: boolean;
   columnFqn?: string;
-  onColumnsUpdate?: (columns: Column[]) => void;
+  // The tab the page is actually rendering. Pages whose landing URL carries no `:tab`
+  // segment, and the domain tree view (which never writes the tab to the URL at all),
+  // must pass this so the widget layout matches the tab on screen.
+  activeTab?: EntityTabs;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -50,7 +53,7 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   updateWidgetHeight: (widgetId: string, height: number) => void;
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
-  muiTags: boolean;
+  newTagsUI: boolean;
   entityRules: DataAssetRuleValidation;
   selectedColumn: ColumnOrTask | null;
   isColumnDetailOpen: boolean;

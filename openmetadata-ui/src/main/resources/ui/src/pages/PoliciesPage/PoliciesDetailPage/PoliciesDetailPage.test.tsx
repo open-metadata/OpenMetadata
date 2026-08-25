@@ -45,7 +45,7 @@ jest.mock('../../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
@@ -86,7 +86,7 @@ jest.mock('../../../constants/HelperTextUtil', () => ({
   NO_PERMISSION_TO_VIEW: '',
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue(''),
 }));
 

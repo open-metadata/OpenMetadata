@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
+import { ReactComponent as KPIIcon } from '../../../../assets/svg/entity/kpi.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
   CHART_WIDGET_DAYS_DURATION,
@@ -47,7 +47,7 @@ import {
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
-import { CustomTooltip } from '../../../../utils/DataInsightUtils';
+import { CustomTooltip } from '../../../../utils/DataInsightChartUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -340,7 +340,7 @@ const KPIWidget = ({
                 interval="preserveStartEnd"
                 tick={{ fill: '#888', fontSize: 12 }}
                 tickFormatter={(value: number) =>
-                  customFormatDateTime(value, 'dMMM, yy')
+                  customFormatDateTime(value, 'd MMM, yy')
                 }
                 tickLine={false}
                 tickMargin={10}
@@ -434,7 +434,7 @@ const KPIWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<KPIIcon className="kpi-widget-icon" height={22} width={22} />}
+        icon={<KPIIcon className="kpi-widget-icon" height={24} width={24} />}
         isEditView={isEditView}
         title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
         widgetKey={widgetKey}

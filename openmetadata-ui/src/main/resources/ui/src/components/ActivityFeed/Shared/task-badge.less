@@ -18,9 +18,9 @@
   top: -9px;
   left: 16px;
   background: @announcement-background-dark;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   border: 1px solid @announcement-border;
-  padding: 3px 8px;
+  padding: var(--om-space-3) var(--om-space-8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,10 +32,10 @@
   }
 
   .announcement-text {
-    margin-left: 4px;
+    margin-left: var(--om-space-4);
     color: @announcement-border;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-bold);
   }
 }
 
@@ -43,11 +43,11 @@
   position: absolute;
   left: 16px;
   top: -12px;
-  padding: 0 8px;
-  background: #f1edfd;
-  border: 1px solid #c6b5f6;
-  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.06);
-  border-radius: 4px;
+  padding: 0 var(--om-space-8);
+  background: var(--om-legacy-color-f1edfd);
+  border: 1px solid var(--om-legacy-color-c6b5f6);
+  box-shadow: 0px 1px 2px var(--om-legacy-color-0-0-0-0-06);
+  border-radius: var(--om-radius-sm);
   color: @primary-color;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
 }

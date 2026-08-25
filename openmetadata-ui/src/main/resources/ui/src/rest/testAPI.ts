@@ -24,6 +24,8 @@ import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
 import {
   TableData,
   TestCase,
@@ -43,7 +45,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type ListTestSuitePrams = ListParams & {
@@ -69,7 +71,10 @@ export type ListTestCaseParams = ListParams & {
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
 };
-export type ListTestCaseParamsBySearch = ListTestCaseParams & {
+export type ListTestCaseParamsBySearch = Omit<
+  ListTestCaseParams,
+  'testCaseStatus'
+> & {
   q?: string;
   sortType?: SORT_ORDER;
   sortField?: string;
@@ -83,6 +88,8 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   serviceName?: string;
   dataQualityDimension?: string;
   followedBy?: string;
+  dataProductFqn?: string;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -143,10 +150,20 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 export const getListTestCaseBySearch = async (
   params?: ListTestCaseParamsBySearch
 ) => {
+  // The search endpoint accepts comma-separated statuses, while Axios' default
+  // array format uses brackets that the JAX-RS query parameter does not bind.
+  const serializedParams = Array.isArray(params?.testCaseStatus)
+    ? {
+        ...params,
+        testCaseStatus: params.testCaseStatus.length
+          ? params.testCaseStatus.join(',')
+          : undefined,
+      }
+    : params;
   const response = await APIClient.get<PagingResponse<TestCase[]>>(
     `${testCaseUrl}/search/list`,
     {
-      params,
+      params: serializedParams,
     }
   );
 
@@ -410,7 +427,17 @@ export const getTestSuiteByName = async (
 ) => {
   const response = await APIClient.get<TestSuite>(
     `${testSuiteUrl}/name/${getEncodedFqn(name)}`,
-    { params }
+    {
+      // Resolve owners/experts as non-deleted (consistent with data-asset detail pages), so a
+      // soft-deleted owner is not surfaced and the owner-edit diff stays aligned with the server's
+      // NON_DELETED PATCH base - otherwise a positional patch throws "array item index out of
+      // range". See issue #30117.
+      params: {
+        ...params,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
+    }
   );
 
   return response.data;
@@ -432,6 +459,17 @@ export const getDataQualityReport = async (
     `${testSuiteUrl}/dataQualityReport`,
     { params }
   );
+
+  return response.data;
+};
+
+export const getDataQualityReportBatch = async (
+  data: DataQualityReportBatchRequest
+): Promise<DataQualityReportBatchResponse> => {
+  const response = await APIClient.post<
+    DataQualityReportBatchRequest,
+    AxiosResponse<DataQualityReportBatchResponse>
+  >(`${testSuiteUrl}/dataQualityReport/batch`, data);
 
   return response.data;
 };

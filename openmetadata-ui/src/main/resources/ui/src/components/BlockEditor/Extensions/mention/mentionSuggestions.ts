@@ -19,8 +19,9 @@ import {
   ENTITY_URL_MAP,
 } from '../../../../constants/Feeds.constants';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import { ExtensionRef } from '../../BlockEditor.interface';
+import { getDialogContainer } from '../getDialogContainer';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
@@ -58,9 +59,8 @@ export const mentionSuggestion = () => ({
         }
 
         popup = tippy('body', {
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
-          appendTo: () => document.body,
+          getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
+          appendTo: () => getDialogContainer(props.editor.view),
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -79,8 +79,7 @@ export const mentionSuggestion = () => ({
 
         if (hasPopup) {
           popup[0].setProps({
-            getReferenceClientRect:
-              props.clientRect as Props['getReferenceClientRect'],
+            getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
           });
         }
       },

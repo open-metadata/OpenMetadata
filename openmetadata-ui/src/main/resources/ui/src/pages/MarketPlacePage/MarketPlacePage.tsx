@@ -32,7 +32,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getMarketPlaceAppDetailsPath,

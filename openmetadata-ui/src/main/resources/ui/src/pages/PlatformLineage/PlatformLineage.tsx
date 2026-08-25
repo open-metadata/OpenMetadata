@@ -68,19 +68,17 @@ import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
-import {
-  getLineageEntityExclusionFilter,
-  getViewportForLineageExport,
-} from '../../utils/EntityLineageUtils';
+import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
+import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../utils/StringsUtils';
+} from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
-
 const PlatformLineage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -325,7 +323,16 @@ const PlatformLineage = () => {
   }, [selectedEntity, loading, permissions, entityType, header]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.lineage')}>
+    <PageLayoutV1
+      pageTitle={
+        // `/lineage` with no entity is the platform-wide view; the focused
+        // variant names the entity it is centred on.
+        decodedFqn
+          ? t('label.entity-lineage', {
+              entity: getEntityName(selectedEntity) || decodedFqn,
+            })
+          : t('label.lineage')
+      }>
       <Grid rowGap="2">
         {isFullScreen ? null : (
           <>

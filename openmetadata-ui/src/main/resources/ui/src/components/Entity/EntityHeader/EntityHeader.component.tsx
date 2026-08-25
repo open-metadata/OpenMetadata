@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { getEntityLinkFromType } from '../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';

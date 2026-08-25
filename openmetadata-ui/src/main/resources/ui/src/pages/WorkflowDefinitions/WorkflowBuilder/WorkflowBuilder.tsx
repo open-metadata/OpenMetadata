@@ -25,7 +25,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
-import DeleteModalMUI from '../../../components/common/DeleteModal/DeleteModalMUI';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -48,6 +50,7 @@ import {
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
 import { useWorkflowHistory } from '../../../hooks/useWorkflowHistory';
@@ -60,6 +63,7 @@ import {
   patchWorkflowDefinition,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
@@ -73,9 +77,11 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const {
     canAccessSidebar,
     canDragNodes,
+    canDragNodesInViewMode,
     enterViewMode,
     isEditMode,
     showWorkflowNodePalette,
@@ -407,15 +413,36 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     workflowMetadata?.displayName || 'Workflow Builder';
   const workflowName = workflowMetadata?.name;
 
-  const breadcrumbs = useMemo(() => {
-    return [
+  // AI-mode breadcrumb: rendered inside the HeaderShell gradient header.
+  const breadcrumb = useMemo(
+    () => (
+      <HeaderBreadcrumb
+        noMargin
+        items={[
+          getGlossaryHomeCrumb(t),
+          {
+            label: t('label.workflow-plural'),
+            href: getWorkflowDefinitionsListPath(),
+          },
+          { label: workflowDisplayName },
+        ]}
+        showHome={false}
+      />
+    ),
+    [workflowDisplayName, t]
+  );
+
+  // Classic-mode breadcrumb: the legacy TitleBreadcrumb shown above the header.
+  const breadcrumbs = useMemo(
+    () => [
       {
         activeTitle: false,
         name: t('label.workflow-plural'),
         url: getWorkflowDefinitionsListPath(),
       },
-    ];
-  }, [workflowDisplayName, t]);
+    ],
+    [t]
+  );
 
   if (loading) {
     return <Loader />;
@@ -435,27 +462,34 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - var(--ant-navbar-height))',
-        overflow: 'hidden',
-      }}
-      pageTitle={t('label.workflow-plural')}>
+      pageTitle={
+        getEntityName(workflowDefinition ?? undefined) ||
+        t('label.workflow-plural')
+      }
+      variant={isAiMode ? 'compact' : 'default'}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
       )}
 
-      <div className="tw:bg-gray-50 tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden">
-        <div className="tw:mb-4 tw:shrink-0">
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </div>
-
+      <div
+        className={classNames(
+          'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
+          { 'tw:bg-gray-50': !isAiMode }
+        )}>
+        {!isAiMode && (
+          <div className="tw:mb-4 tw:shrink-0">
+            <TitleBreadcrumb titleLinks={breadcrumbs} />
+          </div>
+        )}
         <div className="tw:shrink-0">
           <WorkflowHeader
+            breadcrumb={isAiMode ? breadcrumb : undefined}
             handleDeleteWorkflow={handleShowDeleteModal}
             handleRevertAndCancel={handleRevertAndCancel}
             handleRunWorkflow={handleRunWorkflow}
             handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
             handleTestWorkflow={handleTestWorkflow}
+            isAiMode={isAiMode}
             isRunLoading={isRunLoading}
             title={workflowDisplayName}
             workflowName={workflowName}
@@ -492,7 +526,11 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 isConnectionModalOpen={isConnectionModalOpen}
                 isDragging={isDragging}
                 isNodeDragEnabled={
-                  canDragNodes ? isNodeDragEnabledWrapper : () => false
+                  canDragNodes
+                    ? isNodeDragEnabledWrapper
+                    : canDragNodesInViewMode
+                    ? () => true
+                    : () => false
                 }
                 nodes={nodes}
                 pendingConnection={pendingConnection}
@@ -573,7 +611,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         onSave={navigationBlock.onSave}
       />
 
-      <DeleteModalMUI
+      <DeleteModal
         entityTitle={workflowMetadata?.displayName || ''}
         isDeleting={isDeleting}
         message={t('message.delete-entity-message', {

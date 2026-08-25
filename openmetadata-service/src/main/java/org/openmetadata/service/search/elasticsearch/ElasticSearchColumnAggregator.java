@@ -452,6 +452,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -551,6 +552,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
+    boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
@@ -576,9 +578,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private void addServiceFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getServiceName())) {
-      boolBuilder.filter(
-          Query.of(
-              q -> q.term(t -> t.field("service.name.keyword").value(request.getServiceName()))));
+      addNameOrDisplayNameFilter(boolBuilder, "service", request.getServiceName());
     }
   }
 
@@ -593,20 +593,43 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private void addDatabaseFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getDatabaseName())) {
-      boolBuilder.filter(
-          Query.of(
-              q -> q.term(t -> t.field("database.name.keyword").value(request.getDatabaseName()))));
+      addNameOrDisplayNameFilter(boolBuilder, "database", request.getDatabaseName());
     }
   }
 
   private void addSchemaFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getSchemaName())) {
-      boolBuilder.filter(
-          Query.of(
-              q ->
-                  q.term(
-                      t -> t.field("databaseSchema.name.keyword").value(request.getSchemaName()))));
+      addNameOrDisplayNameFilter(boolBuilder, "databaseSchema", request.getSchemaName());
     }
+  }
+
+  /**
+   * Match a value against either {fieldPrefix}.name.keyword or {fieldPrefix}.displayName.keyword.
+   * The UI filter dropdowns aggregate on displayName.keyword while API consumers (and the legacy
+   * dropdown) may pass the underlying name — this matches either, so both work.
+   */
+  private void addNameOrDisplayNameFilter(
+      BoolQuery.Builder boolBuilder, String fieldPrefix, String value) {
+    boolBuilder.filter(
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.minimumShouldMatch("1")
+                            .should(
+                                Query.of(
+                                    sq ->
+                                        sq.term(
+                                            t ->
+                                                t.field(fieldPrefix + ".name.keyword")
+                                                    .value(value))))
+                            .should(
+                                Query.of(
+                                    sq ->
+                                        sq.term(
+                                            t ->
+                                                t.field(fieldPrefix + ".displayName.keyword")
+                                                    .value(value)))))));
   }
 
   private void addDomainFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {

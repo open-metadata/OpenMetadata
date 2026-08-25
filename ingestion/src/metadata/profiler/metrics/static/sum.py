@@ -93,7 +93,7 @@ class Sum(StaticMetric):
         Maintains a single maximum value (not a list). Compares chunk's max
         with current maximum and returns the larger value.
         """
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         chunk_sum = None
 

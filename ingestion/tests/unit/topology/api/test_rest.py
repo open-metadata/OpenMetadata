@@ -15,7 +15,8 @@ Test REST/OpenAPI.
 import json
 from copy import deepcopy
 from io import BytesIO
-from unittest import TestCase
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,6 +53,8 @@ from metadata.ingestion.source.api.rest.parser import (
     parse_openapi_schema_from_s3,
 )
 
+LOCAL_OPENAPI_SCHEMA_PATH = str(Path(__file__).parents[4] / "examples" / "openapi" / "sample.json")
+
 mock_rest_config = {
     "source": {
         "type": "rest",
@@ -59,7 +62,7 @@ mock_rest_config = {
         "serviceConnection": {
             "config": {
                 "type": "Rest",
-                "openAPISchemaConnection": {"openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json"},
+                "openAPISchemaConnection": {"openAPISchemaFilePath": LOCAL_OPENAPI_SCHEMA_PATH},
                 "docURL": "https://petstore3.swagger.io/",
             }
         },
@@ -136,24 +139,6 @@ EXPECTED_COLLECTION_REQUEST = [
 ]
 MOCK_STORE_URL = AnyUrl("https://petstore3.swagger.io/#/store")
 MOCK_STORE_ORDER_URL = AnyUrl("https://petstore3.swagger.io/#/store/placeOrder")
-MOCK_JSON_RESPONSE = {
-    "paths": {
-        "/user/login": {
-            "get": {
-                "tags": ["user"],
-                "summary": "Logs user into the system",
-                "operationId": "loginUser",
-            }
-        }
-    },
-    "tags": [
-        {
-            "name": "pet",
-            "description": "Everything about your Pets",
-        },
-        {"name": "store", "description": "Access to Petstore orders"},
-    ],
-}
 
 # Mock data for testing process_schema_fields
 MOCK_SCHEMA_RESPONSE_SIMPLE = {
@@ -423,18 +408,50 @@ MOCK_RESPONSE_NESTED_DATA_REF = {
 
 MOCK_RESPONSE_NO_SCHEMA = {"responses": {"200": {"description": "successful operation"}}}
 
+# Canned OpenAPI document fed to the source instead of fetching the live
+# petstore URL declared in mock_rest_config, so the collection tests stay
+# hermetic and deterministic (no network).
+MOCK_OPENAPI_SCHEMA = {
+    "tags": [
+        {"name": "pet", "description": "Everything about your Pets"},
+        {"name": "store", "description": "Access to Petstore orders"},
+        {"name": "user", "description": "Operations about user"},
+    ],
+    "paths": {
+        "/pet/findByStatus": {"get": {"tags": ["pet"], "operationId": "findPetsByStatus"}},
+        "/store/order": {"post": {"tags": ["store"], "operationId": "placeOrder"}},
+        "/user/login": {"get": {"tags": ["user"], "operationId": "loginUser"}},
+    },
+}
 
-class RESTTest(TestCase):
-    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_rest_config)
-        self.rest_source = RestSource.create(
-            mock_rest_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.rest_source.context.get().__dict__["api_service"] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+class TestRest:
+    @pytest.fixture(autouse=True)
+    def _rest_source(self):
+        # Return the canned schema (as a dict) from the owned connection so the
+        # source never reaches out to the live petstore URL. test_connection is
+        # patched because ApiServiceSource.__init__ invokes it during
+        # construction. The context managers stay open across `yield`, covering
+        # sources built in the test bodies too.
+        with (
+            patch(
+                "metadata.ingestion.source.api.api_service.create_connection",
+                side_effect=lambda *args, **kwargs: SimpleNamespace(
+                    client=deepcopy(MOCK_OPENAPI_SCHEMA), close=lambda: None
+                ),
+            ),
+            patch(
+                "metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection",
+                return_value=None,
+            ),
+        ):
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_rest_config)
+            self.rest_source = RestSource.create(
+                mock_rest_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.rest_source.context.get().__dict__["api_service"] = MOCK_API_SERVICE.fullyQualifiedName.root
+            yield
 
     def test_get_api_collections(self):
         """test get api collections"""
@@ -451,14 +468,14 @@ class RESTTest(TestCase):
 
     def test_yield_api_collection(self):
         """test yield api collections"""
-        collection_request = list(self.rest_source.yield_api_collection(MOCK_COLLECTIONS[0]))
+        # deepcopy: yield_api_collection sets collection.url in place, which would
+        # otherwise mutate the shared module-level MOCK_COLLECTIONS fixture.
+        collection_request = list(self.rest_source.yield_api_collection(deepcopy(MOCK_COLLECTIONS[0])))
         assert collection_request == EXPECTED_COLLECTION_REQUEST
 
     def test_all_collections(self):
-        with patch.object(self.rest_source.connection, "json", return_value=MOCK_JSON_RESPONSE):
-            collections = list(self.rest_source.get_api_collections())
+        collections = list(self.rest_source.get_api_collections())
         MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)  # noqa: N806
-        MOCK_COLLECTIONS_COPY[2].description = Markdown(root="Operations about user")
         MOCK_COLLECTIONS_COPY.append(
             RESTCollection(
                 name=EntityName(root="default"),
@@ -479,10 +496,8 @@ class RESTTest(TestCase):
         endpoint_url = self.rest_source._generate_endpoint_url(MOCK_SINGLE_COLLECTION, MOCK_SINGLE_ENDPOINT)
         assert endpoint_url == MOCK_STORE_ORDER_URL
 
-    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_collection_filter_pattern(self, test_connection):
+    def test_collection_filter_pattern(self):
         """test collection filter pattern"""
-        test_connection.return_value = False
         # Test with include pattern
         include_config = deepcopy(mock_rest_config)
         include_config["source"]["sourceConfig"]["config"]["apiCollectionFilterPattern"] = {"includes": ["pet.*"]}
@@ -736,6 +751,40 @@ class RESTTest(TestCase):
         field_names = {field.name.root for field in result.schemaFields}
         assert field_names == {"id", "username"}
 
+    def test_get_request_schema_swagger_2_array_body(self):
+        self.rest_source.json_response = {
+            "definitions": {
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "username": {"type": "string"},
+                    },
+                }
+            }
+        }
+        info = {
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "users",
+                    "schema": {
+                        "type": "array",
+                        "items": {"$ref": "#/definitions/User"},
+                    },
+                }
+            ]
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "username",
+        }
+
     def test_get_request_schema_query_parameters(self):
         """Test extracting request schema from query and path parameters"""
         result = self.rest_source._get_request_schema(MOCK_QUERY_PARAMETERS)
@@ -797,6 +846,31 @@ class RESTTest(TestCase):
         assert result.schemaFields is not None
         assert len(result.schemaFields) == 3
 
+    def test_get_request_schema_array_root(self):
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
+        info = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/User"},
+                        }
+                    }
+                }
+            }
+        }
+
+        result = self.rest_source._get_request_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "name",
+            "email",
+        }
+
     def test_get_response_schema_direct_ref(self):
         """Test extracting response schema with direct $ref"""
         self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_SIMPLE
@@ -838,6 +912,26 @@ class RESTTest(TestCase):
         assert len(result.schemaFields) == 3
         field_names = {field.name.root for field in result.schemaFields}
         assert field_names == {"id", "name", "email"}
+
+    def test_get_response_schema_referenced_array_root(self):
+        self.rest_source.json_response = deepcopy(MOCK_SCHEMA_RESPONSE_SIMPLE)
+        self.rest_source.json_response["components"]["schemas"]["Users"] = {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/User"},
+        }
+        info = {
+            "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Users"}}}}}
+        }
+
+        result = self.rest_source._get_response_schema(info)
+
+        assert result is not None
+        assert result.schemaFields is not None
+        assert {field.name.root for field in result.schemaFields} == {
+            "id",
+            "name",
+            "email",
+        }
 
     def test_get_response_schema_nested_data_ref(self):
         """Test extracting response schema from nested properties.data structure"""
@@ -885,6 +979,49 @@ class RESTTest(TestCase):
         """Test _parse_openapi_type is case insensitive"""
         result = self.rest_source._parse_openapi_type("BOOLEAN")
         assert result == DataTypeTopic.BOOLEAN
+
+    def test_process_schema_fields_with_nullable_type(self):
+        self.rest_source.json_response = {
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": ["string", "null"]},
+                        },
+                    }
+                }
+            }
+        }
+
+        result = self.rest_source.process_schema_fields("#/components/schemas/User")
+
+        assert result is not None
+        assert len(result) == 1
+        assert result[0].dataType == DataTypeTopic.STRING
+        assert self.rest_source.status.warnings == []
+
+    def test_process_schema_fields_reports_single_parsing_warning(self):
+        info = {
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": ["invalid"]},
+                    }
+                }
+            }
+        }
+
+        self.rest_source._activate_handler()
+        try:
+            result = self.rest_source._get_request_schema(info)
+        finally:
+            self.rest_source._deactivate_handler()
+
+        assert result is not None
+        assert result.schemaFields is None
+        assert len(self.rest_source.status.warnings) == 1
+        assert "Error while processing schema fields" in next(iter(self.rest_source.status.warnings[0].values()))
 
     def test_extract_schema_from_response_openapi3(self):
         """Test _extract_schema_from_response extracts OpenAPI 3.0 schema"""
@@ -1021,11 +1158,8 @@ class RESTTest(TestCase):
         # When no items key exists, children is None
         assert result.children is None
 
-    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
-    def test_endpoint_filter_pattern(self, test_connection):
+    def test_endpoint_filter_pattern(self):
         """test endpoint filter pattern"""
-        test_connection.return_value = False
-
         # Setup mock JSON response with paths
         mock_json_with_paths = {
             "paths": {
@@ -1312,6 +1446,39 @@ class TestParseOpenAPISchemaFromS3:
         with pytest.raises(OpenAPIParseError, match="Failed to parse S3 JSON file"):
             parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
 
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_json_array_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .json S3 object containing an array reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.json"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.json", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_yaml_scalar_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """A .yaml S3 object with a bare scalar reports s3://bucket/key in the error."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"just a string")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.yaml"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.yaml", creds)
+
+    @patch("metadata.clients.aws_client.AWSClient")
+    def test_unknown_extension_includes_s3_url_in_error(self, mock_aws_client_cls):
+        """An unknown-extension S3 object that fails both JSON and YAML reports s3://bucket/key."""
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = {"Body": BytesIO(b"[1, 2, 3]")}
+        mock_aws_client_cls.return_value.get_s3_client.return_value = mock_s3
+
+        creds = AWSCredentials(awsRegion="us-east-1")
+        with pytest.raises(OpenAPIParseError, match=r"s3://bucket/schema\.txt"):
+            parse_openapi_schema_from_s3("https://bucket.s3.us-east-1.amazonaws.com/schema.txt", creds)
+
 
 class TestGetConnectionS3:
     @patch("metadata.ingestion.source.api.rest.connection.parse_openapi_schema_from_s3")
@@ -1319,7 +1486,9 @@ class TestGetConnectionS3:
         from metadata.generated.schema.entity.services.connections.api.restConnection import (
             RestConnection,
         )
-        from metadata.ingestion.source.api.rest.connection import get_connection
+        from metadata.ingestion.source.api.rest.connection import (
+            RestConnection as RestConnectionHandler,
+        )
 
         mock_parse_s3.return_value = MOCK_OPENAPI_JSON
 
@@ -1330,7 +1499,7 @@ class TestGetConnectionS3:
             )
         )
 
-        result = get_connection(connection)
+        result = RestConnectionHandler(connection)._get_client()
 
         assert isinstance(result, dict)
         assert result["openapi"] == "3.0.0"
@@ -1351,3 +1520,18 @@ class TestGetConnectionS3:
             == "https://my-bucket.s3.us-east-1.amazonaws.com/schemas/openapi.json"
         )
         assert connection.openAPISchemaConnection.awsCredentials.awsRegion == "us-east-1"
+
+
+def test_owned_connection_closed_when_test_connection_fails():
+    with patch("metadata.ingestion.source.api.api_service.create_connection") as mock_create_connection:
+        owned_connection = mock_create_connection.return_value
+        with (
+            patch(
+                "metadata.ingestion.source.api.api_service.run_test_connection",
+                side_effect=RuntimeError("cannot connect"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            RestSource.create(mock_rest_config["source"], MagicMock())
+
+        owned_connection.close.assert_called_once()

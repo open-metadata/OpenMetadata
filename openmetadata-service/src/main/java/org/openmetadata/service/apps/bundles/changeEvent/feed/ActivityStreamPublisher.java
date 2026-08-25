@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -86,6 +87,16 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
         return;
       }
 
+      // Hard delete (soft delete emits ENTITY_SOFT_DELETED): purge the entity's activity instead of
+      // recording a "deleted" event. Keyed by entity id so an entity later recreated with the same
+      // fully qualified name does not inherit the dead entity's history (#28923). This runs after
+      // the delete transaction commits, so it also supersedes this trailing delete event itself.
+      if (changeEvent.getEventType() == EventType.ENTITY_DELETED) {
+        activityStreamRepository.deleteByEntity(
+            changeEvent.getEntityType(), changeEvent.getEntityId());
+        return;
+      }
+
       // Skip if no entity in the change event
       if (changeEvent.getEntity() == null) {
         return;
@@ -101,9 +112,9 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
         return;
       }
 
-      // Create activity events from the change event
       List<ActivityEvent> events =
           activityStreamRepository.createFieldEventsFromChangeEvent(changeEvent, entity);
+      activityStreamRepository.insertBatch(events);
 
       // Broadcast via WebSocket for real-time updates
       for (ActivityEvent event : events) {

@@ -33,6 +33,7 @@ import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
+import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
@@ -63,16 +64,61 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
+    // Forward the server-configured response type; without it the oidc-client
+    // UserManager silently drops the field and every provider requests the
+    // implicit 'id_token' flow regardless of configuration (#29597).
+    response_type: responseType ?? 'id_token',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
     userStore: oidcTokenStorage,
     stateStore: oidcTokenStorage,
+  };
+};
+
+/**
+ * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
+ * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
+ * but the popup uses the SAME configured callback URL the real login uses — so
+ * the test exercises the actual registered redirect URI and never requires the
+ * admin to register an extra one. Isolation is achieved by diverting the popup
+ * at the callback (see isSsoTestLoginPopup), not by using a separate route.
+ */
+export const getCandidateUserManagerConfig = (
+  authClient: AuthenticationConfigurationWithScope
+): Record<string, string | boolean | WebStorageStateStore> => {
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
+  const testStore = new WebStorageStateStore({
+    store: globalThis.localStorage,
+    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
+  });
+
+  return {
+    authority,
+    client_id: clientId,
+    redirect_uri: getRedirectUri(callbackUrl),
+    response_type: responseType ?? 'id_token',
+    scope: scope || 'openid email profile',
+    loadUserInfo: false,
+    userStore: testStore,
+    stateStore: testStore,
   };
 };
 
@@ -147,6 +193,7 @@ export const getAuthConfig = (
       };
 
       break;
+    // eslint-disable-next-line sonarjs/no-duplicated-branches -- distinct auth provider; config kept separate
     case AuthProvider.AwsCognito:
       config = {
         authority,
@@ -154,7 +201,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: 'code',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,

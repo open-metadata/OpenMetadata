@@ -57,19 +57,21 @@ test.describe('Glossary P3 Tests', () => {
         .locator(descriptionBox)
         .fill('Glossary with unicode characters');
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            res.url().endsWith('/api/v1/glossaries') &&
+            res.request().method() === 'POST'
+        ),
+        // A stale navigation toast can overlap this centered button. Keyboard
+        // activation exercises the same form submission without a pointer race.
+        page.getByTestId('save-glossary').press('Enter'),
+      ]);
+      glossary.responseData = await response.json();
+      expect(response.ok()).toBe(true);
 
-      try {
-        const response = await glossaryResponse;
-        glossary.responseData = await response.json();
-
-        // Verify glossary was created
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-      } catch {
-        // Some systems may not support unicode in names - test passes if we get here
-        expect(true).toBe(true);
-      }
+      // Verify glossary was created
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
     } finally {
       if (glossary.responseData) {
         await glossary.delete(apiContext);
@@ -213,9 +215,8 @@ test.describe('Glossary P3 Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Search should not crash - either shows results, table, or empty state
-      const table = page.getByTestId('glossary-term-table');
+      const table = page.getByTestId('glossary-terms-table');
       const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-      const tableRows = page.locator('tbody .ant-table-row');
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
       await page.waitForTimeout(1000);
@@ -390,25 +391,18 @@ test.describe('Glossary P3 Tests', () => {
   test('should show loading state during navigation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
     try {
       await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-      // Navigate to glossary page
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      // The page should eventually load without errors
-
-      // Verify page is loaded (loader should be gone)
-      const loader = page.getByTestId('loader');
-      const skeleton = page.locator('.ant-skeleton');
-
-      // Either loader/skeleton is not visible, or content is loaded
-      const isLoaded =
-        (await loader.isVisible().catch(() => false)) === false ||
-        (await skeleton.isVisible().catch(() => false)) === false;
-
-      expect(isLoaded).toBeTruthy();
+      await expect(page.getByTestId('glossary-terms-table')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -677,8 +671,8 @@ test.describe('Glossary P3 Tests', () => {
       // Wait for page to load
 
       // Page should be functional - either shows table or empty state
-      const table = page.getByTestId('glossary-term-table');
-      const pageContent = page.locator('.glossary-details');
+      const table = page.getByTestId('glossary-terms-table');
+      const pageContent = page.getByTestId('glossary-details');
 
       const isLoaded =
         (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||
@@ -687,14 +681,16 @@ test.describe('Glossary P3 Tests', () => {
       // If there are terms, try to expand some levels
       if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
         for (let i = 0; i < Math.min(termIds.length, 2); i++) {
-          const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+          const expandIcon = page
+            .locator('[data-testid="expand-icon"]')
+            .first();
 
           if (
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await expandIcon.click();
             await page
-              .locator('.ant-table-row')
+              .locator('tr[data-row-key]')
               .first()
               .waitFor({ state: 'visible' });
           } else {
@@ -789,7 +785,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
   }) => {
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
@@ -839,7 +837,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent term', async ({
     browser,
   }) => {
-    const { apiContext, page, afterAction } = await createNewPage(browser);
+    const { apiContext, page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {

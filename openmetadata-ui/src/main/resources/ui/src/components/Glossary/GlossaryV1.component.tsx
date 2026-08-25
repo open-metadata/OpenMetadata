@@ -37,16 +37,15 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../utils/CommonUtils';
-import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import DeleteModal from '../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
@@ -54,7 +53,6 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
-
 const GlossaryV1 = ({
   isGlossaryActive,
   selectedData,
@@ -364,16 +362,21 @@ const GlossaryV1 = ({
   };
 
   const initializeGlossary = async () => {
-    const permission = await initPermissions();
-    if (permission?.ViewAll || permission?.ViewBasic) {
-      // Only load terms if we're viewing a glossary term, not a glossary
-      // GlossaryTermTab handles pagination for glossaries
-      if (!isGlossaryActive) {
-        loadGlossaryTerms();
+    try {
+      const permission = await initPermissions();
+      if (permission?.ViewAll || permission?.ViewBasic) {
+        // Only load terms if we're viewing a glossary term, not a glossary
+        // GlossaryTermTab handles pagination for glossaries
+        if (!isGlossaryActive) {
+          loadGlossaryTerms();
+        } else {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
-    } else {
+    } catch {
+      // Permission fetch already showed an error toast; ensure loading state is cleared
       setIsLoading(false);
     }
   };
@@ -482,13 +485,14 @@ const GlossaryV1 = ({
       </GenericProvider>
 
       {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={selectedData.name}
+          message={t('message.delete-entity-message', {
+            entity: selectedData.name,
+          })}
+          open={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onDelete={handleDelete}
         />
       )}
 

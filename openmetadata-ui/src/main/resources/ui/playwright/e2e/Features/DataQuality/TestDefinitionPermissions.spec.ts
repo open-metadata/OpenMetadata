@@ -86,9 +86,11 @@ const test = base.extend<{
   viewOnlyPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -362,10 +364,9 @@ test.describe(
       await expect(editButton).toBeDisabled();
 
       // Verify enabled switch exists and can be toggled
-      const row = dataStewardPage.locator(
-        `[data-row-key="${systemTestDef.id}"]`
+      const enabledSwitch = dataStewardPage.getByTestId(
+        `enable-switch-${systemTestDef.name}`
       );
-      const enabledSwitch = row.getByRole('switch');
 
       await expect(enabledSwitch).toBeVisible();
       await expect(enabledSwitch).toBeEnabled();

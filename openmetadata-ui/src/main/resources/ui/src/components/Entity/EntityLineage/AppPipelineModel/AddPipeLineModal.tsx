@@ -25,10 +25,9 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchQuery } from '../../../../rest/searchAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import Fqn from '../../../../utils/Fqn';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -107,8 +106,6 @@ const AddPipeLineModal = ({
 
       return <ErrorPlaceHolder />;
     }
-
-    return;
   }, [selectedEdge, edgeSearchValue]);
 
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
@@ -161,7 +158,6 @@ const AddPipeLineModal = ({
 
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
-          const icon = searchClassBase.getEntityIcon(item.type);
           const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
@@ -171,8 +167,18 @@ const AddPipeLineModal = ({
               })}
               data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
               key={item.id}
-              onClick={() => setEdgeSelection(item)}>
-              <div className="flex-center mention-icon-image">{icon}</div>
+              role="button"
+              tabIndex={0}
+              onClick={() => setEdgeSelection(item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setEdgeSelection(item);
+                }
+              }}>
+              {searchClassBase.getEntityIconWithBg(
+                item.type,
+                EntityIconSize.Size14
+              )}
               <div>
                 <div className="d-flex flex-wrap">
                   <span className="truncate breadcrumb">{breadcrumb}</span>

@@ -40,4 +40,5 @@ export enum SidebarItem {
   ARTICLES = 'articles',
   DOCUMENTS = 'documents',
   DASHBOARD = 'dashboard',
+  MEMORIES = 'memories',
 }

@@ -35,6 +35,7 @@ export const getInitOptions = (): InitOptions => {
     },
     interpolation: {
       escapeValue: false,
+      defaultVariables: { brandName: process.env.BRAND_NAME ?? 'OpenMetadata' },
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console
@@ -80,4 +81,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
   ar: SupportedLocales.العربية,
+  sv: SupportedLocales.Svenska,
 };

@@ -50,6 +50,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -73,6 +74,9 @@ public class TestDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find tag definitions and load classification from the json file, if necessary
     List<TestDefinition> testDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
@@ -101,7 +105,10 @@ public class TestDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class)))
+                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "entityType is not one of the TestDefinitionEntityType values")
       })
   public ResultList<TestDefinition> list(
       @Context UriInfo uriInfo,
@@ -163,9 +170,7 @@ public class TestDefinitionResource
           @QueryParam("enabled")
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
-    if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
-    }
+    TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
     }

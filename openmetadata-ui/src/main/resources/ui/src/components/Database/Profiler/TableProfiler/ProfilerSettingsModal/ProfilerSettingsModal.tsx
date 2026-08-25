@@ -32,6 +32,7 @@ import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
+  lazy,
   Reducer,
   useCallback,
   useEffect,
@@ -46,7 +47,6 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
-  PROFILER_METRIC,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -63,20 +63,25 @@ import {
   getTableProfilerConfig,
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
-import { reducerWithoutAction } from '../../../../../utils/CommonUtils';
+import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
+import profilerMetricsClassBase from '../../../../../utils/ProfilerMetricsClassBase';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
-import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../SchemaEditor/SchemaEditor'))
+);
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -131,12 +136,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
+    const profilerMetrics = profilerMetricsClassBase.getProfilerMetricOptions();
     const metricsOptions = [
       {
         title: t('label.all'),
         value: 'all',
         key: 'all',
-        children: PROFILER_METRIC.map((metric) => ({
+        children: profilerMetrics.map((metric) => ({
           title: startCase(metric),
           value: metric,
           key: metric,
@@ -485,6 +491,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               name="profileSampleType">
               <Select
                 allowClear
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the first field when the settings modal opens
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"

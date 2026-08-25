@@ -24,8 +24,8 @@ import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { hasEditAccess } from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
@@ -93,6 +93,7 @@ const TeamsHeadingLabel = ({
         // TeamDetailsV1 component collapsible panel
         <div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
+          role="presentation"
           onClick={(e) => e.stopPropagation()}>
           <Input
             className="flex-1 w-min-0"

@@ -15,9 +15,9 @@
 
 .versions-list-container {
   .version-pricing-reached {
-    background: #f3f7fd;
-    border: 1px solid #349dea;
-    border-radius: 10px;
+    background: var(--om-legacy-color-f3f7fd);
+    border: 1px solid var(--om-legacy-color-349dea);
+    border-radius: var(--om-radius-10);
     text-align: center;
     padding: @padding-md;
     position: absolute;
@@ -25,15 +25,15 @@
     box-sizing: border-box;
 
     button {
-      margin-top: 30px;
+      margin-top: var(--om-space-30);
     }
   }
 
   .version-hidden {
     mask-image: linear-gradient(
       to bottom,
-      rgba(0, 0, 0, 0.9),
-      rgba(0, 0, 0, 0)
+      var(--om-legacy-color-0-0-0-0-9),
+      var(--om-legacy-color-0-0-0-0)
     );
     filter: blur(2px);
 

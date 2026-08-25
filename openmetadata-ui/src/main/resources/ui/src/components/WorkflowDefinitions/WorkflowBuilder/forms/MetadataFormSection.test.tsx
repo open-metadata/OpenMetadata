@@ -35,18 +35,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div data-testid={dataTestId}>
-        {label && (
-          <>
-            <label>{label}</label>
-            {isRequired && <span> *</span>}
-          </>
-        )}
-        <input
-          disabled={isDisabled}
-          role="textbox"
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
+        <label htmlFor={dataTestId}>
+          {label && (
+            <>
+              {label}
+              {isRequired && <span> *</span>}
+            </>
+          )}
+          <input
+            aria-label={label}
+            disabled={isDisabled}
+            id={dataTestId}
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </label>
       </div>
     );
   };
@@ -72,38 +75,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div data-testid={dataTestId}>
-        {label && <label>{label}</label>}
-        <textarea
-          disabled={isDisabled}
-          placeholder={placeholder}
-          rows={rows}
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
+        <label htmlFor={dataTestId}>
+          {label}
+          <textarea
+            aria-label={label}
+            disabled={isDisabled}
+            id={dataTestId}
+            placeholder={placeholder}
+            rows={rows}
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </label>
       </div>
     );
   };
 
   return { Input, TextArea };
 });
-
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  useTheme: () => ({
-    palette: {
-      allShades: {
-        gray: {
-          300: '#d1d5db',
-          700: '#374151',
-          900: '#111827',
-        },
-      },
-      error: {
-        main: '#ef4444',
-      },
-    },
-  }),
-}));
 
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({
   WorkflowModeProvider: jest

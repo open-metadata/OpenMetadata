@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/entity/domain.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -35,7 +35,13 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
+import {
+  domainAssetsCountQueryKey,
+  domainWidgetSearchQueryKey,
+  DOMAIN_WIDGET_STALE_TIME,
+} from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import {
@@ -78,15 +84,26 @@ const DomainsWidget = ({
       const sortOrder = getSortOrder(selectedSortBy);
 
       const [res, counts] = await Promise.all([
-        searchQuery({
-          query: '',
-          pageNumber: INITIAL_PAGING_VALUE,
-          pageSize: PAGE_SIZE_MEDIUM,
-          sortField,
-          sortOrder,
-          searchIndex: SearchIndex.DOMAIN,
+        queryClient.fetchQuery({
+          queryKey: domainWidgetSearchQueryKey(selectedSortBy),
+          queryFn: () =>
+            searchQuery({
+              query: '',
+              pageNumber: INITIAL_PAGING_VALUE,
+              pageSize: PAGE_SIZE_MEDIUM,
+              sortField,
+              sortOrder,
+              searchIndex: SearchIndex.DOMAIN,
+            }),
+          staleTime: DOMAIN_WIDGET_STALE_TIME,
+          retry: false,
         }),
-        getAllDomainsWithAssetsCount(),
+        queryClient.fetchQuery({
+          queryKey: domainAssetsCountQueryKey,
+          queryFn: getAllDomainsWithAssetsCount,
+          staleTime: DOMAIN_WIDGET_STALE_TIME,
+          retry: false,
+        }),
       ]);
 
       const domains = res?.hits?.hits.map((hit) => hit._source);
@@ -125,6 +142,9 @@ const DomainsWidget = ({
   }, [fetchDomains]);
 
   const handleSortByClick = useCallback((key: string) => {
+    queryClient.invalidateQueries({
+      queryKey: domainWidgetSearchQueryKey(key),
+    });
     setSelectedSortBy(key);
   }, []);
 
@@ -208,7 +228,7 @@ const DomainsWidget = ({
         </div>
       </div>
     ),
-    [domains, isFullSize]
+    [domains, isFullSize, assetsCounts, handleDomainClick]
   );
 
   const showWidgetFooterMoreButton = useMemo(
@@ -234,7 +254,7 @@ const DomainsWidget = ({
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         icon={
-          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+          <DomainIcon className="domains-widget-globe" height={24} width={24} />
         }
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}

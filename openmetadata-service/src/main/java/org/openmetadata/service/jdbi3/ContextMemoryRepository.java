@@ -17,6 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,14 +34,34 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
+ * privacy is enforced at query time by {@link
+ * org.openmetadata.service.search.security.ContextMemorySearchVisibility}. Indexing only org-wide
+ * memories would hide a user's own PRIVATE memories and the SHARED ones they are a principal of
+ * from {@code GET /contextCenter/memories}, which serves the ContextCenter listing from search
+ * whenever it is given a query, filter, sort or offset.
+ */
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
+
+  static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
+  static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  private static final String PATCH_FIELDS =
+      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+  private static final String UPDATE_FIELDS =
+      FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES + ",rootMemory,parentMemory";
+
+  static {
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+  }
 
   public ContextMemoryRepository() {
     super(
@@ -45,19 +69,161 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         Entity.CONTEXT_MEMORY,
         ContextMemory.class,
         Entity.getCollectionDAO().contextMemoryDAO(),
-        "",
-        "");
-    supportsSearch = false;
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
   protected void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
-    // ContextMemory stores its fields in the entity JSON for now.
+    if (fields.contains(FIELD_PRIMARY_ENTITY)) {
+      entity.setPrimaryEntity(getPrimaryEntity(entity));
+    }
+    if (fields.contains(FIELD_RELATED_ENTITIES)) {
+      entity.setRelatedEntities(getRelatedEntities(entity));
+    }
   }
 
   @Override
   protected void clearFields(ContextMemory entity, Fields fields) {
-    // ContextMemory stores its fields in the entity JSON for now.
+    if (!fields.contains(FIELD_PRIMARY_ENTITY)) {
+      entity.setPrimaryEntity(null);
+    }
+    if (!fields.contains(FIELD_RELATED_ENTITIES)) {
+      entity.setRelatedEntities(null);
+    }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<ContextMemory> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetPrimaryEntities(entities, fields);
+    fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (ContextMemory entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetPrimaryEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_PRIMARY_ENTITY)) {
+      return;
+    }
+    Map<UUID, EntityReference> primaryById = batchFetchPrimaryEntities(entities);
+    entities.forEach(memory -> memory.setPrimaryEntity(primaryById.get(memory.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchPrimaryEntities(List<ContextMemory> entities) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatchWithRelations(
+                entityListToStrings(entities),
+                Entity.CONTEXT_MEMORY,
+                List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    Map<UUID, EntityReference> appliedTo = new HashMap<>();
+    Map<UUID, EntityReference> hasFallback = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      indexPrimaryRecord(record, refById, appliedTo, hasFallback);
+    }
+    hasFallback.forEach(appliedTo::putIfAbsent);
+    return appliedTo;
+  }
+
+  private void indexPrimaryRecord(
+      CollectionDAO.EntityRelationshipObject record,
+      Map<String, EntityReference> refById,
+      Map<UUID, EntityReference> appliedTo,
+      Map<UUID, EntityReference> hasFallback) {
+    EntityReference ref = refById.get(record.getFromId());
+    if (ref == null) {
+      return;
+    }
+    UUID memoryId = UUID.fromString(record.getToId());
+    if (record.getRelation() == Relationship.APPLIED_TO.ordinal()) {
+      appliedTo.putIfAbsent(memoryId, ref);
+    } else if (!Entity.DOMAIN.equals(ref.getType())) {
+      hasFallback.putIfAbsent(memoryId, ref);
+    }
+  }
+
+  private void fetchAndSetRelatedEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_RELATED_ENTITIES)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> relatedById = batchFetchRelatedEntities(entities);
+    entities.forEach(
+        memory ->
+            memory.setRelatedEntities(
+                relatedById.getOrDefault(memory.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<ContextMemory> entities) {
+    Map<UUID, List<EntityReference>> relatedById = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.RELATED_TO.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        relatedById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    relatedById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    return relatedById;
+  }
+
+  private Map<String, EntityReference> resolveReferencesByType(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
+      idsByType
+          .computeIfAbsent(fromType, type -> new HashSet<>())
+          .add(UUID.fromString(record.getFromId()));
+    }
+    Map<String, EntityReference> refById = new HashMap<>();
+    idsByType.forEach(
+        (type, ids) ->
+            Entity.getEntityReferencesByIds(type, new ArrayList<>(ids), Include.NON_DELETED)
+                .forEach(ref -> refById.put(ref.getId().toString(), ref)));
+    return refById;
+  }
+
+  private EntityReference getPrimaryEntity(ContextMemory entity) {
+    List<EntityReference> refs =
+        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.APPLIED_TO, null);
+    if (nullOrEmpty(refs)) {
+      // Fallback for data written before the APPLIED_TO migration. Filter out domain refs
+      // because domains use the same HAS relationship type (domain --HAS--> contextMemory).
+      refs =
+          findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null).stream()
+              .filter(r -> !Entity.DOMAIN.equals(r.getType()))
+              .toList();
+    }
+    return nullOrEmpty(refs) ? null : refs.getFirst();
+  }
+
+  private List<EntityReference> getRelatedEntities(ContextMemory entity) {
+    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }
 
   @Override
@@ -158,7 +324,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           entity.getId(),
           entity.getPrimaryEntity().getType(),
           Entity.CONTEXT_MEMORY,
-          Relationship.HAS);
+          Relationship.APPLIED_TO);
     }
 
     for (var relatedEntity : listOrEmpty(entity.getRelatedEntities())) {
@@ -257,6 +423,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
       recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
       recordChange("sourceType", original.getSourceType(), updated.getSourceType());
+      recordChange("pinned", original.getPinned(), updated.getPinned());
       recordChange(
           "sourceConversation", original.getSourceConversation(), updated.getSourceConversation());
       recordChange(
@@ -284,15 +451,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       // the specific changed refs (never a blanket delete), so the framework's
       // domain --HAS--> memory edge is left intact.
       updateFromRelationships(
-          "primaryEntity",
+          FIELD_PRIMARY_ENTITY,
           Entity.CONTEXT_MEMORY,
           asRefList(original.getPrimaryEntity()),
           asRefList(updated.getPrimaryEntity()),
-          Relationship.HAS,
+          Relationship.APPLIED_TO,
           Entity.CONTEXT_MEMORY,
           original.getId());
       updateFromRelationships(
-          "relatedEntities",
+          FIELD_RELATED_ENTITIES,
           Entity.CONTEXT_MEMORY,
           listOrEmpty(original.getRelatedEntities()),
           listOrEmpty(updated.getRelatedEntities()),

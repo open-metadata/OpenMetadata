@@ -12,85 +12,264 @@
  */
 
 import {
+  Box,
+  Button,
   ButtonUtility,
   Card,
+  Checkbox,
+  Dot,
   Dropdown,
+  EmptyPlaceholder,
+  FileIcon,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Download01, Share07, Trash01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { Check, ChevronRight } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { FC, UIEvent, useMemo, useState } from 'react';
+import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { FILE_TYPE_STYLES } from '../../../constants/ContextCenter.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
+import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
+import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
-  DocFile,
-  DocFileType,
   DocumentsViewProps,
+  FileActionsProps,
+  FileRowProps,
+  FolderPickerMenuProps,
+  ListHeaderProps,
 } from './DocumentsView.interface';
 
-const FileTypeBadge: FC<{ fileType: DocFileType }> = ({ fileType }) => {
-  const { bg, label, text } = FILE_TYPE_STYLES[fileType || 'other'];
+/* ---------------------------------------------------------------
+   Shared folder list — renders a popover menu of folder choices.
+   Used both as a submenu inside FileActions and as a standalone
+   dropdown from the bulk Move button in ListHeader.
+--------------------------------------------------------------- */
 
-  return (
-    <span
-      className={`tw:inline-flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:text-xs tw:font-bold tw:shrink-0 ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-};
+const FOLDER_PICKER_SCROLL_THRESHOLD = 24;
 
-// ─── Actions dropdown ─────────────────────────────────────────────────────────
-
-interface FileActionsProps {
-  canDelete?: boolean;
-  file: DocFile;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-}
-
-const FileActions: FC<FileActionsProps> = ({
-  canDelete,
-  file,
-  onDeleteFile,
-  onShareFile,
+const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
+  folders,
+  currentFolderId,
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
+  onPick,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
+  const handleMenuScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (
+      hasMoreFolders &&
+      !isLoadingMoreFolders &&
+      scrollHeight - scrollTop - clientHeight < FOLDER_PICKER_SCROLL_THRESHOLD
+    ) {
+      onLoadMoreFolders?.();
+    }
+  };
+
+  if (folders.length === 0) {
+    return (
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-utility-gray-400">
+        {t('label.no-entity', { entity: t('label.folder-plural') })}
+      </Typography>
+    );
+  }
+
+  return (
+    <Dropdown.Menu
+      className="tw:max-h-48 tw:overflow-y-auto"
+      onAction={(key) => onPick(key as string)}
+      onScroll={handleMenuScroll}>
+      {folders.map((folder) => {
+        const isCurrent = folder.id === currentFolderId;
+
+        return (
+          <Dropdown.Item
+            className={isCurrent ? 'tw:[&>div]:bg-utility-blue-50' : undefined}
+            data-testid={`move-to-folder-${folder.id}`}
+            id={folder.id}
+            key={folder.id}
+            textValue={folder.name}>
+            {() => (
+              <Box align="center" className="tw:w-full" justify="between">
+                <Box align="center" gap={2}>
+                  <FolderIcon
+                    aria-hidden="true"
+                    className="tw:size-4 tw:shrink-0"
+                  />
+                  <div className="tw:max-w-40">
+                    <Typography ellipsis size="text-sm">
+                      {folder.name}
+                    </Typography>
+                  </div>
+                </Box>
+                {isCurrent && (
+                  <Check
+                    aria-hidden="true"
+                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    strokeWidth={2}
+                  />
+                )}
+              </Box>
+            )}
+          </Dropdown.Item>
+        );
+      })}
+      {isLoadingMoreFolders && (
+        <Box
+          align="center"
+          className="tw:px-3 tw:py-2"
+          data-testid="folder-picker-loading-more"
+          justify="center">
+          <Typography className="tw:text-quaternary" size="text-xs">
+            {t('label.loading')}
+          </Typography>
+        </Box>
+      )}
+    </Dropdown.Menu>
+  );
+};
+
+/* ---------------------------------------------------------------
+   Per-row actions dropdown (Share / Move to Folder / Delete)
+--------------------------------------------------------------- */
+
+const FileActions: FC<FileActionsProps> = ({
+  canDelete,
+  canEdit,
+  file,
+  folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
+  onDeleteFile,
+  onFileMoved,
+  onLoadMoreFolders,
+}) => {
+  const { t } = useTranslation();
+  const [isMoving, setIsMoving] = useState(false);
+
+  const handleMoveToFolder = async (folderId: string) => {
+    try {
+      setIsMoving(true);
+      if (folderId === file.folder?.id) {
+        await moveFileToRoot(file.id);
+        onFileMoved?.(file, null);
+        showSuccessToast(
+          t('message.entity-removed-from-folder', {
+            entity: t('label.document'),
+          })
+        );
+      } else {
+        await moveFileToFolder(file.id, folderId);
+        onFileMoved?.(file, folderId);
+        showSuccessToast(
+          t('message.entity-moved-successfully', {
+            entity: t('label.document'),
+          })
+        );
+      }
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
+
   return (
     <Dropdown.Root>
-      <Tooltip
-        title={t('label.manage-entity', { entity: t('label.document') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
-        </TooltipTrigger>
-      </Tooltip>
-      <Dropdown.Popover>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.document') })}
+      />
+      <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
-            if (key === 'share') {
-              onShareFile?.(file);
-            } else if (key === 'delete') {
+            if (key === 'delete') {
               onDeleteFile?.(file);
             }
           }}>
-          <Dropdown.Item
-            data-testid="share-btn"
-            icon={Share07}
-            id="share"
-            label={t('label.share-file')}
-          />
+          {canEdit && (
+            <SubmenuTrigger>
+              <Dropdown.Item
+                data-testid="move-btn"
+                isDisabled={isMoving || folders.length === 0}>
+                {() => (
+                  <Box align="center" justify="between">
+                    <Box align="center" gap={2}>
+                      <MoveFolderIcon
+                        className="tw:text-secondary"
+                        height={20}
+                        width={20}
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:grow tw:text-secondary">
+                        {t('label.move-to-folder')}
+                      </Typography>
+                    </Box>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                      strokeWidth={2}
+                    />
+                  </Box>
+                )}
+              </Dropdown.Item>
+              <Dropdown.Popover
+                className="tw:w-52"
+                offset={-6}
+                placement="right top">
+                <FolderPickerMenu
+                  currentFolderId={file.folder?.id}
+                  folders={folders}
+                  hasMoreFolders={hasMoreFolders}
+                  isLoadingMoreFolders={isLoadingMoreFolders}
+                  onLoadMoreFolders={onLoadMoreFolders}
+                  onPick={handleMoveToFolder}
+                />
+              </Dropdown.Popover>
+            </SubmenuTrigger>
+          )}
+
           {canDelete && (
-            <Dropdown.Item
-              data-testid="delete-btn"
-              icon={Trash01}
-              id="delete"
-              label={t('label.delete')}
-            />
+            <Dropdown.Item data-testid="delete-btn" id="delete">
+              <Box align="center" gap={2}>
+                <TrashIcon
+                  aria-hidden="true"
+                  className="tw:shrink-0 tw:text-error-primary"
+                  height={20}
+                  width={20}
+                />
+                <Typography
+                  ellipsis
+                  className="tw:grow tw:text-error-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {t('label.delete')}
+                </Typography>
+              </Box>
+            </Dropdown.Item>
           )}
         </Dropdown.Menu>
       </Dropdown.Popover>
@@ -98,156 +277,461 @@ const FileActions: FC<FileActionsProps> = ({
   );
 };
 
+/* ---------------------------------------------------------------
+   Skeleton loader for a single file row
+--------------------------------------------------------------- */
 const FileRowSkeleton: FC = () => (
-  <div className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary">
-    {/* File type badge */}
+  <Box
+    align="center"
+    className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+    data-testid="document-row-skeleton"
+    gap={4}>
+    <Skeleton
+      className="tw:shrink-0"
+      height="16px"
+      variant="rounded"
+      width="16px"
+    />
     <Skeleton
       className="tw:shrink-0"
       height="40px"
       variant="rounded"
       width="40px"
     />
-
-    {/* File details */}
-    <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
+    <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
       <Skeleton height="14px" variant="rounded" width="45%" />
-
-      <div className="tw:flex tw:items-center tw:gap-2">
+      <Box align="center" gap={2}>
         <Skeleton height="12px" variant="rounded" width="56px" />
         <Skeleton height="12px" variant="rounded" width="72px" />
         <Skeleton height="12px" variant="rounded" width="96px" />
-      </div>
-    </div>
-
-    {/* Actions */}
-    <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+      </Box>
+    </Box>
+    <Box align="center" className="tw:shrink-0" gap={2}>
       <Skeleton height="32px" variant="rounded" width="32px" />
       <Skeleton height="32px" variant="rounded" width="32px" />
-    </div>
-  </div>
+    </Box>
+  </Box>
 );
 
-// ─── File row ─────────────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------
+   List header — normal count view OR bulk-action bar
+--------------------------------------------------------------- */
 
-interface FileRowProps {
-  canDelete?: boolean;
-  file: DocFile;
-  onDownload?: (file: DocFile) => void;
-  onShareFile?: (file: DocFile) => void;
-  onDeleteFile?: (file: DocFile) => void;
-}
-
-const FileRow: FC<FileRowProps> = ({
+const ListHeader: FC<ListHeaderProps> = ({
   canDelete,
-  file,
-  onDeleteFile,
-  onDownload,
-  onShareFile,
+  canEdit,
+  folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
+  selectedCount,
+  totalFileCount,
+  onClear,
+  onBulkDelete,
+  onBulkMove,
+  onBulkDownload,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
-  return (
-    <div
-      className="tw:flex tw:items-center tw:gap-4 tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
-      data-testid={`document-row-${file.id}`}>
-      <FileTypeBadge fileType={file.fileType} />
-
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <Typography className="tw:truncate" size="text-sm" weight="medium">
-          {file.name}
+  if (selectedCount > 0) {
+    return (
+      <Box
+        align="center"
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50"
+        gap={2}>
+        <Typography
+          className="tw:text-utility-blue-700"
+          size="text-sm"
+          weight="semibold">
+          {selectedCount} {t('label.selected-lowercase')}
         </Typography>
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <Typography className="tw:text-gray-500" size="text-xs">
-            {file.sizeLabel}
+
+        <Button
+          className="tw:py-1.5"
+          color="tertiary"
+          data-testid="clear-selection-btn"
+          size="sm"
+          onClick={onClear}>
+          {t('label.clear')}
+        </Button>
+
+        <span className="tw:flex-1" />
+
+        <Button
+          className="tw:py-1.5"
+          color="tertiary"
+          data-testid="bulk-download-btn"
+          iconLeading={<DownloadIcon height={18} width={18} />}
+          size="sm"
+          onClick={onBulkDownload}>
+          {t('label.download')}
+        </Button>
+
+        {canEdit && (
+          <Dropdown.Root>
+            <Button
+              className="tw:py-1.5"
+              color="tertiary"
+              data-testid="bulk-move-btn"
+              iconLeading={
+                <FolderIcon height={18} strokeWidth={2} width={18} />
+              }
+              size="sm">
+              {t('label.move')}
+            </Button>
+            <Dropdown.Popover className="tw:w-52" placement="bottom end">
+              <FolderPickerMenu
+                folders={folders}
+                hasMoreFolders={hasMoreFolders}
+                isLoadingMoreFolders={isLoadingMoreFolders}
+                onLoadMoreFolders={onLoadMoreFolders}
+                onPick={(folderId) => onBulkMove?.(folderId)}
+              />
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        )}
+
+        {canDelete && (
+          <Button
+            className="tw:py-1.5"
+            color="tertiary-destructive"
+            data-testid="bulk-delete-btn"
+            iconLeading={<TrashIcon height={16} width={16} />}
+            size="sm"
+            onClick={onBulkDelete}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      align="center"
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
+      <Typography
+        className="tw:text-quaternary"
+        data-testid="documents-view-file-count"
+        size="text-xs"
+        weight="semibold">
+        {totalFileCount} {t('label.file-plural').toLowerCase()}
+      </Typography>
+      <span className="tw:flex-1" />
+      <Typography
+        className="tw:text-quaternary"
+        size="text-xs"
+        weight="semibold">
+        {t('label.sorted-by-recently-uploaded')}
+      </Typography>
+    </Box>
+  );
+};
+
+/* ---------------------------------------------------------------
+   Single file row
+--------------------------------------------------------------- */
+const FileRow: FC<FileRowProps> = ({
+  canDelete,
+  canEdit,
+  file,
+  folders,
+  hasMoreFolders,
+  isActive,
+  isLoadingMoreFolders,
+  isSelected,
+  onDeleteFile,
+  onDownload,
+  onFileMoved,
+  onPreview,
+  onSelectFile,
+  onLoadMoreFolders,
+}) => {
+  const { t } = useTranslation();
+
+  const { folderName, fileName, formattedFileSize, relativeTime, rowUrl } =
+    useMemo(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('document', file.id);
+      const url = `${window.location.origin}${
+        window.location.pathname
+      }?${params.toString()}`;
+
+      return {
+        folderName: getEntityName(file.folder),
+        fileName: getEntityName(file),
+        formattedFileSize: formatBytes(file.fileSize),
+        relativeTime: getShortRelativeTime(file.updatedAt),
+        rowUrl: url,
+      };
+    }, [file]);
+
+  return (
+    <Box
+      align="center"
+      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+        isActive
+          ? 'tw:bg-utility-blue-50'
+          : 'tw:bg-primary hover:tw:bg-secondary_subtle'
+      }`}
+      data-testid={`document-row-${file.id}`}
+      gap={4}
+      role="button"
+      tabIndex={0}
+      onClick={() => onPreview?.(file)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onPreview?.(file);
+        }
+      }}>
+      <Checkbox
+        aria-label={fileName}
+        data-testid="document-checkbox"
+        isSelected={isSelected}
+        onChange={() => onSelectFile?.(file.id)}
+        onClick={(e) => (e as React.MouseEvent).stopPropagation()}
+      />
+
+      <FileIcon
+        className="tw:size-8 tw:shrink-0"
+        theme="light"
+        type={file.fileExtension ?? ''}
+        variant="default"
+      />
+
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography
+          ellipsis
+          data-testid="document-name"
+          size="text-sm"
+          weight="medium">
+          {fileName}
+        </Typography>
+        <Box align="center" gap={2} wrap="wrap">
+          <Typography
+            className="tw:text-quaternary"
+            data-testid="document-size"
+            size="text-xs">
+            {formattedFileSize}
           </Typography>
           {file.updatedBy && (
             <>
-              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-                &middot;
-              </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography
+                className="tw:text-quaternary"
+                data-testid="document-updated-by"
+                size="text-xs">
                 {file.updatedBy}
               </Typography>
             </>
           )}
           {file.updatedAt && (
             <>
-              <span className="tw:text-gray-500 tw:leading-none tw:select-none">
-                &middot;
-              </span>
-              <Typography className="tw:text-gray-500" size="text-xs">
-                {getShortRelativeTime(file.updatedAt)}
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography
+                className="tw:text-quaternary"
+                data-testid="document-updated-at"
+                size="text-xs">
+                {relativeTime}
               </Typography>
             </>
           )}
-        </div>
-      </div>
+          {folderName && (
+            <>
+              <Dot className="tw:text-quaternary" size="micro" />
+              <Typography
+                className="tw:text-quaternary"
+                data-testid="document-folder-name"
+                size="text-xs">
+                {folderName}
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Box>
 
-      <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
-        <Tooltip title={t('label.download')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="secondary"
-              icon={
-                <Download01
-                  className="tw:text-gray-500"
-                  height={16}
-                  width={16}
-                />
-              }
-              onClick={() => onDownload?.(file)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
+      <Box
+        align="center"
+        className="tw:shrink-0"
+        gap={2}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}>
+        <ButtonUtility
+          className="tw:ml-1.5"
+          color="tertiary"
+          data-testid="download-btn"
+          icon={<DownloadIcon height={20} width={20} />}
+          tooltip={t('label.download')}
+          onClick={() => onDownload?.(file)}
+        />
+        <CopyLinkButton url={rowUrl}>
+          <CopyIcon aria-hidden="true" height={20} width={20} />
+        </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
+          canEdit={canEdit}
           file={file}
+          folders={folders}
+          hasMoreFolders={hasMoreFolders}
+          isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
-          onShareFile={onShareFile}
+          onFileMoved={onFileMoved}
+          onLoadMoreFolders={onLoadMoreFolders}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
+/* ---------------------------------------------------------------
+   Loading state — 8 skeleton rows
+--------------------------------------------------------------- */
 const DocumentViewLoading = () =>
-  Array.from({ length: 8 }).map((_, idx) => <FileRowSkeleton key={idx} />);
+  Array.from({ length: 8 }, (_, i) => <FileRowSkeleton key={i} />);
 
-// ─── Main component ───────────────────────────────────────────────────────────
+/* ---------------------------------------------------------------
+   Main DocumentsView
+--------------------------------------------------------------- */
+const SCROLL_THRESHOLD = 100;
 
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
+  canEdit,
   data,
+  folders,
+  hasMoreFolders,
+  isLoadingMoreFolders,
+  totalFileCount,
   isLoading,
+  isLoadingMore,
+  previewFileId,
+  selectedIds,
+  selectedFolderName,
+  onBulkDelete,
+  onBulkDownload,
+  onBulkMove,
   onDeleteFile,
   onDownload,
-  onShareFile,
+  onFileMoved,
+  onPreview,
+  onSelectFile,
+  onScrollEnd,
+  onUploadFile,
+  onLoadMoreFolders,
 }) => {
+  const { t } = useTranslation();
+  const selectedCount = selectedIds?.size ?? 0;
+
+  const handleClear = () => {
+    data.forEach((file) => {
+      if (selectedIds?.has(file.id)) {
+        onSelectFile?.(file.id);
+      }
+    });
+  };
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+      onScrollEnd?.();
+    }
+  };
+
   return (
     <Card
-      className="tw:flex tw:h-auto tw:overflow-hidden tw:max-h-full"
+      className={classNames(
+        'tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0',
+        { 'tw:rounded-tr-none tw:rounded-br-none': previewFileId }
+      )}
       data-testid="documents-view">
-      {/* Right: file list */}
       {data.length > 0 || isLoading ? (
-        <div className="tw:flex tw:flex-1 tw:flex-col tw:overflow-y-auto">
-          {isLoading ? (
-            <DocumentViewLoading />
-          ) : (
-            data.map((file) => (
-              <FileRow
-                canDelete={canDelete}
-                file={file}
-                key={file.id}
-                onDeleteFile={onDeleteFile}
-                onDownload={onDownload}
-                onShareFile={onShareFile}
-              />
-            ))
+        <Box
+          className="tw:flex-1 tw:min-h-0 tw:overflow-hidden"
+          direction="col">
+          {!isLoading && (
+            <ListHeader
+              canDelete={canDelete}
+              canEdit={canEdit}
+              folders={folders}
+              hasMoreFolders={hasMoreFolders}
+              isLoadingMoreFolders={isLoadingMoreFolders}
+              selectedCount={selectedCount}
+              totalFileCount={totalFileCount}
+              onBulkDelete={onBulkDelete}
+              onBulkDownload={onBulkDownload}
+              onBulkMove={onBulkMove}
+              onClear={handleClear}
+              onLoadMoreFolders={onLoadMoreFolders}
+            />
           )}
+          <Box
+            className="tw:flex-1 tw:overflow-y-auto tw:min-h-0"
+            direction="col"
+            onScroll={handleScroll}>
+            {isLoading ? (
+              <DocumentViewLoading />
+            ) : (
+              <>
+                {data.map((file) => (
+                  <FileRow
+                    canDelete={canDelete}
+                    canEdit={canEdit}
+                    file={file}
+                    folders={folders}
+                    hasMoreFolders={hasMoreFolders}
+                    isActive={previewFileId === file.id}
+                    isLoadingMoreFolders={isLoadingMoreFolders}
+                    isSelected={selectedIds?.has(file.id)}
+                    key={file.id}
+                    onDeleteFile={onDeleteFile}
+                    onDownload={onDownload}
+                    onFileMoved={onFileMoved}
+                    onLoadMoreFolders={onLoadMoreFolders}
+                    onPreview={onPreview}
+                    onSelectFile={onSelectFile}
+                  />
+                ))}
+                {isLoadingMore && (
+                  <>
+                    <FileRowSkeleton />
+                    <FileRowSkeleton />
+                  </>
+                )}
+              </>
+            )}
+          </Box>
+        </Box>
+      ) : selectedFolderName ? (
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            actions={
+              onUploadFile
+                ? [
+                    {
+                      color: 'primary',
+                      key: 'upload-file',
+                      label: t('label.upload-file'),
+                      onClick: onUploadFile,
+                    },
+                  ]
+                : []
+            }
+            description={t('message.context-center-folder-empty-subtitle')}
+            icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+            title={t('label.folder-name-is-empty', {
+              folderName: selectedFolderName,
+            })}
+            variant="blank"
+          />
         </div>
       ) : (
-        <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-12">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
         </div>
       )}
     </Card>

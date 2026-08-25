@@ -11,15 +11,62 @@
  *  limitations under the License.
  */
 
+import type { FormInstance } from 'antd';
+import type { ComponentType } from 'react';
+import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
+import type {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   Destination,
+  EventFilterRule,
   EventSubscription,
   SubscriptionCategory,
   SubscriptionType,
   Webhook,
 } from '../../generated/events/eventSubscription';
+import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
+import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
+
+export interface ObservabilityFilterResourceDescriptor {
+  containerEntities?: string[];
+  name?: string;
+  supportedActions?: EventFilterRule[];
+  supportedFilters?: EventFilterRule[];
+}
+
+export interface UseObservabilityAlertFormOptions {
+  afterSaveAction?: (fqn: string) => Promise<void> | void;
+  form?: FormInstance<ModifiedCreateEventSubscription>;
+  fqn?: string;
+  onCancel?: () => void;
+}
+
+export interface UseObservabilityAlertResourcesReturn {
+  containerEntities?: string[];
+  filterResources: ObservabilityFilterResourceDescriptor[];
+  loading: boolean;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+}
+
+export interface UseObservabilityAlertTemplatesReturn {
+  loading: boolean;
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export interface UseObservabilityAlertTemplatesOptions {
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  getResourcePermission: (
+    resourceEntity: ResourceEntity
+  ) => Promise<OperationPermission>;
+}
 
 export interface ModifiedWebhookConfig extends Webhook {
   headers?: { key: string; value: string }[];
@@ -48,4 +95,52 @@ export interface ModifiedCreateEventSubscription
   destinations: ModifiedDestination[];
   timeout: number;
   readTimeout: number;
+}
+
+export interface UseObservabilityAlertFormReturn {
+  alert?: ModifiedEventSubscription;
+  breadcrumb: {
+    name: string;
+    url: string;
+  }[];
+  containerEntities?: string[];
+  extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  filterResources: ObservabilityFilterResourceDescriptor[];
+  form: FormInstance<ModifiedCreateEventSubscription>;
+  handleCancel: () => void;
+  handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
+  inlineAlertDetails?: InlineAlertProps;
+  isEditMode: boolean;
+  isLoading: boolean;
+  loadingState: AddAlertPageLoadingState;
+  saving: boolean;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
+
+export type ObservabilityAlertFormFieldsProps = Pick<
+  ObservabilityAlertFormProps,
+  | 'alert'
+  | 'containerEntities'
+  | 'extraFormWidgets'
+  | 'filterResources'
+  | 'form'
+  | 'isLoading'
+  | 'shouldShowActionsSection'
+  | 'shouldShowFiltersSection'
+  | 'supportedFilters'
+  | 'supportedTriggers'
+  | 'templateResourcePermission'
+  | 'templates'
+>;
+
+export interface AddObservabilityPageProps {
+  pageTitle: string;
 }

@@ -81,9 +81,11 @@ const TestCaseStatusAreaChartWidget = ({
               {title}
             </Typography>
             <Typography
-              as="h4"
-              className="chart-widget-value chart-widget-link-underline"
-              data-testid="total-value">
+              as="p"
+              className="chart-widget-link-underline"
+              data-testid="total-value"
+              size="text-xl"
+              weight="semibold">
               {latestValue}
             </Typography>
           </div>
@@ -131,6 +133,9 @@ const TestCaseStatusAreaChartWidget = ({
           count: +cur['testCase.fullyQualifiedName'],
         };
       });
+      // Aggregation buckets are not guaranteed to arrive chronologically;
+      // Recharts expects an ascending x-axis for a stable trend line.
+      updatedData.sort((first, second) => first.timestamp - second.timestamp);
 
       setChartData(updatedData);
     } catch {

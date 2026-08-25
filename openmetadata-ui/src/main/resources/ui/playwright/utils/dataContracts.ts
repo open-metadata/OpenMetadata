@@ -22,6 +22,33 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
+const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
+
+const pollContractStatus = async (
+  page: Page,
+  contractId: string,
+  timeoutMs = 180_000
+): Promise<void> => {
+  const { apiContext } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const contract = await apiContext
+          .get(`/api/v1/dataContracts/${contractId}`)
+          .then((r) => (r.ok() ? r.json() : null))
+          .catch(() => null);
+
+        return contract?.latestResult?.status ?? 'Running';
+      },
+      {
+        message: 'Wait for contract validation to reach terminal state',
+        timeout: timeoutMs,
+        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
+      }
+    )
+    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
+};
+
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
@@ -29,6 +56,10 @@ export const saveAndTriggerDataContractValidation = async (
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
+  expect(
+    response.ok(),
+    `Data contract save failed with status ${response.status()}`
+  ).toBe(true);
   const responseData = await response.json();
 
   if (isContractStatusNotVisible) {
@@ -51,6 +82,13 @@ export const saveAndTriggerDataContractValidation = async (
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
 
+  // Poll the API until the validation result reaches a terminal state before
+  // reloading the page. Without this, the UI status check immediately after
+  // the reload is racy: the backend may still be processing the result.
+  if (responseData?.id) {
+    await pollContractStatus(page, responseData.id);
+  }
+
   await page.reload();
 
   await waitForAllLoadersToDisappear(page);
@@ -59,7 +97,8 @@ export const saveAndTriggerDataContractValidation = async (
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
-  page: Page
+  page: Page,
+  contractName?: string
 ) => {
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -81,6 +120,26 @@ export const validateDataContractInsideBundleTestSuites = async (
   await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+
+  // Search by the contract name so the suite row is guaranteed on the first
+  // page regardless of how many bundle suites exist (avoids pagination misses).
+  if (contractName) {
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('test-suite-table')
+        .getByRole('rowheader', { name: `Data Contract - ${contractName}` })
+    ).toBeVisible();
+  }
 };
 
 export const waitForDataContractExecution = async (
@@ -149,12 +208,13 @@ export const waitForContractExecutionWithFallback = async (
   } catch {
     // The test suite has results but the contract's latestResult was not updated in time.
     // Verify execution status directly from the DataQuality Bundle Suites page.
-    await validateDataContractInsideBundleTestSuites(page);
+    await validateDataContractInsideBundleTestSuites(page, contractName);
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('[role="gridcell"]')
-      .filter({ hasText: `Data Contract - ${contractName}` });
+      .getByRole('rowheader', {
+        name: `Data Contract - ${contractName}`,
+      });
 
     await expect(suiteNameCell).toBeVisible();
 
@@ -326,20 +386,35 @@ export const saveSecurityAndSLADetails = async (
   await page.locator('#timezone').press('Enter');
 
   await page.getByTestId('refresh-frequency-unit-select').click();
+  await expect(
+    page.locator(
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
     .locator(
-      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
     )
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
+  await expect(
+    page.locator(
+      `.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
-    .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
+    .locator(`.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
+  await expect(
+    page.locator(
+      `.retention-unit-select [title*='${data.retentionUnitSelect}']`
+    )
+  ).toBeVisible();
   await page
-    .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+    .locator(`.retention-unit-select [title*='${data.retentionUnitSelect}']`)
     .click();
 
   await page
@@ -450,7 +525,7 @@ export const navigateToContractTab = async (page: Page) => {
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.locator('.contract-action-dropdown').waitFor({
+  await page.getByTestId('contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };
@@ -482,17 +557,12 @@ export const deleteContract = async (
 
   if (contractName) {
     await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(`Delete dataContract "${contractName}"`)
+      page.getByTestId('modal-header').getByText(contractName)
     ).toBeVisible();
   } else {
-    await expect(page.locator('.ant-modal-title')).toBeVisible();
+    await expect(page.getByTestId('modal-header')).toBeVisible();
   }
 
-  await page.getByTestId('confirmation-text-input').click();
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
   await page.getByTestId('confirm-button').click();
   await deleteContractResponse;
 };
@@ -505,7 +575,10 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
-export const triggerContractValidation = async (page: Page): Promise<void> => {
+export const triggerContractValidation = async (
+  page: Page,
+  contractId?: string
+): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
@@ -513,6 +586,12 @@ export const triggerContractValidation = async (page: Page): Promise<void> => {
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // If a contractId is supplied, poll until the validation reaches a terminal
+  // state so callers can safely assert on the UI status after a reload.
+  if (contractId) {
+    await pollContractStatus(page, contractId);
+  }
 };
 
 export const exportContractYaml = async (

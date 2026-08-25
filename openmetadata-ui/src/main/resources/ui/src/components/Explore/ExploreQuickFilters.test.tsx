@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -56,6 +62,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
   default: ({
     options,
     searchKey,
+    isSuggestionsLoading,
     onChange,
     onSearch,
     onGetInitialOptions,
@@ -64,9 +71,16 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
     hideCounts,
     independent,
     showSelectedCounts,
+    singleSelect,
+    getPopupContainer,
+    index: dropdownIndex,
   }: SearchDropdownProps) => (
     <div data-testid={`search-dropdown-${searchKey}`} title="search-dropdown">
       <span data-testid={`label-${searchKey}`}>{searchKey}</span>
+      <span data-testid={`single-select-${searchKey}`}>
+        {singleSelect ? 'true' : 'false'}
+      </span>
+      <span data-testid={`index-${searchKey}`}>{dropdownIndex}</span>
       <span data-testid={`has-null-option-${searchKey}`}>
         {hasNullOption ? 'true' : 'false'}
       </span>
@@ -79,8 +93,14 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
       <span data-testid={`show-selected-counts-${searchKey}`}>
         {showSelectedCounts ? 'true' : 'false'}
       </span>
+      <span data-testid={`popup-container-${searchKey}`}>
+        {getPopupContainer ? 'true' : 'false'}
+      </span>
       <span data-testid={`selected-count-${searchKey}`}>
         {selectedKeys?.length ?? 0}
+      </span>
+      <span data-testid={`suggestions-loading-${searchKey}`}>
+        {isSuggestionsLoading ? 'true' : 'false'}
       </span>
       {options.map((option, index) => (
         <div data-testid={`option-${searchKey}-${index}`} key={option.key}>
@@ -109,6 +129,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
 }));
 
 jest.mock('../../utils/ExploreUtils', () => ({
+  ...jest.requireActual('../../utils/ExplorePureUtils'),
   getAggregationOptions: jest.fn(),
 }));
 
@@ -162,7 +183,7 @@ describe('ExploreQuickFilters component', () => {
     jest.clearAllMocks();
     mockUseCustomLocation.mockReturnValue({ search: '' });
     mockUseAdvanceSearch.mockReturnValue({ queryFilter: mockQueryFilter });
-    mockUseSearchStore.mockReturnValue({ isNLPEnabled: false });
+    mockUseSearchStore.mockReturnValue({ isNLPActive: false });
     (getAggregationOptions as jest.Mock).mockImplementation(
       mockGetAggregationOptions
     );
@@ -205,6 +226,16 @@ describe('ExploreQuickFilters component', () => {
       mockFields.forEach((field) => {
         expect(
           screen.getByTestId(`show-selected-counts-${field.key}`)
+        ).toHaveTextContent('true');
+      });
+    });
+
+    it('should pass popup container override to SearchDropdown', () => {
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      mockFields.forEach((field) => {
+        expect(
+          screen.getByTestId(`popup-container-${field.key}`)
         ).toHaveTextContent('true');
       });
     });
@@ -316,7 +347,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          'pets'
+          'pets',
+          undefined
         );
       });
     });
@@ -341,7 +373,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -371,7 +404,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -407,7 +441,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           50,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -437,7 +472,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -475,7 +511,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -523,13 +560,14 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
 
-    it('should call NLQ aggregate endpoint when NLP is enabled', async () => {
-      mockUseSearchStore.mockReturnValue({ isNLPEnabled: true });
+    it('should call NLQ aggregate endpoint when NLP is active', async () => {
+      mockUseSearchStore.mockReturnValue({ isNLPActive: true });
       mockGetAggregationOptions.mockResolvedValue(
         mockAdvancedFieldDefaultOptions
       );
@@ -552,7 +590,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           true,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -604,6 +643,45 @@ describe('ExploreQuickFilters component', () => {
   });
 
   describe('Error handling', () => {
+    it('should not report an error for a request that was superseded', async () => {
+      const { showErrorToast } = require('../../utils/ToastUtils');
+      let rejectStale = (_reason?: unknown): void => undefined;
+      mockGetAggregationOptions
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectStale = reject;
+            })
+        )
+        .mockResolvedValueOnce({
+          data: {
+            aggregations: {
+              'sterms#service.name': {
+                buckets: [{ key: 'fresh-option', doc_count: 1 }],
+              },
+            },
+          },
+        });
+
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-service.name'));
+      });
+
+      await act(async () => {
+        rejectStale(new Error('Stale Error'));
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+    });
+
     it('should handle API errors gracefully when fetching initial options', async () => {
       const { showErrorToast } = require('../../utils/ToastUtils');
       mockGetAggregationOptions.mockRejectedValue(new Error('API Error'));
@@ -638,6 +716,66 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Facet query filter (own field excluded)', () => {
+    const tierField: ExploreQuickFilterField = {
+      label: 'Tier',
+      key: 'tier.tagFQN',
+      value: [
+        { key: 'Tier.Tier1', label: 'Tier.Tier1' },
+        { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+      ],
+    };
+    const tagField: ExploreQuickFilterField = {
+      label: 'Tag',
+      key: 'tags.tagFQN',
+      value: undefined,
+    };
+
+    it('keeps sibling-field selections when fetching options for another facet', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField, tagField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tags.tagFQN'));
+      });
+
+      const filterArg = (getAggregationOptions as jest.Mock).mock.calls.at(
+        -1
+      )[3] as string;
+
+      expect(filterArg).toContain('Tier.Tier1');
+      expect(filterArg).toContain('Tier.Tier2');
+    });
+
+    it('excludes the facet own selections so the full option list stays visible', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField, tagField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      const filterArg = (getAggregationOptions as jest.Mock).mock.calls.at(
+        -1
+      )[3] as string;
+
+      expect(filterArg).not.toContain('Tier.Tier1');
+      expect(filterArg).not.toContain('Tier.Tier2');
     });
   });
 
@@ -679,7 +817,8 @@ describe('ExploreQuickFilters component', () => {
           expect.anything(),
           undefined,
           expect.anything(),
-          expect.any(String)
+          expect.any(String),
+          undefined
         );
       });
     });
@@ -714,7 +853,8 @@ describe('ExploreQuickFilters component', () => {
           false,
           undefined,
           false,
-          ''
+          '',
+          undefined
         );
       });
     });
@@ -751,6 +891,307 @@ describe('ExploreQuickFilters component', () => {
       expect(
         screen.getByTestId('selected-count-tier.tagFQN')
       ).toHaveTextContent('1');
+    });
+  });
+
+  describe('Static options (field.options)', () => {
+    it('should use static field options without calling API on initial open', async () => {
+      const staticFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Status',
+          key: 'status',
+          value: undefined,
+          options: [
+            { key: 'active', label: 'Active' },
+            { key: 'inactive', label: 'Inactive' },
+          ],
+        },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={staticFields} />);
+
+      const initialButton = screen.getByTestId('onGetInitialOptions-status');
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      expect(getAggregationOptions).not.toHaveBeenCalled();
+    });
+
+    it('should filter static options by search value (case-insensitive)', async () => {
+      const staticFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Status',
+          key: 'status',
+          value: undefined,
+          options: [
+            { key: 'active', label: 'Active' },
+            { key: 'inactive', label: 'Inactive' },
+          ],
+        },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={staticFields} />);
+
+      const searchButton = screen.getByTestId('onSearch-status');
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      expect(getAggregationOptions).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Field-specific searchIndex and searchKey', () => {
+    it('should use field.searchIndex and field.searchKey when provided', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const customFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Custom',
+          key: 'custom.key',
+          value: undefined,
+          searchIndex: SearchIndex.TOPIC,
+          searchKey: 'remapped.key',
+        },
+      ];
+
+      render(<ExploreQuickFilters {...mockProps} fields={customFields} />);
+
+      const searchButton = screen.getByTestId('onSearch-custom.key');
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TOPIC,
+          'remapped.key',
+          'test',
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          undefined
+        );
+      });
+    });
+
+    it('should fall back to default index/key when field-specific not provided', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
+
+      const initialButton = screen.getByTestId(
+        'onGetInitialOptions-database.name'
+      );
+
+      await act(async () => {
+        userEvent.click(initialButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'database.name',
+          expect.any(String),
+          expect.any(String),
+          false,
+          false,
+          undefined,
+          false,
+          '',
+          undefined
+        );
+      });
+    });
+  });
+
+  describe('showDeleted URL flag', () => {
+    it('should pass showDeleted=true to getAggregationOptions when set in URL', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '?showDeleted=true' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      const searchButton = screen.getByTestId('onSearch-database.name');
+
+      await act(async () => {
+        userEvent.click(searchButton);
+      });
+
+      await waitFor(() => {
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
+          'database.name',
+          'test',
+          expect.any(String),
+          false,
+          true,
+          undefined,
+          false,
+          '',
+          undefined
+        );
+      });
+    });
+  });
+
+  describe('singleSelect propagation', () => {
+    it('should pass singleSelect flag from field config to SearchDropdown', () => {
+      const singleSelectFields: ExploreQuickFilterField[] = [
+        {
+          label: 'Database',
+          key: 'database.name',
+          value: undefined,
+          singleSelect: true,
+        },
+      ];
+
+      render(
+        <ExploreQuickFilters {...mockProps} fields={singleSelectFields} />
+      );
+
+      expect(
+        screen.getByTestId('single-select-database.name')
+      ).toHaveTextContent('true');
+    });
+  });
+
+  describe('Multi-index display', () => {
+    it('should pass first index as display index to SearchDropdown', () => {
+      const multiIndexProps = {
+        ...mockProps,
+        index: [SearchIndex.TABLE, SearchIndex.TOPIC] as unknown as SearchIndex,
+      };
+
+      render(<ExploreQuickFilters {...multiIndexProps} />);
+
+      expect(screen.getByTestId('index-database.name')).toHaveTextContent(
+        SearchIndex.TABLE
+      );
+    });
+  });
+
+  describe('additionalActions', () => {
+    it('should render additionalActions content', () => {
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          additionalActions={
+            <button data-testid="extra-action">Extra Action</button>
+          }
+        />
+      );
+
+      expect(screen.getByTestId('extra-action')).toBeInTheDocument();
+    });
+  });
+
+  describe('Stale responses', () => {
+    const aggregationResponse = (key: string, bucketKey: string) => ({
+      data: {
+        aggregations: {
+          [`sterms#${key}`]: {
+            buckets: [{ key: bucketKey, doc_count: 1 }],
+          },
+        },
+      },
+    });
+
+    it('should ignore a response that resolves after another dropdown searched', async () => {
+      let resolveStale = (_value: unknown): void => undefined;
+      mockGetAggregationOptions
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveStale = resolve;
+            })
+        )
+        .mockResolvedValueOnce(
+          aggregationResponse('service.name', 'fresh-option')
+        );
+
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-service.name'));
+      });
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+
+      await act(async () => {
+        resolveStale(aggregationResponse('columns.name', 'stale-option'));
+      });
+
+      expect(screen.getByTestId('option-service.name-0')).toHaveTextContent(
+        'fresh-option'
+      );
+
+      expect(
+        screen.queryByTestId('option-service.name-1')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not strand the loader when a static field supersedes a pending fetch', async () => {
+      let resolveStale = (_value: unknown): void => undefined;
+      mockGetAggregationOptions.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStale = resolve;
+          })
+      );
+
+      const staticField: ExploreQuickFilterField = {
+        label: 'Tier',
+        key: 'tier.tagFQN',
+        value: undefined,
+        options: [{ key: 'Tier.Tier1', label: 'Tier1' }],
+      };
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          fields={[...mockFields, staticField]}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('onSearch-columns.name'));
+
+      expect(
+        screen.getByTestId('suggestions-loading-tier.tagFQN')
+      ).toHaveTextContent('true');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      await act(async () => {
+        resolveStale(aggregationResponse('columns.name', 'stale-option'));
+      });
+
+      expect(
+        screen.getByTestId('suggestions-loading-tier.tagFQN')
+      ).toHaveTextContent('false');
+
+      expect(screen.getByTestId('option-tier.tagFQN-0')).toHaveTextContent(
+        'Tier1'
+      );
     });
   });
 });

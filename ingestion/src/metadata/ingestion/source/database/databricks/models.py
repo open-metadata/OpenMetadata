@@ -12,7 +12,7 @@
 Databricks source models.
 
 Pydantic shapes for the ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload
-(Databricks Runtime 16.4+).
+(Databricks Runtime 16.2+).
 """
 
 from typing import List, Optional  # noqa: UP035
@@ -24,12 +24,18 @@ class DescribeJsonType(BaseModel):
     """A type node from the AS JSON payload.
 
     Polymorphic on ``name``: ``struct`` populates ``fields``, ``array``
-    populates ``element_type``, primitives leave both empty.
+    populates ``element_type``, ``map`` populates ``key_type``/``value_type``,
+    ``decimal``/``varchar``/``char`` populate ``precision``/``scale``/``length``.
     """
 
     name: Optional[str] = None  # noqa: UP045
     fields: Optional[List["DescribeJsonField"]] = None  # noqa: UP006, UP045
     element_type: Optional["DescribeJsonType"] = None
+    key_type: Optional["DescribeJsonType"] = None
+    value_type: Optional["DescribeJsonType"] = None
+    precision: Optional[int] = None  # noqa: UP045
+    scale: Optional[int] = None  # noqa: UP045
+    length: Optional[int] = None  # noqa: UP045
 
 
 class DescribeJsonField(BaseModel):
@@ -45,12 +51,22 @@ class DescribeJsonColumn(BaseModel):
 
     name: Optional[str] = None  # noqa: UP045
     type: Optional[DescribeJsonType] = None  # noqa: UP045
+    comment: Optional[str] = None  # noqa: UP045
 
 
 class DescribeJsonPayload(BaseModel):
-    """The full AS JSON payload. Only ``columns`` is consumed."""
+    """The full ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload (Databricks
+    Runtime 16.2+). Unmodeled keys are ignored; an older runtime that does not
+    support ``AS JSON`` makes the query error out and callers fall back to the
+    legacy per-statement ``DESCRIBE`` path."""
 
     columns: List[DescribeJsonColumn] = []  # noqa: UP006
+    type: Optional[str] = None  # noqa: UP045
+    comment: Optional[str] = None  # noqa: UP045
+    owner: Optional[str] = None  # noqa: UP045
+    location: Optional[str] = None  # noqa: UP045
+    view_text: Optional[str] = None  # noqa: UP045
+    view_original_text: Optional[str] = None  # noqa: UP045
 
 
 # Resolve forward references in ``DescribeJsonType``.

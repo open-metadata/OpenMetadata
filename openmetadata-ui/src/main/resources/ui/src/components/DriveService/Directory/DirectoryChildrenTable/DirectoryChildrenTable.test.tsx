@@ -19,11 +19,11 @@ import {
 } from '../../../../generated/entity/data/directory';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import DirectoryChildrenTable from './DirectoryChildrenTable';
 
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../Customization/GenericProvider/GenericProvider');
+jest.mock('../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No data</div>)
 );

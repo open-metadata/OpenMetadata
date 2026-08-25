@@ -15,6 +15,13 @@
  */
 export interface AuthenticationConfiguration {
     /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
+    /**
      * Authentication Authority
      */
     authority?: string;
@@ -64,6 +71,12 @@ export interface AuthenticationConfiguration {
      */
     ldapConfiguration?: LDAPConfiguration;
     /**
+     * Maximum number of active authenticated sessions allowed per user. When the limit is
+     * exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata
+     * uses the default of 5.
+     */
+    maxActiveSessionsPerUser?: number;
+    /**
      * Oidc Configuration for Confidential Client Type
      */
     oidcConfiguration?: OidcClientConfig;
@@ -84,6 +97,12 @@ export interface AuthenticationConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Validity for the authenticated session across all auth providers. Minimum is 3600
+     * seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when
+     * present, then to the default 604800-second expiry.
+     */
+    sessionExpiry?: number;
     /**
      * Token Validation Algorithm to use.
      */
@@ -160,6 +179,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */

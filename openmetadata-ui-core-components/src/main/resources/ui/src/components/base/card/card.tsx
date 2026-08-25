@@ -49,6 +49,9 @@ export const cardStyles = sortCx({
     brand: {
       root: 'tw:bg-utility-brand-50 tw:border-1 tw:border-utility-brand-200',
     },
+    brandOutlined: {
+      root: 'tw:border-1 tw:border-utility-brand-200',
+    },
     error: {
       root: 'tw:bg-utility-error-50 tw:border-1 tw:border-utility-error-200',
     },

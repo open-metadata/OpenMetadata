@@ -27,12 +27,42 @@ inputs:
     description: Whether to install Java, Node, and the OpenMetadata server
     required: false
     default: "true"
+  fast-mode:
+    description: Restore a pre-seeded PostgreSQL/OpenSearch fixture and start the server on the host
+    required: false
+    default: "false"
+  fixture-path:
+    description: Path to the pre-seeded Playwright fixture archive
+    required: false
+    default: ""
+  distribution-path:
+    description: Path to the OpenMetadata distribution archive used by fast mode
+    required: false
+    default: ""
+  ingestion-image-path:
+    description: Optional prebuilt Airflow ingestion image archive for dedicated ingestion lanes
+    required: false
+    default: ""
+  lightweight-ingestion:
+    description: Build the ingestion container without installing duplicate host dependencies
+    required: false
+    default: "false"
+  install-test-dependencies:
+    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
+    # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
+    # workflows that invoke Python on the runner. Playwright E2E workflows drive
+    # the browser and let the ingestion Docker container run its own installs, so
+    # they can pass "false" here to shave ~3-4 minutes per shard off setup.
+    description: Whether to install the ingestion Python packages needed to run ingestion / py-tests on the runner
+    required: false
+    default: "true"
 
 runs:
   using: composite
   steps:
     # ---- Install Ubuntu Dependencies ---------------------------------------------
     - name: Install Ubuntu dependencies
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
         libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
@@ -41,8 +71,8 @@ runs:
 
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK ${{ inputs.java-version }}
-      if: ${{ inputs.install-server == 'true' }}
-      uses: actions/setup-java@v4
+      if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
+      uses: actions/setup-java@v5
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
@@ -50,29 +80,57 @@ runs:
 
     # ---- Setup Node --------------------------------------------------------------
     - name: Use Node.js ${{ inputs.npm-version }}
-      if: ${{ inputs.install-server == 'true' }}
-      uses: actions/setup-node@v4
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.npm-version }}
 
     - name: Install yarn
-      if: ${{ inputs.install-server == 'true' }}
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: corepack enable
       shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v5
+      id: setup-python
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v4
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: astral-sh/setup-uv@v7
+
+    # Cache the ingestion Python venv across runs. Key on the *resolved*
+    # Python patch version (setup-python may resolve "3.10" to a different
+    # tool-cache path after a runner-image bump — old venv shebangs would
+    # then dangle) plus hashFiles of the ingestion dep manifests and this
+    # action file so a package change or install-script edit invalidates
+    # cleanly. Intentionally no restore-keys: a partial restore would keep
+    # dependencies deleted from the manifest, letting tests silently
+    # import undeclared packages. Cache miss = fresh install, always.
+    # Skipped in fast-mode / lightweight-ingestion — those consumers restore
+    # a pre-seeded fixture and never touch the venv.
+    - name: Cache ingestion Python venv
+      id: cache-python-venv
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: env
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
 
     - name: Generate Models
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
-        python3 -m venv env
+        # Belt-and-suspenders: even with the resolved-patch key above, if
+        # the restored venv's interpreter can't run, rebuild from scratch
+        # rather than fail Generate Models with an opaque shebang error.
+        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
+          rm -rf env
+          python3 -m venv env
+        fi
         source env/bin/activate
         sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
@@ -80,11 +138,12 @@ runs:
       shell: bash
 
     - name: Install Python Dependencies
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
         uv pip install "setuptools<81"
         uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-        uv pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
@@ -92,9 +151,17 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
-    - name: Start Server and Ingest Sample Data
+    - name: Configure Test Session Limit
       if: ${{ inputs.install-server == 'true' }}
-      uses: nick-fields/retry@v3.0.2
+      run: |
+        if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
+          echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
+        fi
+      shell: bash
+
+    - name: Start Server and Ingest Sample Data
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' }}
+      uses: nick-fields/retry@v4
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
       with:
@@ -102,3 +169,21 @@ runs:
         max_attempts: 2
         retry_on: error
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
+
+    - name: Restore fast Playwright environment
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      run: |
+        if [[ -z "${{ inputs.fixture-path }}" || -z "${{ inputs.distribution-path }}" ]]; then
+          echo "fixture-path and distribution-path are required in fast mode" >&2
+          exit 2
+        fi
+        fast_args=(
+          "${{ inputs.fixture-path }}"
+          "${{ inputs.distribution-path }}"
+        )
+        if [[ -n "${{ inputs.ingestion-image-path }}" ]]; then
+          fast_args+=("${{ inputs.ingestion-image-path }}")
+        fi
+        timeout --signal=TERM --kill-after=30s 5m \
+          ./.github/scripts/start_playwright_fast_environment.sh "${fast_args[@]}"
+      shell: bash

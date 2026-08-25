@@ -28,7 +28,7 @@ export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
     () => (
       <SlideoutMenu.Content className={className}>
         {loading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/80">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/80">
             <Loader />
           </div>
         )}

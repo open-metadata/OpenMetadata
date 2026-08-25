@@ -25,18 +25,13 @@ import {
   getListTestCaseIncidentByStateId,
   transitionIncident,
 } from '../../../rest/incidentManagerAPI';
+import { ResolveTask, TaskResolutionType } from '../../../rest/tasksAPI';
+import { reopenResolvedIncident } from '../../../utils/DataQuality/IncidentManagerUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import {
-  createTask,
-  ResolveTask,
-  TaskCategory,
-  TaskEntityType,
-  TaskResolutionType,
-} from '../../../rest/tasksAPI';
-import {
-  getEntityFeedLink,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
-import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
+  fetchOptions,
+  generateOptions,
+} from '../../../utils/TaskAssigneeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import {
@@ -97,12 +92,9 @@ export const TestCaseStatusModal = ({
     }));
   }, [data]);
 
-  // The outer `data` prop is the current TCRS record. In task-first mode
-  // its stateId equals the Task UUID, so we use it as the task id for
-  // POST /tasks/{id}/resolve. The form parameter is named `formData` to
-  // avoid shadowing the prop.
   const handleReopenFromResolved = async (
-    targetStatus: TestCaseResolutionStatusTypes
+    targetStatus: TestCaseResolutionStatusTypes,
+    formData: CreateTestCaseResolutionStatus
   ) => {
     const testCaseFqn = data?.testCaseReference?.fullyQualifiedName;
     const testCaseName = data?.testCaseReference?.name;
@@ -110,46 +102,28 @@ export const TestCaseStatusModal = ({
       return;
     }
 
-    const newTask = await createTask({
-      name: `Incident: ${testCaseName}`,
-      category: TaskCategory.Incident,
-      type: TaskEntityType.TestCaseResolution,
-      about: getEntityFeedLink('testCase', testCaseFqn),
+    const assignee = updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
+    const latest = await reopenResolvedIncident({
+      testCaseFqn,
+      testCaseName,
+      targetStatus,
+      currentStateId: data?.stateId,
+      details: {
+        assignee: assignee
+          ? {
+              id: assignee.value ?? assignee.id,
+              type: EntityType.USER,
+              name: assignee.name,
+              fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
+              displayName: assignee.displayName,
+            }
+          : undefined,
+        reason: formData.testCaseResolutionStatusDetails?.testCaseFailureReason,
+        comment:
+          formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
+      },
     });
 
-    if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
-      const transitionMap: Partial<
-        Record<TestCaseResolutionStatusTypes, string>
-      > = {
-        [TestCaseResolutionStatusTypes.ACK]: 'ack',
-        [TestCaseResolutionStatusTypes.Assigned]: 'assign',
-      };
-      const transitionId = transitionMap[targetStatus];
-      if (transitionId) {
-        const assignee =
-          updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
-        await transitionIncident(newTask.id, {
-          transitionId,
-          payload: assignee
-            ? {
-                assignees: [
-                  {
-                    id: assignee.value ?? assignee.id,
-                    type: EntityType.USER,
-                    name: assignee.name,
-                    fullyQualifiedName:
-                      assignee.fullyQualifiedName ?? assignee.name,
-                    displayName: assignee.displayName,
-                  },
-                ],
-              }
-            : undefined,
-        });
-      }
-    }
-
-    const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
-    const latest = refreshed?.data?.[0];
     if (latest) {
       onSubmit(latest);
     }
@@ -219,7 +193,7 @@ export const TestCaseStatusModal = ({
 
     try {
       if (currentStatus === TestCaseResolutionStatusTypes.Resolved) {
-        await handleReopenFromResolved(status);
+        await handleReopenFromResolved(status, formData);
 
         return;
       }

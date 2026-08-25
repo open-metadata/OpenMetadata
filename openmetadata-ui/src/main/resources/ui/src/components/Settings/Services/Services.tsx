@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -23,14 +24,14 @@ import {
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
-import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
-  OPEN_METADATA,
-  servicesDisplayName,
-} from '../../../constants/Services.constant';
+  getServiceEmptyStateConfig,
+  SERVICE_EMPTY_STATE_ICON_CLASS,
+} from '../../../constants/ServiceEmptyState.constant';
+import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -43,22 +44,19 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
-import { getServiceLogo } from '../../../utils/CommonUtils';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
-  getOptionalFields,
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
-} from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+} from '../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getOptionalFields } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -72,7 +70,6 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -82,9 +79,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { isFetchingStatus } = useAirflowStatus();
 
   const navigate = useNavigate();
-  const handleAddServiceClick = () => {
+  const handleAddServiceClick = useCallback(() => {
     navigate(connectionsRouterClassBase.getAddServicePath(serviceName));
-  };
+  }, [navigate, serviceName]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
@@ -307,40 +304,63 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName, t]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (addServicePermission && isEmpty(searchTerm) && !serviceQueryFilter) {
+    // A search or filter that matched nothing is not a first-run state — telling the user to
+    // connect their first service there would be wrong, so it keeps the plain no-data message. The
+    // deleted view is the same kind of narrowing: "no deleted services" says nothing about whether
+    // the category has any.
+    if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
         <ErrorPlaceHolder
-          className="p-lg border-none"
-          doc={CONNECTORS_DOCS}
-          heading={t(servicesDisplayName[serviceName].key, {
-            entity: t(servicesDisplayName[serviceName].entity),
-          })}
-          permission={addServicePermission}
-          permissionValue={t('label.create-entity', {
-            entity: t(servicesDisplayName[serviceName].key, {
-              entity: t(servicesDisplayName[serviceName].entity),
-            }),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddServiceClick}
+          className="mt-24 border-none"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
         />
       );
     }
 
+    const {
+      icon: EmptyStateIcon,
+      titleKey,
+      descriptionKey,
+    } = getServiceEmptyStateConfig(serviceName);
+
     return (
-      <ErrorPlaceHolder
-        className="mt-24 border-none"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      // EmptyPlaceholder fills its nearest positioned ancestor, so the host has to be relative.
+      <div
+        className="tw:relative tw:min-h-[400px]"
+        data-testid="services-empty-placeholder">
+        <EmptyPlaceholder
+          description={t(descriptionKey)}
+          // `footer` rather than `actions` so the button keeps the same LimitWrapper the header
+          // button has — service creation is limit-gated wherever the action appears.
+          footer={
+            addServicePermission && (
+              <LimitWrapper resource="dataAssets">
+                {/* Not `add-service-button` — that testid belongs to the header button, which is
+                    on screen at the same time, so reusing it would make the selector ambiguous. */}
+                <Button
+                  color="primary"
+                  data-testid="add-placeholder-button"
+                  size="md"
+                  onPress={handleAddServiceClick}>
+                  {t('label.add-new-entity', { entity: t('label.service') })}
+                </Button>
+              </LimitWrapper>
+            )
+          }
+          icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
+          title={t(titleKey)}
+          variant="blank"
+        />
+      </div>
     );
   }, [
     addServicePermission,
-    servicesDisplayName,
     serviceName,
     searchTerm,
     serviceQueryFilter,
-    addServicePermission,
+    deleted,
     handleAddServiceClick,
+    t,
   ]);
 
   const serviceTypeFilters = useMemo(() => {
@@ -374,63 +394,77 @@ const Services = ({ serviceName }: ServicesProps) => {
     ]
   );
 
-  const columns: ColumnsType<ServicesType> = [
-    {
-      title: t('label.name'),
-      dataIndex: TABLE_COLUMNS_KEYS.NAME,
-      key: TABLE_COLUMNS_KEYS.NAME,
-      width: 200,
-      sorter: getColumnSorter<ServicesType, 'name'>('name'),
-      render: (name, record) => (
-        <div className="d-flex gap-2 items-center">
-          {getServiceLogo(record.serviceType || '', 'w-4')}
-          <Link
-            className="max-two-lines"
-            data-testid={`service-name-${name}`}
-            to={getServiceDetailsPath(
-              record.fullyQualifiedName ?? record.name,
-              serviceName
-            )}>
-            {stringToHTML(
-              highlightSearchText(getEntityName(record), searchTerm)
-            )}
-          </Link>
-        </div>
-      ),
-    },
-    {
-      title: t('label.description'),
-      dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-      key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-      width: 200,
-      render: (description) =>
-        description ? (
-          <RichTextEditorPreviewerNew
-            className="max-two-lines"
-            markdown={highlightSearchText(description, searchTerm)}
-          />
-        ) : (
-          <span className="text-grey-muted">{t('label.no-description')}</span>
+  const getServiceLogoElement = useCallback(
+    (service: ServicesType, className: string) => (
+      <img
+        alt={getEntityName(service)}
+        className={className}
+        src={serviceUtilClassBase.getServiceTypeLogo(service)}
+      />
+    ),
+    []
+  );
+
+  const columns: ColumnsType<ServicesType> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        width: 200,
+        sorter: getColumnSorter<ServicesType, 'name'>('name'),
+        render: (name, record) => (
+          <div className="d-flex gap-2 items-center">
+            {getServiceLogoElement(record, 'w-4')}
+            <Link
+              className="max-two-lines"
+              data-testid={`service-name-${name}`}
+              to={getServiceDetailsPath(
+                record.fullyQualifiedName ?? record.name,
+                serviceName
+              )}>
+              {stringToHTML(
+                highlightSearchText(getEntityName(record), searchTerm)
+              )}
+            </Link>
+          </div>
         ),
-    },
-    {
-      title: t('label.type'),
-      dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
-      key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
-      width: 200,
-      filterDropdown: ColumnFilter,
-      filterIcon: columnFilterIcon,
-      filtered: !isEmpty(serviceTypeFilter),
-      filteredValue: serviceTypeFilter,
-      filters: serviceTypeFilters,
-      render: (serviceType) => (
-        <span className="font-normal text-grey-body">
-          {stringToHTML(highlightSearchText(serviceType, searchTerm))}
-        </span>
-      ),
-    },
-    ...ownerTableObject<ServicesType>(),
-  ];
+      },
+      {
+        title: t('label.description'),
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 200,
+        render: (description) =>
+          description ? (
+            <RichTextEditorPreviewerNew
+              className="max-two-lines"
+              markdown={highlightSearchText(description, searchTerm)}
+            />
+          ) : (
+            <span className="text-grey-muted">{t('label.no-description')}</span>
+          ),
+      },
+      {
+        title: t('label.type'),
+        dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+        key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+        width: 200,
+        filterDropdown: ColumnFilter,
+        filterIcon: columnFilterIcon,
+        filtered: !isEmpty(serviceTypeFilter),
+        filteredValue: serviceTypeFilter,
+        filters: serviceTypeFilters,
+        render: (serviceType) => (
+          <span className="font-normal text-grey-body">
+            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+          </span>
+        ),
+      },
+      ...ownerTableObject<ServicesType>(),
+    ],
+    [t, serviceName, searchTerm, serviceTypeFilter, serviceTypeFilters]
+  );
 
   const serviceCardRenderer = (service: ServicesType) => {
     return (
@@ -473,7 +507,7 @@ const Services = ({ serviceName }: ServicesProps) => {
               </Col>
               <Col span={24}>
                 <div className="m-b-xss" data-testid="service-type">
-                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="m-b-0">{`${t('label.type')}:`}</span>
                   <span className="font-normal m-l-xss text-grey-body">
                     {service.serviceType}
                   </span>
@@ -483,7 +517,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
             <div className="d-flex flex-col justify-between flex-none">
               <div className="d-flex justify-end" data-testid="service-icon">
-                {getServiceLogo(service.serviceType || '', 'h-7')}
+                {getServiceLogoElement(service, 'h-7')}
               </div>
             </div>
           </div>
@@ -564,7 +598,6 @@ const Services = ({ serviceName }: ServicesProps) => {
                   <Button
                     className="m-b-xs"
                     data-testid="add-service-button"
-                    size="middle"
                     type="primary"
                     onClick={handleAddServiceClick}>
                     {t('label.add-new-entity', {

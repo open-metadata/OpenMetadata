@@ -23,7 +23,6 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
-import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
@@ -38,15 +37,15 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/Table';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
@@ -59,6 +58,18 @@ import {
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
+/**
+ * Ant Design treats `children` on a row record as nested rows and reads the row
+ * key off a record field, so raw column names cannot be used as record keys: a
+ * column named `children` crashes the table, and a repeated cell value collides
+ * as a row key. Addressing every cell by column index keeps record keys unique
+ * and clear of both reserved names.
+ */
+const ROW_KEY = '__rowKey';
+
+const getSampleDataColumnKey = (index: number, column: string) =>
+  `${index}-${column}`;
+
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
@@ -66,12 +77,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
   permissions,
   entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage } = useTourProvider();
+  const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const [rowLimit, setRowLimit] = useState<number>(100);
 
@@ -101,9 +113,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
     }
-    const columnNames = sampleData.columns.map((col) => String(col.key ?? ''));
     const csvContent = buildSampleDataCSVContent(
-      columnNames,
+      sampleData.columns,
       sampleData.rows,
       rowLimit
     );
@@ -120,12 +131,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
     const columns =
       'columns' in entity ? entity.columns : entity.dataModel?.columns ?? [];
 
-    const updatedColumns = sampleData?.columns?.map((column) => {
+    const updatedColumns = sampleData?.columns?.map((column, index) => {
       const matchedColumn = columns.find((col) => col.name === column);
+      const columnKey = getSampleDataColumnKey(index, column);
 
       return {
         name: column,
-        dataType: matchedColumn?.dataType ?? '',
         title: (
           <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>
@@ -136,17 +147,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
             )}
           </div>
         ),
-        dataIndex: column,
-        key: column,
+        dataIndex: columnKey,
+        key: columnKey,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
 
-    const data = (sampleData?.rows ?? []).map((item) => {
-      const dataObject: Record<string, SampleDataType> = {};
+    const data = (sampleData?.rows ?? []).map((item, rowIndex) => {
+      const dataObject: Record<string, SampleDataType> = {
+        [ROW_KEY]: rowIndex,
+      };
       (sampleData?.columns ?? []).forEach((col, index) => {
-        dataObject[col] = item[index];
+        dataObject[getSampleDataColumnKey(index, col)] = item[index];
       });
 
       return dataObject;
@@ -174,6 +187,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   const handleDeleteSampleData = async () => {
     try {
+      setIsDeleting(true);
       if (entityType === EntityType.CONTAINER) {
         await deleteSampleDataByContainerId(tableId);
       } else {
@@ -188,6 +202,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
           entity: t('label.sample-data'),
         })
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -245,14 +261,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
       setIsLoading(false);
     }
     if (isTourPage) {
-      setSampleData(
-        getSampleDataWithType({
-          columns: mockDatasetData.tableDetails.columns,
-          sampleData: mockDatasetData.sampleData,
-        } as unknown as Table)
-      );
+      const mock = tourMockDatasetData as
+        | { tableDetails: { columns: unknown }; sampleData: unknown }
+        | undefined;
+      if (mock) {
+        setSampleData(
+          getSampleDataWithType({
+            columns: mock.tableDetails.columns,
+            sampleData: mock.sampleData,
+          } as unknown as Table)
+        );
+      }
     }
-  }, [tableId]);
+  }, [tableId, tourMockDatasetData]);
 
   if (isLoading) {
     return <Loader />;
@@ -338,19 +359,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
         data-testid="sample-data-table"
         dataSource={slicedRows}
         pagination={false}
-        rowKey="name"
+        rowKey={ROW_KEY}
         scroll={{ y: 'calc(100vh - 160px)' }}
         size="small"
       />
 
       {isDeleteModalOpen && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
-          entityName={t('label.sample-data')}
-          entityType={EntityType.SAMPLE_DATA}
-          visible={isDeleteModalOpen}
+        <DeleteModal
+          entityTitle={t('label.sample-data')}
+          isDeleting={isDeleting}
+          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
-          onConfirm={handleDeleteSampleData}
+          onDelete={handleDeleteSampleData}
         />
       )}
     </div>

@@ -17,7 +17,7 @@ for AI governance in OpenMetadata.
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
 from uuid import uuid4
 
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
@@ -46,13 +46,20 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.mcp.client import McpClient, McpProtocolError
 from metadata.ingestion.source.mcp.client import McpServerInfo as ClientServerInfo
 from metadata.ingestion.source.mcp.connection import McpConnectionManager
 from metadata.utils.filters import filter_by_server
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -143,9 +150,11 @@ class McpSource(Source):
         self.service_connection: McpConnection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
 
-        self.connection_manager = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection_manager = cast("BaseConnection", self._connection).client
         self.connection_obj = self.connection_manager
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -377,8 +386,9 @@ class McpSource(Source):
 
     def close(self):
         """Cleanup resources"""
-        pass  # noqa: PIE790
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
         """Test connection to MCP servers"""
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

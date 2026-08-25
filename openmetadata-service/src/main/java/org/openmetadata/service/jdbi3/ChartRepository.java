@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -46,14 +47,24 @@ public class ChartRepository extends EntityRepository<Chart> {
   private static final String CHART_PATCH_FIELDS = "dashboards";
 
   public ChartRepository() {
+    this(true);
+  }
+
+  protected ChartRepository(boolean registerEntity) {
     super(
         ChartResource.COLLECTION_PATH,
         Entity.CHART,
         Chart.class,
         Entity.getCollectionDAO().chartDAO(),
         CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
+        CHART_UPDATE_FIELDS,
+        Set.of(),
+        registerEntity);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboards", this::fetchAndSetDashboards);

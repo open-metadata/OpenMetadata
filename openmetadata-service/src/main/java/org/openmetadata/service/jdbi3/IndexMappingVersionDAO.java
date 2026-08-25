@@ -9,6 +9,7 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface IndexMappingVersionDAO {
 
@@ -30,13 +31,16 @@ public interface IndexMappingVersionDAO {
   void upsertIndexMappingVersion(
       @Bind("entityType") String entityType,
       @Bind("mappingHash") String mappingHash,
-      @Bind("mappingJson") String mappingJson,
+      @BindJson("mappingJson") String mappingJson,
       @Bind("version") String version,
       @Bind("updatedAt") long updatedAt,
       @Bind("updatedBy") String updatedBy);
 
   @SqlQuery("SELECT mappingHash FROM index_mapping_versions WHERE entityType = :entityType")
   String getMappingHash(@Bind("entityType") String entityType);
+
+  @SqlQuery("SELECT DISTINCT version FROM index_mapping_versions")
+  List<String> getDistinctMappingVersions();
 
   @SqlQuery("SELECT entityType, mappingHash FROM index_mapping_versions")
   @RegisterRowMapper(IndexMappingVersionMapper.class)

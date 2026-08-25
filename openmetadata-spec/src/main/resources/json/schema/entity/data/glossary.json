@@ -124,6 +124,27 @@
     "entityStatus": {
       "description": "Status of the Glossary.",
       "$ref": "../../type/status.json"
+    },
+    "namespaces": {
+      "description": "Namespace prefix to IRI mappings for terms imported from an external ontology. Used to render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.OntologyNamespace",
+        "properties": {
+          "prefix": {
+            "description": "Short prefix for the namespace (e.g., `hcp`).",
+            "type": "string"
+          },
+          "namespace": {
+            "description": "Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).",
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
     }
   },
   "required": ["id", "name", "description"],

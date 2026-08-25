@@ -144,6 +144,40 @@ class McpUsageRecorderTest {
     assertThat(decoded.getSuccess()).isFalse();
   }
 
+  @Test
+  void recordCapturesPhase3Metadata() {
+    stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
+
+    McpUsageRecorder.record(
+        "create_glossary",
+        "bob",
+        false,
+        342L,
+        McpToolCallUsage.ErrorCategory.AUTH,
+        "Claude Desktop");
+
+    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    verify(dao).insert(json.capture(), eq("limits"));
+    McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
+    assertThat(decoded.getLatencyMs()).isEqualTo(342L);
+    assertThat(decoded.getErrorCategory()).isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
+    assertThat(decoded.getClientName()).isEqualTo("Claude Desktop");
+  }
+
+  @Test
+  void legacy3ArgOverloadOmitsPhase3Fields() {
+    stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
+
+    McpUsageRecorder.record("search_metadata", "alice", true);
+
+    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    verify(dao).insert(json.capture(), eq("limits"));
+    McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
+    assertThat(decoded.getLatencyMs()).isNull();
+    assertThat(decoded.getErrorCategory()).isNull();
+    assertThat(decoded.getClientName()).isNull();
+  }
+
   private void stubMcpApp(UUID appId, String appName) {
     AbstractNativeApplication nativeApp = mock(AbstractNativeApplication.class);
     App app = new App().withId(appId).withName(appName);

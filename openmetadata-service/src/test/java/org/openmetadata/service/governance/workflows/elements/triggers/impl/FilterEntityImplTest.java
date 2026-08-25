@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.FieldChange;
@@ -26,6 +30,8 @@ class FilterEntityImplTest {
 
   private FilterEntityImpl filterEntity;
   private Method passesFieldBasedFilter;
+  private Method sanitizeFilterValue;
+  private Method extractFromFilterMap;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -34,6 +40,12 @@ class FilterEntityImplTest {
         FilterEntityImpl.class.getDeclaredMethod(
             "passesFieldBasedFilter", List.class, List.class, List.class);
     passesFieldBasedFilter.setAccessible(true);
+    sanitizeFilterValue =
+        FilterEntityImpl.class.getDeclaredMethod("sanitizeFilterValue", String.class);
+    sanitizeFilterValue.setAccessible(true);
+    extractFromFilterMap =
+        FilterEntityImpl.class.getDeclaredMethod("extractFromFilterMap", Map.class, String.class);
+    extractFromFilterMap.setAccessible(true);
   }
 
   @Test
@@ -118,7 +130,20 @@ class FilterEntityImplTest {
     assertFalse(invokeFilter(List.of(fieldChange("updatedAt")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("version")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("href")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  }
+
+  @Test
+  void testEntityStatusIsRecognizedAsTriggerField() throws Exception {
+    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  }
+
+  @Test
+  void testEntityStatusCanBeExcludedPerWorkflow() throws Exception {
+    List<String> excludeStatus = List.of("entityStatus");
+    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, excludeStatus));
+    assertTrue(
+        invokeFilter(
+            List.of(fieldChange("entityStatus"), fieldChange("description")), null, excludeStatus));
   }
 
   @Test
@@ -202,11 +227,92 @@ class FilterEntityImplTest {
     assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
   }
 
+  // sanitizeFilterValue: guards against the historical UI bug where an incomplete
+  // filter tree was serialized as a JSON-encoded empty string \"\" and persisted
+  // per entity in the trigger config. Also handles \"{}\" and whitespace forms.
+
+  @Test
+  void testSanitizeFilterValueTreatsNullAsNoFilter() throws Exception {
+    assertNull(invokeSanitize(null));
+  }
+
+  @Test
+  void testSanitizeFilterValueTreatsEmptyStringAsNoFilter() throws Exception {
+    assertNull(invokeSanitize(""));
+    assertNull(invokeSanitize("   "));
+  }
+
+  @Test
+  void testSanitizeFilterValueTreatsJsonEncodedEmptyAsNoFilter() throws Exception {
+    assertNull(invokeSanitize("\"\""));
+    assertNull(invokeSanitize("  \"\"  "));
+  }
+
+  @Test
+  void testSanitizeFilterValueTreatsEmptyObjectAsNoFilter() throws Exception {
+    assertNull(invokeSanitize("{}"));
+    assertNull(invokeSanitize("  {}  "));
+  }
+
+  @Test
+  void testSanitizeFilterValuePreservesRealFilter() throws Exception {
+    String filter = "{\"==\":[{\"var\":\"name\"},\"foo\"]}";
+    assertEquals(filter, invokeSanitize(filter));
+  }
+
+  // extractFromFilterMap: entity-specific value wins over default; poisoned values
+  // are skipped instead of leaking into RuleEngine (which fails and would flip the
+  // exclusion filter's fail-open semantics into a hard reject).
+
+  @Test
+  void testExtractFromFilterMapPrefersEntitySpecificOverDefault() throws Exception {
+    Map<String, String> map = new HashMap<>();
+    map.put("default", "{\"==\":[1,1]}");
+    map.put("glossaryTerm", "{\"==\":[{\"var\":\"name\"},\"foo\"]}");
+    assertEquals("{\"==\":[{\"var\":\"name\"},\"foo\"]}", invokeExtract(map, "glossaryTerm"));
+  }
+
+  @Test
+  void testExtractFromFilterMapFallsBackToDefault() throws Exception {
+    Map<String, String> map = new HashMap<>();
+    map.put("default", "{\"==\":[1,1]}");
+    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
+  }
+
+  @Test
+  void testExtractFromFilterMapPoisonedEntitySpecificFallsBackToDefault() throws Exception {
+    Map<String, String> map = new HashMap<>();
+    map.put("default", "{\"==\":[1,1]}");
+    map.put("glossaryTerm", "\"\"");
+    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
+  }
+
+  @Test
+  void testExtractFromFilterMapAllPoisonedReturnsNull() throws Exception {
+    Map<String, String> map = new HashMap<>();
+    map.put("default", "\"\"");
+    map.put("glossaryTerm", "\"\"");
+    assertNull(invokeExtract(map, "glossaryTerm"));
+  }
+
+  @Test
+  void testExtractFromFilterMapEmptyMapReturnsNull() throws Exception {
+    assertNull(invokeExtract(new HashMap<>(), "glossaryTerm"));
+  }
+
   private boolean invokeFilter(
       List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
       throws Exception {
     return (boolean)
         passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
+  }
+
+  private String invokeSanitize(String filter) throws Exception {
+    return (String) sanitizeFilterValue.invoke(null, filter);
+  }
+
+  private String invokeExtract(Map<String, String> map, String entityType) throws Exception {
+    return (String) extractFromFilterMap.invoke(filterEntity, map, entityType);
   }
 
   private FieldChange fieldChange(String name) {

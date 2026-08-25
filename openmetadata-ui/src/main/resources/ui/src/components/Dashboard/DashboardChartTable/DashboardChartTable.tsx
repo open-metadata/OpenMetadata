@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INITIAL_CHART_FILTERS } from '../../../constants/constants';
@@ -29,31 +29,40 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagLabel, TagSource } from '../../../generated/entity/data/chart';
+import type { TagLabel } from '../../../generated/entity/data/chart';
+import { TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { useTableFilters } from '../../../hooks/useTableFilters';
-import { ChartType } from '../../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
+import {
+  ChartsPermissions,
+  ChartType,
+} from '../DashboardDetails/DashboardDetails.interface';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 export const DashboardChartTable = ({
   isCustomizationPage = false,
@@ -278,6 +287,9 @@ export const DashboardChartTable = ({
     [setFilters, chartFilters]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(charts);
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -362,7 +374,7 @@ export const DashboardChartTable = ({
         },
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -385,7 +397,7 @@ export const DashboardChartTable = ({
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
     [
@@ -396,6 +408,7 @@ export const DashboardChartTable = ({
       handleUpdateChart,
       handleChartTagSelection,
       charts,
+      tagFilterState,
     ]
   );
 
@@ -426,7 +439,7 @@ export const DashboardChartTable = ({
         className="align-table-filter-left"
         columns={tableColumn}
         data-testid="charts-table"
-        dataSource={charts}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
         extraTableFilters={
           <span>
@@ -453,6 +466,7 @@ export const DashboardChartTable = ({
         scroll={{ x: 1200 }}
         size="small"
         staticVisibleColumns={[TABLE_COLUMNS_KEYS.CHART_NAME]}
+        onChange={handleTableChange}
       />
       {editChart && (
         <EntityAttachmentProvider

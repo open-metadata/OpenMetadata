@@ -37,10 +37,10 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
+    has_table_name,
     insensitive_match,
     insensitive_replace,
     pretty_print_time_duration,
@@ -208,10 +208,21 @@ class LineageParser:
     @cached_property
     def clean_table_list(self) -> List[str]:  # noqa: UP006
         """
-        Clean the table name if it has <default>.
+        Clean the table name if it has <default>, dropping the references we won't
+        be able to resolve, such as the ones without a table name.
         :return: clean table names
         """
-        return [get_formatted_entity_name(str(table)) for table in self.involved_tables]
+        clean_tables = []
+        # basedpyright resolves the cached_property to the descriptor itself, as the
+        # collate_sqllineage models it is annotated with are untyped
+        for table in self.involved_tables or []:  # pyright: ignore[reportGeneralTypeIssues]
+            table_name = get_formatted_entity_name(str(table))
+            if not has_table_name(table_name):
+                logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")
+                continue
+            clean_tables.append(table_name)
+
+        return clean_tables
 
     @cached_property
     def table_aliases(self) -> Dict[str, str]:  # noqa: UP006
@@ -480,7 +491,6 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self,
         query: str,
@@ -514,7 +524,6 @@ class LineageParser:
             f" {self.masked_query or self.query}"
         )
 
-        @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -564,7 +573,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
                 return lr_sqlglot
 
-        @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -614,7 +622,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
                 return lr_sqlfluff
 
-        @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(

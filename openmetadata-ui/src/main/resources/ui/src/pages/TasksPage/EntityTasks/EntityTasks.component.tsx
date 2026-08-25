@@ -21,15 +21,15 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getEntityTaskDetails } from '../../../utils/TaskFieldUtils';
 import {
-  getEntityTaskDetails,
   getRequestDescriptionPath,
   getRequestTagsPath,
   getUpdateDescriptionPath,
   getUpdateTagsPath,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
 
 const EntityTasks = ({

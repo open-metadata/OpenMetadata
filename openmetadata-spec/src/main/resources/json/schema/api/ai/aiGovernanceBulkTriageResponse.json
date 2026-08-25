@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernanceBulkTriageResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernanceBulkTriageResponse",
+  "description": "Result of bulk-triaging shadow AI detections.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.AIGovernanceBulkTriageResponse",
+  "definitions": {
+    "aiGovernanceBulkTriageResult": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceBulkTriageResult",
+      "description": "Triage result for one AI asset.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Type of triaged AI asset."
+        },
+        "id": {
+          "type": "string",
+          "description": "Identifier of triaged AI asset."
+        },
+        "status": {
+          "type": "string",
+          "description": "Triage result status."
+        },
+        "message": {
+          "type": "string",
+          "description": "Failure message when status is error."
+        }
+      },
+      "required": ["entityType", "id", "status"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "results": {
+      "description": "Per-asset triage results.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceBulkTriageResult"
+      },
+      "default": []
+    }
+  },
+  "required": ["results"],
+  "additionalProperties": false
+}

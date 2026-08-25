@@ -15,7 +15,7 @@ Atlas source to extract metadata
 
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -43,7 +43,11 @@ from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
@@ -51,6 +55,9 @@ from metadata.utils.helpers import get_database_name_for_lineage, retry_with_doc
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -78,7 +85,8 @@ class AtlasSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
 
-        self.atlas_client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.atlas_client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.atlas_client
         self.tables: Dict[str, Any] = {}  # noqa: UP006
         self.topics: Dict[str, Any] = {}  # noqa: UP006
@@ -89,7 +97,8 @@ class AtlasSource(Source):
             "Table": {self.service_connection.entity_type: {"db": "db", "column": "columns"}},
             "Topic": {"Topic": {"schema": "schema"}},
         }
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -140,7 +149,8 @@ class AtlasSource(Source):
                 )
 
     def close(self):
-        """Not required to implement"""
+        if self._connection is not None:
+            self._connection.close()
 
     def _parse_topic_entity(self, name):
         for key in self.topics:
@@ -426,4 +436,4 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

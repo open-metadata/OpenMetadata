@@ -28,20 +28,19 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { getTaskDetailPath } from '../../../utils/TaskNavigationUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
-
 interface TaskFeedCardProps {
   post: Post;
   feed: Thread;
@@ -223,7 +222,17 @@ const TaskFeedCard = ({
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer m-l-xs"
-                      onClick={!hidePopover ? showReplies : noop}>
+                      role="button"
+                      tabIndex={0}
+                      onClick={!hidePopover ? showReplies : noop}
+                      onKeyDown={(e) => {
+                        if (
+                          (e.key === 'Enter' || e.key === ' ') &&
+                          !hidePopover
+                        ) {
+                          showReplies();
+                        }
+                      }}>
                       <ThreadIcon width={20} />{' '}
                       <span className="text-xs p-t-xss p-l-xss">
                         {postLength}

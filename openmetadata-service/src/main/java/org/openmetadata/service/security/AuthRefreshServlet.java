@@ -12,13 +12,13 @@ public class AuthRefreshServlet extends HttpServlet {
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler(req.getServletContext());
     handler.handleRefresh(req, resp);
   }
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
-    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler(req.getServletContext());
     handler.handleRefresh(req, resp);
   }
 }

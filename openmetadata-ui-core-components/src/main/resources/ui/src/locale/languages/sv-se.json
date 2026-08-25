@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Stäng",
+    "close-navigation-menu": "Stäng navigeringsmeny",
+    "copy-link": "Kopiera länk",
+    "current-page": "Aktuell sida",
+    "date-range-picker": "Väljare för datumintervall",
+    "delete": "Radera",
+    "edit": "Redigera",
+    "expand-navigation-menu": "Utöka navigeringsmeny",
+    "field-documentation": "Fältdokumentation",
+    "hidden-breadcrumbs": "Dolda brödsmulor",
+    "loading": "Läser in…",
+    "next-page": "Gå till nästa sida",
+    "open-menu": "Öppna meny",
+    "page": "Sida",
+    "pagination": "Sidnumrering",
+    "pagination-navigation": "Navigering för sidnumrering",
+    "previous-page": "Gå till föregående sida",
+    "records": "Poster",
+    "remove-filter": "Ta bort filter",
+    "select-dates": "Välj datum",
+    "show-hidden-breadcrumbs": "Visa dolda brödsmulor",
+    "today": "Idag"
+  }
+}

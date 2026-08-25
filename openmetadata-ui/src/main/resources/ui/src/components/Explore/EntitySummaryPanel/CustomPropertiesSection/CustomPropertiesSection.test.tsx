@@ -49,6 +49,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label="Search"
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -75,8 +76,10 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test-entity-link'),
+}));
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),

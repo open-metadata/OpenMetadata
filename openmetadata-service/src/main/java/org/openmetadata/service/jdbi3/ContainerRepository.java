@@ -89,6 +89,11 @@ public class ContainerRepository extends EntityRepository<Container> {
         CONTAINER_UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     allowedFields.remove("children");
 
@@ -390,6 +395,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
@@ -1064,9 +1070,15 @@ public class ContainerRepository extends EntityRepository<Container> {
    * one indexed update-by-query.
    */
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository
-        .getSearchClient()
-        .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName");
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName"),
+        "containerUpdateAssetIndexes",
+        null,
+        newFqn,
+        CONTAINER);
   }
 
   /**

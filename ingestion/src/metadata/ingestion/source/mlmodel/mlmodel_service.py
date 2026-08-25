@@ -49,7 +49,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -75,7 +81,6 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -89,7 +94,6 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -127,11 +131,13 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: MlModelServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         self.client = self.connection
 
@@ -173,10 +179,14 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """Return the algorithm for a given model"""
 
     def close(self):
-        """By default, nothing to close"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the mlmodels as deleted"""
@@ -185,7 +195,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedMlModels,
+                recursive=self.source_config.markDeletedMlModels,
                 params={"service": self.context.get().mlmodel_service},
             )
 

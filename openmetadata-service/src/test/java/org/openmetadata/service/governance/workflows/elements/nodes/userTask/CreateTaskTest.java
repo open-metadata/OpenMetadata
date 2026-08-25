@@ -16,20 +16,30 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+import java.time.Period;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
@@ -53,7 +63,7 @@ class CreateTaskTest {
     Task existingTask =
         new Task()
             .withId(UUID.randomUUID())
-            .withWorkflowStageId(CreateTask.PENDING_WORKFLOW_START_STAGE_ID)
+            .withWorkflowStageId(TaskRepository.PENDING_WORKFLOW_START_STAGE_ID)
             .withAssignees(List.of(existingAssignee));
 
     List<EntityReference> resolved =
@@ -177,6 +187,7 @@ class CreateTaskTest {
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Failed));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Revoked));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Expired));
   }
 
   @Test
@@ -184,6 +195,9 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Open));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.InProgress));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    // ManualRevoke is a live substate — access is still granted at the source and the workflow
+    // is parked waiting for a human to confirm the revoke — so it must classify as non-terminal.
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.ManualRevoke));
     // Approved and Granted are non-terminal so the next-stage CreateTask listener
     // (e.g. Data Access Request's ApprovedAccess → GrantedAccess advancement) can
     // update status/workflowStageId/availableTransitions instead of preserving
@@ -191,5 +205,714 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Approved));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Granted));
     assertFalse(CreateTask.isTerminalTaskStatus(null));
+  }
+
+  @Test
+  void testTaskRepositoryActiveStatusesMatchTerminalPredicate() {
+    List<TaskEntityStatus> expected =
+        java.util.Arrays.stream(TaskEntityStatus.values())
+            .filter(s -> !CreateTask.isTerminalTaskStatus(s))
+            .toList();
+    assertEquals(
+        expected,
+        TaskRepository.NON_TERMINAL_TASK_STATUSES,
+        () ->
+            "TaskRepository.NON_TERMINAL_TASK_STATUSES drifted from CreateTask.isTerminalTaskStatus. "
+                + "Add the new non-terminal status to NON_TERMINAL_TASK_STATUSES so the duplicate-DAR "
+                + "guard keeps treating it as active.");
+  }
+
+  // ---- resolveEffectiveDueDate ----
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateForNonGrantedStatus() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Approved,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D"),
+            requested));
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Open,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D"),
+            requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenPayloadIsNull() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, null, requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenPayloadIsLiteralNullString() {
+    // Flowable can hand back the literal JSON string "null", which deserializes to a null POJO.
+    // readDataAccessRequestPayload must yield an empty payload, not NPE on getDuration().
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "null", requested));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForLiteralNullStringPayload() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "null"));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateForNonDarTaskPayload() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted, TaskEntityType.GlossaryApproval, "plain-string", requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDateThrowsForInvalidDarPayload() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            CreateTask.resolveEffectiveDueDate(
+                TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "plain-string", 999L));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenDurationKeyAbsent() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("accessType", "FullAccess"),
+            requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenDurationIsNonString() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", 14),
+            requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenDurationIsBlank() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "   "),
+            requested));
+  }
+
+  @Test
+  void testResolveEffectiveDueDateComputesDayDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D"),
+            0L);
+    long after = System.currentTimeMillis();
+
+    long fourteenDays = 14L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + fourteenDays);
+    assertTrue(result <= after + fourteenDays);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateParsesJsonStringPayload() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            "{\"accessType\":\"FullAccess\",\"duration\":\"P14D\",\"reason\":\"audit\"}",
+            0L);
+    long after = System.currentTimeMillis();
+
+    long fourteenDays = 14L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + fourteenDays);
+    assertTrue(result <= after + fourteenDays);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateComputesHourDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "PT2H"),
+            0L);
+    long after = System.currentTimeMillis();
+
+    long twoHours = 2L * 60 * 60 * 1000;
+    assertTrue(result >= before + twoHours);
+    assertTrue(result <= after + twoHours);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateComputesMonthDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P1M"),
+            0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofMonths(1))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofMonths(1))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateComputesYearDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P1Y"),
+            0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofYears(1))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofYears(1))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateComputesCombinedPeriod() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P2Y3M"),
+            0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.of(2, 3, 0))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.of(2, 3, 0))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
+  }
+
+  @Test
+  void testResolveEffectiveDueDateFallsBackForUnparseableDuration() {
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "not-a-duration"),
+            requested));
+  }
+
+  // ---- resolveEffectiveExpirationDate ----
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonGrantedStatus() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Approved,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Open, TaskEntityType.DataAccessRequest, Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Revoked,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNullPayload() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, null));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonDarTaskPayload() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.GlossaryApproval, "plain"));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateThrowsForInvalidDarPayload() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            CreateTask.resolveEffectiveExpirationDate(
+                TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "plain"));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullWhenDurationMissingOrBlank() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("accessType", "FullAccess")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, Map.of("duration", "  ")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonStringDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, Map.of("duration", 14)));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForUnparseableDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "not-a-duration")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesDayDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, Map.of("duration", "P14D"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long fourteenDays = 14L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + fourteenDays);
+    assertTrue(result <= after + fourteenDays);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesHourDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, Map.of("duration", "PT2H"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long twoHours = 2L * 60 * 60 * 1000;
+    assertTrue(result >= before + twoHours);
+    assertTrue(result <= after + twoHours);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateIsIdempotentWhenPayloadAlreadyHasIt() {
+    // Re-entry into the Granted stage (or upstream-set value) must not overwrite the
+    // existing expirationDate — that would silently extend access on every reload.
+    Long existing = 1700000000000L;
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D", "expirationDate", existing));
+    assertEquals(existing, result);
+  }
+
+  // ---- withGrantExpirationDate ----
+
+  @Test
+  void testWithGrantExpirationDateMergesIntoPayloadOnGranted() {
+    Map<String, Object> payload =
+        Map.of("accessType", "Masked", "duration", "P14D", "reason", "audit");
+    Object result =
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, payload);
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload mergedPayload = (DataAccessRequestPayload) result;
+    assertEquals("Masked", mergedPayload.getAccessType().value());
+    assertEquals("P14D", mergedPayload.getDuration());
+    assertEquals("audit", mergedPayload.getReason());
+    Object expiration = mergedPayload.getExpirationDate();
+    assertNotNull(expiration);
+    assertTrue(expiration instanceof Long);
+    long expirationMillis = (Long) expiration;
+    assertTrue(expirationMillis > System.currentTimeMillis());
+  }
+
+  @Test
+  void testWithGrantExpirationDateParsesJsonStringPayload() {
+    Object result =
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            "{\"accessType\":\"FullAccess\",\"duration\":\"P14D\",\"reason\":\"audit\"}");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload mergedPayload = (DataAccessRequestPayload) result;
+    assertEquals("FullAccess", mergedPayload.getAccessType().value());
+    assertEquals("P14D", mergedPayload.getDuration());
+    assertNotNull(mergedPayload.getExpirationDate());
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNotGranted() {
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    assertSame(
+        payload,
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Approved, TaskEntityType.DataAccessRequest, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNoDuration() {
+    Map<String, Object> payload = Map.of("accessType", "FullAccess");
+    assertSame(
+        payload,
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenPayloadAlreadyHasExpirationDate() {
+    Map<String, Object> payload = Map.of("duration", "P14D", "expirationDate", 1700000000000L);
+    assertSame(
+        payload,
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefForNonDarTaskPayload() {
+    assertSame(
+        "string",
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.GlossaryApproval, "string"));
+    assertNull(
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, null));
+  }
+
+  @Test
+  void testWithGrantExpirationDateThrowsForInvalidDarPayload() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            CreateTask.withGrantExpirationDate(
+                TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "string"));
+  }
+
+  @Test
+  void testWithGrantExpirationDateDoesNotMutateOriginalPayload() {
+    // The payload comes in from the workflow runtime; mutating it could leak state into
+    // subsequent listeners. Confirm we produce a fresh map and leave the input alone.
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    Object result =
+        CreateTask.withGrantExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, payload);
+
+    assertFalse(payload.containsKey("expirationDate"));
+    assertTrue(result instanceof DataAccessRequestPayload);
+    assertNotNull(((DataAccessRequestPayload) result).getExpirationDate());
+  }
+
+  @Test
+  void testResolveEffectiveDueDateWithNullRequestedDueDateAndValidDurationReturnsComputedValue() {
+    Long result =
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted,
+            TaskEntityType.DataAccessRequest,
+            Map.of("duration", "P14D"),
+            null);
+    assertNotNull(result);
+    assertTrue(result > System.currentTimeMillis());
+  }
+
+  @Test
+  void testExtractPayloadCreatedByIgnoresNonRecognizerTaskPayload() {
+    assertNull(CreateTask.extractPayloadCreatedBy("plain", TaskEntityType.GlossaryApproval));
+  }
+
+  @Test
+  void testExtractPayloadCreatedByThrowsForInvalidRecognizerPayload() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            CreateTask.extractPayloadCreatedBy("plain", TaskEntityType.RecognizerFeedbackApproval));
+  }
+
+  // ---- parseMillisFromIso8601Duration ----
+
+  @Test
+  void testParseMillisFromIso8601DurationHandlesDays() {
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("P7D", 0L);
+    long after = System.currentTimeMillis();
+
+    long sevenDays = 7L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + sevenDays && result <= after + sevenDays);
+  }
+
+  @Test
+  void testParseMillisFromIso8601DurationHandlesHoursAndMinutes() {
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("PT1H30M", 0L);
+    long after = System.currentTimeMillis();
+
+    long ninetyMin = 90L * 60 * 1000;
+    assertTrue(result >= before + ninetyMin && result <= after + ninetyMin);
+  }
+
+  @Test
+  void testParseMillisFromIso8601DurationHandlesMonths() {
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("P3M", 0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.ofMonths(3))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.ofMonths(3))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
+  }
+
+  @Test
+  void testParseMillisFromIso8601DurationHandlesYearsAndMonths() {
+    long before = System.currentTimeMillis();
+    Long result = CreateTask.parseMillisFromIso8601Duration("P1Y6M", 0L);
+    long after = System.currentTimeMillis();
+
+    long expectedMin =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(before), ZoneOffset.UTC)
+            .plus(Period.of(1, 6, 0))
+            .toInstant()
+            .toEpochMilli();
+    long expectedMax =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(after), ZoneOffset.UTC)
+            .plus(Period.of(1, 6, 0))
+            .toInstant()
+            .toEpochMilli();
+    assertTrue(result >= expectedMin && result <= expectedMax);
+  }
+
+  @Test
+  void testParseMillisFromIso8601DurationReturnsFallbackForInvalidInput() {
+    Long fallback = 12345L;
+    assertEquals(fallback, CreateTask.parseMillisFromIso8601Duration("not-a-duration", fallback));
+    assertEquals(fallback, CreateTask.parseMillisFromIso8601Duration("", fallback));
+  }
+
+  @Test
+  void testParseMillisFromIso8601DurationReturnsFallbackForNullFallback() {
+    assertNull(CreateTask.parseMillisFromIso8601Duration("garbage", null));
+  }
+
+  // ---- isSupersedablePriorApprovalTask ----
+
+  @Test
+  void testIsSupersedableWhenPriorBelongsToEarlierRunOfSameWorkflow() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenNoPriorTaskExists() {
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(null, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorHasNoWorkflowInstance() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task().withId(UUID.randomUUID()).withWorkflowDefinitionId(workflowDefinitionId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorIsTheSameRun() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    UUID workflowInstanceId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(workflowInstanceId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, workflowInstanceId));
+  }
+
+  @Test
+  void testIsNotSupersedableAcrossDifferentWorkflowDefinitions() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowDefinitionUnknown() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, null, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowInstanceUnknown() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, null));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorTaskIsTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Cancelled);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsSupersedableWhenPriorTaskIsApprovedButNotYetTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Approved);
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  // ---- mergeManualGrantReason ----
+
+  @Test
+  void testMergeManualGrantReasonAttachesReasonToJsonStringPayload() {
+    // Flowable serializes task variables as raw JSON Strings; strict convertValue would throw
+    // here — the tolerant reader must parse the String and return a typed payload.
+    Object result =
+        CreateTask.mergeManualGrantReason(
+            "{\"accessType\":\"FullAccess\",\"duration\":\"P14D\"}", "policy override");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload dar = (DataAccessRequestPayload) result;
+    assertEquals("policy override", dar.getManualGrantReason());
+    assertEquals("FullAccess", dar.getAccessType().value());
+    assertEquals("P14D", dar.getDuration());
+  }
+
+  @Test
+  void testMergeManualGrantReasonAttachesReasonToMapPayload() {
+    Object result =
+        CreateTask.mergeManualGrantReason(
+            Map.of("accessType", "Masked", "duration", "P7D"), "auditor request");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload dar = (DataAccessRequestPayload) result;
+    assertEquals("auditor request", dar.getManualGrantReason());
+    assertEquals("Masked", dar.getAccessType().value());
+  }
+
+  @Test
+  void testMergeManualGrantReasonReturnsSameRefWhenReasonBlank() {
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, null));
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, ""));
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, "   "));
+  }
+
+  @Test
+  void testMergeManualGrantReasonBuildsFreshPayloadWhenInputNull() {
+    Object result = CreateTask.mergeManualGrantReason(null, "policy override");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    assertEquals("policy override", ((DataAccessRequestPayload) result).getManualGrantReason());
   }
 }

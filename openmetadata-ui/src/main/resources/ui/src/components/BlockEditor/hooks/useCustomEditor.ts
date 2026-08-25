@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorOptions } from '@tiptap/core';
+import type { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
 import { DependencyList, useEffect, useRef, useState } from 'react';
 
@@ -135,6 +135,15 @@ export const useCustomEditor = (
 
     return () => {
       isMounted = false;
+      // Without this the ProseMirror view, its plugin state and its
+      // MutationObserver outlive the component. Tables mount one editor per
+      // description cell, so every pagination click, search keystroke or tab
+      // switch used to abandon N live instances for the rest of the session.
+      // The isDestroyed guard mirrors @tiptap/react's own useEditor cleanup —
+      // StrictMode double-invokes effects, so this can run twice.
+      if (!instance.isDestroyed) {
+        instance.destroy();
+      }
     };
   }, deps);
 

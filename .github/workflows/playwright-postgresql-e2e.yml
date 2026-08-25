@@ -9,13 +9,70 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This workflow executes end-to-end (e2e) tests using Playwright with PostgreSQL as the database.
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+# Dispatcher for the postgresql Playwright E2E PR gate.
+#
+# The heavy lifting (gate → build → shard) lives in
+# `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
+# MUST stay in the caller so branch protection can find them by their
+# UN-PREFIXED check names:
+#
+#   * `playwright-summary`    — the required PR check + PR-comment
+#                               payload uploader (comment forwarding lives
+#                               in playwright-postgresql-pr-comment.yml).
+#   * `refresh-timing-baseline` — merge_group-only direct commit to main
+#                                 that keeps `.github/playwright/timing-baseline.json`
+#                                 fresh from the latest full-mode run
+#                                 (materiality-gated; see the job comment).
+#
+# Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
+# prefixes — so a required check named `playwright-summary` could never
+# be satisfied from inside the reusable. Keeping these two jobs at the
+# caller top level lets branch protection match the exact name.
+#
+# Release-branch dry-runs live in `playwright-postgresql-nightly.yml`;
+# any change to shard planning, caching, gate rules, or the shadow-gate
+# ledger still belongs in the reusable so both callers stay aligned.
 
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
+    inputs:
+      full_suite:
+        description: Run the complete duration-balanced suite
+        required: true
+        type: boolean
+        default: true
+      protocol:
+        description: Application protocol used by Playwright
+        required: true
+        type: choice
+        options:
+          - http
+          - h2
+        default: http
+      coarse_bundle:
+        description: Build the CI-only coarse Vite bundle
+        required: true
+        type: boolean
+        default: true
+  # Same-repo PRs run under pull_request — unprivileged, secrets absent
+  # from the runner. These jobs build PR code, populate caches, and
+  # exchange artifacts.
+  pull_request:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  # Fork PRs need cloud-connector secrets (TEST_SNOWFLAKE_*, TEST_BQ_*,
+  # TEST_REDSHIFT_* …) that pull_request events cannot access on forks.
+  # pull_request_target runs in the base repo's context so those secrets
+  # resolve, but requires a maintainer to apply the "safe to test" label
+  # first (enforced by the gate job in the reusable workflow). Same-repo
+  # PRs already ran under pull_request above; the reusable short-circuits
+  # on them via the head-repo check in the gate job.
   pull_request_target:
     types:
       - labeled
@@ -23,417 +80,621 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths-ignore:
-      - ".github/**"
-      - "openmetadata-dist/**"
-      - "docker/**"
-      - "!docker/development/docker-compose.yml"
-      - "!docker/development/docker-compose-postgres.yml"
-      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "openmetadata-ui/src/main/resources/ui/scripts/**"
 
 permissions:
+  actions: read
   contents: read
-  pull-requests: write
-
-concurrency:
-  group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  pull-requests: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
-    steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
-      - name: Setup JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Cache Maven Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Install antlr cli
-        run: sudo make install_antlr_cli
-
-      - name: Build with Maven
-        run: mvn -DskipTests clean package
-
-      - name: Upload Maven build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: openmetadata-build
-          path: openmetadata-dist/target/openmetadata-*.tar.gz
-          retention-days: 1
-
-  playwright-ci-postgresql:
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
-    environment: test
-    strategy:
-      fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
-      - name: Download Maven build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: openmetadata-build
-          path: openmetadata-dist/target
-
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: "3.10"
-          args: "-d postgresql -s true"
-          ingestion_dependency: "all"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
-
-      - name: Install dependencies
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
-      - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install chromium --with-deps
-      - name: Run Playwright tests
-        id: run-tests
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: |
-          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
-
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
-            npx playwright test \
-              --project=setup \
-              --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled \
-              --project=Basic \
-              --project=SearchRBAC \
-
-          else
-            # Shards 2-6 run common chromium tests equally distributed (5-way sharding)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running common chromium tests on shard ${CHROMIUM_SHARD}/5"
-            npx playwright test \
-              --project=chromium \
-              --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
-          fi
-
-        env:
-          PLAYWRIGHT_IS_OSS: true
-          PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
-          PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
-          PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-          PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
-          PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
-          PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
-          PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
-          PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
-          PLAYWRIGHT_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-          PLAYWRIGHT_REDSHIFT_HOST: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
-          PLAYWRIGHT_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
-          PLAYWRIGHT_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
-          PLAYWRIGHT_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
-          PLAYWRIGHT_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
-          PLAYWRIGHT_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
-          PLAYWRIGHT_METABASE_DB_SERVICE_NAME: ${{ secrets.TEST_METABASE_DB_SERVICE_NAME }}
-          PLAYWRIGHT_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
-          PLAYWRIGHT_SUPERSET_USERNAME: ${{ secrets.TEST_SUPERSET_USERNAME }}
-          PLAYWRIGHT_SUPERSET_PASSWORD: ${{ secrets.TEST_SUPERSET_PASSWORD }}
-          PLAYWRIGHT_SUPERSET_HOST_PORT: ${{ secrets.TEST_SUPERSET_HOST_PORT }}
-          PLAYWRIGHT_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.TEST_KAFKA_BOOTSTRAP_SERVERS }}
-          PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL }}
-          PLAYWRIGHT_GLUE_ACCESS_KEY: ${{ secrets.TEST_GLUE_ACCESS_KEY }}
-          PLAYWRIGHT_GLUE_SECRET_KEY: ${{ secrets.TEST_GLUE_SECRET_KEY }}
-          PLAYWRIGHT_GLUE_AWS_REGION: ${{ secrets.TEST_GLUE_AWS_REGION }}
-          PLAYWRIGHT_GLUE_ENDPOINT: ${{ secrets.TEST_GLUE_ENDPOINT }}
-          PLAYWRIGHT_GLUE_STORAGE_SERVICE: ${{ secrets.TEST_GLUE_STORAGE_SERVICE }}
-          PLAYWRIGHT_MYSQL_USERNAME: ${{ secrets.TEST_MYSQL_USERNAME }}
-          PLAYWRIGHT_MYSQL_PASSWORD: ${{ secrets.TEST_MYSQL_PASSWORD }}
-          PLAYWRIGHT_MYSQL_HOST_PORT: ${{ secrets.TEST_MYSQL_HOST_PORT }}
-          PLAYWRIGHT_MYSQL_DATABASE_SCHEMA: ${{ secrets.TEST_MYSQL_DATABASE_SCHEMA }}
-          PLAYWRIGHT_POSTGRES_USERNAME: ${{ secrets.TEST_POSTGRES_USERNAME }}
-          PLAYWRIGHT_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
-          PLAYWRIGHT_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
-          PLAYWRIGHT_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
-          PLAYWRIGHT_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
-          PLAYWRIGHT_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
-          PLAYWRIGHT_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
-          PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
-          PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
-          PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
-
-          # Recommended: pass the GitHub token lets this action correctly
-          # determine the unique run id necessary to re-run the checks
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-          retention-days: 5
-
-      - name: Upload test results (screenshots, traces)
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-test-results-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
-          retention-days: 5
-
-      - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-results-json-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
-          retention-days: 1
-          if-no-files-found: ignore
-
-      - name: Clean Up
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+  playwright:
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
+    # reusable without re-listing each one; the reusable only reads what it
+    # needs.
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-pr
+      workflow_filename: playwright-postgresql-e2e.yml
+      # Defaults inline what workflow_dispatch collects; non-dispatch events
+      # fall back to the reusable's own defaults (full_suite=true, http,
+      # coarse_bundle=true).
+      full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
+      protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
+      coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
-    needs: playwright-ci-postgresql
+    # Publish the required check name `playwright-summary` ONLY when the
+    # reusable's gate authorized the run. Every explicit gate skip publishes
+    # a differently-named check so a redundant sibling event cannot satisfy
+    # branch protection before the real pipeline finishes. Gate failures
+    # keep the required name and fail in the guard step below.
+    #
+    # Decision tree (mirrors the reusable's gate outputs verbatim):
+    #   gate succeeded with should_run=true              → 'playwright-summary'
+    #   gate failed                                      → 'playwright-summary'
+    #   labeled event with non-'safe to test' label      → 'playwright-summary (label ignored)'
+    #   gate succeeded with should_run=false             → 'playwright-summary (skipped)'
+    name: >-
+      ${{
+        (
+          needs.playwright.outputs.gate_result != 'success'
+          || needs.playwright.outputs.gate_should_run == 'true'
+        )
+        && 'playwright-summary'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'playwright-summary (label ignored)'
+          || 'playwright-summary (skipped)'
+        )
+      }}
+    if: ${{ always() && !cancelled() }}
+    needs: [playwright]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      # For the budget-breach tracked issue (Signal Playwright budget
+      # breaches step below).
+      issues: write
     steps:
+      # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
+      # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
+      # check out here becomes trusted code executing with token access. For fork PRs
+      # (pull_request_target) we MUST NOT check out the fork's head — a malicious fork
+      # could otherwise edit render_playwright_summary.cjs to exfiltrate the token or
+      # rewrite the check result. Use the base branch's SHA on pull_request_target so
+      # only reviewed-and-merged versions of these scripts ever run. Everything else
+      # keeps github.sha (PR merge commit / merge-queue commit / dispatch ref).
+      - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Download blob reports
+        id: download-blobs
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: playwright-blob-*
+          path: ${{ runner.temp }}/playwright-blobs
+          merge-multiple: true
+
+      - name: Download timing metrics
+        id: download-timings
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: playwright-timings-*
+          path: ${{ runner.temp }}/playwright-timings
+
+      - name: Download shard plans
+        id: download-plans
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-shard-plans
+          path: ${{ runner.temp }}/playwright-plans
+
       - name: Download all results JSON
-        uses: actions/download-artifact@v4
+        id: download-results
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        uses: actions/download-artifact@v7
+        continue-on-error: true
         with:
           pattern: playwright-results-json-*
           path: results
+          # Pin the per-artifact subdirectory layout the renderer expects
+          # (results/playwright-results-json-<shardId>/results.json). When
+          # only one artifact matches the pattern — typical for spec-only
+          # single-shard PR runs — some download-artifact configurations
+          # flatten the contents directly into `path:`, which breaks the
+          # readdirSync-based shard discovery in render_playwright_summary.cjs
+          # and reports the shard as "did not upload a usable Playwright
+          # results artifact". Explicitly locking merge-multiple=false keeps
+          # the layout consistent across single-shard and multi-shard runs.
+          # See run 30088248354 for the failure this addresses.
+          merge-multiple: false
 
-      - name: Post consolidated PR comment
-        uses: actions/github-script@v7
+      # Diagnostic: log the actual on-disk layout the renderer sees. The
+      # explicit merge-multiple pin above matches the documented default,
+      # so if single-shard runs still fail the same way we need this
+      # trace to see whether download-artifact placed files at
+      # `results/playwright-results-json-<shardId>/results.json` (expected)
+      # or somewhere else. Remove once single-shard runs are consistently
+      # green.
+      - name: Diagnose downloaded results layout
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          echo "=== results/ tree ==="
+          ls -laR results 2>&1 || echo "(results/ does not exist)"
+          echo
+          echo "=== expected shardIds (from plan-playwright.matrix) ==="
+          echo '${{ needs.playwright.outputs.plan_playwright_matrix }}' \
+            | jq -r '.include[].shardId' \
+            || echo "(jq parse failed)"
+
+      - name: Setup Node.js
+        id: setup-node
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+          cache: yarn
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      - name: Install report dependencies
+        id: install-report-dependencies
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          timeout --foreground --signal=TERM --kill-after=30s 5m \
+            yarn --ignore-scripts --frozen-lockfile
+
+      - name: Mark report generation start
+        id: mark-report-start
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Merge HTML report
+        id: merge-report
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ runner.temp }}/playwright-report
+        run: |
+          if ! find "$RUNNER_TEMP/playwright-blobs" -type f -name '*.zip' -print -quit | grep -q .; then
+            echo "No Playwright blob reports were uploaded" >&2
+            exit 1
+          fi
+          timeout --foreground --signal=TERM --kill-after=30s 3m \
+            npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
+
+      - name: Merge Playwright timing history
+        id: merge-timings
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/merge_playwright_timings.py \
+              --input-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --mode "$EXECUTION_MODE" \
+              --source-sha "$SOURCE_SHA" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-timing-history.json"
+
+      - name: Verify Playwright timing coverage
+        id: verify-coverage
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/verify_playwright_coverage.py \
+              --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
+              --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --result-glob "$GITHUB_WORKSPACE/results/playwright-results-json-*/results.json" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json"
+
+      - name: Evaluate Playwright performance
+        id: evaluate-performance
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
+        run: |
+          # No --enforce: time/flake budget targets are SIGNALS (surfaced by
+          # the "Signal Playwright budget breaches" step below), never a
+          # reason to fail the required check on an otherwise-green run.
+          # Blocking targets (reserved for corrupt-results states; empty
+          # today) would still exit non-zero under --enforce if reintroduced.
+          timeout --foreground --signal=TERM --kill-after=30s 2m \
+            python3 .github/scripts/evaluate_playwright_performance.py \
+              --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --request-glob "$RUNNER_TEMP/playwright-timings/**/request-metrics.json" \
+              --phase-glob "$RUNNER_TEMP/playwright-timings/**/shard-phases.json" \
+              --mode "$EXECUTION_MODE" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+          jq . "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+
+      - name: Upload merged Playwright report
+        id: upload-report
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-report
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Record reporting and report-upload duration
+        id: record-report-duration
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
+        run: |
+          performance="$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+          [[ -f "$performance" ]] || exit 0
+          report_seconds=$(($(date +%s) - PW_REPORT_STARTED_AT))
+          # Reporting duration is a BUDGET target: recorded, surfaced by the
+          # budget-signal step below, but never a reason to fail the check
+          # (it used to exit 1 here on full-mode runs and eject green PRs).
+          jq \
+            --argjson reportSeconds "$report_seconds" \
+            '.metrics.reportingSeconds = $reportSeconds |
+             .targets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
+             .budgetTargets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
+             .targetsMet = ([.targets[]] | all) |
+             .budgetTargetsMet = ([.budgetTargets[]] | all) |
+             .blockingTargetsMet = ([.blockingTargets[]] | all) |
+             .convergenceTargetsMet = ([.convergenceTargets[]] | all)' \
+            "$performance" > "$performance.tmp"
+          mv "$performance.tmp" "$performance"
+          if [[ "$report_seconds" -gt 120 ]]; then
+            echo "::warning::Playwright reporting and report upload took ${report_seconds}s (budget 120s)"
+          fi
+
+      # THE budget signal. Time/flake budgets no longer fail the required
+      # check (see evaluate_playwright_performance.py — run 32500973433
+      # ejected a PR with zero test failures); instead every breach is:
+      #   * a ::warning annotation on this run,
+      #   * a section in the job summary,
+      #   * an upsert into the tracked issue "Playwright CI over time budget"
+      #     (merge_group full runs only, comment throttled to one per 20 h)
+      # so capacity problems page a human through the issue, not by ejecting
+      # innocent PRs from the merge queue.
+      - name: Signal Playwright budget breaches
+        id: budget-signal
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: "Playwright CI over time budget"
+        run: |
+          performance="$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+          [[ -f "$performance" ]] || { echo "No performance payload; nothing to signal."; exit 0; }
+          met=$(jq -r '.budgetTargetsMet // true' "$performance")
+          if [[ "$met" == "true" ]]; then
+            echo "All Playwright budget targets met."
+            exit 0
+          fi
+
+          breached_names=$(jq -r '(.budgetTargets // {}) | to_entries[] | select(.value == false) | .key' "$performance")
+          detail_lines=$(jq -r '
+            (.failedBudgetTargetDetails // {}) | to_entries[] | . as $e |
+            "- **\($e.value.label)**: budget ≤ \($e.value.threshold) \($e.value.unit)" +
+            (if ($e.value.offendingShards | length) > 0
+             then " — exceeded on " + ($e.value.offendingShards | map("`\(.shardId)` (\(.value) \($e.value.unit))") | join(", "))
+             else "" end)' "$performance")
+          # Budget targets without phase attribution (flaky rate, retry
+          # share, boot shape) still need a line each.
+          plain_lines=$(jq -r '
+            (.failedBudgetTargetDetails // {}) as $d |
+            (.budgetTargets // {}) | to_entries[]
+            | select(.value == false and ($d[.key] | not))
+            | "- \(.key)"' "$performance")
+
+          while IFS= read -r name; do
+            [[ -n "$name" ]] && echo "::warning::Playwright budget breach: $name"
+          done <<< "$breached_names"
+
+          {
+            echo "## ⚠️ Playwright budget breaches"
+            echo
+            [[ -n "$detail_lines" ]] && echo "$detail_lines"
+            [[ -n "$plain_lines" ]] && echo "$plain_lines"
+            echo
+            echo "Budget breaches do not fail this check; investigate via the tracked issue."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Tracked issue: only authoritative (merge_group + full) runs feed
+          # it — PR-time targeted runs measure a subset and would be noise.
+          if [[ "${GITHUB_EVENT_NAME}" != "merge_group" || "$EXECUTION_MODE" != "full" ]]; then
+            exit 0
+          fi
+
+          body=$(printf 'Latest breach: [run %s](%s)\n\n%s\n%s\n\nThe merge-queue check stays green on budget breaches; this issue is the signal. Investigate shard packing (`build_playwright_shards.py`), the timing baseline, or runaway specs. Close when runs stay within budget.\n' \
+            "${GITHUB_RUN_ID}" "$RUN_URL" "$detail_lines" "$plain_lines")
+
+          existing=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" \
+            --json number,title --jq --arg t "$ISSUE_TITLE" '[.[] | select(.title == $t)][0].number // empty')
+          if [[ -z "$existing" ]]; then
+            gh issue create --title "$ISSUE_TITLE" --body "$body"
+            echo "Opened budget-breach issue."
+          else
+            # Throttle: at most one comment per 20 h so a breached week does
+            # not bury the issue in per-run comments.
+            last_comment=$(gh issue view "$existing" --json comments \
+              --jq '.comments[-1].createdAt // ""')
+            cutoff=$(date -u -d '20 hours ago' +%FT%TZ)
+            if [[ -z "$last_comment" || "$last_comment" < "$cutoff" ]]; then
+              gh issue comment "$existing" --body "$body"
+              echo "Commented on budget-breach issue #$existing."
+            else
+              echo "Issue #$existing already updated within 20 h; skipping comment."
+            fi
+          fi
+
+      - name: Upload timing history
+        id: upload-timing-history
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-timing-history-${{ needs.playwright.outputs.detect_changes_mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-timing-history
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Evaluate zero-retry gate in shadow mode
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+          MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python3 .github/scripts/classify_playwright_outcome.py \
+            --report-glob 'results/playwright-results-json-*/results.json' \
+            --status-glob 'results/playwright-results-json-*/ci-status.json' \
+            --matrix-outcome "$MATRIX_OUTCOME" \
+            --expected-matrix-json "$EXPECTED_MATRIX" \
+            --profile postgresql-pr \
+            --source-sha "$SOURCE_SHA" \
+            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
+
+      - name: Upload Playwright shadow-gate ledger
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-shadow-gate-postgresql-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green below.
+      # Without this guard, the "should_run != 'true'" branch (or any
+      # negative match) would treat an unset gate output the same as an
+      # explicit skip decision — hiding the gate failure and letting a
+      # required check pass on an invalid pipeline state.
+      - name: Guard against missing gate decision
+        if: ${{ needs.playwright.outputs.gate_result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
+          exit 1
+
+      # Short-circuit when gate explicitly decided should_run=false —
+      # every upstream job is legitimately `skipped` in that case
+      # (redundant pull_request_target for a same-repo PR, or fork PR
+      # without safe-to-test), and the renderer below counts each
+      # skipped upstream as a "CI/reporting failure" and fails the whole
+      # check. That's what turned run 30090391086 red on PR #30454 despite
+      # the pipeline correctly opting out. Match on the exact "false"
+      # string (not != 'true') so unset outputs never fall through here.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.playwright.outputs.gate_should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
+          echo "Exiting 0 so this check does not block branch protection."
+
+      - name: Render consolidated job summary and gate on results
+        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' }}
+        uses: actions/github-script@v8
+        env:
+          CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
+          CACHE_KEYS_RESULT: ${{ needs.playwright.outputs.cache_keys_result }}
+          BUILD_RESULT: ${{ needs.playwright.outputs.build_result }}
+          DETECT_CHANGES_RESULT: ${{ needs.playwright.outputs.detect_changes_result }}
+          PLAN_RESULT: ${{ needs.playwright.outputs.plan_playwright_result }}
+          FIXTURE_RESTORE_RESULT: ${{ needs.playwright.outputs.restore_playwright_fixture_result }}
+          FIXTURE_RESULT: ${{ needs.playwright.outputs.prepare_playwright_fixture_result }}
+          PLAYWRIGHT_RESULT: ${{ needs.playwright.outputs.playwright_ci_result }}
+          SUMMARY_CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          REPORT_DOWNLOAD_BLOBS_OUTCOME: ${{ steps.download-blobs.outcome }}
+          REPORT_DOWNLOAD_TIMINGS_OUTCOME: ${{ steps.download-timings.outcome }}
+          REPORT_DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
+          REPORT_DOWNLOAD_RESULTS_OUTCOME: ${{ steps.download-results.outcome }}
+          REPORT_SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          REPORT_INSTALL_OUTCOME: ${{ steps.install-report-dependencies.outcome }}
+          REPORT_START_OUTCOME: ${{ steps.mark-report-start.outcome }}
+          REPORT_MERGE_OUTCOME: ${{ steps.merge-report.outcome }}
+          REPORT_TIMING_MERGE_OUTCOME: ${{ steps.merge-timings.outcome }}
+          REPORT_COVERAGE_OUTCOME: ${{ steps.verify-coverage.outcome }}
+          REPORT_PERFORMANCE_OUTCOME: ${{ steps.evaluate-performance.outcome }}
+          REPORT_UPLOAD_OUTCOME: ${{ steps.upload-report.outcome }}
+          REPORT_DURATION_OUTCOME: ${{ steps.record-report-duration.outcome }}
+          REPORT_HISTORY_OUTCOME: ${{ steps.upload-timing-history.outcome }}
+          E2E_CHANGED: ${{ needs.playwright.outputs.check_changes_e2e }}
+          DOCKER_COMPOSE_CHANGED: ${{ needs.playwright.outputs.check_changes_docker_compose }}
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+          COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            const path = require('path');
+            const { renderPlaywrightSummary } = require('./.github/scripts/render_playwright_summary.cjs');
 
-            const runId = '${{ github.run_id }}';
-            const repo = context.repo;
-            const prNumber = context.payload.pull_request?.number;
-            if (!prNumber) return;
+            await renderPlaywrightSummary({ github, context, core });
 
-            const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
-            const commentMarker = '<!-- playwright-summary -->';
+      - name: Upload Playwright PR comment payload
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-pr-comment-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-pr-comment/summary.json
+          retention-days: 5
+          if-no-files-found: ignore
 
-            // Collect results from all shards
-            const shardResults = [];
-            const resultsDir = 'results';
-            if (fs.existsSync(resultsDir)) {
-              for (const dir of fs.readdirSync(resultsDir).sort()) {
-                const jsonPath = path.join(resultsDir, dir, 'results.json');
-                if (!fs.existsSync(jsonPath)) continue;
+  # Auto-refresh the checked-in timing baseline from successful full-mode
+  # merge_group runs. Without this, `.github/playwright/timing-baseline.json`
+  # only gets updated by hand — and it drifts fast (see PR #30871 for the
+  # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
+  #
+  # COMMITS DIRECTLY TO MAIN (no PR). The previous auto-PR design
+  # deadlocked with the merge queue: the refresh PR had to pass through the
+  # very queue whose activity kept invalidating it, and concurrent refresh
+  # runs raced on the bot branch (`cannot lock ref`, run 32354038772). A
+  # data-only JSON regenerated from a known-good run doesn't need review —
+  # the guards below are the review. `[skip ci]` keeps the push from
+  # burning a CI cycle; note any push to main still resets in-flight
+  # merge-queue entries, which is why the materiality threshold exists.
+  #
+  # Guards:
+  #   * merge_group event only (skip on PR/dispatch — the ci-status
+  #     signal on merge_group is the safest known-good snapshot)
+  #   * full execution mode only (targeted PR plans do not exercise every
+  #     spec — a targeted refresh would lose coverage)
+  #   * playwright-summary success only (no partial data on gate failures)
+  #   * a drift cap in refresh_timing_baseline.py refuses > 40 % churn as
+  #     a safety valve against an accidentally-broken source run
+  #   * a materiality threshold (--min-materiality-percent) skips commits
+  #     for run-to-run jitter — only structural changes (files gained or
+  #     lost, zero-duration entries recovering) or ≥ 10 % of entries
+  #     drifting/shifting significantly produce a commit
+  #   * fetch → regenerate → push retry loop (3 attempts) absorbs races
+  #     with the queue landing merges mid-refresh
+  refresh-timing-baseline:
+    name: Refresh timing baseline
+    needs: [playwright, playwright-summary]
+    if: |
+      always() &&
+      github.event_name == 'merge_group' &&
+      needs.playwright.outputs.detect_changes_mode == 'full' &&
+      needs.playwright-summary.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # NOTE: pushing to a protected `main` requires the token identity to
+      # be on the branch-protection bypass list. RELEASE_BOT_TOKEN is the
+      # same identity auto-revert-release.yml uses to push release
+      # branches; GITHUB_TOKEN is the fallback for repos where Actions is
+      # allowed to bypass.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
-                const shardNum = dir.replace('playwright-results-json-', '');
-                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      - name: Download timing history artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/timing-history
 
-                const allTests = [];
-                function collectTests(suite, filePath) {
-                  const file = suite.file || filePath || '';
-                  for (const spec of (suite.specs || [])) {
-                    for (const test of (spec.tests || [])) {
-                      const results = test.results || [];
-                      const lastResult = results[results.length - 1] || {};
-                      const firstResult = results[0] || {};
-                      allTests.push({
-                        title: spec.title,
-                        file: file,
-                        status: test.status,
-                        retries: results.length - 1,
-                        error: lastResult.error?.message || firstResult.error?.message || '',
-                      });
-                    }
-                  }
-                  for (const child of (suite.suites || [])) {
-                    collectTests(child, file);
-                  }
-                }
-                for (const suite of (report.suites || [])) {
-                  collectTests(suite, '');
-                }
+      - name: Locate merged history file
+        id: locate
+        run: |
+          history=$(find "$RUNNER_TEMP/timing-history" -name 'playwright-timing-history.json' -type f | head -1)
+          if [[ -z "$history" ]]; then
+            echo "No playwright-timing-history.json found under $RUNNER_TEMP/timing-history" >&2
+            find "$RUNNER_TEMP/timing-history" -type f >&2 || true
+            exit 1
+          fi
+          echo "history_path=$history" >> "$GITHUB_OUTPUT"
 
-                shardResults.push({
-                  shard: shardNum,
-                  genuine: allTests.filter(t => t.status === 'unexpected'),
-                  flaky: allTests.filter(t => t.status === 'flaky'),
-                  passed: allTests.filter(t => t.status === 'expected'),
-                  skipped: allTests.filter(t => t.status === 'skipped'),
-                });
-              }
-            }
+      - name: Refresh baseline and commit to main
+        env:
+          HISTORY_PATH: ${{ steps.locate.outputs.history_path }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
 
-            if (shardResults.length === 0) {
-              console.log('No shard results found');
-              return;
-            }
+          # Regenerate INSIDE the retry loop: each attempt rebuilds the
+          # baseline against the freshly-fetched main, so a queue merge (or
+          # a concurrent refresh run) landing mid-refresh changes the
+          # regeneration input instead of producing a rejected push — the
+          # race that killed the bot-branch design (run 32354038772).
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
 
-            // Aggregate totals
-            const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
-            const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
-            const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
-            const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
+            set +e
+            python3 .github/scripts/refresh_timing_baseline.py \
+              --history "$HISTORY_PATH" \
+              --current .github/playwright/timing-baseline.json \
+              --output .github/playwright/timing-baseline.json \
+              --source-run-id "$RUN_ID" \
+              --min-materiality-percent 10 \
+              --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
+            rc=$?
+            set -e
 
-            const lines = [commentMarker];
+            if [[ "$rc" -eq 3 ]]; then
+              echo "Change below materiality threshold; skipping refresh commit."
+              exit 0
+            elif [[ "$rc" -ne 0 ]]; then
+              echo "refresh_timing_baseline.py exited $rc" >&2
+              exit "$rc"
+            fi
 
-            if (totalFailed > 0) {
-              lines.push(`## 🔴 Playwright Results — ${totalFailed} failure(s)${totalFlaky > 0 ? `, ${totalFlaky} flaky` : ''}`);
-            } else if (totalFlaky > 0) {
-              lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
-            } else {
-              lines.push(`## ✅ Playwright Results — all ${totalPassed} tests passed`);
-            }
-            lines.push('');
-            lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
-            lines.push('');
+            if git diff --quiet -- .github/playwright/timing-baseline.json; then
+              echo "Baseline identical to main; nothing to commit."
+              exit 0
+            fi
 
-            // Per-shard summary table
-            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
-            lines.push('|-------|--------|--------|-------|---------|');
-            for (const r of shardResults) {
-              const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
-              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
-            }
-            lines.push('');
+            git add .github/playwright/timing-baseline.json
+            git commit \
+              -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID} [skip ci]" \
+              -m "$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")" \
+              -m "Source: ${RUN_URL}"
+            push_rc=0
+            push_output=$(git push origin HEAD:main 2>&1) || push_rc=$?
+            echo "$push_output"
+            if [[ "$push_rc" -eq 0 ]]; then
+              echo "Baseline refreshed on main (attempt $attempt)."
+              exit 0
+            fi
+            # A ruleset/branch-protection rejection (GH013: "changes must be
+            # made through the merge queue") is a CONFIGURATION gap, not a
+            # pipeline failure: the token identity is not on main's bypass
+            # list yet. Failing the job here turns every full-mode
+            # merge_group run red and ejects innocent PRs (runs 32750389130,
+            # 32750390655) — the exact failure mode this pipeline exists to
+            # prevent. Surface loudly, skip gracefully.
+            if grep -qE "GH013|rule violations|protected branch" <<< "$push_output"; then
+              echo "::warning::Baseline refresh skipped: push to main rejected by repository ruleset (GH013). Grant the workflow token (RELEASE_BOT_TOKEN or Actions) bypass on main's ruleset to enable auto-refresh."
+              {
+                echo "## ⚠️ Timing-baseline auto-refresh blocked by ruleset"
+                echo
+                echo "The direct push to \`main\` was rejected (GH013). The refresh is skipped — downstream planning keeps using the current baseline. Grant the workflow token bypass on the main ruleset to enable it."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Push rejected (main moved during refresh); retrying." >&2
+          done
 
-            // Genuine failures detail
-            const allGenuine = shardResults.flatMap(r => r.genuine.map(t => ({ ...t, shard: r.shard })));
-            if (allGenuine.length > 0) {
-              lines.push('### Genuine Failures (failed on all attempts)');
-              lines.push('');
-              for (const t of allGenuine.slice(0, 30)) {
-                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title} (shard ${t.shard})</summary>`);
-                lines.push('');
-                lines.push('```');
-                lines.push(t.error.substring(0, 1000));
-                lines.push('```');
-                lines.push('</details>');
-                lines.push('');
-              }
-              if (allGenuine.length > 30) {
-                lines.push(`... and ${allGenuine.length - 30} more failures`);
-                lines.push('');
-              }
-            }
-
-            // Flaky tests
-            const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
-            if (allFlaky.length > 0) {
-              lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
-              lines.push('');
-              for (const t of allFlaky.slice(0, 30)) {
-                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                lines.push(`- \`${shortFile}\` › ${t.title} (shard ${t.shard}, ${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
-              }
-              if (allFlaky.length > 30) {
-                lines.push(`- ... and ${allFlaky.length - 30} more`);
-              }
-              lines.push('');
-              lines.push('</details>');
-              lines.push('');
-            }
-
-            lines.push(`📦 [Download artifacts](${artifactUrl})`);
-            lines.push('');
-            lines.push('<details><summary>How to debug locally</summary>');
-            lines.push('');
-            lines.push('```bash');
-            lines.push('# Download playwright-test-results-<shard> artifact and unzip');
-            lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
-            lines.push('```');
-            lines.push('</details>');
-
-            const body = lines.join('\n');
-
-            // Find existing consolidated comment
-            let existingComment = null;
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              const found = response.data.find(c =>
-                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-              );
-              if (found) { existingComment = found; break; }
-            }
-
-            // Also clean up any old per-shard comments from previous runs
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              for (const c of response.data) {
-                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                  console.log(`Deleted old per-shard comment ${c.id}`);
-                }
-              }
-            }
-
-            if (existingComment) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-            } else {
-              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
-            }
+          echo "Failed to push refreshed baseline after 3 attempts." >&2
+          exit 1

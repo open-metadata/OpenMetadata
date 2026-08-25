@@ -20,11 +20,10 @@ import { Link } from 'react-router-dom';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
-
 const AnnouncementFeedCardBody = ({
   announcement,
   editPermission,

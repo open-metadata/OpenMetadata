@@ -11,31 +11,31 @@
  *  limitations under the License.
  */
 
-@button-bg-color-hover: #ecedee;
-@button-bg-color: #e8e8e9;
-@format-group-separator-color: #e5e7eb;
-@menu-bg-color: #f7f9fc;
+@button-bg-color-hover: var(--om-legacy-color-ecedee);
+@button-bg-color: var(--om-legacy-color-e8e8e9);
+@format-group-separator-color: var(--om-color-gray-neutral-200);
+@menu-bg-color: var(--om-legacy-color-f7f9fc);
 
 .bar-menu-wrapper {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+  border-top-left-radius: var(--om-radius-sm);
+  border-top-right-radius: var(--om-radius-sm);
   background-color: @menu-bg-color;
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
-  padding: 8px;
+  padding: var(--om-space-8);
   border-bottom: 1px solid @format-group-separator-color;
-  gap: 1rem;
+  gap: var(--om-space-16);
 
   .bar-menu-wrapper--format-group {
     display: flex;
     flex-direction: row;
-    gap: 0.5rem;
+    gap: var(--om-space-8);
 
     .bar-menu-wrapper--format-group--button {
       background-color: transparent;
       border: none;
-      border-radius: 0.375rem;
+      border-radius: var(--om-radius-md);
       cursor: pointer;
 
       &:hover {

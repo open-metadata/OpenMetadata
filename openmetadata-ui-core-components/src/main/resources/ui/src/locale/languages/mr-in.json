@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "बंद करा",
+    "close-navigation-menu": "नेव्हिगेशन मेनू बंद करा",
+    "copy-link": "दुवा कॉपी करा",
+    "current-page": "वर्तमान पृष्ठ",
+    "date-range-picker": "तारीख श्रेणी निवडक",
+    "delete": "हटवा",
+    "edit": "संपादित करा",
+    "expand-navigation-menu": "नेव्हिगेशन मेनू विस्तृत करा",
+    "field-documentation": "फील्ड दस्तऐवजीकरण",
+    "hidden-breadcrumbs": "लपवलेले ब्रेडक्रम्स",
+    "loading": "लोड होत आहे…",
+    "next-page": "पुढील पृष्ठावर जा",
+    "open-menu": "मेनू उघडा",
+    "page": "पृष्ठ",
+    "pagination": "पृष्ठांकन",
+    "pagination-navigation": "पृष्ठांकन नेव्हिगेशन",
+    "previous-page": "मागील पृष्ठावर जा",
+    "records": "रेकॉर्ड",
+    "remove-filter": "फिल्टर काढा",
+    "select-dates": "तारखा निवडा",
+    "show-hidden-breadcrumbs": "लपवलेले ब्रेडक्रम्स दाखवा",
+    "today": "आज"
+  }
+}

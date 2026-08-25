@@ -38,6 +38,7 @@ import { QueryVoteType } from '../../../components/Database/TableQueries/TableQu
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
   LONG_DELAY,
   SHORT_DELAY,
 } from '../../../constants/constants';
@@ -62,6 +63,7 @@ import {
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -78,46 +80,56 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getTagsWithoutTier } from '../../../utils/TableUtils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
-
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
-  fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
+  // Called after a successful save so the left-tree can re-fetch and reflect the
+  // updatedAt-desc order (the edited page moves to the top of its branch).
+  onArticleSaved?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
-  fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
+  onArticleSaved,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
+  const knowledgePageIdRef = useRef<string | undefined>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const location = useLocation();
   const navigate = useNavigate();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const { setDraft, removeDraft, getDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
 
   const { fqn, tab } = useRequiredParams<{ fqn: string; tab?: string }>();
@@ -168,7 +180,56 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.PARENT,
         ]),
       });
-      setKnowledgePage(response);
+
+      const draft = getDraft(response.id);
+      const hasChanges =
+        draft &&
+        ((draft.description !== undefined &&
+          draft.description !== response.description) ||
+          (draft.displayName !== undefined &&
+            draft.displayName !== response.displayName));
+
+      const serverChangedSinceDraft =
+        draft?.version !== undefined && draft.version !== response.version;
+
+      if (hasChanges && !serverChangedSinceDraft) {
+        const pageWithDraft: KnowledgePage = {
+          ...response,
+          description: draft.description ?? response.description,
+          displayName: draft.displayName ?? response.displayName,
+        };
+        setKnowledgePage(pageWithDraft);
+
+        try {
+          const patch = compare(response, pageWithDraft);
+          const saved = await patchKnowledgePage(response.id, patch);
+          setKnowledgePage((prev) => {
+            if (prev?.id !== response.id) {
+              return prev;
+            }
+
+            return {
+              ...(prev ?? response),
+              description: saved.description,
+              displayName: saved.displayName,
+              version: saved.version,
+            };
+          });
+          removeDraft(response.id);
+          if (response.id === knowledgePageIdRef.current) {
+            setContentChangeState(ContentChangeState.SAVED);
+          }
+        } catch (syncError) {
+          showErrorToast(syncError as AxiosError);
+          if (response.id === knowledgePageIdRef.current) {
+            setContentChangeState(ContentChangeState.UN_SAVED);
+          }
+        }
+      } else {
+        setKnowledgePage(response);
+        removeDraft(response.id);
+      }
+
       addToKnowledgeCenterRecentViewed({ ...response, timestamp: 0 });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -309,6 +370,44 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  // Multiple saves (content/displayName) can be in flight at once since they
+  // are debounced independently, and saves for an article the user has
+  // navigated away from can still resolve in the background. Track pending
+  // counts per article id so a stale save from a different article can
+  // never mask or clear the currently displayed article's own pending count.
+  const getPendingSaveCount = (articleId: string) =>
+    pendingSaveCountByArticleRef.current.get(articleId) ?? 0;
+
+  const beginTrackedSave = useCallback((articleId: string) => {
+    pendingSaveCountByArticleRef.current.set(
+      articleId,
+      getPendingSaveCount(articleId) + 1
+    );
+    if (articleId === knowledgePageIdRef.current) {
+      setContentChangeState(ContentChangeState.SAVING);
+    }
+  }, []);
+
+  const endTrackedSave = useCallback(
+    (savedArticleId: string, didSucceed: boolean) => {
+      const remaining = Math.max(0, getPendingSaveCount(savedArticleId) - 1);
+      if (remaining === 0) {
+        pendingSaveCountByArticleRef.current.delete(savedArticleId);
+        if (savedArticleId === knowledgePageIdRef.current) {
+          setContentChangeState(
+            didSucceed ? ContentChangeState.SAVED : ContentChangeState.UN_SAVED
+          );
+        }
+        if (didSucceed) {
+          removeDraft(savedArticleId);
+        }
+      } else {
+        pendingSaveCountByArticleRef.current.set(savedArticleId, remaining);
+      }
+    },
+    [removeDraft]
+  );
+
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
       const hasContentEditPermission =
@@ -325,8 +424,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         return;
       }
 
+      let didSucceed = false;
       try {
-        setContentChangeState(ContentChangeState.SAVING);
+        beginTrackedSave(currentKnowledgePage.id);
+
         const updatedKnowledgePage: KnowledgePage = {
           ...currentKnowledgePage,
           description: updatedContent,
@@ -339,17 +440,33 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           patch
         );
 
-        setKnowledgePage({
-          ...currentKnowledgePage,
-          version: response.version,
+        setKnowledgePage((prev) => {
+          if (prev?.id !== currentKnowledgePage.id) {
+            return prev;
+          }
+
+          return {
+            ...(prev ?? currentKnowledgePage),
+            description: response.description,
+            version: response.version,
+          };
         });
+        didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setContentChangeState(ContentChangeState.SAVED);
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
-    [knowledgePage, setKnowledgePage, permissions]
+    [
+      knowledgePage,
+      setKnowledgePage,
+      permissions,
+      beginTrackedSave,
+      endTrackedSave,
+      onArticleSaved,
+    ]
   );
 
   const handleContentSave = useCallback(
@@ -357,15 +474,42 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [updatedPageContent, updateDelay, permissions]
   );
 
+  const saveDraftContent = useCallback(
+    debounce(
+      (id: string, fqn: string, description: string, version?: number) => {
+        setDraft(id, { description, fqn, version });
+      },
+      300
+    ),
+    [setDraft]
+  );
+
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
-      setContentChangeState(
-        isChanged ? ContentChangeState.UN_SAVED : ContentChangeState.SAVED
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
       );
-      handleContentSave(content);
+      if (isChanged) {
+        setContentChangeState(ContentChangeState.UN_SAVED);
+        if (knowledgePage?.id) {
+          saveDraftContent(
+            knowledgePage.id,
+            knowledgePage.fullyQualifiedName,
+            persistableContent,
+            knowledgePage.version
+          );
+        }
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
+        setContentChangeState(ContentChangeState.SAVED);
+      }
+      handleContentSave(persistableContent);
     },
-    [knowledgePage, handleContentSave]
+    [knowledgePage, handleContentSave, saveDraftContent]
   );
 
   const updatePage = async (updatedKnowledgePage: KnowledgePage) => {
@@ -377,15 +521,21 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       const patch = compare(currentKnowledgePage, updatedKnowledgePage);
       const response = await patchKnowledgePage(currentKnowledgePage.id, patch);
 
-      setKnowledgePage({
-        ...currentKnowledgePage,
+      setKnowledgePage((prev) => ({
+        ...(prev ?? currentKnowledgePage),
         tags: response.tags,
         owners: response.owners,
         reviewers: response.reviewers,
         domains: response.domains,
         dataProducts: response.dataProducts,
         version: response.version,
-      });
+      }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -407,11 +557,17 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
       const response = await patchKnowledgePage(currentKnowledgePage.id, patch);
 
-      setKnowledgePage({
-        ...currentKnowledgePage,
+      setKnowledgePage((prev) => ({
+        ...(prev ?? currentKnowledgePage),
         tags: response.tags,
         version: response.version,
-      });
+      }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -430,8 +586,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         ...knowledgePage,
         displayName: updatedDisplayName.trim(),
       };
+
+      let didSucceed = false;
       try {
-        setContentChangeState(ContentChangeState.SAVING);
+        beginTrackedSave(currentKnowledgePage.id);
+
         const patch = compare(currentKnowledgePage, updatedKnowledgePage);
 
         const response = await patchKnowledgePage(
@@ -448,18 +607,33 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           })
         );
 
-        setKnowledgePage({
-          ...currentKnowledgePage,
-          displayName: response.displayName,
-          version: response.version,
+        setKnowledgePage((prev) => {
+          if (prev?.id !== currentKnowledgePage.id) {
+            return prev;
+          }
+
+          return {
+            ...(prev ?? currentKnowledgePage),
+            displayName: response.displayName,
+            version: response.version,
+          };
         });
+        didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setContentChangeState(ContentChangeState.SAVED);
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
-    [knowledgePage, setKnowledgePage, permissions]
+    [
+      knowledgePage,
+      setKnowledgePage,
+      permissions,
+      beginTrackedSave,
+      endTrackedSave,
+      onArticleSaved,
+    ]
   );
 
   const handleDisplayNameSave = useCallback(
@@ -467,10 +641,27 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [handleDisplayNameUpdate, updateDelay, permissions]
   );
 
+  const saveDraftDisplayName = useCallback(
+    debounce(
+      (id: string, fqn: string, displayName: string, version?: number) => {
+        setDraft(id, { displayName, fqn, version });
+      },
+      300
+    ),
+    [setDraft]
+  );
+
   const handleSave = useCallback(() => {
+    saveDraftContent.flush();
+    saveDraftDisplayName.flush();
     handleDisplayNameSave.flush();
     handleContentSave.flush();
-  }, [handleDisplayNameSave, handleContentSave]);
+  }, [
+    saveDraftContent,
+    saveDraftDisplayName,
+    handleDisplayNameSave,
+    handleContentSave,
+  ]);
 
   const handleDisplayNameChange = useCallback(
     (updatedDisplayName: string) => {
@@ -478,12 +669,25 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         knowledgePage?.displayName ?? '',
         updatedDisplayName
       );
-      setContentChangeState(
-        isChanged ? ContentChangeState.UN_SAVED : ContentChangeState.SAVED
-      );
+      if (isChanged) {
+        setContentChangeState(ContentChangeState.UN_SAVED);
+        if (knowledgePage?.id) {
+          saveDraftDisplayName(
+            knowledgePage.id,
+            knowledgePage.fullyQualifiedName,
+            updatedDisplayName,
+            knowledgePage.version
+          );
+        }
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
+        setContentChangeState(ContentChangeState.SAVED);
+      }
       handleDisplayNameSave(updatedDisplayName);
     },
-    [knowledgePage, handleDisplayNameSave]
+    [knowledgePage, handleDisplayNameSave, saveDraftDisplayName]
   );
 
   const handleRelatedEntitiesUpdate = async (
@@ -508,6 +712,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         relatedEntities: response['relatedEntities'],
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -526,6 +735,22 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       );
     }
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityTaskCountsInto(knowledgePage.fullyQualifiedName, setFeedCount);
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (knowledgePage?.fullyQualifiedName) {
+      fetchEntityActivityCountInto(
+        EntityType.KNOWLEDGE_PAGE,
+        knowledgePage.fullyQualifiedName,
+        setFeedCount
+      );
+    }
+  }, [knowledgePage?.fullyQualifiedName]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -555,7 +780,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         children: (
           <>
             <TitleComponent
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when creating a new page
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
+              placeholder={getKnowledgePageName(knowledgePage)}
               readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
               ref={titleRef}
               value={displayName}
@@ -614,32 +841,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [contentChangeState]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <KnowledgeDetailPageHeader
-        contentChangeState={contentChangeState}
-        fetchKnowledgePageHierarchy={fetchKnowledgePageHierarchy}
-        isLoading={isLoading}
-        knowledgePage={knowledgePage}
-        permissions={permissions}
-        onFollowChange={handleFollowChange}
-        onSave={handleSave}
-        onSetThreadLink={setThreadLink}
-        onToggleDelete={handleToggleDelete}
-        onVoteChange={handleVoteChange}
-      />
-    ),
-    [
-      contentChangeState,
-      isLoading,
-      knowledgePage,
-      permissions,
-      setThreadLink,
-      handleToggleDelete,
-      handleVoteChange,
-      handleSave,
-    ]
-  );
+  useEffect(() => {
+    knowledgePageIdRef.current = knowledgePage?.id;
+  }, [knowledgePage?.id]);
 
   useEffect(() => {
     fetchPermission();
@@ -652,6 +856,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   }, [tab]);
 
   useEffect(() => {
+    setContentChangeState(ContentChangeState.SAVED);
+  }, [fqn]);
+
+  useEffect(() => {
     if (hasViewPermission) {
       fetchKnowledgePage(fqn);
     }
@@ -659,7 +867,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     if (knowledgePage?.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [knowledgePage?.fullyQualifiedName]);
 
@@ -695,6 +904,21 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [tabs, activeTab]
   );
 
+  useEffect(() => {
+    return () => {
+      saveDraftContent.flush();
+      saveDraftDisplayName.flush();
+    };
+  }, [saveDraftContent, saveDraftDisplayName]);
+
+  useEffect(() => {
+    tagClassBase.setFilterClassification([]);
+
+    return () => {
+      tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
+    };
+  }, []);
+
   const pageConfig = useMemo(() => {
     let rightPanel = null;
     if (
@@ -729,15 +953,15 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onSave: handleSave,
         onSetThreadLink: setThreadLink,
         onToggleDelete: handleToggleDelete,
+        onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
-      header: <div className="m-b-box rounded-12">{getHeaderElement()}</div>,
       isRightPanelOpen,
       onTabChange: handleTabChange,
       onToggleRightPanel,
       rightPanel,
       tabs,
-      title: (knowledgePage?.displayName ?? '') || t('label.untitled'),
+      title: getKnowledgePageName(knowledgePage, t),
     };
   }, [
     knowledgePage,
@@ -749,7 +973,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
-    getHeaderElement,
   ]);
 
   useEffect(() => {
@@ -765,7 +988,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
+          entity: t('label.article'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

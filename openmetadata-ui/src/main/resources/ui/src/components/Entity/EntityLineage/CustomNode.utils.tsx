@@ -22,7 +22,7 @@ import { LineageDirection } from '../../../generated/api/lineage/lineageDirectio
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -108,7 +108,10 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      role="presentation"
+      onBlur={handleLineageNodeHandleMouseOut}
       onClick={handleLineageNodeHandleClick}
+      onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
@@ -276,6 +279,7 @@ const ColumnContentInner = ({
         'custom-node-header-column-tracing': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
+      role="presentation"
       style={{
         paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}

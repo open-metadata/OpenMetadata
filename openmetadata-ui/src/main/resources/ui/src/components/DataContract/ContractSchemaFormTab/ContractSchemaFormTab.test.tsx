@@ -46,13 +46,17 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
-  getTableExpandableConfig: jest.fn(),
   getAllRowKeysByKeyName: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
   })),

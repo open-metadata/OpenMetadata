@@ -26,12 +26,12 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   py-run-build-tests:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -45,7 +45,7 @@ jobs:
           docker-images: false
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -63,10 +63,11 @@ jobs:
           disable-reviews: true # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -82,7 +83,13 @@ jobs:
       - name: Validate ingestion
         run: |
           source env/bin/activate
-          python scripts/validate_sample_data.py
+          python scripts/validate_sample_data.py --id-snapshot /tmp/ai-governance-sample-ids.json
+
+      - name: Verify sample data is idempotent
+        run: |
+          docker run --net=host --rm openmetadata/ingestion-base:test metadata ingest -c ./pipelines/sample_data.yaml
+          source env/bin/activate
+          python scripts/validate_sample_data.py --id-snapshot /tmp/ai-governance-sample-ids.json
 
       - name: Clean Up
         run: |

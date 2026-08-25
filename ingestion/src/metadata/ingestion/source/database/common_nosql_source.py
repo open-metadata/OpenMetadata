@@ -47,7 +47,11 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -90,9 +94,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.ssl_manager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
-        self.connection_obj = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection_obj = self._connection.client if self._connection else get_connection(self.service_connection)
 
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     def prepare(self):
         """
@@ -254,7 +260,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         Method to return all columns of a table
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
         column_parser = DataFrameColumnParser.create(df)
@@ -332,6 +338,5 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
 
     def close(self):
-        """
-        By default there is nothing to close
-        """
+        if self._connection is not None:
+            self._connection.close()

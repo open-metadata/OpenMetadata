@@ -30,7 +30,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
 
 @Slf4j
 public class RdfBatchProcessor {
@@ -53,10 +55,17 @@ public class RdfBatchProcessor {
 
   private final CollectionDAO collectionDAO;
   private final RdfRepository rdfRepository;
+  private final RdfIndexingRunContext runContext;
 
   public RdfBatchProcessor(CollectionDAO collectionDAO, RdfRepository rdfRepository) {
+    this(collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults());
+  }
+
+  public RdfBatchProcessor(
+      CollectionDAO collectionDAO, RdfRepository rdfRepository, RdfIndexingRunContext runContext) {
     this.collectionDAO = collectionDAO;
     this.rdfRepository = rdfRepository;
+    this.runContext = runContext != null ? runContext : RdfIndexingRunContext.reconcileDefaults();
   }
 
   public BatchProcessingResult processEntities(
@@ -71,24 +80,19 @@ public class RdfBatchProcessor {
     String lastError = null;
     List<EntityInterface> indexedEntities = new ArrayList<>();
 
-    // Fast path: one combined SPARQL UPDATE for the whole batch. Per-entity
-    // storeEntity costs ~2 HTTP round trips (DELETE + GSP LOAD) — at ~75 ms RT
-    // on localhost it caps single-coordinator throughput at ~6.7 entities/s.
-    // Batching collapses those 2N round trips into 2 per batch.
+    // Fast path: combined SPARQL UPDATE requests for the batch. Batching
+    // collapses per-entity update requests and Fuseki transactions into a
+    // smaller number of storage-level chunks.
     //
-    // The bulk write is atomic at the Fuseki side (single SPARQL UPDATE +
-    // single GSP POST) — there's no mid-batch checkpoint where a stop signal
-    // could partially commit, so we check it once before issuing the call and
-    // once after, mirroring the previous per-entity loop's check-at-iteration
-    // semantics. A stop signal landing mid-HTTP-call still completes the
-    // current batch (preferable to leaving Fuseki in a half-applied state)
-    // and is honored on the next batch boundary.
+    // Each storage chunk is atomic at the Fuseki side. A stop signal landing
+    // mid-HTTP-call still completes the current chunk and is honored on the
+    // next batch boundary.
     //
     // If the bulk write fails (one bad model rolls back the whole batch), we
     // fall back to the per-entity loop so the indexer can still attribute the
     // failure to a specific entity instead of failing the whole batch with a
     // single composite error. The fallback is skipped when the storage layer
-    // has tripped its circuit breaker (connect failures, Fuseki unreachable):
+    // has tripped its circuit breaker (connect failures, request timeouts):
     // each of the N per-entity attempts would also fail-fast on the same
     // breaker, wasting time and amplifying error noise. We mark the whole
     // batch as failed instead and let the indexer move on — the breaker
@@ -105,7 +109,7 @@ public class RdfBatchProcessor {
     // operator-injected custom predicates are the failure mode to watch.
     if (!effectiveStopRequested.getAsBoolean()) {
       try {
-        rdfRepository.bulkCreateOrUpdate(entities);
+        rdfRepository.bulkCreateOrUpdate(entities, runContext.writeMode());
         indexedEntities.addAll(entities);
         successCount = entities.size();
       } catch (Exception e) {
@@ -129,7 +133,7 @@ public class RdfBatchProcessor {
               break;
             }
             try {
-              rdfRepository.createOrUpdate(entity);
+              rdfRepository.bulkCreateOrUpdate(List.of(entity), runContext.writeMode());
               indexedEntities.add(entity);
               successCount++;
             } catch (Exception ee) {
@@ -258,6 +262,7 @@ public class RdfBatchProcessor {
                   org.openmetadata.schema.type.Include.ALL);
 
       List<org.openmetadata.schema.type.EntityRelationship> allRelationships = new ArrayList<>();
+      List<LineageEdgeData> lineageEdges = new ArrayList<>();
 
       for (EntityRelationshipObject rel : outgoingRelationships) {
         if (shouldSkipRelationship(rel)) {
@@ -265,7 +270,7 @@ public class RdfBatchProcessor {
         }
 
         if (rel.getRelation() == Relationship.UPSTREAM.ordinal() && rel.getJson() != null) {
-          String error = processLineageRelationship(rel);
+          String error = collectLineageRelationship(rel, lineageEdges);
           if (error != null) {
             failures++;
             lastError = error;
@@ -284,9 +289,15 @@ public class RdfBatchProcessor {
         if (shouldSkipRelationship(rel)) {
           continue;
         }
+        // Sources included in this run emit the edge from their outgoing pass. This avoids
+        // duplicate writes, but a failed source batch leaves the edge absent until a later run
+        // successfully processes that source.
+        if (runContext.entityTypesInRun().contains(rel.getFromEntity())) {
+          continue;
+        }
 
         if (rel.getJson() != null) {
-          String error = processLineageRelationship(rel);
+          String error = collectLineageRelationship(rel, lineageEdges);
           if (error != null) {
             failures++;
             lastError = error;
@@ -319,7 +330,7 @@ public class RdfBatchProcessor {
         // IDs that are outside the batch (the `from` of an UPSTREAM edge
         // where this batch's entity is the `to`); reconciling those would
         // wipe the outside-batch entity's unrelated outgoing edges.
-        rdfRepository.bulkAddRelationships(allRelationships, batchSources);
+        rdfRepository.bulkAddRelationships(allRelationships, batchSources, runContext.writeMode());
       } catch (Exception e) {
         LOG.error(
             "Failed to bulk add {} relationships for entity type {}",
@@ -328,6 +339,12 @@ public class RdfBatchProcessor {
             e);
         failures += allRelationships.size();
         lastError = describeBulkError(entityType, "bulkRelationships", e);
+      }
+
+      RelationshipProcessingResult lineageResult = processLineageEdges(entityType, lineageEdges);
+      failures += lineageResult.failureCount();
+      if (lineageResult.lastError() != null) {
+        lastError = lineageResult.lastError();
       }
     } catch (Exception e) {
       LOG.error("Failed to process batch relationships for entity type {}", entityType, e);
@@ -354,12 +371,18 @@ public class RdfBatchProcessor {
   }
 
   private boolean shouldSkipRelationship(EntityRelationshipObject rel) {
-    return EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getToEntity())
-        || EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(rel.getFromEntity())
+    return isExcludedRelationshipEndpoint(rel.getToEntity())
+        || isExcludedRelationshipEndpoint(rel.getFromEntity())
         || EXCLUDED_RELATIONSHIP_TYPES.contains(rel.getRelation());
   }
 
-  String processLineageRelationship(EntityRelationshipObject rel) {
+  private static boolean isExcludedRelationshipEndpoint(String entityType) {
+    return EXCLUDED_RELATIONSHIP_ENTITY_TYPES.contains(entityType)
+        || RdfExcludedEntities.isExcluded(entityType);
+  }
+
+  private String collectLineageRelationship(
+      EntityRelationshipObject rel, List<LineageEdgeData> lineageEdges) {
     UUID fromId;
     UUID toId;
     LineageDetails lineageDetails;
@@ -382,18 +405,90 @@ public class RdfBatchProcessor {
       }
     }
 
+    lineageEdges.add(
+        new LineageEdgeData(rel.getFromEntity(), fromId, rel.getToEntity(), toId, lineageDetails));
+    return null;
+  }
+
+  private RelationshipProcessingResult processLineageEdges(
+      String entityType, List<LineageEdgeData> lineageEdges) {
+    if (lineageEdges.isEmpty()) {
+      return RelationshipProcessingResult.OK;
+    }
+
+    try {
+      rdfRepository.bulkAddLineage(lineageEdges, runContext.writeMode());
+      return RelationshipProcessingResult.OK;
+    } catch (Exception e) {
+      if (isCircuitBreakerOpen(e)) {
+        LOG.warn(
+            "Bulk write of {} lineage edges for {} failed and the RDF circuit breaker is open; "
+                + "skipping per-edge fallback. Reason: {}",
+            lineageEdges.size(),
+            entityType,
+            e.getMessage());
+        return new RelationshipProcessingResult(
+            lineageEdges.size(), describeBulkError(entityType, "bulkLineage", e));
+      }
+
+      LOG.warn(
+          "Bulk write of {} lineage edges for {} failed; falling back to per-edge writes. Reason: {}",
+          lineageEdges.size(),
+          entityType,
+          e.getMessage());
+      int failures = 0;
+      String lastError = null;
+      for (int index = 0; index < lineageEdges.size(); index++) {
+        LineageEdgeData edge = lineageEdges.get(index);
+        try {
+          rdfRepository.bulkAddLineage(List.of(edge), runContext.writeMode());
+        } catch (Exception edgeError) {
+          failures++;
+          lastError = describeLineageError(edge, edgeError);
+          LOG.error(
+              "Failed to add lineage with details for {}->{}",
+              edge.fromId(),
+              edge.toId(),
+              edgeError);
+          if (isCircuitBreakerOpen(edgeError)) {
+            int skippedEdges = lineageEdges.size() - index - 1;
+            failures += skippedEdges;
+            LOG.warn(
+                "RDF circuit breaker opened during lineage fallback for {}; skipping {} remaining edges",
+                entityType,
+                skippedEdges);
+            break;
+          }
+        }
+      }
+      return new RelationshipProcessingResult(failures, lastError);
+    }
+  }
+
+  String processLineageRelationship(EntityRelationshipObject rel) {
+    List<LineageEdgeData> lineageEdges = new ArrayList<>(1);
+    String error = collectLineageRelationship(rel, lineageEdges);
+    if (error != null || lineageEdges.isEmpty()) {
+      return error;
+    }
+
+    LineageEdgeData edge = lineageEdges.get(0);
     try {
       rdfRepository.addLineageWithDetails(
-          rel.getFromEntity(), fromId, rel.getToEntity(), toId, lineageDetails);
+          edge.fromType(), edge.fromId(), edge.toType(), edge.toId(), edge.details());
       return null;
     } catch (Exception e) {
-      LOG.error("Failed to add lineage with details for {}->{}", rel.getFromId(), rel.getToId(), e);
-      return describeLineageError(rel, e);
+      LOG.error("Failed to add lineage with details for {}->{}", edge.fromId(), edge.toId(), e);
+      return describeLineageError(edge, e);
     }
   }
 
   private static String describeLineageError(EntityRelationshipObject rel, Throwable error) {
     return describeError("lineage " + rel.getFromId() + "->" + rel.getToId(), error);
+  }
+
+  private static String describeLineageError(LineageEdgeData edge, Throwable error) {
+    return describeError("lineage " + edge.fromId() + "->" + edge.toId(), error);
   }
 
   RelationshipProcessingResult processGlossaryTermRelations(

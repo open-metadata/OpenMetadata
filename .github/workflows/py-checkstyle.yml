@@ -26,19 +26,32 @@ permissions:
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
   py-checkstyle:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     permissions:
       pull-requests: write
 
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
         if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          filters: |
+            python:
+              - 'ingestion/**'
+              - 'openmetadata-spec/**'
+
+      - name: Resolve Python check scope
+        id: scope
+        run: echo "python=${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
+        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -46,8 +59,8 @@ jobs:
           wait-interval: 90
 
       - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401 # v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
@@ -55,38 +68,40 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        if: ${{ steps.scope.outputs.python == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        if: ${{ steps.scope.outputs.python == 'true' }}
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.10'
 
-      - name: Install Ubuntu related dependencies
-        run: |
-          sudo apt-get update  && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install uv
+        if: ${{ steps.scope.outputs.python == 'true' }}
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
-      - name: Install Python & Openmetadata related dependencies
+      - name: Install Ruff
+        if: ${{ steps.scope.outputs.python == 'true' }}
         run: |
-          python3 -m venv env
-          source env/bin/activate
-          sudo make install_antlr_cli
-          make install install_test install_dev
+          uv venv env --python 3.10
+          uv pip install --python env/bin/python "ruff~=0.15.12"
 
       # Add back linting once we have 10/10 on main
       - name: Code style check
         id: style
+        if: ${{ steps.scope.outputs.python == 'true' }}
         continue-on-error: true
         run: |
           source env/bin/activate
-          make generate
           make py_format_check
 
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
-        uses: peter-evans/create-or-update-comment@v1
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
@@ -98,6 +113,6 @@ jobs:
             You can install the pre-commit hooks with `make install_test precommit_install`.
 
       - name: Python checkstyle failed, check the comment in the PR
-        if: steps.style.outcome != 'success'
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' }}
         run: |
           exit 1

@@ -45,6 +45,7 @@ class PowerBIUser(BaseModel):
     datasetUserAccessRight: Optional[str] = None  # noqa: N815, UP045
     dataflowUserAccessRight: Optional[str] = None  # noqa: N815, UP045
     dashboardUserAccessRight: Optional[str] = None  # noqa: N815, UP045
+    datamartUserAccessRight: Optional[str] = None  # noqa: N815, UP045
 
 
 class PowerBIDashboard(BaseModel):
@@ -233,6 +234,11 @@ class UpstreaDataset(BaseModel):
     targetDatasetId: Optional[str] = None  # noqa: N815, UP045
 
 
+class UpstreamDatamart(BaseModel):
+    groupId: Optional[str] = None  # noqa: N815, UP045
+    targetDatamartId: Optional[str] = None  # noqa: N815, UP045
+
+
 class Dataset(BaseModel):
     """
     PowerBI Dataset Model
@@ -269,6 +275,21 @@ class Dataflow(BaseModel):
     upstreamDataflows: Optional[List[UpstreaDataflow]] = []  # noqa: N815, UP006, UP045
 
 
+class Datamart(BaseModel):
+    """
+    PowerBI Datamart Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/workspace-info-get-scan-result
+    Datamarts appear under the `datamarts[]` array of each workspace/group in the scan response.
+    """
+
+    id: str
+    name: str | None = None
+    description: Optional[str] = None  # noqa: UP045
+    users: Optional[List[PowerBIUser]] = []  # noqa: UP006, UP045
+    modifiedBy: Optional[str] = None  # noqa: N815, UP045
+    upstreamDatamarts: Optional[List[UpstreamDatamart]] = []  # noqa: N815, UP006, UP045
+
+
 class Group(BaseModel):
     """
     PowerBI Group Model
@@ -283,6 +304,7 @@ class Group(BaseModel):
     reports: Optional[List[PowerBIReport]] = []  # noqa: UP006, UP045
     datasets: Optional[List[Dataset]] = []  # noqa: UP006, UP045
     dataflows: Optional[List[Dataflow]] = []  # noqa: UP006, UP045
+    datamarts: Optional[List[Datamart]] = []  # noqa: UP006, UP045
 
 
 class GroupsResponse(BaseModel):

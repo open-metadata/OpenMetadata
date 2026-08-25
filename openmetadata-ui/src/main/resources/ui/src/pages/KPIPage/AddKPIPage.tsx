@@ -45,7 +45,7 @@ import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
-import { getDisabledDates } from '../../utils/DataInsightUtils';
+import { getDisabledDates } from '../../utils/DataInsightPureUtils';
 import { getField } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
@@ -56,7 +56,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
-
 const AddKPIPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

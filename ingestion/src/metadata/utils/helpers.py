@@ -15,6 +15,7 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import itertools
 import pprint
@@ -28,7 +29,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP
 
 import sqlparse
 from pydantic_core import Url  # noqa: TC002
-from sqlparse.sql import Statement  # noqa: TC002
+from sqlparse import tokens as sql_tokens
+from sqlparse.sql import Function, Parenthesis, Statement, TokenList
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table  # noqa: TC001
@@ -176,6 +178,17 @@ def get_formatted_entity_name(name: str) -> Optional[str]:  # noqa: UP045
     """
 
     return name.replace("[", "").replace("]", "").replace("<default>.", "") if name else None
+
+
+def has_table_name(name: Optional[str]) -> bool:  # noqa: UP045
+    """
+    Check that a table reference coming from a query parser actually holds a table name.
+
+    Query parsers can return references whose table part is empty, e.g. `db.schema.` when
+    the query contains an empty identifier (`db.schema.""`). There is nothing to look up in
+    those, so they are dropped instead of failing later on while building the FQN.
+    """
+    return bool(name and name.rsplit(".", maxsplit=1)[-1].strip())
 
 
 def replace_special_with(raw: str, replacement: str) -> str:
@@ -397,6 +410,90 @@ def deep_size_of_dict(obj: dict) -> int:
     return sizeof(obj)
 
 
+_FORBIDDEN_SQL_STATEMENT_TYPES = {
+    "CREATE",
+    "ALTER",
+    "DROP",
+    "TRUNCATE",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "MERGE",
+}
+_FORBIDDEN_SQL_STATEMENT_STARTS = _FORBIDDEN_SQL_STATEMENT_TYPES | {
+    "COMMENT",
+    "RENAME",
+    "CALL",
+    "GRANT",
+    "REVOKE",
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
+    "SAVEPOINT",
+    "COPY",
+    "EXEC",
+    "EXECUTE",
+}
+_FORBIDDEN_SQL_STATEMENT_PREFIXES = {
+    ("EXPLAIN", "PLAN"),
+    ("LOCK", "TABLE"),
+    ("UNLOCK", "TABLE"),
+    ("SET", "TRANSACTION"),
+}
+_FORBIDDEN_SQL_CLAUSES = {
+    ("INTO", "OUTFILE"),
+    ("INTO", "DUMPFILE"),
+}
+_FORBIDDEN_SQL_FUNCTIONS = {
+    "LOAD_FILE",
+    "PG_READ_FILE",
+    "PG_WRITE_FILE",
+    "PG_READ_BINARY_FILE",
+    "LO_IMPORT",
+    "LO_EXPORT",
+    "LO_FROM_BYTEA",
+    "LO_GET",
+    "XP_CMDSHELL",
+    "XP_REGREAD",
+    "XP_REGWRITE",
+    "XP_SERVICECONTROL",
+    "SP_OACREATE",
+    "SP_OAMETHOD",
+}
+
+
+def _significant_sql_tokens(statement: Statement) -> list:
+    return [token for token in statement.flatten() if not token.is_whitespace and token.ttype not in sql_tokens.Comment]
+
+
+def _normalized_sql_values(statement: Statement) -> list[str]:
+    return [token.normalized.upper() for token in _significant_sql_tokens(statement)]
+
+
+def _starts_with_forbidden_sql_statement(statement: Statement) -> bool:
+    values = _normalized_sql_values(statement)
+    if not values:
+        return False
+    if statement.get_type().upper() in _FORBIDDEN_SQL_STATEMENT_TYPES:
+        return True
+    if values[0] in _FORBIDDEN_SQL_STATEMENT_STARTS:
+        return True
+    return any(values[: len(prefix)] == list(prefix) for prefix in _FORBIDDEN_SQL_STATEMENT_PREFIXES)
+
+
+def _contains_forbidden_nested_sql_statement(token_list: TokenList) -> bool:
+    for token in token_list.tokens:
+        if isinstance(token, Parenthesis) and not isinstance(token.parent, Function):
+            for nested_statement in sqlparse.parse(token.value[1:-1]):
+                if _starts_with_forbidden_sql_statement(nested_statement):
+                    return True
+                if _contains_forbidden_nested_sql_statement(nested_statement):
+                    return True
+        elif token.is_group and _contains_forbidden_nested_sql_statement(token):
+            return True
+    return False
+
+
 def is_safe_sql_query(sql_query: str) -> bool:
     """Validate SQL query
     Args:
@@ -405,57 +502,94 @@ def is_safe_sql_query(sql_query: str) -> bool:
         bool
     """
 
-    forbiden_token = {
-        "CREATE",
-        "ALTER",
-        "DROP",
-        "TRUNCATE",
-        "COMMENT",
-        "RENAME",
-        "INSERT",
-        "UPDATE",
-        "DELETE",
-        "MERGE",
-        "CALL",
-        "EXPLAIN PLAN",
-        "LOCK TABLE",
-        "UNLOCK TABLE",
-        "GRANT",
-        "REVOKE",
-        "COMMIT",
-        "ROLLBACK",
-        "SAVEPOINT",
-        "SET TRANSACTION",
-        "INTO OUTFILE",
-        "INTO DUMPFILE",
-        "LOAD_FILE",
-        "COPY",
-        "PG_READ_FILE",
-        "PG_WRITE_FILE",
-        "PG_READ_BINARY_FILE",
-        "LO_IMPORT",
-        "LO_EXPORT",
-        "LO_FROM_BYTEA",
-        "LO_GET",
-        "EXEC",
-        "EXECUTE",
-        "XP_CMDSHELL",
-        "XP_REGREAD",
-        "XP_REGWRITE",
-        "XP_SERVICECONTROL",
-        "SP_OACREATE",
-        "SP_OAMETHOD",
-    }
-
     if sql_query is None:
         return True
 
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)  # noqa: UP006
-    # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        if any(token.normalized.upper().split("(")[0] in forbiden_token for token in parsed_query.tokens):
+        if _starts_with_forbidden_sql_statement(parsed_query):
+            return False
+        if _contains_forbidden_nested_sql_statement(parsed_query):
+            return False
+
+        tokens = _significant_sql_tokens(parsed_query)
+        normalized_tokens = [token.normalized.upper() for token in tokens]
+        for index, normalized_token in enumerate(normalized_tokens):
+            if (
+                normalized_token.strip('`"[]') in _FORBIDDEN_SQL_FUNCTIONS
+                and index + 1 < len(normalized_tokens)
+                and normalized_tokens[index + 1] == "("
+            ):
+                return False
+        if any(
+            normalized_tokens[index : index + len(clause)] == list(clause)
+            for clause in _FORBIDDEN_SQL_CLAUSES
+            for index in range(len(normalized_tokens) - len(clause) + 1)
+        ):
             return False
     return True
+
+
+def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP045
+    """Validate a pandas ``DataFrame.query()`` expression.
+
+    ``DataFrame.query()`` evaluates a Python expression in-process, so a filter must
+    not reach any function call, attribute access, or calling-frame variable (those
+    allow arbitrary execution, e.g. ``col.to_csv(...)`` or ``@local``). The expression
+    is parsed and every node is required to be a comparison, boolean, or arithmetic
+    operation over bare column names and literals. Backtick-quoted column identifiers
+    are blanked first so unusual column names do not fail the parse, and a ``@name``
+    frame reference is rejected because it is not valid Python.
+
+    Args:
+        query_expression (str): pandas filter expression
+    Returns:
+        bool
+    """
+    if query_expression is None:
+        return True
+
+    # Only comparisons, boolean and arithmetic operators over bare column names and
+    # literals are allowed. Any Call or Attribute node is rejected, so no Series method
+    # (to_csv, values.tofile, .str...) and no @frame variable can be reached. Operators
+    # are listed explicitly to exclude MatMult: pandas reserves `@` for calling-frame
+    # variable references, so `a @ b` must not be treated as a safe filter.
+    allowed_nodes = (
+        ast.Expression,
+        ast.BoolOp,
+        ast.BinOp,
+        ast.UnaryOp,
+        ast.Compare,
+        ast.Name,
+        ast.Constant,
+        ast.List,
+        ast.Tuple,
+        ast.Set,
+        ast.Load,
+        ast.boolop,
+        ast.unaryop,
+        ast.cmpop,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.Mod,
+        ast.Pow,
+        ast.FloorDiv,
+        ast.BitAnd,
+        ast.BitOr,
+        ast.BitXor,
+        ast.LShift,
+        ast.RShift,
+    )
+
+    # Blank backtick-quoted column identifiers so unusual names do not fail the parse.
+    sanitized = re.sub(r"`[^`]*`", "col", query_expression)
+    try:
+        tree = ast.parse(sanitized, mode="eval")
+    except SyntaxError:
+        return False
+    return all(isinstance(node, allowed_nodes) for node in ast.walk(tree))
 
 
 def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:  # noqa: UP045
@@ -540,7 +674,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         If no comparison operator is provided, it defaults to less than or equal to comparison.
         Returns False for invalid threshold formats.
     """
-    import operator as op  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    import operator as op  # pylint: disable=import-outside-toplevel
 
     operators = {
         "<": op.lt,
@@ -574,7 +708,7 @@ def can_spawn_child_process() -> bool:
     Check if the current process can spawn a child process
     """
     # pylint: disable=import-outside-toplevel
-    from multiprocessing import Process  # noqa: PLC0415
+    from multiprocessing import Process
 
     process = Process(target=lambda: None)
     return not process.daemon

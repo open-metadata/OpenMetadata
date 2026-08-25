@@ -13,11 +13,18 @@
 
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public final class SearchResultCsvExporter {
 
@@ -43,6 +50,37 @@ public final class SearchResultCsvExporter {
           "domains");
 
   private SearchResultCsvExporter() {}
+
+  // Shared by the streaming endpoint and the background export job so both
+  // apply identical query, alias resolution, and domain restrictions.
+  public static SearchRequest buildExportSearchRequest(
+      SubjectContext subjectContext,
+      String query,
+      String index,
+      Boolean deleted,
+      String queryFilter,
+      String postFilter,
+      String sortFieldParam,
+      String sortOrder) {
+    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+
+    List<EntityReference> domains = new ArrayList<>();
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    return new SearchRequest()
+        .withQuery(resolvedQuery)
+        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+        .withQueryFilter(queryFilter)
+        .withPostFilter(postFilter)
+        .withDeleted(deleted)
+        .withSortFieldParam(sortFieldParam)
+        .withSortOrder(sortOrder)
+        .withDomains(domains)
+        .withApplyDomainFilter(
+            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+  }
 
   @SuppressWarnings("unchecked")
   public static String toCsvRow(Map<String, Object> source) {

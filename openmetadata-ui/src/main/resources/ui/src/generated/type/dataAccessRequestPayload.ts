@@ -37,6 +37,13 @@ export interface DataAccessRequestPayload {
      */
     expirationDate?: number;
     /**
+     * System-generated summary of why this request was routed to manual approval instead of
+     * being granted automatically — for example a partial automatic grant, an enforcement
+     * failure, or a timeout during automated evaluation. Absent when access was granted
+     * automatically.
+     */
+    manualGrantReason?: string;
+    /**
      * Business justification for the request.
      */
     reason: string;

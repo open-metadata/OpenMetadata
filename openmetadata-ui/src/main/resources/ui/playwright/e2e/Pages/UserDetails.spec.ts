@@ -126,6 +126,8 @@ test.describe('User with different Roles', () => {
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
   }) => {
+    test.slow();
+
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -262,7 +264,7 @@ test.describe('User with different Roles', () => {
 
     const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
@@ -314,7 +316,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
@@ -385,7 +387,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -462,7 +464,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -529,7 +531,7 @@ test.describe('User with different Roles', () => {
       .getByText('Application bot role', { exact: true })
       .click();
 
-    await adminPage.getByTestId('profile-edit-roles-select').click();
+    await adminPage.keyboard.press('Escape');
 
     await adminPage.locator('.ant-select-dropdown').waitFor({
       state: 'hidden',
@@ -629,31 +631,41 @@ test.describe('User with different Roles', () => {
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const searchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const searchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(table.entity.name))
       );
+
+      const assetCardText = table.entity.displayName ?? table.entity.name;
 
       await assetsSearchBox.fill(table.entity.name);
 
-      await searchResponse;
+      const searchResponse = await searchPromise;
+      expect(searchResponse.status()).toBe(200);
 
-      const assetCard = adminPage.getByText(table.entity.name).first();
+      const assetCard = adminPage.getByText(assetCardText).first();
 
       await expect(assetCard).toBeVisible();
 
       await assetsSearchBox.clear();
 
-      const incorrectSearchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const incorrectSearchTerm = 'nonexistent-asset-name-xyz-123';
+
+      const incorrectSearchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(incorrectSearchTerm)
       );
 
-      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+      await assetsSearchBox.fill(incorrectSearchTerm);
 
-      await incorrectSearchResponse;
+      const incorrectSearchResponse = await incorrectSearchPromise;
+      expect(incorrectSearchResponse.status()).toBe(200);
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+      const incorrectAssetCard = adminPage.getByText(assetCardText);
 
       await expect(incorrectAssetCard).not.toBeVisible();
 

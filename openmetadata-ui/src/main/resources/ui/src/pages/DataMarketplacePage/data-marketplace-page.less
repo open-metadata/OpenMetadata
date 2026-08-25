@@ -14,7 +14,7 @@
 
 .marketplace-header-bg {
   position: relative;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   padding-top: @om-navbar-height;
 
   &::before {
@@ -25,14 +25,14 @@
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;
-    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
-    z-index: 0;
+    mask-image: linear-gradient(to bottom, var(--om-color-black) 60%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, var(--om-color-black) 60%, transparent 100%);
+    z-index: var(--om-z-0);
   }
 
   > * {
     position: relative;
-    z-index: 1;
+    z-index: var(--om-z-1);
   }
 }
 

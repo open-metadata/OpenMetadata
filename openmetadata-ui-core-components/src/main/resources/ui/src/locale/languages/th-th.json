@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "ปิด",
+    "close-navigation-menu": "ปิดเมนูนำทาง",
+    "copy-link": "คัดลอกลิงก์",
+    "current-page": "หน้าปัจจุบัน",
+    "date-range-picker": "ตัวเลือกช่วงวันที่",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "expand-navigation-menu": "ขยายเมนูนำทาง",
+    "field-documentation": "เอกสารประกอบฟิลด์",
+    "hidden-breadcrumbs": "เบรดครัมบ์ที่ซ่อนอยู่",
+    "loading": "กำลังโหลด…",
+    "next-page": "ไปที่หน้าถัดไป",
+    "open-menu": "เปิดเมนู",
+    "page": "หน้า",
+    "pagination": "การแบ่งหน้า",
+    "pagination-navigation": "การนำทางการแบ่งหน้า",
+    "previous-page": "ไปที่หน้าก่อนหน้า",
+    "records": "บันทึก",
+    "remove-filter": "ลบตัวกรอง",
+    "select-dates": "เลือกวันที่",
+    "show-hidden-breadcrumbs": "แสดงเบรดครัมบ์ที่ซ่อนอยู่",
+    "today": "วันนี้"
+  }
+}

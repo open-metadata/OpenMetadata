@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
-import { Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 
 export interface EdgeStyle {
   stroke: string;
@@ -19,7 +18,15 @@ export interface EdgeStyle {
   strokeWidth: number;
 }
 
+export interface LineageEdgeColors {
+  primary: string;
+  columnHighlight: string;
+  dqHighlight: string;
+}
+
+const EDGE_STYLE_CACHE_MAX = 1_000;
 const edgeStyleCache = new Map<string, EdgeStyle>();
+let cachedColorSignature = '';
 
 function calculateEdgeStyle(
   edge: Edge,
@@ -27,32 +34,28 @@ function calculateEdgeStyle(
   hasTracedContext: boolean,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  colors: LineageEdgeColors,
   isColumnLineage: boolean,
   isColumnHighlighted: boolean,
   isEdgeHovered?: boolean
 ): EdgeStyle {
-  let stroke = isEdgeHovered
-    ? theme.palette.primary.main
-    : 'rgba(177, 177, 183)';
+  let stroke = isEdgeHovered ? colors.primary : 'rgba(177, 177, 183)';
   let opacity = 1;
   const strokeWidth = 2;
 
   if (isNodeTraced) {
-    stroke = theme.palette.primary.main;
+    stroke = colors.primary;
   } else if (hasTracedContext) {
     opacity = 0.3;
   }
 
   if (isColumnLineage && isColumnHighlighted) {
-    stroke = selectedColumn
-      ? theme.palette.allShades.indigo[600]
-      : theme.palette.primary.main;
+    stroke = selectedColumn ? colors.columnHighlight : colors.primary;
     opacity = 1;
   }
 
   if (dqHighlightedEdges.has(edge.id)) {
-    stroke = theme.palette.allShades.error[600];
+    stroke = colors.dqHighlight;
     opacity = 1;
   }
 
@@ -81,12 +84,21 @@ export function computeEdgeStyle(
   tracedColumns: Set<string>,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  colors: LineageEdgeColors,
   isColumnLineage: boolean,
   sourceHandle?: string | null,
   targetHandle?: string | null,
   isEdgeHovered?: boolean
 ): EdgeStyle {
+  // Cache keys don't encode colors, so drop cached styles when the resolved
+  // colors change (e.g. the user updates the brand/custom theme) to avoid
+  // repainting stale strokes.
+  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}`;
+  if (colorSignature !== cachedColorSignature) {
+    edgeStyleCache.clear();
+    cachedColorSignature = colorSignature;
+  }
+
   const fromEntityId = edge.data?.edge?.fromEntity?.id;
   const toEntityId = edge.data?.edge?.toEntity?.id;
 
@@ -118,8 +130,12 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
-  if (edgeStyleCache.has(cacheKey)) {
-    return edgeStyleCache.get(cacheKey)!;
+  const cachedStyle = edgeStyleCache.get(cacheKey);
+  if (cachedStyle) {
+    edgeStyleCache.delete(cacheKey);
+    edgeStyleCache.set(cacheKey, cachedStyle);
+
+    return cachedStyle;
   }
 
   const style = calculateEdgeStyle(
@@ -128,12 +144,18 @@ export function computeEdgeStyle(
     hasTracedContext,
     dqHighlightedEdges,
     selectedColumn,
-    theme,
+    colors,
     isColumnLineage,
     isColumnHighlighted,
     isEdgeHovered
   );
 
+  if (edgeStyleCache.size >= EDGE_STYLE_CACHE_MAX) {
+    const oldestKey = edgeStyleCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      edgeStyleCache.delete(oldestKey);
+    }
+  }
   edgeStyleCache.set(cacheKey, style);
 
   return style;
@@ -141,6 +163,54 @@ export function computeEdgeStyle(
 
 export function clearEdgeStyleCache(): void {
   edgeStyleCache.clear();
+}
+
+export type EdgeVisualState = 'traced' | 'dimmed' | 'hidden' | 'default';
+
+// Node-click and column-click are mutually exclusive tracing modes
+// (LineageProvider clears the other set when either fires), so we can key
+// off which set is non-empty to decide the current mode.
+export function computeEdgeVisualState(
+  edge: Edge,
+  tracedNodes: Set<string>,
+  tracedColumns: Set<string>
+): EdgeVisualState {
+  const isColumnLineage = Boolean(edge.data?.isColumnLineage);
+  const inColumnMode = tracedColumns.size > 0;
+  const inNodeMode = tracedNodes.size > 0;
+
+  if (isColumnLineage) {
+    if (inColumnMode) {
+      const isColumnHighlighted =
+        tracedColumns.has(edge.sourceHandle ?? '') &&
+        tracedColumns.has(edge.targetHandle ?? '');
+
+      return isColumnHighlighted ? 'traced' : 'hidden';
+    }
+    if (inNodeMode) {
+      return 'hidden';
+    }
+
+    return 'default';
+  }
+
+  if (inColumnMode) {
+    return 'dimmed';
+  }
+  if (inNodeMode) {
+    const fromEntityId = edge.data?.edge?.fromEntity?.id;
+    const toEntityId = edge.data?.edge?.toEntity?.id;
+    const isNodeTraced = Boolean(
+      fromEntityId &&
+        toEntityId &&
+        tracedNodes.has(fromEntityId) &&
+        tracedNodes.has(toEntityId)
+    );
+
+    return isNodeTraced ? 'traced' : 'dimmed';
+  }
+
+  return 'default';
 }
 
 export function invalidateEdgeStyles(affectedEdgeIds: string[]): void {

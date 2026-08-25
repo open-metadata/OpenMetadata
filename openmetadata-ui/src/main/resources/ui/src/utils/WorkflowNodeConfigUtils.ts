@@ -157,14 +157,13 @@ const addNodeSpecificConfig = (
             : {},
       };
     }
-  } else if (subType === NodeSubType.RollbackEntityTask) {
-    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
-      config.config = nodeData.config;
-    }
-  } else if (subType === NodeSubType.SinkTask) {
-    if (nodeData.config && Object.keys(nodeData.config).length > 0) {
-      config.config = nodeData.config;
-    }
+  } else if (
+    (subType === NodeSubType.RollbackEntityTask ||
+      subType === NodeSubType.SinkTask) &&
+    nodeData.config &&
+    Object.keys(nodeData.config).length > 0
+  ) {
+    config.config = nodeData.config;
   }
 };
 
@@ -192,10 +191,10 @@ export const configureNodeInputOutput = (
     }
 
     // Configure output based on subType
-    if (subType === NodeSubType.CheckEntityAttributesTask) {
-      config.output = ['result'];
-      config.branches = ['true', 'false'];
-    } else if (subType === NodeSubType.CheckChangeDescriptionTask) {
+    if (
+      subType === NodeSubType.CheckEntityAttributesTask ||
+      subType === NodeSubType.CheckChangeDescriptionTask
+    ) {
       config.output = ['result'];
       config.branches = ['true', 'false'];
     } else if (subType === NodeSubType.DataCompletenessTask) {
@@ -227,6 +226,7 @@ export const configureNodeInputOutput = (
         | {
             addReviewers?: boolean;
             addOwners?: boolean;
+            emptyAssigneeStrategy?: 'none' | 'assignAdmins';
             candidates?: Array<{
               id: string;
               type: string;
@@ -239,6 +239,8 @@ export const configureNodeInputOutput = (
       config.config.assignees = {
         addReviewers: assigneesFromNode?.addReviewers ?? true,
         addOwners: assigneesFromNode?.addOwners ?? false,
+        emptyAssigneeStrategy:
+          assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
         candidates: assigneesFromNode?.candidates ?? [],
       };
       config.config.approvalThreshold =

@@ -20,6 +20,7 @@ import { Box } from '@/components/base/box/box';
 import { Divider } from '@/components/base/divider/divider';
 import { FormField } from '@/components/base/form/hook-form';
 import { HintText } from '@/components/base/input/hint-text';
+import { useFieldDoc } from './field-doc-context';
 import { type FieldProp, HelperTextType } from './form-field.types';
 import { FormItemLabel } from './form-item-label';
 import { renderFieldElement } from './render-field-element';
@@ -42,14 +43,20 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     effectiveRules.required = true;
   }
 
-  return (
+  const fieldDocProps = useFieldDoc({
+    name: field.name,
+    label: field.label,
+    doc: field.doc,
+  });
+
+  const rendered = (
     <FormField control={control} name={name} rules={effectiveRules}>
       {(controller) => {
         const { fieldState } = controller;
 
         return (
           <Fragment key={id}>
-            <Box className="tw:gap-[6px]" direction="col">
+            <Box className="tw:gap-[6px]" direction="col" {...fieldDocProps}>
               <FormItemLabel
                 label={label}
                 required={required}
@@ -61,18 +68,18 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
               />
 
               {renderFieldElement(controller, field)}
-            </Box>
 
-            {fieldState.error && (
-              <HintText isInvalid>{fieldState.error.message}</HintText>
-            )}
+              {fieldState.error && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
 
             {helperTextType === HelperTextType.ALERT && helperText && (
               <Alert
                 data-testid="form-item-alert"
                 title={typeof helperText === 'string' ? helperText : ''}
                 variant="warning">
-                {typeof helperText !== 'string' ? helperText : undefined}
+                {typeof helperText === 'string' ? undefined : helperText}
               </Alert>
             )}
 
@@ -82,6 +89,8 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
       }}
     </FormField>
   );
+
+  return rendered;
 };
 
 Field.displayName = 'Field';

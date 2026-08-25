@@ -14,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -39,9 +39,9 @@ import {
   ActivityFeedLayoutType,
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
@@ -57,6 +57,13 @@ import './users.less';
 import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const Users = ({
   afterDeleteAction,

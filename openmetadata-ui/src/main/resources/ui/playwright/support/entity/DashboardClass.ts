@@ -14,8 +14,9 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -27,27 +28,19 @@ export interface DataModelType extends ResponseDataWithServiceType {
   columns?: unknown[];
   dataModelType?: string;
 }
+export interface DashboardServiceConfig {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
+}
 
 export class DashboardClass extends EntityClass {
   private dashboardName: string;
   private dashboardDataModelName: string;
   private projectName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        hostPort: string;
-        connection: {
-          provider: string;
-          username: string;
-          password: string;
-        };
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service: DashboardServiceConfig;
   charts: { name: string; displayName: string; service: string };
   entity: {
     name: string;
@@ -71,13 +64,17 @@ export class DashboardClass extends EntityClass {
   dataModelResponseData: DataModelType = {} as DataModelType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string, dataModelType = 'SupersetDataModel') {
+  constructor(
+    name?: string,
+    dataModelType = 'SupersetDataModel',
+    service?: Partial<DashboardServiceConfig>
+  ) {
     super(EntityTypeEndpoint.Dashboard);
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
 
-    const serviceName = name ?? `pw-dashboard-service-${uuid()}`;
+    const serviceName = service?.name ?? `pw-dashboard-service-${uuid()}`;
     this.dashboardName = `pw-dashboard-${uuid()}`;
     this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;
@@ -106,7 +103,7 @@ export class DashboardClass extends EntityClass {
     };
 
     this.entity = {
-      name: this.dashboardName,
+      name: name ?? this.dashboardName,
       displayName: this.dashboardName,
       service: this.service.name,
       project: this.projectName,
@@ -172,10 +169,22 @@ export class DashboardClass extends EntityClass {
       }
     );
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.chartsResponseData = await chartsResponse.json();
-    this.dataModelResponseData = await dataModelResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    this.serviceResponseData = await okJson(
+      serviceResponse,
+      'DashboardClass.create'
+    );
+    this.chartsResponseData = await okJson(
+      chartsResponse,
+      'DashboardClass.create'
+    );
+    this.dataModelResponseData = await okJson(
+      dataModelResponse,
+      'DashboardClass.create'
+    );
+    this.entityResponseData = await okJson(
+      entityResponse,
+      'DashboardClass.create'
+    );
 
     return {
       service: this.serviceResponseData,
@@ -192,17 +201,19 @@ export class DashboardClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/dashboards/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/dashboards/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'DashboardClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -231,12 +242,10 @@ export class DashboardClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

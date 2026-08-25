@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -50,7 +50,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
@@ -65,6 +68,10 @@ from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -81,9 +88,10 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.domo_client = get_connection(self.service_connection)
-        self.connection_obj = self.domo_client
-        self.test_connection()
+        self._connection = create_connection(self.service_connection)
+        self.domo_client = cast("BaseConnection", self._connection).client
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(
@@ -289,6 +297,3 @@ class DomodatabaseSource(DatabaseServiceSource):
         self, schema: str, table: str
     ) -> str:
         return table
-
-    def close(self) -> None:
-        """Nothing to close"""

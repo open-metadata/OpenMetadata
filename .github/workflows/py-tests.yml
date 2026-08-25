@@ -18,296 +18,40 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-env:
-  # matrix can't use 'env'. When updating it, update it for both jobs.
-  MAIN_PYTHON_VERSION: "3.10"
-  SONAR_OPTS: >-
-    -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-    -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-    -Dsonar.pullrequest.github.repository=OpenMetadata
-    -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-    -Dsonar.pullrequest.provider=github
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  # Detect whether relevant paths changed. When no Python/service/schema files
-  # are modified the downstream jobs are skipped via their `if` condition.
-  # A job skipped by `if` reports as "Success", so required checks still pass.
-  # This replaces the old py-tests-skip.yml companion workflow.
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
-    outputs:
-      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
-    steps:
-      - uses: dorny/paths-filter@v3
-        id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          filters: |
-            python:
-              - 'ingestion/**'
-              - 'openmetadata-service/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - 'pom.xml'
-              - 'Makefile'
+  # Owns the unit-test and coverage jobs; they are database-independent, so
+  # py-tests-postgres must not also run them.
+  # -s true: distribution comes from the shared build job. -i false: no test needs Airflow.
+  python:
+    uses: ./.github/workflows/py-tests-shared.yml
+    with:
+      compose-args: "-m no-ui -s true -i false"
+      artifact-prefix: py
+      test-profile: python-integration
+      run-unit-tests: true
+      run-coverage: true
+    secrets: inherit
 
-  py-unit-tests:
-    name: Unit Tests & Static Checks
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        py-version: ["3.10", "3.11", "3.12"]
-    steps:
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: ${{ matrix.py-version }}
-          install-server: 'false'
-
-      - name: Run Static Checks
-        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
-        # supported version) so type-checking results are identical across the
-        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
-        # redundant work and keep the baseline file deterministic.
-        if: matrix.py-version == '3.10'
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s static-checks
-        shell: bash
-
-      - name: Run Unit Tests
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s unit-tests
-        shell: bash
-
-      - name: Upload coverage artifact
-        if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-unit
-          path: ingestion/.coverage
-          include-hidden-files: true
-
-  py-integration-tests:
-    name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    timeout-minutes: 180
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        py-version: ["3.10", "3.11", "3.12"]
-        shard:
-          - name: "shard-1"
-            nox-args: >-
-              tests/integration/ometa
-              tests/integration/postgres
-              tests/integration/mysql
-              tests/integration/profiler
-              tests/integration/data_quality
-          - name: "shard-2"
-            nox-args: >-
-              --ignore=tests/integration/ometa
-              --ignore=tests/integration/postgres
-              --ignore=tests/integration/mysql
-              --ignore=tests/integration/profiler
-              --ignore=tests/integration/data_quality
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: ${{ matrix.py-version}}
-          args: "-m no-ui"
-          ingestion_dependency: "mysql,elasticsearch,sample-data"
-
-      - name: Run Integration Tests
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-        shell: bash
-
-      - name: Upload coverage artifact
-        if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-integration-${{ matrix.shard.name }}
-          path: ingestion/.coverage
-          include-hidden-files: true
-
-      - name: Clean Up
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
-
-  # Single required-check gate for branch protection.
-  # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
-  # Runs and exits 1 only when a test job fails or is cancelled.
-  # Set "py-tests / py-tests-status" as the sole required check for this workflow.
+  # The sole required check for this workflow. Must stay in the caller: inside
+  # py-tests-shared.yml it would report as "py-tests / python / <job>".
   py-tests-status:
-    name: py-tests-status
-    needs: [changes, py-unit-tests, py-integration-tests]
-    if: ${{ failure() || cancelled() }}
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
+    needs: python
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     runs-on: ubuntu-latest
     steps:
-      - run: exit 1
-
-  py-combine-coverage:
-    needs: [changes, py-unit-tests, py-integration-tests]
-    if: ${{ needs.changes.outputs.python == 'true' && !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          filter: blob:none
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
-
-      - name: Install uv
-        run: pip install uv
-        shell: bash
-
-      - name: Install coverage
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          uv pip install "coverage[toml]" nox
-        shell: bash
-
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-*
-          path: ingestion/coverage-data/
-
-      - name: Prepare coverage files
-        run: |
-          cd ingestion
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
-          for dir in coverage-data/coverage-integration-*/; do
-            shard=$(basename "$dir" | sed 's/coverage-integration-//')
-            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
-          done
-        shell: bash
-
-      - name: Combine coverage
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s combine-coverage
-        shell: bash
-
-      - name: Remove pom.xml
-        run: rm pom.xml
-        shell: bash
-
-        # we have to pass these args values since we are working with the 'pull_request_target' trigger
-      - name: Push Results in PR to Sonar
-        id: push-to-sonar
-        if: ${{ github.event_name == 'pull_request_target'}}
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
+      - name: Verify the shared Python pipeline succeeded
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}
-
-      # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
-      - name: Wait to retry 'Push Results in PR to Sonar'
-        if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
-        run: sleep 20s
+          PIPELINE_RESULT: ${{ needs.python.result }}
+        run: |
+          if [ "$PIPELINE_RESULT" != "success" ]; then
+            echo "Shared Python pipeline did not succeed: $PIPELINE_RESULT"
+            exit 1
+          fi
         shell: bash
-
-      - name: Retry 'Push Results in PR to Sonar'
-        uses: SonarSource/sonarqube-scan-action@v7
-        if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}

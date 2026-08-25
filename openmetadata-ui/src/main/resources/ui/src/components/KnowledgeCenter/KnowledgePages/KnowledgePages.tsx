@@ -16,11 +16,11 @@ import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
+import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
 import Loader from '../../../components/common/Loader/Loader';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -31,7 +31,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -68,22 +68,13 @@ const KnowledgePages: FC = () => {
     }
   }, [entityId, entityType]);
 
-  const header = (
-    <div className="d-flex justify-between">
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="header-label">
-        {t('label.knowledge-center')}
-      </Typography.Text>
-      {/* only show view all if length is greater than PAGE_SIZE i.e 10 */}
-      {paging?.total > PAGE_SIZE && (
-        <Link
-          data-testid="view-all-data-asset-related-articles"
-          to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
-          {t('label.view-all')}
-        </Link>
-      )}
-    </div>
+  // only show view all if length is greater than PAGE_SIZE i.e 10
+  const headerExtra = paging?.total > PAGE_SIZE && (
+    <Link
+      data-testid="view-all-data-asset-related-articles"
+      to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
+      {t('label.view-all')}
+    </Link>
   );
 
   const content = (
@@ -107,16 +98,16 @@ const KnowledgePages: FC = () => {
                 {isQuickLink ? (
                   <LinkIcon
                     data-testid="link-icon"
-                    height={12}
+                    height={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={12}
+                    width={16}
                   />
                 ) : (
                   <IconArticle
                     data-testid="article-icon"
-                    height={12}
+                    height={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={12}
+                    width={16}
                   />
                 )}
               </span>
@@ -161,13 +152,12 @@ const KnowledgePages: FC = () => {
   }
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      dataTestId="knowledge-center">
+    <WidgetCard
+      dataTestId="knowledge-center"
+      headerExtra={headerExtra}
+      title={t('label.context-center')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

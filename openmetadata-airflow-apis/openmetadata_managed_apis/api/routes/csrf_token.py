@@ -31,9 +31,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions  # noqa: PLC0415
+    from airflow.security import permissions
 
-    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
     )
 
@@ -64,7 +64,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             if not csrf_token:
                 try:
                     # Try Flask-WTF's generate_csrf
-                    from flask_wtf.csrf import generate_csrf  # noqa: PLC0415
+                    from flask_wtf.csrf import generate_csrf
 
                     csrf_token = generate_csrf()
                 except ImportError:

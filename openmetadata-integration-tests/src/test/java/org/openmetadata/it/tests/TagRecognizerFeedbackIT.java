@@ -225,7 +225,7 @@ public class TagRecognizerFeedbackIT {
         Map.of(
             "limit", "100",
             "status", TaskEntityStatus.Open.value(),
-            "type", TaskEntityType.DataQualityReview.value());
+            "type", TaskEntityType.RecognizerFeedbackApproval.value());
 
     try {
       Awaitility.await(String.format("Wait for Task entity to be created for Tag: '%s'", tagFQN))
@@ -274,7 +274,7 @@ public class TagRecognizerFeedbackIT {
   }
 
   private boolean isRecognizerFeedbackTaskForTag(Task task, String tagFQN) {
-    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+    if (task == null || task.getType() != TaskEntityType.RecognizerFeedbackApproval) {
       return false;
     }
     RecognizerFeedback feedback = getTaskPayloadFeedback(task);
@@ -366,10 +366,34 @@ public class TagRecognizerFeedbackIT {
     Task task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
     assertNotNull(task, "Task should be created for tag with reviewer");
-    assertEquals(TaskEntityType.DataQualityReview, task.getType());
+    assertEquals(TaskEntityType.RecognizerFeedbackApproval, task.getType());
     RecognizerFeedback payloadFeedback = getTaskPayloadFeedback(task);
     assertNotNull(payloadFeedback, "Task payload should contain feedback details");
     assertEquals(feedback.getEntityLink(), payloadFeedback.getEntityLink());
+
+    ListResponse<Task> taskApiResponse =
+        SdkClients.adminClient()
+            .tasks()
+            .listWithFilters(
+                Map.of(
+                    "statusGroup",
+                    "open",
+                    "aboutEntity",
+                    tag.getFullyQualifiedName(),
+                    "fields",
+                    "assignees,createdBy,about,comments,payload",
+                    "limit",
+                    "100"));
+    Task listedTask =
+        taskApiResponse.getData().stream()
+            .filter(apiTask -> task.getId().equals(apiTask.getId()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new AssertionError(
+                        "Task API should return recognizer feedback task for tag "
+                            + tag.getFullyQualifiedName()));
+    assertEquals(TaskEntityType.RecognizerFeedbackApproval, listedTask.getType());
   }
 
   @RetryingTest(3)

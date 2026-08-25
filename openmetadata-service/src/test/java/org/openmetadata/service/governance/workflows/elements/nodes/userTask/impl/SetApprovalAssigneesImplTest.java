@@ -19,8 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -44,10 +47,14 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @ExtendWith(MockitoExtension.class)
@@ -136,6 +143,90 @@ class SetApprovalAssigneesImplTest {
         assigneesJson.contains("ram.balaji"),
         "Dotted username should have been removed by self-approval prevention");
     assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
+  }
+
+  /**
+   * Regression test for the task-managed workflow (DAR) self-approval leak. {@code
+   * TaskWorkflowLifecycleResolver.WorkflowStartVariables} publishes the requester as {@code
+   * taskUpdatedBy}, not {@code global_updatedBy}. Reading only the global variant left every Data
+   * Access Request assigning the requester to their own approval task (verified against
+   * sandbox-beta task {@code 0e013ae4-e4b6-4f3c-bc7c-3f66c120693e}).
+   */
+  @Test
+  void testSelfApprovalPrevention_taskManagedWorkflow_readsTaskUpdatedBy() {
+    EntityReference requesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("john");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn(null);
+    when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(
+        assigneesJson.contains("ram.balaji"),
+        "DAR requester (task-managed workflow) must be removed via taskUpdatedBy");
+    assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
+  }
+
+  /**
+   * Both variables are checked every invocation — no fallback. If task-managed and entity workflow
+   * variables ever end up populated in the same execution with different usernames, both users are
+   * treated as requester candidates and removed from the assignees list.
+   */
+  @Test
+  void testSelfApprovalPrevention_bothUpdatedByVariablesRemoveRequester() {
+    EntityReference taskRequesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
+    EntityReference globalRequesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("john");
+
+    when(mockEntity.getReviewers())
+        .thenReturn(List.of(taskRequesterRef, globalRequesterRef, otherReviewerRef));
+    when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(assigneesJson.contains("ram.balaji"), "taskUpdatedBy user must be removed");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"), "global_updatedBy user must be removed");
+    assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
+  }
+
+  @Test
+  void testSelfApprovalPrevention_globalUpdatedByOnly_stillRemoved() {
+    EntityReference requesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("bob");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
+    when(execution.getVariable("taskUpdatedBy")).thenReturn(null);
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Entity workflow requester (global_updatedBy only) must be removed");
+    assertTrue(assigneesJson.contains("bob"), "Other reviewer should remain as assignee");
   }
 
   @Test
@@ -283,6 +374,124 @@ class SetApprovalAssigneesImplTest {
     assertTrue(
         assigneesJson.contains("reviewer1"),
         "Glossary reviewers should be used when glossary terms inherit reviewers");
+  }
+
+  @Test
+  void testAdminFallbackAssignsAdminsWhenNoReviewersOrOwnersAndStrategyAssignAdmins() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    User adminUser = new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(List.of(adminUser));
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(
+        assigneesJson.contains("platform_admin"),
+        "Admin fallback must assign platform admins when no reviewers/owners resolve and the flag is enabled");
+  }
+
+  @Test
+  void testAdminFallbackSkippedWhenReviewersPresent() {
+    when(mockEntity.getReviewers())
+        .thenReturn(List.of(new EntityReference().withType("user").withFullyQualifiedName("bob")));
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("bob"), "Reviewer should be assigned");
+    assertFalse(
+        assigneesJson.contains("platform_admin"),
+        "Admin fallback must not trigger when reviewers are present");
+  }
+
+  @Test
+  void testAdminFallbackSkippedWhenStrategyNone() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertEquals("[]", assigneesJson, "Without the flag, an empty resolution stays unassigned");
+  }
+
+  @Test
+  void testAdminFallbackWhenSoleAssigneeIsRequesterAndStrategyAssignAdmins() {
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("alice")));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    User adminUser = new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(List.of(adminUser));
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(
+        assigneesJson.contains("platform_admin"),
+        "When the only assignee was the requester, admins must be assigned after self-approval removal");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Requester must not be assigned to their own task");
+  }
+
+  @Test
+  void testAdminFallbackExcludesRequesterEvenWhenRequesterIsAdmin() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    User requesterAdmin = new User().withName("alice").withFullyQualifiedName("alice");
+    User otherAdmin =
+        new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(List.of(requesterAdmin, otherAdmin));
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("platform_admin"), "Other admins must be assigned");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Requester who is also an admin must be excluded so self-approval can never happen");
   }
 
   private static void injectField(Object target, String fieldName, Object value) throws Exception {

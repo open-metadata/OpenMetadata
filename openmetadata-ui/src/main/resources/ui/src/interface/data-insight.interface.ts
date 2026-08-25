@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TooltipProps } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import { DataInsightIndex, SystemChartType } from '../enums/DataInsight.enum';
 import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';

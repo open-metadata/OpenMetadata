@@ -2,7 +2,6 @@
   "compilerOptions": {
     "outDir": "./build",
     "rootDir": "./src",
-    "baseUrl": "./src",
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "types": [
       "node",
@@ -56,7 +55,10 @@
     "forceConsistentCasingInFileNames": true,
     "allowUnreachableCode": false,
     "skipLibCheck": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "paths": {
+      "react-hook-form": ["./node_modules/react-hook-form"]
+    }
   },
   "include": ["src"]
 }

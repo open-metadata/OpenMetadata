@@ -16,6 +16,7 @@ import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
@@ -28,6 +29,7 @@ import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
 const table = new TableClass();
@@ -38,6 +40,7 @@ const tier = new TagClass({
 const tierWithoutAsset = new TagClass({
   classification: 'Tier',
 });
+let user: UserClass;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
@@ -48,6 +51,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tier.create(apiContext);
   // Create second tier but do NOT assign it to any asset
   await tierWithoutAsset.create(apiContext);
+  user = new UserClass();
+  await user.create(apiContext);
 
   await table.patch({
     apiContext,
@@ -68,16 +73,29 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
+      },
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: { id: user.responseData.id, type: 'user' },
       },
     ],
   });
+  await afterAction();
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await user.delete(apiContext);
   await afterAction();
 });
 
@@ -108,10 +126,15 @@ test.describe('search dropdown quick filters - index readiness', () => {
         filter.key
       }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-      const queryRes = page.waitForResponse(querySearchURL);
-      await page.click('[data-testid="update-btn"]');
-      await queryRes;
-      await page.click('[data-testid="clear-filters"]');
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(querySearchURL);
+        await updateButton.click();
+        await queryRes;
+      } else {
+        await waitForAllLoadersToDisappear(page);
+      }
+      await page.getByTestId('clear-all-chips').click();
     }
   });
 });
@@ -200,7 +223,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 
   await page.getByTestId('searchBox').click();
@@ -208,7 +231,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 });
 
@@ -233,10 +256,18 @@ test('Filter by column entity type shows only column results', async ({
   await dataAssetDropdownRequest;
 
   await columnCheckbox.check();
-  await page.getByTestId('update-btn').click();
 
-  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-  await expect(quickFilter).toContainText('tablecolumn');
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    // Legacy mode: apply, then reopen the dropdown to confirm persistence.
+    await updateButton.click();
+    await page.getByTestId('search-dropdown-Data Assets').click();
+  }
+  // Immediate-apply leaves the dropdown open with the box already checked.
+  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
+    '(1)'
+  );
 });
 
 test.describe('Tier filter - aggregation-based options', () => {
@@ -310,11 +341,14 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
-      const queryRes = page.waitForResponse(
-        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -323,6 +357,248 @@ test.describe('Tier filter - aggregation-based options', () => {
         )
       ).toBeVisible();
     });
+  });
+});
+
+test.describe('Filter persistence after bug fixes', () => {
+  test('explore tree sidebar selection is not cleared when a top dropdown filter is applied', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Click on Databases in the explore tree to select it', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the Databases node is marked as selected', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify Databases node selection is still preserved after filter change', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+  });
+
+  test('sort order is preserved in URL when explore tree node is clicked after applying a top dropdown filter', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Toggle sort order to ascending', async () => {
+      const sortRes = page.waitForResponse(
+        '/api/v1/search/query?*sort_order=asc*'
+      );
+      await page.getByTestId('sort-order-button').click();
+      await sortRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Click on Databases in the explore tree', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify sort order is preserved in the URL after tree node click', async () => {
+      await expect(page).toHaveURL(/sortOrder=asc/);
+    });
+  });
+});
+
+test.describe('Quick filter options - proper casing from top_hits', () => {
+  test('domain filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const domainName = domain.responseData.displayName as string;
+
+    await test.step('Open Domains filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Domains"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', domainName);
+      await searchRes;
+
+      // The rendered option text must match the original-cased displayName
+      const optionEl = page.getByTestId(domainName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(domainName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tier filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tierFqn = tier.responseData.fullyQualifiedName as string;
+
+    await test.step('Open Tier filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.click('[data-testid="search-dropdown-Tier"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tierFqn);
+      await searchRes;
+
+      const optionEl = page.getByTestId(tierFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tierFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tag filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tagFqn = 'PersonalData.Personal';
+
+    await test.step('Open Tag filter and search for the tag', async () => {
+      await page.click('[data-testid="search-dropdown-Tag"]');
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tags.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tagFqn);
+      await searchRes;
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const optionEl = page.getByTestId(tagFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tagFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('owner filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const ownerName = (user.responseData.displayName ??
+      user.responseData.name) as string;
+
+    await test.step('Open Owners filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.click('[data-testid="search-dropdown-Owners"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
+      );
+      await page.fill('[data-testid="search-input"]', ownerName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(ownerName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(ownerName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('service filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const serviceName = (table.serviceResponseData.displayName ??
+      table.serviceResponseData.name) as string;
+
+    await test.step('Open Service filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Service"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', serviceName);
+      await searchRes;
+
+      const optionEl = page.getByTestId(serviceName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(serviceName);
+    });
+
+    await clickOutside(page);
   });
 });
 
@@ -346,7 +622,7 @@ test.describe('Metric search result highlight', () => {
     await afterAction();
   });
 
-  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+  test('breadcrumb shows the entity category and display name header should have highlighted terms', async ({
     page,
   }) => {
     await test.step('Select Metric search index and search', async () => {
@@ -387,24 +663,23 @@ test.describe('Metric search result highlight', () => {
       await page.getByTestId('search-results').waitFor({ state: 'visible' });
     });
 
-    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+    await test.step('Verify breadcrumb shows the Metrics category without HTML tags', async () => {
       const entityCard = page.getByTestId(
         `table-data-card_${metric.entity.name}`
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      const breadcrumb = entityCard.getByTestId('breadcrumb');
-
-      const firstLink = breadcrumb
-        .getByTestId('breadcrumb-link')
-        .first()
-        .getByRole('link');
-      await expect(firstLink).toHaveText('Metrics');
-
-      const inactiveLink = breadcrumb.getByTestId('inactive-link');
-      await expect(inactiveLink).toHaveText(metric.entity.name);
-      await expect(inactiveLink).not.toContainText('<span');
-      await expect(inactiveLink).not.toContainText('text-highlighter');
+      // The result-card breadcrumb (core Breadcrumbs) shows only the ancestor
+      // trail — it excludes the current entity, which the card renders as its
+      // title. A Metric's sole ancestor is the "Metrics" category, so it is the
+      // last (plain, non-link) crumb. The entity name lives in the card title
+      // (asserted below), so search-highlight markup can never leak into the
+      // breadcrumb.
+      const breadcrumb = entityCard.getByRole('list', { name: 'Breadcrumb' });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText('Metrics');
+      await expect(breadcrumb).not.toContainText('<span');
+      await expect(breadcrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {

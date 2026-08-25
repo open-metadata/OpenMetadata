@@ -25,14 +25,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-  AlertMessage,
-  CuratedAssetsFormSelectedAssetsInfo,
   getExpandedResourceList,
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
+} from '../../../../../utils/CuratedAssetsPureUtils';
+import {
+  AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderUtils';
+import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import './advanced-assets-filter-field.less';
@@ -182,6 +184,7 @@ export const AdvancedAssetsFilterField = ({
       <Row className="advanced-filter-form-field" gutter={[8, 8]}>
         <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
           </div>
           <Query

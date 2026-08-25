@@ -32,16 +32,20 @@ import { MentionNotification } from './NotificationFeedCard.interface';
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPathFromTask = jest.fn();
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: unknown[]) => mockPrepareFeedLink(...args),
 }));
-jest.mock('../../utils/TasksUtils', () => ({
+jest.mock('../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPathFromTask: (...args: unknown[]) =>
     mockGetTaskDetailPathFromTask(...args),
   getTaskDisplayId: jest.fn().mockReturnValue('1'),
@@ -64,14 +68,24 @@ jest.mock('react-router-dom', () => ({
         to: string;
         onClick?: (e: React.MouseEvent) => void;
       }) => (
-        <span data-testid="link" data-to={to} onClick={onClick}>
+        <span
+          data-testid="link"
+          data-to={to}
+          role="button"
+          tabIndex={0}
+          onClick={onClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onClick?.(e as unknown as React.MouseEvent);
+            }
+          }}>
           {children}
         </span>
       )
     ),
   useNavigate: jest.fn(() => mockNavigate),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
@@ -95,6 +109,27 @@ const mockMentionThread = {
   updatedBy: 'admin',
   message:
     '﻿<#E::user::admin|[@admin](http://localhost:3000/users/admin)>﻿ Hii!',
+  postsCount: 0,
+  posts: [],
+  reactions: [],
+} as MentionNotification;
+
+// A chat-collaborator notification: `about` is the invitee's own user record,
+// so the conversation is carried in entityUrlLink / feedInfo instead.
+const mockChatCollaboratorThread = {
+  id: '5881af12-0f94-49b9-b686-268203b01de0',
+  threadTs: 1755772414483,
+  about: '<#E::user::shreyansh>',
+  entityRef: {
+    id: 'eda48fe4-515f-44ee-8afc-f7e4ef01277a',
+    type: 'user',
+    name: 'shreyansh',
+    displayName: 'Shreyansh Verma',
+  },
+  entityUrlLink: '/conversations/abc-123',
+  feedInfo: { headerMessage: 'Chat Initialization' },
+  createdBy: 'vishnu.jain',
+  message: '<#E::user::shreyansh> can now view and reply in this conversation.',
   postsCount: 0,
   posts: [],
   reactions: [],
@@ -163,6 +198,61 @@ describe('NotificationFeedCard', () => {
       'all'
     );
   });
+
+  it('links a chat-collaborator notification to the conversation, not the invitee profile', async () => {
+    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+
+    await act(async () => {
+      render(
+        <NotificationFeedCard
+          createdBy="vishnu.jain"
+          entityFQN="shreyansh"
+          entityType="user"
+          mentionNotification={mockChatCollaboratorThread}
+          timestamp={mockChatCollaboratorThread.threadTs}
+        />
+      );
+    });
+
+    expect(
+      screen.getByText(/added-you-as-a-collaborator-on-lowercase/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Chat Initialization')).toBeInTheDocument();
+    // The generic "mentioned you on the <entityType>" wording would have read
+    // "on the user" and sent the reader to their own profile.
+    expect(screen.queryByText(/mentioned-you-on-the-lowercase/i)).toBeNull();
+    expect(screen.queryByText('user')).toBeNull();
+
+    screen.getAllByTestId('link').forEach((link) => {
+      expect(link).toHaveAttribute('data-to', '/conversations/abc-123');
+    });
+  });
+
+  it.each([
+    ['feedInfo is absent', undefined],
+    // An empty title must fall back too, or the link renders with no label.
+    ['headerMessage is empty', { headerMessage: '' }],
+  ])(
+    'falls back to a generic conversation label when %s',
+    async (_label, feedInfo) => {
+      await act(async () => {
+        render(
+          <NotificationFeedCard
+            createdBy="vishnu.jain"
+            entityFQN="shreyansh"
+            entityType="user"
+            mentionNotification={{
+              ...mockChatCollaboratorThread,
+              feedInfo,
+            }}
+            timestamp={mockChatCollaboratorThread.threadTs}
+          />
+        );
+      });
+
+      expect(screen.getByText('label.conversation')).toBeInTheDocument();
+    }
+  );
 
   it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
     mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');

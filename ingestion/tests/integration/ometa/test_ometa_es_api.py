@@ -365,6 +365,46 @@ class TestOMetaESAPI:
                 except Exception:
                     pass
 
+    def test_paginate_with_comma_in_name(self, metadata, es_service, es_schema):
+        """Regression for #28076 — pagination must survive sort values containing ','.
+
+        With size=1, every page boundary's cursor is a single FQN with ',' in it.
+        The multi-value search_after wire format carries each sort value as its
+        own param, so a comma in the value cannot truncate pagination.
+        """
+        test_id = str(uuid.uuid4())[:8]
+        expected_names = [f"comma,{test_id},table,{i}" for i in range(5)]
+        created_tables = []
+        try:
+            for name in expected_names:
+                table = metadata.create_or_update(
+                    data=get_create_entity(
+                        entity=Table,
+                        name=EntityName(name),
+                        reference=es_schema.fullyQualifiedName,
+                    )
+                )
+                created_tables.append(table)
+
+            time.sleep(2)
+
+            expected_ids = [str(t.id.root) for t in created_tables]
+            query_filter = json.dumps({"query": {"terms": {"id.keyword": expected_ids}}})
+            assets = list(metadata.paginate_es(entity=Table, query_filter=query_filter, size=1))
+            returned = {a.name.root for a in assets}
+            expected_set = set(expected_names)
+            assert returned == expected_set, (
+                f"Pagination did not round-trip comma-FQN tables.\n"
+                f"  missing: {sorted(expected_set - returned)}\n"
+                f"  extra:   {sorted(returned - expected_set)}"
+            )
+        finally:
+            for table in created_tables:
+                try:  # noqa: SIM105
+                    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+                except Exception:
+                    pass
+
     def test_paginate_with_filters(self, metadata, es_service, es_schema):
         """We can paginate only tier 1 tables"""
         created_tables = []

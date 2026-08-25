@@ -21,6 +21,7 @@ import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
+import { getBotByName } from '../../../rest/botsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getContract } from '../../../rest/contractAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
@@ -41,20 +42,20 @@ import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTeamByName } from '../../../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
-import { getBotByName, getUserByName } from '../../../rest/userAPI';
+import { getUserByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
 const updateCachedEntityData = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn(),
   getEncodedFqn: jest.fn(),
 }));
@@ -201,8 +202,11 @@ jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../../rest/userAPI', () => ({
+jest.mock('../../../rest/botsAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 

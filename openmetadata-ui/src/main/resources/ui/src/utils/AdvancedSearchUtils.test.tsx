@@ -37,11 +37,13 @@ import {
   getEmptyJsonTreeForQueryBuilder,
   getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
-  getSearchDropdownLabels,
   getSearchLabel,
   getSelectedOptionLabelString,
   getServiceOptions,
   getTasksOptions,
+} from './AdvancedSearchPureUtils';
+import {
+  getSearchDropdownLabels,
   processCustomPropertyField,
   processEntityTypeFields,
 } from './AdvancedSearchUtils';

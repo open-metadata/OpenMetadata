@@ -56,6 +56,20 @@ export type SourceType = (
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
     >
+  | Pick<
+      TableColumnSearchSource,
+      | 'name'
+      | 'fullyQualifiedName'
+      | 'description'
+      | 'serviceType'
+      | 'displayName'
+      | 'service'
+      | 'domains'
+      | 'dataType'
+      | 'dataTypeDisplay'
+      | 'table'
+      | 'entityType'
+    >
   | Pick<TopicSearchSource, Fields>
   | Pick<ContainerSearchSource, Fields>
   | Pick<PipelineSearchSource, Fields>
@@ -117,11 +131,11 @@ export interface SearchedDataProps {
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
   isLoading?: boolean;
-  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
+  showRankingDetails?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
     details: SearchedDataProps['data'][number]['_source'],

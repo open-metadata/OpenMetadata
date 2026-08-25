@@ -102,6 +102,7 @@ export interface UserApprovalConfig {
   assignees?: {
     addReviewers: boolean;
     addOwners?: boolean;
+    emptyAssigneeStrategy?: 'none' | 'assignAdmins';
     candidates?: AssigneeCandidate[];
   };
   approvalThreshold?: number;

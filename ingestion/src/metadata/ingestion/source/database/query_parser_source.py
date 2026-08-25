@@ -27,6 +27,11 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -44,6 +49,16 @@ class QueryParserSource(Source, ABC):
     from the Source to its children, while providing
     some utilities to be overwritten when necessary
     """
+
+    progress_mode = ProgressMode.MANUAL
+
+    _result_limit_warned = False
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state; these query sources are MANUAL,
+        so they drive ``progress_tracking.manual`` directly."""
+        return attach_progress_tracking(self)
 
     sql_stmt: str
     dialect: str
@@ -93,6 +108,26 @@ class QueryParserSource(Source, ABC):
     @staticmethod
     def get_schema_name(data: dict) -> str:
         return data.get("schema_name")
+
+    def warn_if_query_log_truncated(self, row_count: int, subject: str) -> None:
+        """Warn at most once per run that a query log batch filled resultLimit.
+
+        Args:
+            row_count: rows read from the batch just processed
+            subject: what the truncation degrades, e.g. "lineage" or "usage"
+        """
+        result_limit = getattr(self.source_config, "resultLimit", None)
+        if not isinstance(result_limit, int) or row_count < result_limit:
+            return
+        # Batches run per day per engine, so an unguarded warning fires hundreds of times
+        if self._result_limit_warned:
+            return
+        self._result_limit_warned = True
+        logger.warning(
+            f"Reached the configured resultLimit of {result_limit} query log entries; "
+            f"the query log may have been truncated and {subject} may be incomplete. "
+            f"Consider increasing resultLimit."
+        )
 
     @staticmethod
     def get_aborted_status(data: dict) -> bool:

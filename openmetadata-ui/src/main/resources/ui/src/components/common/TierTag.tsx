@@ -13,7 +13,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 
 interface TierTagProps {
   tier: TagLabel;

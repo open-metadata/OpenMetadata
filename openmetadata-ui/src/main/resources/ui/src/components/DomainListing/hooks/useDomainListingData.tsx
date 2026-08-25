@@ -11,28 +11,50 @@
  *  limitations under the License.
  */
 
+import { useMemo } from 'react';
 import { useDomainListing } from '../../../components/common/atoms/domain/compositions/useDomainListing';
 import { ListingData } from '../../../components/common/atoms/shared/types';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 
 export const useDomainListingData = (): ListingData<Domain> => {
   const { domainBasePath } = useMarketplaceStore();
+  const { userDomains, isDomainRestricted } = useDomainStore();
 
-  const baseFilter = {
-    query: {
-      bool: {
-        must: [],
-        must_not: [
-          {
-            exists: {
-              field: 'parent',
+  const baseFilter = useMemo(() => {
+    const must: QueryFieldInterface[] = [];
+
+    if (isDomainRestricted) {
+      const should = userDomains.flatMap((domain) => [
+        { term: { fullyQualifiedName: domain.fullyQualifiedName } },
+        { prefix: { fullyQualifiedName: `${domain.fullyQualifiedName}.` } },
+      ]) as QueryFieldInterface[];
+
+      must.push({
+        bool: {
+          should,
+          minimum_should_match: 1,
+        },
+      });
+    }
+
+    return {
+      query: {
+        bool: {
+          must,
+          must_not: [
+            {
+              exists: {
+                field: 'parent',
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-  };
+    };
+  }, [userDomains, isDomainRestricted]);
 
   return useDomainListing({
     baseFilter: JSON.stringify(baseFilter),

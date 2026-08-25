@@ -13,15 +13,14 @@
 import { Button, Col, Row, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
 import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
 import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
-import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
+import { useLogsModal } from '../../../../../../hooks/useLogsModal';
+import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
@@ -29,6 +28,7 @@ import PipelineActionsDropdown from './PipelineActionsDropdown';
 function PipelineActions({
   pipeline,
   ingestionPipelinePermissions,
+  isDisabled,
   triggerIngestion,
   deployIngestion,
   handleEnableDisableIngestion,
@@ -40,8 +40,8 @@ function PipelineActions({
   handleEditClick,
   moreActionButtonProps,
 }: Readonly<PipelineActionsProps>) {
-  const navigate = useNavigate();
   const { t } = useTranslation();
+  const { openLogs, logsModal } = useLogsModal();
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
   const { pipelineId, pipelineName } = useMemo(
@@ -54,14 +54,12 @@ function PipelineActions({
 
   const { editPermission, deletePermission, editStatusPermission } =
     useMemo(() => {
-      const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
-
       return {
-        editPermission: pipelinePermission?.[Operation.EditAll],
-        deletePermission: pipelinePermission?.[Operation.Delete],
+        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
         editStatusPermission:
-          pipelinePermission?.[Operation.EditAll] ||
-          pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+          ingestionPipelinePermissions?.[Operation.EditAll] ||
+          ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
       };
     }, [ingestionPipelinePermissions, pipelineName]);
 
@@ -79,16 +77,14 @@ function PipelineActions({
 
   const handleLogsClick = useCallback(
     () =>
-      navigate(
-        getLogsViewerPath(
+      openLogs({
+        logEntityType:
           pipeline.pipelineType === PipelineType.TestSuite
             ? EntityType.TEST_SUITE
             : serviceCategory ?? '',
-          pipeline.service?.name ?? '',
-          pipeline?.fullyQualifiedName ?? pipeline?.name ?? ''
-        )
-      ),
-    [pipeline, serviceCategory]
+        fqn: pipeline?.fullyQualifiedName ?? pipeline?.name ?? '',
+      }),
+    [pipeline, serviceCategory, openLogs]
   );
 
   const playPauseButton = useMemo(() => {
@@ -104,7 +100,7 @@ function PipelineActions({
               }>
               <Button
                 data-testid="pause-button"
-                disabled={!pipeline.deployed}
+                disabled={isDisabled || !pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
@@ -123,7 +119,7 @@ function PipelineActions({
               }>
               <Button
                 data-testid="resume-button"
-                disabled={!pipeline.deployed}
+                disabled={isDisabled || !pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
@@ -139,7 +135,7 @@ function PipelineActions({
     }
 
     return null;
-  }, [editStatusPermission, pipeline, currPauseId, pipelineId]);
+  }, [editStatusPermission, isDisabled, pipeline, currPauseId, pipelineId]);
 
   return (
     <Row
@@ -155,6 +151,7 @@ function PipelineActions({
           <Col>
             <Button
               data-testid="logs-button"
+              disabled={isDisabled}
               icon={<LogsIcon height={12} width={12} />}
               onClick={handleLogsClick}>
               {t('label.log-plural')}
@@ -169,7 +166,10 @@ function PipelineActions({
                 handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
                 ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
-                moreActionButtonProps={moreActionButtonProps}
+                moreActionButtonProps={{
+                  ...moreActionButtonProps,
+                  disabled: isDisabled || moreActionButtonProps?.disabled,
+                }}
                 serviceCategory={serviceCategory}
                 serviceName={serviceName}
                 triggerIngestion={triggerIngestion}
@@ -179,6 +179,7 @@ function PipelineActions({
           )}
         </Row>
       </Col>
+      {logsModal}
     </Row>
   );
 }

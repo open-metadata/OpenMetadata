@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { RuleObject } from 'antd/lib/form';
-import yaml from 'js-yaml';
+import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
@@ -34,7 +34,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 
 export const semanticRuleValidator = (_: RuleObject, value: string) => {
   if (isEmpty(value) || value === '""' || value === '{}') {
@@ -140,7 +140,7 @@ export const getUpdatedContractDetails = (
 };
 
 export const downloadContractYamlFile = (contract: DataContract) => {
-  const data = yaml.dump(getUpdatedContractDetails(contract, contract));
+  const data = dump(getUpdatedContractDetails(contract, contract));
   const element = document.createElement('a');
   const file = new Blob([data], { type: 'text/plain' });
   element.textContent = 'download-file';
@@ -433,14 +433,6 @@ export const getDataContractTabByEntity = (entityType: EntityType) => {
         EDataContractTab.SLA,
       ];
     case EntityType.DATA_PRODUCT:
-      return [
-        EDataContractTab.CONTRACT_DETAIL,
-        EDataContractTab.TERMS_OF_SERVICE,
-        EDataContractTab.SEMANTICS,
-        EDataContractTab.SECURITY,
-        EDataContractTab.SLA,
-      ];
-
     default:
       return [
         EDataContractTab.CONTRACT_DETAIL,

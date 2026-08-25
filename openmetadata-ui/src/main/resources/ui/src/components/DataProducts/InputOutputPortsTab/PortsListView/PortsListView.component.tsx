@@ -32,7 +32,7 @@ import {
   removeInputPortsFromDataProduct,
   removeOutputPortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';

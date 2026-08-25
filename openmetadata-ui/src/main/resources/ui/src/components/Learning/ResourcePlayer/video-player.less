@@ -15,7 +15,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 24px 48px;
+  padding: var(--om-space-24) var(--om-space-48);
 }
 
 .video-player-container {
@@ -24,7 +24,7 @@
   max-width: 1200px;
   aspect-ratio: 16 / 9;
   max-height: 532.6875px;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   overflow: hidden;
 
   .video-player-iframe {
@@ -41,6 +41,6 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1;
+    z-index: var(--om-z-1);
   }
 }

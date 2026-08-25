@@ -35,4 +35,8 @@ describe('NavbarUtilClassBase', () => {
     expect(stringifyResult).toContain('label.slack-support');
     expect(stringifyResult).toContain('label.version');
   });
+
+  it('should return no user profile extra items by default', () => {
+    expect(navbarUtilClassBase.getUserProfileExtraItems()).toEqual([]);
+  });
 });

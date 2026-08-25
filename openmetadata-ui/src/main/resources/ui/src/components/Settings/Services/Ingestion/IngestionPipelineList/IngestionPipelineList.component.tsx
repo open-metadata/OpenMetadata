@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, TablePaginationConfig } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
-import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
+import { TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -20,7 +20,10 @@ import map from 'lodash/map';
 import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
@@ -29,21 +32,29 @@ import {
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useTableFilters } from '../../../../../hooks/useTableFilters';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
+import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import Loader from '../../../../common/Loader/Loader';
+import AirflowMessageBanner from '../../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
+
+/**
+ * The listing endpoint rejects any `sortOrder` other than `asc`/`desc`, so a value that did not come
+ * from the Name column — a hand-edited URL, or a repeated query param that `qs` parses as an array —
+ * falls back to the unsorted listing instead of being forwarded and 400ing.
+ */
+const toSortOrder = (value?: string): SORT_ORDER | undefined =>
+  Object.values(SORT_ORDER).find((order) => order === value);
 
 export const IngestionPipelineList = ({
   serviceName,
@@ -63,6 +74,20 @@ export const IngestionPipelineList = ({
   const [loading, setLoading] = useState(false);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
+
+  // The sort order lives in the URL rather than in component state because the cursor it produces
+  // already does: usePaging persists cursorType/cursorValue as query params, and a sorted cursor is
+  // a (displayNameSort, id) tuple that only the sorted listing can read. Keeping the order in state
+  // meant a reload of page 2 replayed that cursor down the default name-ordered path, which matches
+  // no row and renders an empty page. Same reason back/forward and a shared link now work.
+  const { filters: sortFilters, setFilters: setSortFilters } = useTableFilters<{
+    sortOrder?: string;
+  }>({ sortOrder: undefined });
+
+  const sortOrder = useMemo(
+    () => toSortOrder(sortFilters.sortOrder),
+    [sortFilters.sortOrder]
+  );
 
   const pagingInfo = usePaging();
 
@@ -137,15 +162,20 @@ export const IngestionPipelineList = ({
       paging,
       pipelineType,
       limit,
+      sortOrder,
     }: {
       paging?: Omit<Paging, 'total'>;
       pipelineType?: PipelineType[];
       limit?: number;
+      sortOrder?: SORT_ORDER;
     }) => {
       setLoading(true);
       try {
         const { data, paging: pagingRes } = await getIngestionPipelines({
-          arrQueryFields: [TabSpecificField.OWNERS],
+          arrQueryFields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PIPELINE_STATUSES,
+          ],
           serviceType:
             serviceName === 'testSuites'
               ? EntityType.TEST_SUITE
@@ -153,6 +183,9 @@ export const IngestionPipelineList = ({
           paging,
           pipelineType,
           limit,
+          ...(sortOrder
+            ? { sortField: SORT_FIELD_DISPLAY_NAME, sortOrder }
+            : {}),
         });
 
         setPipelines(data);
@@ -166,13 +199,18 @@ export const IngestionPipelineList = ({
     [serviceName]
   );
 
+  // A new sort order or filter invalidates the cursor the current page was reached with, so the
+  // cursor has to be cleared explicitly — handlePageChange only rewrites the ones it is given.
+  const resetToFirstPage = useCallback(() => {
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+  }, [handlePageChange]);
+
   const handlePipelinePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchPipelines({
-          paging: { [cursorType]: paging[cursorType] },
-          limit: pageSize,
-        });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -180,39 +218,63 @@ export const IngestionPipelineList = ({
         );
       }
     },
-    [fetchPipelines, paging, handlePageChange]
+    [paging, handlePageChange, pageSize]
   );
 
+  // Single fetch path. Every input the request depends on — page size, cursor, sort order and the
+  // pipeline type filter — is state this effect reads, so a change to any one of them produces
+  // exactly one request carrying all of the others. Handlers below only move that state; they must
+  // not fetch as well, or a sort would race a request that has forgotten the active filter.
+  //
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so they list
+  // whether or not the pipeline service answers. Only re-deploying them needs that service — see the
+  // button below.
   useEffect(() => {
-    if (isAirflowAvailable) {
-      const { cursorType, cursorValue } = pagingCursor ?? {};
+    const { cursorType, cursorValue } = pagingCursor ?? {};
 
-      if (cursorType && cursorValue) {
-        fetchPipelines({
-          paging: { [cursorType]: cursorValue },
-          limit: pageSize,
-        });
-      } else {
-        fetchPipelines({ limit: pageSize });
+    fetchPipelines({
+      paging:
+        cursorType && cursorValue ? { [cursorType]: cursorValue } : undefined,
+      pipelineType: pipelineTypeFilter,
+      limit: pageSize,
+      sortOrder,
+    });
+  }, [
+    fetchPipelines,
+    serviceName,
+    pageSize,
+    pagingCursor,
+    sortOrder,
+    pipelineTypeFilter,
+  ]);
+
+  // Params are inferred from the handler type rather than annotated, so the sorter/extra types do
+  // not have to be imported from antd — tw-guard blocks new antd specifiers.
+  const handleTableChange = useCallback<
+    NonNullable<TableProps<IngestionPipeline>['onChange']>
+  >(
+    (_pagination, filters, _sorter, extra) => {
+      // AntD reports sort/filter/pagination through one callback. Reading `filters` on a sort
+      // action saw pipelineType as undefined and silently cleared the active filter.
+      if (extra.action !== 'filter') {
+        return;
       }
-    }
-  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor]);
 
-  const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
-    useCallback(
-      (
-        _pagination: TablePaginationConfig,
-        filters: Record<string, FilterValue | null>
-      ) => {
-        const pipelineType = filters.pipelineType as PipelineType[];
-        setPipelineTypeFilter(pipelineType);
-        fetchPipelines({
-          pipelineType,
-          limit: pageSize,
-        });
-      },
-      [fetchPipelines]
-    );
+      setPipelineTypeFilter(filters.pipelineType as PipelineType[]);
+      resetToFirstPage();
+    },
+    [resetToFirstPage]
+  );
+
+  const handleSortChange = useCallback(
+    (updatedSortOrder?: SORT_ORDER) => {
+      // Written before resetToFirstPage, not after: both merge into the same query string off the
+      // live URL, and the cursor must be dropped by the later of the two writes.
+      setSortFilters({ sortOrder: updatedSortOrder ?? null });
+      resetToFirstPage();
+    },
+    [resetToFirstPage, setSortFilters]
+  );
 
   const handleRowChange = useCallback(
     (selectedRowKeys: React.Key[], selectedRows: IngestionPipeline[]) => {
@@ -234,20 +296,24 @@ export const IngestionPipelineList = ({
     [handleRowChange, selectedRowKeys]
   );
 
-  if (isFetchingStatus) {
-    return <Loader />;
-  }
-
-  if (!isAirflowAvailable) {
-    return <ErrorPlaceHolderIngestion />;
-  }
-
   return (
     <Row className={className} gutter={[16, 16]}>
+      <Col span={24}>
+        {/* Says why re-deploy is unavailable; the list itself stays readable. */}
+        <AirflowMessageBanner
+          unreachableFallbackMessage={t(
+            'message.pipeline-service-unreachable-agent-actions'
+          )}
+        />
+      </Col>
       <Col className="text-right" span={24}>
         <Button
           data-testid="bulk-re-deploy-button"
-          disabled={selectedPipelines?.length === 0}
+          disabled={
+            selectedPipelines?.length === 0 ||
+            isFetchingStatus ||
+            !isAirflowAvailable
+          }
           loading={deploying}
           type="primary"
           onClick={handleBulkRedeploy}>
@@ -266,7 +332,9 @@ export const IngestionPipelineList = ({
           isLoading={loading}
           pipelineTypeColumnObj={typeColumnObj}
           serviceName={serviceName}
+          sortOrder={sortOrder}
           onPageChange={handlePipelinePageChange}
+          onSortChange={handleSortChange}
         />
       </Col>
     </Row>

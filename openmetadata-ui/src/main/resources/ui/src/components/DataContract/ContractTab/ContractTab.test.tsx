@@ -47,7 +47,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',
@@ -68,23 +68,21 @@ jest.mock('../../common/Loader/Loader', () => {
   };
 });
 
-jest.mock('../../common/DeleteWidget/DeleteWidgetModal', () => {
-  return function MockDeleteWidgetModal({
-    visible,
+jest.mock('../../common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: function MockDeleteModal({
+    open,
     onCancel,
     onDelete,
-    entityName,
-    entityType,
+    entityTitle,
   }: any) {
-    if (!visible) {
+    if (!open) {
       return null;
     }
 
     return (
       <div data-testid="delete-modal">
-        <div>
-          Delete {entityType}: {entityName}
-        </div>
+        <div data-testid="modal-header">{entityTitle}</div>
         <button data-testid="cancel-delete" onClick={onCancel}>
           Cancel
         </button>
@@ -93,8 +91,8 @@ jest.mock('../../common/DeleteWidget/DeleteWidgetModal', () => {
         </button>
       </div>
     );
-  };
-});
+  },
+}));
 
 jest.mock('../AddDataContract/AddDataContract', () => {
   return function MockAddDataContract({ onCancel, onSave, contract }: any) {
@@ -312,9 +310,9 @@ describe('ContractTab', () => {
       });
 
       expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
-      expect(
-        screen.getByText('Delete dataContract: Test Contract')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('modal-header')).toHaveTextContent(
+        'Test Contract'
+      );
     });
 
     it('should cancel delete operation', async () => {
@@ -425,7 +423,7 @@ describe('ContractTab', () => {
 
     it('should refetch contract when entity ID changes', async () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
 
       const { rerender } = render(<ContractTab />);
@@ -447,7 +445,7 @@ describe('ContractTab', () => {
   describe('Error Handling', () => {
     it('should handle missing entity context', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({
         data: undefined,

@@ -33,6 +33,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
@@ -57,6 +58,7 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
+  openAddTeamModal,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -82,6 +84,10 @@ const userName = user.data.email.split('@')[0];
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
 
+type CsvExportResponse = {
+  jobId: string;
+};
+
 let teamDetails: {
   name?: string;
   displayName?: string;
@@ -94,6 +100,28 @@ let teamDetails: {
   updatedName: `updated-pw%team-${uuid()}`,
   teamType: 'Group',
   updatedEmail: `pwteamUpdated${uuid()}@example.com`,
+};
+
+const exportActiveTeamCsv = async (
+  page: Page,
+  apiContext: APIRequestContext
+) => {
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('export-details-container').click();
+
+  const exportResponse = await exportResponsePromise;
+  expect(exportResponse.ok()).toBeTruthy();
+
+  const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+
+  return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 };
 
 const test = base.extend<{
@@ -127,7 +155,9 @@ const test = base.extend<{
     await page.close();
   },
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },
@@ -163,9 +193,7 @@ test.describe('Teams Page', () => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.getByTestId('add-team').waitFor();
-
-      await page.getByTestId('add-team').click();
+      await openAddTeamModal(page);
 
       const newTeamData = await createTeam(page, true);
 
@@ -387,16 +415,18 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
+      await hardDeleteTeam(
+        page,
+        teamDetails?.updatedName ?? teamDetails.name,
+        true
+      );
     });
   });
 
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.getByTestId('add-team').waitFor();
-
-    await page.getByTestId('add-team').click();
+    await openAddTeamModal(page);
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
@@ -437,11 +467,12 @@ test.describe('Teams Page', () => {
 
     try {
       await privateTeam.create(apiContext);
+      const teamName = privateTeam.responseData.name ?? privateTeam.data.name;
+      const teamDisplayName =
+        privateTeam.responseData.displayName ?? privateTeam.data.displayName;
       const privateTeamFqn =
         privateTeam.responseData.fullyQualifiedName ??
-        `Organization.${
-          privateTeam.responseData.name ?? privateTeam.data.name
-        }`;
+        `Organization.${teamName}`;
       const createdTeamResponse = await apiContext.get(
         `/api/v1/teams/name/${encodeURIComponent(privateTeamFqn)}?include=all`
       );
@@ -459,25 +490,52 @@ test.describe('Teams Page', () => {
 
       await page
         .getByTestId('profile-teams-edit-popover')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
+        .getByText(teamDisplayName)
         .click();
 
-      const updateUserResponse = page.waitForResponse('/api/v1/users/*');
+      const patchUserPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          !response.url().includes('/api/v1/users/name/') &&
+          response.request().method() === 'PATCH'
+      );
       await page.getByTestId('teams-edit-save-btn').click();
-      await updateUserResponse;
+      const patchResponse = await patchUserPromise;
+      expect(patchResponse.status()).toBe(200);
 
       await expect(
         page.getByTestId('profile-teams-edit-popover')
       ).not.toBeVisible();
 
-      await page
-        .getByTestId('user-profile-teams')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
-        .click();
+      await waitForAllLoadersToDisappear(page);
+
+      // The teams chip only renders the first USER_DATA_SIZE entries; the rest
+      // are not in the DOM until the "+N more" tag is expanded.
+      const teamsCard = page.getByTestId('user-profile-teams');
+      const showMoreTeams = teamsCard.getByTestId('plus-more-count');
+      if (await showMoreTeams.isVisible()) {
+        await showMoreTeams.click();
+      }
+
+      const teamChip = teamsCard.getByTestId(`${teamName}-link`);
+
+      await expect(teamChip).toBeVisible();
+
+      const teamPageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await teamChip.click();
+      const teamPageResult = await teamPageResponse;
+
+      expect(teamPageResult.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('team-heading')).toContainText(
+        teamDisplayName
+      );
     } finally {
       await privateTeam.delete(apiContext).catch(() => undefined);
       await afterAction().catch(() => undefined);
@@ -550,7 +608,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Export team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
     const team = new TeamClass({
       name: `pw%team.export-${id}`,
@@ -575,17 +633,14 @@ test.describe('Teams Page', () => {
         team.data.displayName
       );
 
-      const downloadPromise = page.waitForEvent('download');
+      const csvContent = await exportActiveTeamCsv(page, apiContext);
 
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('export-details-container').click();
-      await page.fill('#fileName', team.data.name);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      expect(csvContent).toContain(
+        'name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies'
+      );
     } finally {
       await team.delete(apiContext);
+      await afterAction();
     }
   });
 
@@ -802,6 +857,35 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
+  test('Total User Count should update after a member is deactivated', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+
+    await user.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw-stale-count-${id}`,
+      displayName: `pw stale count ${id}`,
+      description: 'playwright team for userCount staleness',
+      teamType: 'Group',
+      users: [user.responseData.id],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('1');
+
+    await user.delete(apiContext, false);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('0');
+
+    await afterAction();
+  });
+
   test.describe('Show Deleted toggle', () => {
     let deletedTeam: TeamClass;
     let activeTeam: TeamClass;
@@ -1010,7 +1094,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('add-placeholder-button')
     ).not.toBeVisible();
     await expect(
-      dataConsumerPage.getByTestId('no-data-placeholder')
+      dataConsumerPage.getByText('No assets linked yet')
     ).toBeVisible();
 
     // Role Tab

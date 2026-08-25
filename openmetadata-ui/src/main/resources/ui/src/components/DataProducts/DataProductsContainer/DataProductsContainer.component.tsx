@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tag, Typography } from 'antd';
-import classNames from 'classnames';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,13 +22,13 @@ import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
@@ -128,9 +128,9 @@ const DataProductsContainer = ({
 
     if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
       return (
-        <Typography.Text className="text-sm text-grey-muted">
+        <Typography className="tw:text-quaternary" size="text-xs">
           {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -147,11 +147,14 @@ const DataProductsContainer = ({
                 height={12}
                 width={12}
               />
-              <Typography.Paragraph
-                className="m-0 tags-label"
-                data-testid={`data-product-${product.fullyQualifiedName}`}>
+              <Typography
+                as="p"
+                className="tw:m-0 tags-label"
+                data-testid={`data-product-${product.fullyQualifiedName}`}
+                size="text-xs"
+                weight="medium">
                 {getEntityName(product)}
-              </Typography.Paragraph>
+              </Typography>
             </div>
           </div>
         </Tag>
@@ -159,44 +162,39 @@ const DataProductsContainer = ({
     });
   }, [dataProducts, activeDomains]);
 
-  const header = useMemo(() => {
+  const headerExtra = useMemo(() => {
+    if (!showHeader) {
+      return null;
+    }
+
     return (
-      showHeader && (
-        <Space align="center" className={classNames('w-full')} size="middle">
-          <Typography.Text className={classNames('text-sm font-medium')}>
-            {t('label.data-product-plural')}
-          </Typography.Text>
-          {showAddTagButton && (
-            <PlusIconButton
-              data-testid="add-data-product"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.data-product-plural'),
-              })}
-              onClick={handleAddClick}
-            />
-          )}
-          {hasPermission && !isEmpty(activeDomains) && (
-            <Row gutter={12}>
-              {!isEmpty(dataProducts) && (
-                <Col>
-                  <EditIconButton
-                    newLook
-                    data-testid="edit-button"
-                    size="small"
-                    title={t('label.edit-entity', {
-                      entity: t('label.data-product-plural'),
-                    })}
-                    onClick={handleAddClick}
-                  />
-                </Col>
-              )}
-            </Row>
-          )}
-        </Space>
-      )
+      <Space align="center" size="middle">
+        {hasPermission && isEmpty(dataProducts) && (
+          <WidgetPlusButton
+            data-testid="add-data-product"
+            disabled={isEmpty(activeDomains)}
+            title={
+              isEmpty(activeDomains)
+                ? t('message.select-domain-to-add-data-product')
+                : t('label.add-entity', {
+                    entity: t('label.data-product-plural'),
+                  })
+            }
+            onClick={isEmpty(activeDomains) ? undefined : handleAddClick}
+          />
+        )}
+        {hasPermission && !isEmpty(activeDomains) && !isEmpty(dataProducts) && (
+          <WidgetEditButton
+            data-testid="edit-button"
+            title={t('label.edit-entity', {
+              entity: t('label.data-product-plural'),
+            })}
+            onClick={handleAddClick}
+          />
+        )}
+      </Space>
     );
-  }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
+  }, [showHeader, dataProducts, hasPermission, activeDomains]);
 
   const addTagButton = useMemo(
     () =>
@@ -236,26 +234,29 @@ const DataProductsContainer = ({
     autoCompleteFormSelectContainer,
   ]);
 
-  const cardProps = useMemo(() => {
-    return {
-      title: header,
-    };
-  }, [header, showAddTagButton, isEditMode]);
-
   if (newLook) {
     return (
-      <ExpandableCard
-        cardProps={cardProps}
+      <WidgetCard
         dataTestId="data-products-container"
-        isExpandDisabled={isEmpty(dataProducts)}>
+        forceExpand={isEditMode}
+        headerExtra={headerExtra}
+        isExpandDisabled={isEmpty(dataProducts) && !isEditMode}
+        title={t('label.data-product-plural')}>
         {renderer}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 
   return (
     <div className="w-full" data-testid="data-products-container">
-      {header}
+      {showHeader && (
+        <Space align="center" size="middle">
+          <Typography size="text-sm" weight="medium">
+            {t('label.data-product-plural')}
+          </Typography>
+          {headerExtra}
+        </Space>
+      )}
       {renderer}
     </div>
   );

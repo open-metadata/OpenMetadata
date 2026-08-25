@@ -28,7 +28,10 @@
     "suggestionRejected",
     "suggestionDeleted",
     "userLogin",
-    "userLogout"
+    "userLogout",
+    "entityLineageAdded",
+    "entityLineageDeleted",
+    "entityLineageUpdated"
   ],
   "javaEnums": [
     {"name": "ENTITY_CREATED"},
@@ -53,6 +56,9 @@
     {"name": "SUGGESTION_REJECTED"},
     {"name": "SUGGESTION_DELETED"},
     {"name": "USER_LOGIN"},
-    {"name": "USER_LOGOUT"}
+    {"name": "USER_LOGOUT"},
+    {"name": "ENTITY_LINEAGE_ADDED"},
+    {"name": "ENTITY_LINEAGE_DELETED"},
+    {"name": "ENTITY_LINEAGE_UPDATED"}
   ]
 }

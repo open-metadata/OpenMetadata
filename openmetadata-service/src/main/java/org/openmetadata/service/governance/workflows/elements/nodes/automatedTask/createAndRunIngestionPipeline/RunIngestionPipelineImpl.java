@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.type.Include;
@@ -49,8 +50,10 @@ public class RunIngestionPipelineImpl {
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
     IngestionPipeline ingestionPipeline = repository.get(null, ingestionPipelineId, EMPTY_FIELDS);
+    // Build the connection from the pipeline so the run authenticates as the bot that owns it,
+    // which is the identity the metadata it writes is attributed to.
     ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(config).build());
+        new OpenMetadataConnectionBuilder(config, ingestionPipeline).build());
 
     return ingestionPipeline;
   }
@@ -94,12 +97,16 @@ public class RunIngestionPipelineImpl {
     Retry retry = Retry.of("runIngestionPipeline", retryConfig);
 
     try {
-      retry.executeRunnable(
-          () ->
-              pipelineServiceClient.runPipeline(
-                  ingestionPipeline,
-                  Entity.getEntity(
-                      ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED)));
+      PipelineServiceClientResponse response =
+          retry.executeSupplier(
+              () ->
+                  pipelineServiceClient.runPipeline(
+                      ingestionPipeline,
+                      Entity.getEntity(
+                          ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED)));
+      ((IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+          .recordQueuedPipelineStatus(
+              null, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
     } catch (Exception ex) {
       throw new RuntimeException("Failed to run pipeline after retries: " + ex.getMessage(), ex);
     }

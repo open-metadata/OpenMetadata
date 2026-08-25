@@ -16,7 +16,7 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateDocument } from '../generated/api/docStore/createDocument';
 import { Document } from '../generated/entity/docStore/document';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 
 const BASE_URL = 'docStore';
 

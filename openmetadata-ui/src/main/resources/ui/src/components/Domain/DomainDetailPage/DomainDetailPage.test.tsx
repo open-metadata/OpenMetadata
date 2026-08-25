@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDomainByName } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailPage from './DomainDetailPage.component';
 
@@ -73,22 +74,22 @@ describe('DomainDetailPage', () => {
   });
 
   it('should render domain detail page', async () => {
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <MemoryRouter>
         <DomainDetailPage />
       </MemoryRouter>
     );
 
-    // Check that the component renders without throwing
     expect(container).toBeInTheDocument();
 
-    // The component should eventually fetch and display domain data
-    expect(mockGetDomainByName).toHaveBeenCalledWith(
-      'test-domain',
-      expect.objectContaining({
-        fields: expect.arrayContaining(['children', 'owners', 'parent']),
-      })
-    );
+    await waitFor(() => {
+      expect(mockGetDomainByName).toHaveBeenCalledWith(
+        'test-domain',
+        expect.objectContaining({
+          fields: expect.arrayContaining(['children', 'owners', 'parent']),
+        })
+      );
+    });
   });
 
   it('should handle missing FQN gracefully', () => {
@@ -96,7 +97,7 @@ describe('DomainDetailPage', () => {
     const useFqnModule = jest.requireMock('../../../hooks/useFqn');
     useFqnModule.useFqn.mockReturnValueOnce({ fqn: undefined });
 
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <MemoryRouter>
         <DomainDetailPage />
       </MemoryRouter>
@@ -107,23 +108,23 @@ describe('DomainDetailPage', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DomainDetailPage />
-        </MemoryRouter>
-      );
+    renderWithQueryClient(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetDomainByName).toHaveBeenCalled();
     });
 
-    // Wait for the domain to be fetched
-    expect(mockGetDomainByName).toHaveBeenCalled();
-
-    // Verify pageTitle is passed
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: DOMAINS_LIST[0].name,
-      }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: DOMAINS_LIST[0].name,
+        }),
+        expect.anything()
+      );
+    });
   });
 });

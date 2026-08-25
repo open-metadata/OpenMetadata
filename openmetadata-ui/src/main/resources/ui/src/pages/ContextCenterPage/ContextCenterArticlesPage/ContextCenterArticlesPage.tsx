@@ -11,18 +11,34 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Home02 } from '@untitledui/icons';
+import {
+  Box,
+  Button,
+  Card,
+  Dropdown,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
+import {
+  ArrowCircleBrokenUp,
+  ChevronDown,
+  Plus,
+  Stars01,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import KnowledgeCenterLayout from '../../../components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
+import '../../../components/KnowledgeCenter/KnowledgeCenterLayout/knowledge-center-layout.less';
 import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
 import KnowledgePageListComponent from '../../../components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
 import KnowledgePagesHierarchy from '../../../components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
@@ -30,6 +46,7 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
+import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -45,19 +62,27 @@ import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
   KnowledgeCenterPageRef,
+  KnowledgePage,
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
+import { queryClient } from '../../../queryClient';
+import {
+  getKnowledgePageByFqn,
+  postKnowledgePage,
+} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
+const ARTICLE_PLURAL_LABEL = 'label.article-plural';
+
 const ContextCenterArticlesPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
@@ -71,14 +96,20 @@ const ContextCenterArticlesPage = () => {
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
-    header: null,
     rightPanel: null,
     title: '',
   });
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
+  const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [debouncedArticleSearchQuery, setDebouncedArticleSearchQuery] =
+    useState('');
+  const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
+  const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -87,6 +118,26 @@ const ContextCenterArticlesPage = () => {
       ) ?? Promise.resolve(),
     []
   );
+
+  const handleQuickLinkClick = useCallback(async (fqn: string) => {
+    try {
+      const quickLinkPage = await getKnowledgePageByFqn(fqn, {
+        fields: getKnowledgePageFields(),
+      });
+      setEditingQuickLink(quickLinkPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedArticleSearchQuery(articleSearchQuery),
+      300
+    );
+
+    return () => clearTimeout(id);
+  }, [articleSearchQuery]);
 
   const handlePageChange = useCallback(
     (incoming: Partial<KnowledgeCenterPageProps>) => {
@@ -100,7 +151,7 @@ const ContextCenterArticlesPage = () => {
     []
   );
 
-  const fetchPermission = async () => {
+  const fetchPermission = useCallback(async () => {
     try {
       const response = await getResourcePermission(
         ResourceEntity.KNOWLEDGE_PAGE
@@ -108,46 +159,87 @@ const ContextCenterArticlesPage = () => {
       setPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+      setPermissionFetchFailed(true);
+    } finally {
+      setIsPermissionsLoading(false);
     }
-  };
+  }, [getResourcePermission]);
 
-  const addArticleKnowledgePage = async () => {
+  const addArticleKnowledgePage = useCallback(async () => {
     await createArticleKnowledgePage(USERId, navigate, () =>
       getResourceLimit('knowledgeCenter', true, true)
     );
-  };
+  }, [USERId, navigate, getResourceLimit]);
 
-  const addQuickLinkKnowledgePage = async (
-    formData: QuickLinkFormModalFormData
-  ) => {
-    try {
-      const tags = [
-        ...(formData.tags ?? []),
-        ...(formData.glossaryTerms ?? []),
-      ];
-      const data: CreateKnowledgePage = {
-        description: formData.description,
-        displayName: formData.displayName ?? '',
-        name: `${PageType.QUICK_LINK}_${cryptoRandomString({
-          length: 8,
-          type: 'alphanumeric',
-        })}`,
-        owners: [{ id: USERId, type: 'user' }],
-        page: { url: formData.url },
-        pageType: PageType.QUICK_LINK,
-        relatedEntities: formData?.relatedEntities,
-        tags,
-      };
-      const response = await postKnowledgePage(data);
-      knowledgeCenterPageRef.current?.addKnowledgePage(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const addQuickLinkKnowledgePage = useCallback(
+    async (formData: QuickLinkFormModalFormData) => {
+      try {
+        const tags = [
+          ...(formData.tags ?? []),
+          ...(formData.glossaryTerms ?? []),
+        ];
+        const data: CreateKnowledgePage = {
+          description: formData.description,
+          displayName: formData.displayName ?? '',
+          name: `${PageType.QUICK_LINK}_${cryptoRandomString({
+            length: 8,
+            type: 'alphanumeric',
+          })}`,
+          owners: [{ id: USERId, type: 'user' }],
+          page: { url: formData.url },
+          pageType: PageType.QUICK_LINK,
+          relatedEntities: formData?.relatedEntities,
+          tags,
+        };
+        const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
+        knowledgeCenterPageRef.current?.addKnowledgePage(response);
+        knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.quick-link'),
+          })
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [USERId, t]
+  );
+
+  const handleOpenAddLinkModal = useCallback(
+    () => setShowAddLinkModal(true),
+    []
+  );
+
+  const handleCloseAddLinkModal = useCallback(
+    () => setShowAddLinkModal(false),
+    []
+  );
+
+  const handleSaveQuickLink = useCallback(
+    async (data: QuickLinkFormModalFormData) => {
+      await addQuickLinkKnowledgePage(data);
+      setShowAddLinkModal(false);
+    },
+    [addQuickLinkKnowledgePage]
+  );
+
+  const handleCloseEditQuickLink = useCallback(
+    () => setEditingQuickLink(undefined),
+    []
+  );
+
+  const handleSaveEditQuickLink = useCallback(() => {
+    setEditingQuickLink(undefined);
+    knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
+  }, []);
 
   useEffect(() => {
     fetchPermission();
-  }, []);
+  }, [fetchPermission]);
 
   const renderHeader = () => {
     if (version) {
@@ -170,11 +262,10 @@ const ContextCenterArticlesPage = () => {
           onFollowChange={
             page.handlers?.onFollowChange ?? (async () => undefined)
           }
-          onSave={page.handlers?.onSave}
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
-          onToggleDelete={page.handlers?.onToggleDelete ?? (() => undefined)}
           onToggleRightPanel={handleToggleRightPanel}
+          onUpdate={page.handlers?.onUpdate}
           onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />
       );
@@ -192,7 +283,7 @@ const ContextCenterArticlesPage = () => {
                 {t('label.create')}
               </Button>
 
-              <Dropdown.Popover placement="bottom start">
+              <Dropdown.Popover className="tw:w-30">
                 <Dropdown.Menu aria-label="create knowledge page">
                   <Dropdown.Item
                     data-testid="create-article-btn"
@@ -204,7 +295,7 @@ const ContextCenterArticlesPage = () => {
                   <Dropdown.Item
                     data-testid="create-quick-link-btn"
                     key={PageType.QUICK_LINK}
-                    onAction={() => setShowAddLinkModal(true)}>
+                    onAction={handleOpenAddLinkModal}>
                     {t('label.quick-link')}
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -212,22 +303,15 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[
-          {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: '/',
-            activeTitle: true,
-          },
-          {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          { activeTitle: true, name: t('label.article-plural'), url: '' },
-        ]}
+        breadcrumbs={[{ label: t(ARTICLE_PLURAL_LABEL) }]}
         hasPermission={permissions?.Create}
+        searchPlaceholder={t('label.search-entity', {
+          entity: t(ARTICLE_PLURAL_LABEL),
+        })}
+        searchQuery={articleSearchQuery}
         subtitle={t('message.internal-knowledge-base-agent-training')}
-        title={t('label.article-plural')}
+        title={t(ARTICLE_PLURAL_LABEL)}
+        onSearch={setArticleSearchQuery}
       />
     );
   };
@@ -235,36 +319,24 @@ const ContextCenterArticlesPage = () => {
   const isActivityFeedTab =
     Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
 
-  const layoutClassName = useMemo(() => {
-    if (version) {
-      return 'knowledge-version-page';
-    }
-
-    if (fqn) {
-      return 'knowledge-details-page';
-    }
-
-    return undefined;
-  }, [version, fqn]);
-
   const leftSidebar = isActivityFeedTab ? null : (
     <KnowledgePagesHierarchy
       activeKey={fqn}
       activePage={page.data}
       homeRoute={contextCenterClassBase.getArticlesListPath()}
-      isPageHeaderAvailable={Boolean(fqn)}
       permissions={permissions}
       ref={knowledgePagesHierarchyRef}
       onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}
+      onQuickLinkClick={handleQuickLinkClick}
     />
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab) {
+    if (isActivityFeedTab || version) {
       return null;
     }
 
-    if (version || isRightPanelOpen) {
+    if (isRightPanelOpen) {
       return page.rightPanel;
     }
 
@@ -279,8 +351,8 @@ const ContextCenterArticlesPage = () => {
     if (fqn) {
       return (
         <KnowledgePageDetailComponent
-          fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
+          onArticleSaved={() => handleFetchKnowledgePageHierarchy(true)}
           onPageChange={handlePageChange}
           onToggleRightPanel={handleToggleRightPanel}
         />
@@ -290,11 +362,14 @@ const ContextCenterArticlesPage = () => {
     return (
       <KnowledgePageListComponent
         hideAddButton
+        isPermissionsLoading={isPermissionsLoading}
         permissions={permissions}
         ref={knowledgeCenterPageRef}
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
+        searchQuery={debouncedArticleSearchQuery}
+        onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
     );
@@ -303,25 +378,164 @@ const ContextCenterArticlesPage = () => {
     fqn,
     isRightPanelOpen,
     permissions,
+    isPermissionsLoading,
+    debouncedArticleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
   ]);
 
+  const showArticlesEmptyState =
+    isArticlesListEmpty &&
+    !fqn &&
+    !version &&
+    !articleSearchQuery &&
+    !permissionFetchFailed;
+
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
-      {renderHeader()}
+      <div className="context-center-header-section tw:px-5">
+        {renderHeader()}
+      </div>
 
-      <KnowledgeCenterLayout
-        centerNoPadding={isActivityFeedTab && !version}
-        className={layoutClassName}
-        leftSidebar={leftSidebar}
-        pageTitle={page.title || t('label.article-plural')}
-        rightSidebar={rightSidebar}>
-        {centerContent}
-      </KnowledgeCenterLayout>
+      <Box
+        className="context-center-content-section tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl tw:px-5 tw:pb-5"
+        dir={i18n.dir()}
+        direction="col"
+        id="knowledge-center-layout-container">
+        <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
+        {showArticlesEmptyState && (
+          <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
+            <EmptyPlaceholder
+              actions={
+                permissions?.Create
+                  ? [
+                      {
+                        color: 'primary',
+                        iconLeading: Plus,
+                        key: 'new-article',
+                        label: t('label.new-article'),
+                        onClick: addArticleKnowledgePage,
+                      },
+                    ]
+                  : []
+              }
+              description={t('message.context-center-articles-empty-subtitle')}
+              features={[
+                {
+                  key: 'create',
+                  icon: <FileIcon className="tw:text-fg-brand-primary" />,
+                  title: t('label.create-an-article'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-create'
+                  ),
+                },
+                {
+                  key: 'publish',
+                  icon: (
+                    <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
+                  ),
+                  title: t('label.publish-and-version'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-publish'
+                  ),
+                },
+                {
+                  key: 'ai',
+                  icon: <Stars01 className="tw:text-fg-success-primary" />,
+                  title: t('label.ai-takes-it-from-there'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-ai'
+                  ),
+                },
+              ]}
+              title={t('label.write-it-once-let-ai-answer-it-forever')}
+              variant="features"
+            />
+          </div>
+        )}
+        <ReflexContainer
+          className={classNames('knowledge-center-layout tw:h-full', {
+            'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
+          })}
+          orientation="vertical"
+          style={showArticlesEmptyState ? { display: 'none' } : undefined}>
+          {/* left */}
+          <ReflexElement
+            className={classNames('left-panel', {
+              'left-panel-collapsed': !leftSidebar,
+            })}
+            data-testid="left-panel"
+            flex={0.25}
+            minSize={280}>
+            {leftSidebar}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter left-panel-splitter', {
+              hidden: !leftSidebar,
+            })}>
+            {leftSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          {/* middle */}
+          <ReflexElement
+            propagateDimensions
+            className={classNames('center-panel', {
+              'has-sidebar': leftSidebar,
+            })}
+            data-testid="center-panel"
+            flex={rightSidebar ? 0.6 : 1}
+            minSize={700}>
+            {fqn || version ? (
+              <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
+                <Card.Content
+                  className={classNames(
+                    'tw:flex-1 tw:min-h-0 tw:overflow-auto',
+                    isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+                  )}>
+                  {centerContent}
+                </Card.Content>
+              </Card>
+            ) : (
+              <Box
+                className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
+                direction="col">
+                {centerContent}
+              </Box>
+            )}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter right-panel-splitter', {
+              hidden: !rightSidebar,
+            })}>
+            {!!rightSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          <ReflexElement
+            propagateDimensions
+            className={classNames('right-panel', {
+              'right-panel-collapsed': !rightSidebar,
+            })}
+            data-testid="right-panel"
+            flex={rightSidebar ? 0.2 : 0}
+            minSize={280}
+            style={rightSidebar ? {} : { display: 'none' }}>
+            {rightSidebar}
+          </ReflexElement>
+        </ReflexContainer>
+      </Box>
 
       <QuickLinkFormModal
         isOpen={showAddLinkModal}
@@ -333,11 +547,16 @@ const ContextCenterArticlesPage = () => {
             EditTags: true,
           } as OperationPermission
         }
-        onCancel={() => setShowAddLinkModal(false)}
-        onSave={(data) => {
-          addQuickLinkKnowledgePage(data);
-          setShowAddLinkModal(false);
-        }}
+        onCancel={handleCloseAddLinkModal}
+        onSave={handleSaveQuickLink}
+      />
+
+      <QuickLinkFormModal
+        isOpen={Boolean(editingQuickLink)}
+        permissions={permissions}
+        quickLink={editingQuickLink}
+        onCancel={handleCloseEditQuickLink}
+        onSave={handleSaveEditQuickLink}
       />
     </div>
   );

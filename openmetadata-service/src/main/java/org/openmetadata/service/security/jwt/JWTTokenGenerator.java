@@ -57,12 +57,13 @@ public class JWTTokenGenerator {
   public static final String PREFERRED_USERNAME = "preferred_username";
   public static final String USERNAME = "username";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
+  public static final String SESSION_ID_CLAIM = "sessionId";
   public static final String SCOPE_CLAIM = "scope";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
-  private String issuer;
-  private String kid;
+  @Getter private String issuer;
+  @Getter private String kid;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private JWTTokenGenerator() {
@@ -146,6 +147,27 @@ public class JWTTokenGenerator {
         scopes);
   }
 
+  public JWTAuthMechanism generateJWTTokenForSession(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      ServiceTokenType tokenType,
+      String sessionId) {
+    return getJwtAuthMechanism(
+        userName,
+        roles,
+        isAdmin,
+        email,
+        false,
+        tokenType,
+        getCustomExpiryDate(expiryInSeconds),
+        null,
+        null,
+        sessionId);
+  }
+
   public JWTAuthMechanism getJwtAuthMechanism(
       String userName,
       Set<String> roles,
@@ -169,6 +191,21 @@ public class JWTTokenGenerator {
       Date expires,
       JWTTokenExpiry expiry,
       List<String> scopes) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, scopes, null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes,
+      String sessionId) {
     try {
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
@@ -195,6 +232,9 @@ public class JWTTokenGenerator {
 
       if (scopes != null && !scopes.isEmpty()) {
         tokenBuilder.withClaim(SCOPE_CLAIM, String.join(" ", scopes));
+      }
+      if (!nullOrEmpty(sessionId)) {
+        tokenBuilder.withClaim(SESSION_ID_CLAIM, sessionId);
       }
 
       String token = tokenBuilder.sign(algorithm);

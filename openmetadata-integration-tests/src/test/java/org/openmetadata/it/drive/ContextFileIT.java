@@ -2,14 +2,20 @@ package org.openmetadata.it.drive;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -32,8 +38,8 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 class ContextFileIT {
 
-  private static final String FILE_PATH = "v1/drive/files";
-  private static final String FOLDER_PATH = "v1/drive/folders";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
+  private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {
@@ -47,6 +53,16 @@ class ContextFileIT {
 
   private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(FOLDER_PATH, request, Folder.class);
+  }
+
+  private List<String> listFileIds(RestClient rest, String path) {
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus());
+      JsonNode root = JsonUtils.readTree(response.readEntity(String.class));
+      List<String> ids = new ArrayList<>();
+      root.get("data").forEach(node -> ids.add(node.get("id").asText()));
+      return ids;
+    }
   }
 
   // --- CRUD ---
@@ -147,6 +163,115 @@ class ContextFileIT {
     assertEquals(file.getId(), restored.getId());
     assertTrue(!Boolean.TRUE.equals(restored.getDeleted()));
     assertEquals(file.getId(), getFile(rest, file.getId(), "").getId());
+  }
+
+  @Test
+  void testListFilesOrderByUpdatedAtDesc(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+
+    ContextFile older =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("ordered-older"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    Thread.sleep(5);
+    ContextFile newer =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("ordered-newer"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    List<String> ids = listFileIds(rest, FILE_PATH + "?limit=1000&orderBy=DESC");
+
+    int olderIndex = ids.indexOf(older.getId().toString());
+    int newerIndex = ids.indexOf(newer.getId().toString());
+    assertTrue(olderIndex >= 0, "Expected ordered older file in list response");
+    assertTrue(newerIndex >= 0, "Expected ordered newer file in list response");
+    assertTrue(newerIndex < olderIndex, "Newer file should be listed before older file");
+  }
+
+  @Test
+  void testListFilesOrderByRejectsDefaultCursor(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+
+    createFile(
+        rest,
+        new CreateContextFile()
+            .withName(ns.prefix("default-cursor-first"))
+            .withProcessingStatus(ProcessingStatus.Uploaded));
+    createFile(
+        rest,
+        new CreateContextFile()
+            .withName(ns.prefix("default-cursor-second"))
+            .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    try (Response response = rest.rawGet(FILE_PATH + "?limit=1")) {
+      assertEquals(200, response.getStatus());
+      JsonNode root = JsonUtils.readTree(response.readEntity(String.class));
+      JsonNode after = root.get("paging").get("after");
+      assertNotNull(after, "Default list response should include an after cursor");
+
+      String encodedCursor = URLEncoder.encode(after.asText(), StandardCharsets.UTF_8);
+      try (Response orderByResponse =
+          rest.rawGet(FILE_PATH + "?limit=1&orderBy=DESC&after=" + encodedCursor)) {
+        String body = orderByResponse.readEntity(String.class);
+        assertEquals(
+            Response.Status.BAD_REQUEST.getStatusCode(), orderByResponse.getStatus(), body);
+        assertTrue(body.contains("Invalid cursor for orderBy pagination"));
+      }
+    }
+  }
+
+  @Test
+  void testListArchivedFilesFilteredByUpdatedBy(TestNamespace ns) throws HttpResponseException {
+    RestClient adminRest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            adminRest,
+            new CreateContextFile()
+                .withName(ns.prefix("archived"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    // Archiving is a soft-delete; the archiver is recorded in updatedBy (admin here, who deletes).
+    adminRest.delete(FILE_PATH, file.getId());
+    String archiver = getFileIncludeAll(adminRest, file.getId()).getUpdatedBy();
+
+    // Scoped to the archiver: the archived file is returned.
+    List<String> byArchiver =
+        listFileIds(
+            adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + encode(archiver));
+    assertTrue(
+        byArchiver.contains(file.getId().toString()),
+        "updatedBy filter must include files archived by that user");
+
+    // Scoped to a different user: the archived file is excluded.
+    List<String> byOther =
+        listFileIds(
+            adminRest,
+            FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + encode(ns.prefix("nobody")));
+    assertFalse(
+        byOther.contains(file.getId().toString()),
+        "updatedBy filter must exclude files archived by a different user");
+
+    // Without the filter the archived file is still listed (proves the filter, not the delete,
+    // scopes).
+    List<String> unfiltered = listFileIds(adminRest, FILE_PATH + "?include=deleted&limit=1000");
+    assertTrue(
+        unfiltered.contains(file.getId().toString()),
+        "Unfiltered archive list must still contain the archived file");
+  }
+
+  private String encode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+
+  private ContextFile getFileIncludeAll(RestClient rest, UUID id) {
+    try (Response response = rest.rawGet(FILE_PATH + "/" + id + "?include=all")) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readValue(response.readEntity(String.class), ContextFile.class);
+    }
   }
 
   @Test
@@ -469,6 +594,107 @@ class ContextFileIT {
     assertTrue(
         ex.getStatusCode() == 403 || ex.getStatusCode() == 401,
         "Expected 403/401, got " + ex.getStatusCode());
+  }
+
+  @Test
+  void testBulkMoveAndDeleteFiles(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder target = createFolder(rest, new CreateFolder().withName(ns.prefix("bulk-target")));
+    ContextFile first =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("bulk-first"))
+                .withDisplayName("Bulk First")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextFile second =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("bulk-second"))
+                .withDisplayName("Bulk Second")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    List<String> ids = List.of(first.getId().toString(), second.getId().toString());
+
+    try (Response response =
+        rest.rawPut(
+            FILE_PATH + "/bulk/move", Map.of("ids", ids, "folder", target.getEntityReference()))) {
+      String body = response.readEntity(String.class);
+      assertEquals(200, response.getStatus(), body);
+      JsonNode result = JsonUtils.readTree(body);
+      assertEquals("success", result.get("status").asText());
+      assertEquals(2, result.get("numberOfRowsPassed").asInt());
+    }
+
+    assertEquals(target.getId(), getFile(rest, first.getId(), "folder").getFolder().getId());
+    assertEquals(target.getId(), getFile(rest, second.getId(), "folder").getFolder().getId());
+
+    try (Response response =
+        rest.rawPost(FILE_PATH + "/bulk/delete", Map.of("ids", ids, "hardDelete", false))) {
+      String body = response.readEntity(String.class);
+      assertEquals(200, response.getStatus(), body);
+      JsonNode result = JsonUtils.readTree(body);
+      assertEquals("success", result.get("status").asText());
+      assertEquals(2, result.get("numberOfRowsPassed").asInt());
+    }
+
+    HttpResponseException firstEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, first.getId(), ""));
+    HttpResponseException secondEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, second.getId(), ""));
+    assertEquals(404, firstEx.getStatusCode());
+    assertEquals(404, secondEx.getStatusCode());
+
+    rest.delete(FOLDER_PATH, target.getId());
+
+    HttpResponseException folderEx =
+        assertThrows(
+            HttpResponseException.class,
+            () -> rest.getById(FOLDER_PATH, target.getId(), "", Folder.class));
+    assertEquals(404, folderEx.getStatusCode());
+  }
+
+  @Test
+  void testDeleteFolderCascadesMovedFiles(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder target =
+        createFolder(rest, new CreateFolder().withName(ns.prefix("delete-cascade-target")));
+    ContextFile first =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("cascade-first"))
+                .withDisplayName("Cascade First")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextFile second =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("cascade-second"))
+                .withDisplayName("Cascade Second")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    List<String> ids = List.of(first.getId().toString(), second.getId().toString());
+
+    try (Response response =
+        rest.rawPut(
+            FILE_PATH + "/bulk/move", Map.of("ids", ids, "folder", target.getEntityReference()))) {
+      String body = response.readEntity(String.class);
+      assertEquals(200, response.getStatus(), body);
+    }
+
+    rest.delete(FOLDER_PATH, target.getId());
+
+    HttpResponseException folderEx =
+        assertThrows(
+            HttpResponseException.class,
+            () -> rest.getById(FOLDER_PATH, target.getId(), "", Folder.class));
+    HttpResponseException firstEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, first.getId(), ""));
+    HttpResponseException secondEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, second.getId(), ""));
+    assertEquals(404, folderEx.getStatusCode());
+    assertEquals(404, firstEx.getStatusCode());
+    assertEquals(404, secondEx.getStatusCode());
   }
 
   @Test

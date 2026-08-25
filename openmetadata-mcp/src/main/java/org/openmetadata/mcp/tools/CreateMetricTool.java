@@ -181,12 +181,15 @@ public class CreateMetricTool implements McpTool {
 
     MetricRepository repo = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
     repo.prepareInternal(metric, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.METRIC, metric);
 
     String userName = securityContext.getUserPrincipal().getName();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    // createOrUpdate silently overwrites an existing metric with this name — tools.json
+    // marks this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<Metric> response =
         repo.createOrUpdate(null, metric, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return JsonUtils.getMap(response.getEntity());
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
   }
 }

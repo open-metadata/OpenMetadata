@@ -81,7 +81,7 @@ export const useScrollIndicator = (
     };
 
     if (container) {
-      container.addEventListener('scroll', handleScroll);
+      container.addEventListener('scroll', handleScroll, { passive: true });
     }
     window.addEventListener('resize', checkScroll);
 

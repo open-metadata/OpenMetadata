@@ -20,7 +20,7 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../../../utils/APIUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import type { ConditionBuilderOption } from './ConditionBuilder.interface';
 
 const PAGE_SIZE_LARGE = 1000;

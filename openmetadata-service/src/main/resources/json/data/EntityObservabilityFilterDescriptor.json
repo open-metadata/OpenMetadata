@@ -1,6 +1,7 @@
 [
   {
     "name" : "table",
+    "containerEntities" : ["databaseService", "database", "databaseSchema"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",
@@ -71,6 +72,7 @@
   },
   {
     "name" : "topic",
+    "containerEntities" : ["messagingService"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",
@@ -132,6 +134,7 @@
   },
   {
     "name" : "container",
+    "containerEntities" : ["storageService"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",
@@ -193,6 +196,7 @@
   },
   {
     "name" : "pipeline",
+    "containerEntities" : ["pipelineService"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",
@@ -321,6 +325,7 @@
   },
   {
     "name" : "testCase",
+    "containerEntities" : ["databaseService", "database", "databaseSchema", "table"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",
@@ -410,6 +415,7 @@
   },
   {
     "name" : "testSuite",
+    "containerEntities" : ["databaseService", "database", "databaseSchema", "table"],
     "supportedFilters" : [
       {
         "name": "filterByFqn",

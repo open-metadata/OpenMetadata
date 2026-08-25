@@ -25,6 +25,16 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
+RESPONSE_BODY_LOG_LIMIT = 500
+
+
+def error_detail(exc: Exception) -> str:
+    """Truncated server response body for a failed request, empty when unavailable."""
+    body = getattr(getattr(exc, "response", None), "text", None)
+    if not body:
+        return ""
+    return f" - response: {body.strip()[:RESPONSE_BODY_LOG_LIMIT]}"
+
 
 class OMetaProgressMixin:
     """
@@ -50,10 +60,10 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.put(
                 f"/services/ingestionPipelines/progress/{encoded_fqn}/{run_id}",
-                update.model_dump(mode="json", exclude_none=True),
+                update.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send progress update: {exc}")
+            logger.debug("Failed to send progress update: %s%s", exc, error_detail(exc))
 
     def send_operation_metrics_batch(self, pipeline_fqn: str, run_id: str, batch: OperationMetricsBatch) -> None:
         """
@@ -68,10 +78,10 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.post(
                 f"/services/ingestionPipelines/metrics/{encoded_fqn}/{run_id}",
-                batch.model_dump(mode="json", exclude_none=True),
+                batch.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
-            logger.debug(f"Failed to send operation metrics batch: {exc}")
+            logger.debug("Failed to send operation metrics batch: %s%s", exc, error_detail(exc))
 
     def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:  # noqa: UP045
         """
@@ -94,5 +104,5 @@ class OMetaProgressMixin:
                 return ProgressUpdate.model_validate(response)
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Failed to get progress state: {exc}")
+            logger.debug("Failed to get progress state: %s%s", exc, error_detail(exc))
             return None

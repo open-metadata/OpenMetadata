@@ -21,6 +21,7 @@ from sqlalchemy.engine.reflection import Inspector
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
@@ -36,8 +37,10 @@ from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mysql.models import (
+    DEFAULT_STORED_PROC_LANGUAGE,
     STORED_PROC_LANGUAGE_MAP,
     STORED_PROC_TYPE_MAP,
     MysqlRoutine,
@@ -75,12 +78,21 @@ class MysqlSource(CommonDbSourceService):
             raise InvalidSourceException(f"Expected MysqlConnection, but got {connection}")
         return cls(config, metadata)
 
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` counter with MySQL's single database and
+        let the runner reconcile the ``DatabaseSchema`` total from the schemas it
+        observes. MySQL exposes schemas only through the live inspector, which the
+        walk queries anyway, so pre-counting them here would just duplicate that
+        query for no gain."""
+        totals.set_total(Database.__name__, len(list(self.get_database_names())))
+        totals.mark_reconcilable(DatabaseSchema.__name__)
+
     def get_stored_procedures(self) -> Iterable[MysqlRoutine]:
         """List stored procedures and functions"""
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(MYSQL_GET_ROUTINES.format(schema_name=self.context.get().database_schema))
+                    text(MYSQL_GET_ROUTINES).bindparams(schema_name=self.context.get().database_schema)  # pyright: ignore[reportAttributeAccessIssue]
                 ).all()
             for row in results:
                 try:
@@ -110,7 +122,7 @@ class MysqlSource(CommonDbSourceService):
                 name=EntityName(stored_procedure.name),
                 description=(Markdown(stored_procedure.description) if stored_procedure.description else None),
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language, DEFAULT_STORED_PROC_LANGUAGE),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

@@ -14,9 +14,13 @@ Test import utilities
 """
 
 from unittest import TestCase
+from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
+    DynamicImportException,
     get_class_name_root,
     get_module_name,
     get_source_module_name,
@@ -87,3 +91,27 @@ class ImporterTest(TestCase):
             import_bulk_sink_type(bulk_sink_type="metadata-usage"),
             MetadataUsageBulkSink,
         )
+
+
+def test_import_from_module_wraps_missing_module() -> None:
+    with pytest.raises(DynamicImportException) as exc_info:
+        import_from_module("metadata.ingestion.source.database.does_not_exist.Nope")
+
+    assert "Cannot import metadata.ingestion.source.database.does_not_exist.Nope" in str(exc_info.value)
+
+
+def test_import_from_module_wraps_missing_attribute() -> None:
+    """A typo in the class part of `sourcePythonClass` must not escape as AttributeError."""
+    with pytest.raises(DynamicImportException) as exc_info:
+        import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo")
+
+    assert "Cannot import metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo" in str(exc_info.value)
+
+
+def test_import_from_module_does_not_wrap_module_level_attribute_error() -> None:
+    """An AttributeError from the module's own code must keep its traceback."""
+    with (
+        patch("importlib.import_module", side_effect=AttributeError("boom inside the module")),
+        pytest.raises(AttributeError, match="boom inside the module"),
+    ):
+        import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSource")

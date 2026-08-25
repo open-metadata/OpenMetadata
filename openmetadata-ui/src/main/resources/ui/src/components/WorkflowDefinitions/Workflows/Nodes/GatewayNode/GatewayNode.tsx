@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Node, Position } from 'reactflow';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { useWorkflowStore } from '../../useWorkflowStore';
 import './gateway-node.less';
 
@@ -37,7 +37,14 @@ const GatewayNode = ({ data }: Node['data']) => {
   return (
     <div
       className={classNames('gateway-node', { active: isActive })}
-      onClick={handleNodeClick}>
+      role="button"
+      tabIndex={0}
+      onClick={handleNodeClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleNodeClick();
+        }
+      }}>
       <div className="gateway-node-header">
         <ForkOutlined style={{ fontSize: '24px' }} />
         <Space className="m-l-xs" direction="vertical" size={0}>

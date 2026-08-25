@@ -55,13 +55,17 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
         """
         if self.service_connection.useSlowLogs:
             self.sql_stmt = MYSQL_SQL_STATEMENT_SLOW_LOGS
+            default_query_history_table = "mysql.slow_log"
         else:
             self.sql_stmt = MYSQL_SQL_STATEMENT
+            default_query_history_table = "mysql.general_log"
+        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
+            query_history_table=query_history_table,
         )
 
     def get_filters(self) -> str:

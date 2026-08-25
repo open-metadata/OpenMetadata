@@ -14,9 +14,9 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import withSuspenseFallback from '../withSuspenseFallback';
+import { withPageSuspenseFallback } from '../withSuspenseFallback';
 
-const ContextCenterDashboardPage = withSuspenseFallback(
+const ContextCenterDashboardPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -25,7 +25,7 @@ const ContextCenterDashboardPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterArticlesPage = withSuspenseFallback(
+const ContextCenterArticlesPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -34,7 +34,7 @@ const ContextCenterArticlesPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterDocumentsPage = withSuspenseFallback(
+const ContextCenterDocumentsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -43,7 +43,16 @@ const ContextCenterDocumentsPage = withSuspenseFallback(
   )
 );
 
-const KnowledgeCenterFilterPage = withSuspenseFallback(
+const ContextCenterMemoriesPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterMemoriesPage/ContextCenterMemoriesPage'
+      )
+  )
+);
+
+const KnowledgeCenterFilterPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -51,27 +60,15 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
       )
   )
 );
-{
-  /* TODO: In progress */
-}
 
-// const ContextCenterIntegrationsPage = withSuspenseFallback(
-//   React.lazy(
-//     () =>
-//       import(
-//         '../../../pages/ContextCenterPage/ContextCenterIntegrationsPage/ContextCenterIntegrationsPage'
-//       )
-//   )
-// );
-
-// const ContextCenterArchivePage = withSuspenseFallback(
-//   React.lazy(
-//     () =>
-//       import(
-//         '../../../pages/ContextCenterPage/ContextCenterArchivePage/ContextCenterArchivePage'
-//       )
-//   )
-// );
+const ContextCenterArchivePage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterArchivePage/ContextCenterArchivePage'
+      )
+  )
+);
 
 const ContextCenterRouter = () => {
   return (
@@ -108,21 +105,17 @@ const ContextCenterRouter = () => {
         )}
       />
       <Route
+        element={<ContextCenterMemoriesPage />}
+        path={ROUTES.CONTEXT_CENTER_MEMORIES.replace(ROUTES.CONTEXT_CENTER, '')}
+      />
+      <Route
         element={<KnowledgeCenterFilterPage />}
         path={ROUTES.CONTEXT_CENTER_FILTER.replace(ROUTES.CONTEXT_CENTER, '')}
-      />
-      {/* TODO: In progress */}
-      {/* <Route
-        element={<ContextCenterIntegrationsPage />}
-        path={ROUTES.CONTEXT_CENTER_INTEGRATIONS.replace(
-          ROUTES.CONTEXT_CENTER,
-          ''
-        )}
       />
       <Route
         element={<ContextCenterArchivePage />}
         path={ROUTES.CONTEXT_CENTER_ARCHIVE.replace(ROUTES.CONTEXT_CENTER, '')}
-      /> */}
+      />
     </Routes>
   );
 };

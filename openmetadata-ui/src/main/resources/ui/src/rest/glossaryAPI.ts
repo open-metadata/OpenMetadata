@@ -24,13 +24,14 @@ import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssets
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
+import { GlossaryTermRelationType } from '../generated/configuration/glossaryTermRelationSettings';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ChangeEvent } from '../generated/type/changeEvent';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type ListGlossaryTermsParams = ListParams & {
@@ -50,9 +51,13 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
 
 const BASE_URL = '/glossaries';
 
-export const getGlossariesList = async (params?: ListParams) => {
+export const getGlossariesList = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
     params,
+    signal,
   });
 
   return response.data;
@@ -108,7 +113,10 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const queryGlossaryTerms = async (glossaryName: string) => {
+export const queryGlossaryTerms = async (
+  glossaryName: string,
+  signal?: AbortSignal
+) => {
   const apiUrl = `/search/query`;
 
   const { data } = await APIClient.get(apiUrl, {
@@ -134,6 +142,7 @@ export const queryGlossaryTerms = async (glossaryName: string) => {
       }),
       getHierarchy: true,
     },
+    signal,
   });
 
   return data;
@@ -142,6 +151,29 @@ export const queryGlossaryTerms = async (glossaryName: string) => {
 export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
   const response = await APIClient.get<GlossaryTerm>(`/glossaryTerms/${id}`, {
     params,
+  });
+
+  return response.data;
+};
+
+// Batch fetch up to 100 glossary terms by Id in a single round-trip.
+// 100 matches the backend MAX_BATCH_BY_IDS cap — going higher would 400
+// (or 431 once the URL clears Jetty's 8 KB header limit). Replaces the
+// per-Id resolution N+1 inside the Relations Graph hook
+// (useOntologyExplorer). Missing/unauthorized Ids are silently dropped
+// by the backend, so callers should compare response length to input.
+export const getGlossaryTermsByIds = async (
+  ids: string[],
+  params?: ListParams
+): Promise<GlossaryTerm[]> => {
+  if (ids.length === 0) {
+    return [];
+  }
+  const response = await APIClient.get<GlossaryTerm[]>('/glossaryTerms/byIds', {
+    params: {
+      ...params,
+      ids: ids.join(','),
+    },
   });
 
   return response.data;
@@ -333,7 +365,11 @@ export const getGlossaryTermsAssetCounts = async (
   return response.data;
 };
 
-export const searchGlossaryTerms = async (search: string, page = 1) => {
+export const searchGlossaryTerms = async (
+  search: string,
+  page = 1,
+  signal?: AbortSignal
+) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
   const { data } = await APIClient.get(apiUrl, {
@@ -345,6 +381,7 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
       track_total_hits: true,
       getHierarchy: true,
     },
+    signal,
   });
 
   return data;
@@ -488,6 +525,53 @@ export const getGlossaryTermRelationSettings = async () => {
   );
 
   return response.data?.config_value;
+};
+
+const GLOSSARY_TERM_RELATION_TYPES_URL =
+  '/system/settings/glossaryTermRelationSettings/relationTypes';
+
+export const getGlossaryTermRelationTypes = async (
+  params: ListParamsWithOffset
+): Promise<PagingResponse<GlossaryTermRelationType[]>> => {
+  const response = await APIClient.get<
+    PagingResponse<GlossaryTermRelationType[]>
+  >(GLOSSARY_TERM_RELATION_TYPES_URL, { params });
+
+  return response.data;
+};
+
+export const createGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.post<GlossaryTermRelationType>(
+    GLOSSARY_TERM_RELATION_TYPES_URL,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const updateGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.put<GlossaryTermRelationType>(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationType.name
+    )}`,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const deleteGlossaryTermRelationType = async (
+  relationTypeName: string
+): Promise<void> => {
+  await APIClient.delete(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationTypeName
+    )}`
+  );
 };
 
 export const updateGlossaryTermRelationSettings = async (settings: unknown) => {

@@ -13,7 +13,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AIFrameworkControl;
+import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
@@ -110,6 +113,13 @@ class EntityTypeNameTest {
         Arguments.of(
             new AiGovernancePolicyIndex(new AIGovernancePolicy().withId(id())),
             Entity.AI_GOVERNANCE_POLICY),
+        Arguments.of(
+            new AiGovernanceFrameworkIndex(new AIGovernanceFramework().withId(id())),
+            Entity.AI_GOVERNANCE_FRAMEWORK),
+        Arguments.of(
+            new AiFrameworkControlIndex(new AIFrameworkControl().withId(id())),
+            Entity.AI_FRAMEWORK_CONTROL),
+        Arguments.of(new AuditReportIndex(new AuditReport().withId(id())), Entity.AUDIT_REPORT),
         Arguments.of(new McpServerIndex(new McpServer().withId(id())), Entity.MCP_SERVER),
         Arguments.of(
             new PromptTemplateIndex(new PromptTemplate().withId(id())), Entity.PROMPT_TEMPLATE),

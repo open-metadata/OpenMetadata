@@ -318,9 +318,9 @@ class GrafanaUnitTest(TestCase):
     Implements the necessary unit tests for the Grafana Dashboard connector
     """
 
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    @patch("metadata.ingestion.source.dashboard.grafana.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def __init__(self, methodName, create_connection, run_test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         # Mock the connection to return a mock client
         mock_client = MagicMock()
@@ -328,8 +328,7 @@ class GrafanaUnitTest(TestCase):
         mock_client.search_dashboards.return_value = MOCK_SEARCH_RESULTS
         mock_client.get_dashboard.return_value = MOCK_DASHBOARD_RESPONSE
         mock_client.get_datasources.return_value = MOCK_DATASOURCES
-        get_connection.return_value = mock_client
-        test_connection.return_value = False
+        create_connection.return_value.client = mock_client
 
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         # Mock OpenMetadata client to avoid connection attempts

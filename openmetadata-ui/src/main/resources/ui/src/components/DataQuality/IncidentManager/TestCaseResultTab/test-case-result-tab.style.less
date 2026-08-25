@@ -13,7 +13,7 @@
 @import (reference) '../../../../styles/variables.less';
 
 .test-case-result-tooltip.ant-tooltip .ant-tooltip-inner {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   color: @black;
   border-radius: @border-rad-sm;
   font-size: @size-sm;
@@ -38,7 +38,7 @@
 .test-case-result-tab {
   .test-case-result-tab-graph {
     border: 1px solid @grey-200;
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
     padding: @size-md;
   }
   .CodeMirror-gutters {
@@ -50,8 +50,9 @@
 
   // Parameter section styles
   .parameter-container {
-    border-radius: 10px;
-    background: @grey-25;
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--tw-color-bg-primary);
     padding: @size-md;
   }
 
@@ -110,10 +111,13 @@
   .sql-expression-container {
     padding: @size-md;
     width: 100%;
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--tw-color-bg-primary);
 
     .custom-code-mirror-theme {
       .CodeMirror {
-        background: @white;
+        background: var(--tw-color-bg-primary);
       }
       .CodeMirror-gutters {
         background-color: @grey-25;

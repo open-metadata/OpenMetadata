@@ -2,7 +2,9 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Folder;
@@ -39,12 +41,18 @@ public class FolderRepository extends EntityRepository<Folder> {
     folder.setParent(fields.contains("parent") ? getParentFolder(folder) : folder.getParent());
     folder.setChildren(
         fields.contains("children") ? getChildFolders(folder) : folder.getChildren());
+    if (fields.contains("childrenCount")) {
+      folder.setChildrenCount(countChildren(folder.getId()));
+    }
   }
 
   @Override
   public void clearFields(Folder folder, EntityUtil.Fields fields) {
     folder.setParent(fields.contains("parent") ? folder.getParent() : null);
     folder.setChildren(fields.contains("children") ? folder.getChildren() : null);
+    if (!fields.contains("childrenCount")) {
+      folder.setChildrenCount(null);
+    }
   }
 
   @Override
@@ -64,9 +72,37 @@ public class FolderRepository extends EntityRepository<Folder> {
           folder -> folder.setChildren(childrenMap.getOrDefault(folder.getId(), List.of())));
     }
 
+    if (fields.contains("childrenCount")) {
+      List<String> ids = entities.stream().map(f -> f.getId().toString()).toList();
+      Map<UUID, Integer> countMap =
+          daoCollection
+              .relationshipDAO()
+              .countNonDeletedChildFilesBatch(
+                  ids,
+                  FOLDER_ENTITY,
+                  Relationship.CONTAINS.ordinal(),
+                  ContextFileRepository.CONTEXT_FILE_ENTITY)
+              .stream()
+              .collect(
+                  Collectors.toMap(
+                      CollectionDAO.EntityRelationshipCount::getId,
+                      CollectionDAO.EntityRelationshipCount::getCount));
+      entities.forEach(folder -> folder.setChildrenCount(countMap.getOrDefault(folder.getId(), 0)));
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private int countChildren(UUID folderId) {
+    return daoCollection
+        .relationshipDAO()
+        .countNonDeletedChildFiles(
+            folderId,
+            FOLDER_ENTITY,
+            Relationship.CONTAINS.ordinal(),
+            ContextFileRepository.CONTEXT_FILE_ENTITY);
   }
 
   @Override

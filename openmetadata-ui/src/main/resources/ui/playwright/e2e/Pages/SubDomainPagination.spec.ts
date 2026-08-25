@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../utils/common';
-import { createSubDomain, selectDomain } from '../../utils/domain';
+  checkSubDomainCount,
+  createSubDomain,
+  selectDomain,
+} from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -28,8 +29,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 const subDomains: SubDomain[] = [];
 const SUBDOMAIN_COUNT = 60;
+const PAGE_SIZE = 9;
 
-test.describe('SubDomain Pagination', () => {
+test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
@@ -76,16 +78,14 @@ test.describe('SubDomain Pagination', () => {
     await waitForAllLoadersToDisappear(page);
 
     await test.step('Verify subdomain count in tab label', async () => {
-      const subDomainsTab = page.getByTestId('subdomains');
+      await expect(page.getByTestId('subdomains')).toBeVisible();
 
-      await expect(subDomainsTab).toBeVisible();
-
-      await expect(subDomainsTab).toContainText('60');
+      await checkSubDomainCount(page, SUBDOMAIN_COUNT);
     });
 
     await test.step('Navigate to subdomains tab and verify initial data load', async () => {
       const subDomainRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain&from=0&size=9*'
+        `/api/v1/search/query?q=&index=domain&from=0&size=${PAGE_SIZE}*`
       );
       await page.getByTestId('subdomains').click();
       await subDomainRes;
@@ -93,21 +93,21 @@ test.describe('SubDomain Pagination', () => {
 
       await expect(page.locator('table')).toBeVisible();
 
-      await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
 
       // Verify current page shows page 1
       const tableRows = page.locator('table tbody tr');
 
-      await expect(tableRows).toHaveCount(9);
+      await expect(tableRows).toHaveCount(PAGE_SIZE);
     });
 
     await test.step('Test pagination navigation', async () => {
       const nextPageResponse = page.waitForResponse('/api/v1/search/query?*');
-      await page.locator('[data-testid="next"]').click();
+      await page.getByLabel('Next Page').click();
       await nextPageResponse;
 
       const prevPageResponse = page.waitForResponse('/api/v1/search/query?*');
-      await page.locator('[data-testid="previous"]').click();
+      await page.getByLabel('Previous Page').click();
       await prevPageResponse;
     });
 
@@ -115,27 +115,7 @@ test.describe('SubDomain Pagination', () => {
       const subDomain = new SubDomain(domain);
       await createSubDomain(page, subDomain.data);
 
-      await redirectToHomePage(page);
-
-      await sidebarClick(page, SidebarItem.DOMAIN);
-
-      await selectDomain(page, domain.data);
-
-      const subDomainsTab = page.getByTestId('subdomains');
-
-      await expect(subDomainsTab).toContainText('61');
-
-      const { apiContext, afterAction } = await getApiContext(page);
-
-      const response = await apiContext.get(
-        '/api/v1/domains/name/' +
-          encodeURIComponent(`"${domain.data.name}"."NewTestSubDomain"`)
-      );
-      const subDomainData = await response.json();
-      await apiContext.delete(
-        `/api/v1/domains/${subDomainData.id}?hardDelete=true`
-      );
-      await afterAction();
+      await checkSubDomainCount(page, SUBDOMAIN_COUNT + 1);
     });
   });
 });

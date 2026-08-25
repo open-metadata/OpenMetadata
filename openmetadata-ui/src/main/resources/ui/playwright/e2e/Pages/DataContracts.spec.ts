@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -138,10 +139,12 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    const testDetails = entitySupportsQuality(entityType)
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      : {};
+    const testTitle = `Create Data Contract and validate for ${entityType}`;
 
-    test(`Create Data Contract and validate for ${entityType}`, async ({
-      page,
-    }) => {
+    test(testTitle, testDetails, async ({ page }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
@@ -338,8 +341,14 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for semantics', async () => {
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+        // save and trigger contract validation; the utility now polls the API
+        // until the result is terminal before reloading, so the status check
+        // below is reliable even when the backend is slow.
+        const contractData = await saveAndTriggerDataContractValidation(
+          page,
+          true
+        );
+        const contractId = (contractData as { id?: string })?.id;
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -359,12 +368,18 @@ test.describe('Data Contracts', () => {
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        // Pass contractId so the utility polls for the terminal state before
+        // returning, making the 'Passed' assertion below reliable.
+        await triggerContractValidation(page, contractId);
+        await toastPromise;
 
         await page.reload();
 
@@ -387,29 +402,21 @@ test.describe('Data Contracts', () => {
           await expect(page.getByRole('dialog')).toBeVisible();
 
           await page.fill(
-            '[data-testid="test-case-name"]',
+            '[data-testid="test-case-name"] input',
             NEW_TABLE_TEST_CASE.name
           );
 
           await page.locator('[id="root\\/testType"]').click();
 
-          const dropdown = page.locator('.rc-virtual-list-holder-inner');
+          const testTypeOption = page
+            .getByRole('option')
+            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
+            .first();
 
-          await expect(dropdown).toBeVisible();
+          await expect(testTypeOption).toBeVisible();
 
-          for (let i = 0; i < 20; i++) {
-            const optionVisible = await dropdown
-              .getByText(NEW_TABLE_TEST_CASE.label)
-              .isVisible();
-            if (optionVisible) {
-              break;
-            }
-            await dropdown.press('ArrowDown');
-          }
+          await testTypeOption.click();
 
-          await dropdown.getByText(NEW_TABLE_TEST_CASE.label).click();
-
-          await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
           await page.fill(
             '#testCaseFormV1_params_columnCount',
             NEW_TABLE_TEST_CASE.value
@@ -421,10 +428,12 @@ test.describe('Data Contracts', () => {
             testTag.data.name
           );
           await page
-            .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+            .getByTestId(
+              `tag-option-${testTag.responseData.fullyQualifiedName}`
+            )
             .click();
 
-          await page.getByRole('heading', { name: 'Tags' }).click();
+          await page.keyboard.press('Escape');
 
           await page.click('[data-testid="glossary-terms-selector"] input');
           await page.fill(
@@ -434,17 +443,18 @@ test.describe('Data Contracts', () => {
 
           await page
             .getByTestId(
-              `tag-${testGlossaryTerm.responseData.fullyQualifiedName}`
+              `tag-option-${testGlossaryTerm.responseData.fullyQualifiedName}`
             )
             .click();
 
-          await page.getByRole('heading', { name: 'Glossary Terms' }).click();
-
-          await page.getByTestId('pipeline-name').fill('test-pipeline');
+          await page.keyboard.press('Escape');
 
           await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+            .getByTestId('pipeline-name')
+            .locator('input')
+            .fill('test-pipeline');
+
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
@@ -501,16 +511,10 @@ test.describe('Data Contracts', () => {
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
-          await validateDataContractInsideBundleTestSuites(page);
-
-          await expect(
-            page
-              .getByTestId('test-suite-table')
-              .locator('[role="gridcell"]')
-              .filter({
-                hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
-              })
-          ).toBeVisible();
+          await validateDataContractInsideBundleTestSuites(
+            page,
+            DATA_CONTRACT_DETAILS.name
+          );
         });
 
         await test.step('Edit quality expectations from the data contract and validate', async () => {
@@ -906,7 +910,7 @@ test.describe('Data Contracts', () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
@@ -1104,8 +1108,14 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1104 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1104 = (contractData1104 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1135,9 +1145,18 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Passed' assertion below reliable.
+    await triggerContractValidation(page, contractId1104);
+    await toastPromise;
 
     await page.reload();
 
@@ -1282,8 +1301,14 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1289 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1289 = (contractData1289 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1310,9 +1335,18 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Failed' assertion below reliable.
+    await triggerContractValidation(page, contractId1289);
+    await toastPromise;
 
     await page.reload();
 
@@ -1467,7 +1501,7 @@ test.describe('Data Contracts', () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -1496,7 +1530,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
     await page.getByTestId('contract-edit-button').click();
@@ -2081,7 +2115,7 @@ test.describe('Data Contracts', () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2091,9 +2125,6 @@ test.describe('Data Contracts', () => {
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'update.yaml',
@@ -2115,16 +2146,17 @@ description:
         ).toBeVisible();
 
         // Verify merge is default selected
-        const mergeRadio = page.locator('input[type="radio"][value="merge"]');
-        await expect(mergeRadio).toBeVisible();
-        await expect(mergeRadio).toBeChecked();
+        await expect(page.getByTestId('import-mode-merge')).toBeVisible();
+        await expect(
+          page.locator('input[type="radio"][value="merge"]')
+        ).toBeChecked();
 
         // Import with merge mode
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=merge**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
@@ -2164,7 +2196,7 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2174,9 +2206,6 @@ description:
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'replace.yaml',
@@ -2197,17 +2226,14 @@ description:
         ).toBeVisible();
 
         // Select replace mode
-        const replaceRadio = page.locator(
-          'input[type="radio"][value="replace"]'
-        );
-        await expect(replaceRadio).toBeVisible();
-        await replaceRadio.click();
+        await expect(page.getByTestId('import-mode-replace')).toBeVisible();
+        await page.getByTestId('import-mode-replace').click();
 
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=replace**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');

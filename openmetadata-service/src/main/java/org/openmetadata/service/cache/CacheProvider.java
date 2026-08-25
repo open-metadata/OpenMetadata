@@ -13,6 +13,16 @@ public interface CacheProvider extends AutoCloseable {
 
   void del(String... keys);
 
+  /** Deletes {@code key} only when its current value is {@code expectedValue}. */
+  default boolean deleteIfValue(String key, String expectedValue) {
+    Optional<String> current = get(key);
+    if (current.isPresent() && current.get().equals(expectedValue)) {
+      del(key);
+      return true;
+    }
+    return false;
+  }
+
   Optional<String> hget(String key, String field);
 
   void hset(String key, Map<String, String> fields, Duration ttl);

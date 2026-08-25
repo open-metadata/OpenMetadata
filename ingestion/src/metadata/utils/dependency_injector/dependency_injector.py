@@ -34,6 +34,7 @@ Example:
     ```
 """
 
+import types
 from functools import wraps
 from threading import RLock
 from typing import (  # noqa: UP035
@@ -318,7 +319,8 @@ def is_inject_type(tp: Any) -> bool:
     origin = get_origin(tp)
     if origin is Inject:
         return True
-    if origin is Union:
+    # PEP 604 unions (`Inject[X] | None`) report `types.UnionType`, not `typing.Union`.
+    if origin in (Union, types.UnionType):
         args = get_args(tp)
         return any(get_origin(arg) is Inject for arg in args)
     return False
@@ -340,7 +342,7 @@ def extract_inject_arg(tp: Any) -> Any:
     origin = get_origin(tp)
     if origin is Inject:
         return get_args(tp)[0]
-    if origin is Union:
+    if origin in (Union, types.UnionType):
         for arg in get_args(tp):
             if get_origin(arg) is Inject:
                 return get_args(arg)[0]

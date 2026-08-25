@@ -26,8 +26,8 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
 import {
+  ConfigType,
   CreateIngestionPipeline,
-  FluffyType as ConfigType,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -40,15 +40,15 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline,
 } from '../../../rest/ingestionPipelineAPI';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
+import { getIngestionName } from '../../../utils/ServicePureUtils';
+import {
+  generateUUID,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
