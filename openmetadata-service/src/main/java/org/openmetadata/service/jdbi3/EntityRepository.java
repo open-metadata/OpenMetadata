@@ -5058,8 +5058,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
    * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
    * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. Every {@code daoCollection.xDAO()} call inside {@code flushBody}
-   * enrolls in the single thread-bound handle and commits ONCE instead of auto-committing per call.
+   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
+   * RepositoryTransactionContext} for mutations that must share this transaction.
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
@@ -5076,7 +5076,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             Entity.getJdbi()
                 .inTransaction(
                     handle -> {
-                      flushBody.run();
+                      RepositoryTransactionContext.runWith(
+                          handle.attach(CollectionDAO.class), flushBody);
                       return null;
                     }));
   }

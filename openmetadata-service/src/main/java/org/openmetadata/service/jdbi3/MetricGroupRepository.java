@@ -668,9 +668,10 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   MembershipChange assignHierarchyGroupInCurrentTransaction(
       UUID rootMetricId, EntityReference group) {
+    CollectionDAO transactionDAO = RepositoryTransactionContext.requireCurrentDAO();
     List<EntityReference> metrics = expandSubtree(rootMetricId);
     return assignHierarchyGroupWithLock(
-        daoCollection.metricDAO(), daoCollection.relationshipDAO(), metrics, group);
+        transactionDAO.metricDAO(), transactionDAO.relationshipDAO(), metrics, group);
   }
 
   static MembershipChange assignHierarchyGroupWithLock(
