@@ -2,11 +2,14 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -25,7 +28,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -37,9 +45,9 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
-class SearchCompanyContextToolTest {
+class CompanyContextToolTest {
 
-  private final SearchCompanyContextTool tool = new SearchCompanyContextTool();
+  private final CompanyContextTool tool = new CompanyContextTool();
   private MockedStatic<Entity> entityMock;
 
   @BeforeEach
@@ -56,11 +64,13 @@ class SearchCompanyContextToolTest {
   }
 
   @Test
-  void missingQueryReturnsError() throws Exception {
+  void missingQueryAndFqnReturnsError() throws Exception {
     Map<String, Object> result =
         tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), new HashMap<>());
 
-    assertEquals("'query' parameter is required", result.get("error"));
+    assertTrue(
+        result.get("error").toString().contains("not both and not neither"),
+        result.get("error").toString());
     assertEquals(0, result.get("returnedCount"));
   }
 
@@ -72,7 +82,9 @@ class SearchCompanyContextToolTest {
     Map<String, Object> result =
         tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), params);
 
-    assertEquals("'query' parameter is required", result.get("error"));
+    assertTrue(
+        result.get("error").toString().contains("not both and not neither"),
+        result.get("error").toString());
   }
 
   @Test
@@ -172,5 +184,147 @@ class SearchCompanyContextToolTest {
         () ->
             tool.execute(
                 authorizer, mock(CatalogSecurityContext.class), Map.of("query", "refund policy")));
+  }
+
+  @Test
+  void neitherQueryNorFqnIsRejected() throws Exception {
+    Map<String, Object> result =
+        tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), new HashMap<>());
+
+    assertTrue(
+        result.get("error").toString().contains("not both and not neither"),
+        result.get("error").toString());
+  }
+
+  @Test
+  void aBlankFqnIsRejected() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("fqn", "   ");
+
+    Map<String, Object> result =
+        tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), params);
+
+    assertTrue(
+        result.get("error").toString().contains("not both and not neither"),
+        result.get("error").toString());
+  }
+
+  @Test
+  void deniedAuthorizationPropagatesOnLookup() {
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
+
+    assertThrows(
+        AuthorizationException.class,
+        () -> tool.execute(authorizer, mock(CatalogSecurityContext.class), Map.of("fqn", "x")));
+  }
+
+  @Test
+  void sharedFilePillIsProjected() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "pill-fqn"));
+
+    assertEquals("Q", result.get("question"));
+    assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void unquotedDottedFqnResolvesToQuotedPill() throws Exception {
+    stubMemory(
+        "\"report.md_hash\"",
+        memory("report.md_hash", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class),
+            mock(CatalogSecurityContext.class),
+            Map.of("fqn", "report.md_hash"));
+
+    assertEquals("Q", result.get("question"));
+    assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void missingPillReturnsErrorInsteadOfThrowing() throws Exception {
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.CONTEXT_MEMORY), anyString(), anyString(), isNull()))
+        .thenThrow(new EntityNotFoundException("contextMemory instance for ghost not found"));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "ghost"));
+
+    assertEquals("No Company Context knowledge pill found for 'ghost'", result.get("error"));
+  }
+
+  @Test
+  void nonFileMemoryReturnsError() throws Exception {
+    stubMemory(
+        "chat-fqn",
+        memory("chat-fqn", ContextMemorySourceType.CHAT_PROMOTION, MemoryVisibility.SHARED));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "chat-fqn"));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+  }
+
+  @Test
+  void privateFilePillReturnsError() throws Exception {
+    stubMemory(
+        "private-fqn",
+        memory("private-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.PRIVATE));
+
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class),
+            mock(CatalogSecurityContext.class),
+            Map.of("fqn", "private-fqn"));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+  }
+
+  private void stubMemory(String fqn, ContextMemory memory) {
+    entityMock
+        .when(
+            () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), isNull()))
+        .thenReturn(memory);
+  }
+
+  private ContextMemory memory(
+      String fqn, ContextMemorySourceType sourceType, MemoryVisibility visibility) {
+    return new ContextMemory()
+        .withName(fqn)
+        .withFullyQualifiedName(fqn)
+        .withQuestion("Q")
+        .withAnswer("A")
+        .withSourceType(sourceType)
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
+  }
+
+  @Test
+  void passingBothKeysIsRejectedRatherThanGuessed() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "what is churn");
+    params.put("fqn", "some_pill");
+
+    Map<String, Object> result =
+        tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), params);
+
+    // The two tools this replaced took one key each. Silently preferring one would make the other
+    // argument vanish with no way for the caller to tell which lookup actually ran.
+    assertEquals(0, result.get("returnedCount"));
+    assertTrue(result.get("error").toString().contains("not both"), result.get("error").toString());
   }
 }

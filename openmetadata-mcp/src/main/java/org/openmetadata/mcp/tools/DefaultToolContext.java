@@ -87,9 +87,6 @@ public class DefaultToolContext {
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
           break;
-        case "get_asset_context":
-          result = new GetAssetContextTool().execute(authorizer, securityContext, params);
-          break;
         case "get_persona_context":
           result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
           break;
@@ -99,14 +96,8 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
-        case "get_knowledge_content":
-          result = new GetKnowledgeContentTool().execute(authorizer, securityContext, params);
-          break;
-        case "search_company_context":
-          result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
-          break;
-        case "get_company_context":
-          result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
+        case "company_context":
+          result = new CompanyContextTool().execute(authorizer, securityContext, params);
           break;
         case "create_entity":
           result = new CreateEntityTool().execute(authorizer, limits, securityContext, params);
