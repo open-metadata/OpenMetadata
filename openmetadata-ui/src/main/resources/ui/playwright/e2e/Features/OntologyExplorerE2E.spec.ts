@@ -18,6 +18,7 @@ import {
   addRelationTypeWithCardinality,
   addTermRelation,
   applyGlossaryFilter,
+  clickGraphNode,
   createApiContext,
   deleteEntities,
   deleteRelationTypeByName,
@@ -154,11 +155,7 @@ test.describe('Ontology Explorer — E2E', () => {
 
   test('clicking a node opens the concept inspector', async ({ page }) => {
     await page.getByTestId('fit-view').click();
-    const positions = await readNodePositions(page);
-    await page.mouse.click(
-      positions[termCategory.responseData.id].x,
-      positions[termCategory.responseData.id].y
-    );
+    await clickGraphNode(page, termCategory.responseData.id);
 
     await expect(
       page.getByTestId('ontology-authoring-inspector')
@@ -172,11 +169,7 @@ test.describe('Ontology Explorer — E2E', () => {
     page,
   }) => {
     await page.getByTestId('fit-view').click();
-    const positions = await readNodePositions(page);
-    await page.mouse.click(
-      positions[termProduct.responseData.id].x,
-      positions[termProduct.responseData.id].y
-    );
+    await clickGraphNode(page, termProduct.responseData.id);
 
     await expect(
       page.getByTestId('ontology-concept-full-details')

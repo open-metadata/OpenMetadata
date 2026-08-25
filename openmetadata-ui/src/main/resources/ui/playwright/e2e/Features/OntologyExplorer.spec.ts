@@ -18,6 +18,7 @@ import {
   addTermRelation,
   applyGlossaryFilter,
   clickFirstGraphNode,
+  clickGraphNode,
   createApiContext,
   deleteEntities,
   disposeApiContext,
@@ -315,14 +316,7 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
-      const positions = await readNodePositions(page);
-      const term1Pos = positions[term1.responseData.id];
-
-      expect(
-        term1Pos,
-        'term1 node must be present in graph positions'
-      ).toBeDefined();
-      await page.mouse.click(term1Pos.x, term1Pos.y);
+      await clickGraphNode(page, term1.responseData.id);
 
       const relatedName =
         term2.responseData.displayName ?? term2.responseData.name;

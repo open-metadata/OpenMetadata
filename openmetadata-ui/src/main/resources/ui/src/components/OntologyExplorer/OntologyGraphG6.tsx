@@ -86,6 +86,20 @@ function writeCardinalityMap(
   }
 }
 
+function writeFitViewInProgress(
+  container: HTMLDivElement | null,
+  isInProgress: boolean
+) {
+  if (!container) {
+    return;
+  }
+  if (isInProgress) {
+    container.dataset.fitViewInProgress = 'true';
+  } else {
+    delete container.dataset.fitViewInProgress;
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -116,6 +130,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     ref
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const fitViewSequenceRef = useRef(0);
     const nodeLabels = useMemo(
       () =>
         Object.fromEntries(
@@ -202,8 +217,16 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
+          const sequence = ++fitViewSequenceRef.current;
           suppressEdgeCheck(800);
-          await fitViewWithMinZoom(graph, 300);
+          writeFitViewInProgress(containerRef.current, true);
+          try {
+            await fitViewWithMinZoom(graph, 300);
+          } finally {
+            if (fitViewSequenceRef.current === sequence) {
+              writeFitViewInProgress(containerRef.current, false);
+            }
+          }
         },
         zoomIn: () => {
           suppressEdgeCheck();

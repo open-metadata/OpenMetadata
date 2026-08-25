@@ -106,6 +106,9 @@ export async function readNodePositions(
   await page.waitForFunction(
     () => {
       const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+      if (el?.dataset.fitViewInProgress === 'true') {
+        return false;
+      }
       const pos = el?.dataset.nodePositions;
       if (!pos) {
         return false;
