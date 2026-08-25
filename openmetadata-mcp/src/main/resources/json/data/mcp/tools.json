@@ -656,19 +656,28 @@
       }
     },
     {
-      "name": "update_entity",
-      "title": "Update Entity",
-      "description": "Update an entity's governance fields without writing a JSON Patch. Give the fields you want changed and the server fetches the entity, applies them, and computes the patch itself — so you do NOT need to read the entity first to find out whether a field already has a value. Prefer this over patch_entity for description, displayName, owners and tags. Array fields take a mode and DEFAULT TO 'add' so nothing is clobbered by accident: 'add' merges into the list, 'set' replaces it entirely, 'remove' subtracts from it. 'set' is destructive and must be asked for by name - an entity's tags array also holds its tier and its glossary terms, so replacing it drops those. For description the default is 'set' (it is a single value); pass 'append' to add to existing text instead of replacing it. Use patch_entity when you need a field this tool does not expose.",
+      "name": "patch_entity",
+      "title": "Patch Entity",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "description": "Update an existing entity. Two ways to say what changes, and you must use exactly one. (1) TYPED FIELDS - pass 'description', 'displayName', 'owners' or 'tags' directly and the server reads the entity, applies them and computes the patch itself. Prefer this: it needs no read first, so a one-field edit is one call rather than two, and array fields take an explicit mode. (2) 'patch' - a JSONPatch document you write yourself, for any field the typed form does not expose. Both take the same permission check and the same write path. NOT for creating entities - use the matching create_* tool for that; NOT for Context Center memories - use create_context_memory. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Type of entity, e.g. table, dashboard, glossaryTerm."
+            "description": "Entity Type to patch."
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the entity to update."
+            "description": "Fully Qualified Name of the Entity to be patched."
+          },
+          "patch": {
+            "type": "string",
+            "description": "A JSONPatch document, as a JSON array string. Only for fields the typed form does not expose - for description, displayName, owners or tags use those parameters instead and skip the read. JSONPatch operations as a JSON array string. Each operation has 'op' — use 'replace' to change a field that already has a value, 'add' only for a field that is absent or to append to an array, 'remove' to clear one, 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
           },
           "description": {
             "type": "string",
@@ -725,45 +734,6 @@
         "required": [
           "entityType",
           "fqn"
-        ]
-      },
-      "annotations": {
-        "title": "Update Entity",
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "idempotentHint": false,
-        "openWorldHint": false
-      }
-    },
-    {
-      "name": "patch_entity",
-      "title": "Patch Entity",
-      "annotations": {
-        "readOnlyHint": false,
-        "destructiveHint": true,
-        "openWorldHint": false
-      },
-      "description": "Low-level JSON Patch escape hatch. For description, displayName, owners or tags prefer update_entity, which takes typed fields and does not require you to read the entity first. Use this tool for fields update_entity does not expose. Patches an existing Entity based on a JSONPatch. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "entityType": {
-            "type": "string",
-            "description": "Entity Type to patch."
-          },
-          "fqn": {
-            "type": "string",
-            "description": "Fully Qualified Name of the Entity to be patched."
-          },
-          "patch": {
-            "type": "string",
-            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' — use 'replace' to change a field that already has a value, 'add' only for a field that is absent or to append to an array, 'remove' to clear one, 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
-          }
-        },
-        "required": [
-          "entityType",
-          "fqn",
-          "patch"
         ]
       }
     },

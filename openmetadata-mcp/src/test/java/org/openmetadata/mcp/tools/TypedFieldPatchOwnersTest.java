@@ -22,14 +22,14 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 
 /**
- * Owner resolution for {@code update_entity}.
+ * Owner resolution for patch_entity's typed fields.
  *
  * <p>These need {@code Entity}'s static repository lookups stubbed, which is why they live apart
- * from {@link UpdateEntityMergeTest} - and why they did not exist while the tool shipped a path that
+ * from {@link TypedFieldPatchMergeTest} - and why they did not exist while the code shipped a path that
  * deleted every owner on a typo. The behaviour under test is the one the tool description promises:
  * a name that does not resolve fails the call rather than being dropped.
  */
-class UpdateEntityOwnersTest {
+class TypedFieldPatchOwnersTest {
 
   private static final String TEAM_NAME = "data-platform";
 
@@ -45,7 +45,7 @@ class UpdateEntityOwnersTest {
   }
 
   private static void apply(Table table, Map<String, Object> params) {
-    new UpdateEntityTool().applyChangesForTest(table, params);
+    TypedFieldPatch.applyChanges(table, params);
   }
 
   /** Stubs the two repositories {@code getTeamsOrUsers} consults, resolving only {@link #TEAM_NAME}. */

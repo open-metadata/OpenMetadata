@@ -172,15 +172,42 @@ class PatchEntityToolTest {
   }
 
   @Test
-  void execute_nullPatch_throwsIllegalArgumentException() {
+  void execute_neitherPatchNorTypedFields_throwsIllegalArgumentException() {
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", null);
 
+    // 'patch' is no longer the only way in, so the error names both forms rather than just that
+    // one.
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Patch cannot be null or empty");
+        .hasMessageContaining("Nothing to apply")
+        .hasMessageContaining("typed fields");
+  }
+
+  @Test
+  void execute_bothPatchAndTypedFields_isRejectedRatherThanGuessed() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("fqn", "db.schema.test_table");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"A\"}]");
+    params.put("description", "B");
+
+    // Silently preferring one would let the ignored half look applied.
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not both");
+  }
+
+  @Test
+  void execute_missingTarget_namesBothRequiredParameters() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("fqn", "db.schema.test_table");
+
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'entityType' and 'fqn' are required");
   }
 
   @Test

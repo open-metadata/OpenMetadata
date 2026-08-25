@@ -14,7 +14,7 @@ import org.openmetadata.schema.type.TagLabel;
  * The array-mode semantics. These are the behaviours where getting it wrong loses a caller's data
  * silently rather than failing, so they are pinned rather than left to the merge helpers' shape.
  */
-class UpdateEntityMergeTest {
+class TypedFieldPatchMergeTest {
 
   private static Table tableWith(String description, String... tagFqns) {
     Table table = new Table().withName("dim_address").withDescription(description);
@@ -27,7 +27,7 @@ class UpdateEntityMergeTest {
   }
 
   private static void apply(Table table, Map<String, Object> params) {
-    new UpdateEntityTool().applyChangesForTest(table, params);
+    TypedFieldPatch.applyChanges(table, params);
   }
 
   @Test
