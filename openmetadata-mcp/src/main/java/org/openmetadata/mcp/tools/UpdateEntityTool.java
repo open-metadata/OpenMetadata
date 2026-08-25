@@ -157,8 +157,11 @@ public class UpdateEntityTool implements McpTool {
   private static void applyOwners(EntityInterface entity, Map<String, Object> params) {
     Object owners = params.get("owners");
     if (owners != null) {
-      List<EntityReference> requested = CommonUtils.requireTeamsOrUsers(owners, "owners");
       String mode = mode(params, "ownersMode", MODE_ADD, ARRAY_MODES);
+      List<EntityReference> requested =
+          MODE_REMOVE.equals(mode)
+              ? CommonUtils.matchOwnersByName(owners, entity.getOwners())
+              : CommonUtils.requireTeamsOrUsers(owners, "owners");
       entity.setOwners(mergeOwners(entity.getOwners(), requested, mode));
     }
   }

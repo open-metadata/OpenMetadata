@@ -115,6 +115,21 @@ class UpdateEntityOwnersTest {
   }
 
   @Test
+  void aStaleOwnerCanStillBeRemovedAfterItStopsResolving() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubDirectory(entityMock);
+      // "departed-user" is an owner of the entity but no longer resolves in the directory - the
+      // ordinary state after a user is deleted or deactivated. Requiring resolution here would make
+      // the one reference a caller most wants to clear the one they cannot.
+      Table table = tableOwnedBy("departed-user");
+
+      apply(table, Map.of("owners", List.of("departed-user"), "ownersMode", "remove"));
+
+      assertEquals(List.of(), ownerNamesOf(table), "the stale owner is gone");
+    }
+  }
+
+  @Test
   void ownersSetIsStillAReplaceWhenItIsAskedForByName() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubDirectory(entityMock);

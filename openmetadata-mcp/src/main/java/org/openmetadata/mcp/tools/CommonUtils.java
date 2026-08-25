@@ -98,6 +98,26 @@ public class CommonUtils {
     return resolved;
   }
 
+  /**
+   * The current owners whose names the caller named, for removals.
+   *
+   * <p>Removal must not go through {@link #requireTeamsOrUsers}: an owner who has since been
+   * deleted or deactivated no longer resolves in the directory, so requiring resolution would make
+   * exactly the stale reference a caller most wants to clear the one they cannot. Matching against
+   * what the entity already holds needs no directory at all. A name that is not an owner simply
+   * matches nothing, and the empty patch is reported by {@code requireChange}.
+   */
+  public static List<EntityReference> matchOwnersByName(
+      Object owners, List<EntityReference> existing) {
+    Set<String> wanted =
+        JsonUtils.readOrConvertValues(owners, String.class).stream()
+            .map(CommonUtils::comparableName)
+            .collect(Collectors.toSet());
+    return existing == null
+        ? List.of()
+        : existing.stream().filter(ref -> wanted.contains(comparableName(ref.getName()))).toList();
+  }
+
   /** Owner names are compared case-insensitively and unquoted, so {@code "a.b"} matches {@code a.b}. */
   private static String comparableName(String name) {
     String result = name == null ? "" : name.trim();

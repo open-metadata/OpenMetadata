@@ -173,6 +173,37 @@ class HonestResponseTest {
     assertFalse(DefaultToolContext.isServerFault(status));
   }
 
+  // --- never-run semantics --------------------------------------------------------------------
+
+  @Test
+  void aQueuedTestDoesNotCountAsExecuted() {
+    Map<String, Object> summary =
+        Map.of("total", 13, "success", 0, "failed", 0, "aborted", 0, "queued", 13);
+
+    Map<?, ?> annotated = (Map<?, ?>) GetEntityTool.withNeverRun(summary);
+
+    assertEquals(
+        13,
+        annotated.get("neverRun"),
+        "a queued test has produced no verdict, so counting it as executed would let a suite that "
+            + "is merely waiting to run report neverRun: 0 - the exact 'zero failures reads as "
+            + "healthy' trap this exists to close");
+    assertTrue(
+        annotated.get(McpResponseTrim.MESSAGE_KEY).toString().contains("unverified"),
+        "the caveat must still fire for an all-queued suite");
+  }
+
+  @Test
+  void executedTestsSuppressTheNeverRunCaveat() {
+    Map<String, Object> summary =
+        Map.of("total", 4, "success", 3, "failed", 1, "aborted", 0, "queued", 0);
+
+    Map<?, ?> annotated = (Map<?, ?>) GetEntityTool.withNeverRun(summary);
+
+    assertEquals(0, annotated.get("neverRun"));
+    assertNull(annotated.get(McpResponseTrim.MESSAGE_KEY), "nothing to caveat when all tests ran");
+  }
+
   // --- lineage reach without a per-neighbour probe ----------------------------------------------
 
   @Test

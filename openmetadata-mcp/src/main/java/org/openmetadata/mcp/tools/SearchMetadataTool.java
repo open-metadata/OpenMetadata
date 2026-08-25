@@ -398,6 +398,7 @@ public class SearchMetadataTool implements McpTool {
         totalResults = ((Number) topHits.get("total")).intValue();
       }
 
+      boolean scoresVary = scoresDiscriminate(hits);
       for (Object hitObj : hits) {
         Map<String, Object> hit = safeGetMap(hitObj);
         if (hit == null) continue;
@@ -410,7 +411,7 @@ public class SearchMetadataTool implements McpTool {
         // constant _score. Publishing that as "similarityScore" presents a filter match as a
         // relevance ranking - a caller reported it as "a meaningless constant presented as a
         // relevance signal". Emit it only when the scores actually discriminate.
-        if (hit.containsKey("_score") && scoresDiscriminate(hits)) {
+        if (hit.containsKey("_score") && scoresVary) {
           cleanedSource.put("similarityScore", hit.get("_score"));
         }
         cleanedResults.add(cleanedSource);
