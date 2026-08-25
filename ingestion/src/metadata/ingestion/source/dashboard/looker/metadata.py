@@ -1807,4 +1807,4 @@ class LookerSource(DashboardServiceSource):
 
     def close(self):
         self.metadata.compute_percentile(Dashboard, self.today)
-        self.metadata.close()
+        super().close()

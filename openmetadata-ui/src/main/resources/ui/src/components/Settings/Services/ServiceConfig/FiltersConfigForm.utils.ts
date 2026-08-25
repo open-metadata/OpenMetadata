@@ -66,6 +66,9 @@ type PatternMatcher = {
   suffix: string;
 };
 
+// Ops are assigned by how Python's start-anchored re.match evaluates the
+// pattern (metadata/utils/filters.py), not by how the regex reads: a bare
+// pattern matches as a prefix and a bare `value$` only matches exactly.
 const PATTERN_MATCHERS: PatternMatcher[] = [
   { op: 'is', prefix: '^', suffix: '$' },
   { op: 'contains', prefix: '^.*', suffix: '.*$' },
@@ -74,9 +77,9 @@ const PATTERN_MATCHERS: PatternMatcher[] = [
   { op: 'startsWith', prefix: '^', suffix: '.*' },
   { op: 'startsWith', prefix: '^', suffix: '' },
   { op: 'endsWith', prefix: '.*', suffix: '$' },
-  { op: 'endsWith', prefix: '', suffix: '$' },
+  { op: 'is', prefix: '', suffix: '$' },
   { op: 'contains', prefix: '.*', suffix: '.*' },
-  { op: 'contains', prefix: '', suffix: '' },
+  { op: 'startsWith', prefix: '', suffix: '' },
 ];
 
 const tryMatchPattern = (
@@ -132,9 +135,9 @@ export const conditionToRegex = (condition: FilterCondition) => {
     case 'startsWith':
       return `^${escapeRegex(condition.value)}`;
     case 'endsWith':
-      return `${escapeRegex(condition.value)}$`;
+      return `.*${escapeRegex(condition.value)}$`;
     case 'contains':
-      return escapeRegex(condition.value);
+      return `.*${escapeRegex(condition.value)}.*`;
     case 'regex':
     default:
       return condition.value;

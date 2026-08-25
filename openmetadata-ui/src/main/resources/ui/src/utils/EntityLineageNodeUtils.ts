@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
 import { isEqual, isUndefined, omit, pick, uniqWith } from 'lodash';
 import type { Edge, Node } from 'reactflow';
 import {
@@ -21,11 +20,6 @@ import {
   isNode,
   Position,
 } from 'reactflow';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import type {
   EntityChildren,
   Flatten,
@@ -130,25 +124,6 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
   };
 }
 
-export const getEntityNodeIcon = (label: string) => {
-  switch (label) {
-    case EntityType.TABLE:
-      return TableIcon;
-    case EntityType.DASHBOARD:
-      return DashboardIcon;
-    case EntityType.TOPIC:
-      return TopicIcon;
-    case EntityType.PIPELINE:
-      return PipelineIcon;
-    case EntityType.MLMODEL:
-      return MlModelIcon;
-    case EntityType.SEARCH_INDEX:
-      return SearchOutlined;
-    default:
-      return TableIcon;
-  }
-};
-
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   const hasUpstream = data.some((edge: EdgeDetails) => edge.toEntity.id === id);
 
@@ -185,11 +160,9 @@ export function getUpstreamDownstreamNodesEdges(
       const toNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
       );
-      if (!isUndefined(toNode)) {
-        if (!downstreamNodes.includes(toNode)) {
-          downstreamNodes.push(toNode);
-          findDownstream(toNode);
-        }
+      if (!isUndefined(toNode) && !downstreamNodes.includes(toNode)) {
+        downstreamNodes.push(toNode);
+        findDownstream(toNode);
       }
     });
   }
@@ -203,11 +176,9 @@ export function getUpstreamDownstreamNodesEdges(
       const fromNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
       );
-      if (!isUndefined(fromNode)) {
-        if (!upstreamNodes.includes(fromNode)) {
-          upstreamNodes.push(fromNode);
-          findUpstream(fromNode);
-        }
+      if (!isUndefined(fromNode) && !upstreamNodes.includes(fromNode)) {
+        upstreamNodes.push(fromNode);
+        findUpstream(fromNode);
       }
     });
   }

@@ -39,7 +39,7 @@ jobs:
         branch: ${{ fromJson(needs.get_release_branch.outputs.release_branches) }}
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0

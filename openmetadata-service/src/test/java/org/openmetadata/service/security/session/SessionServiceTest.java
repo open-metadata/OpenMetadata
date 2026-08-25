@@ -267,6 +267,30 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_pendingLogin_returnsEmptyWithoutClearingCookieOrSession() {
+    String sessionId = validSessionId('g');
+    long now = System.currentTimeMillis();
+    UserSession pendingLogin =
+        UserSession.builder()
+            .id(sessionId)
+            .status(SessionStatus.PENDING)
+            .state("state")
+            .version(0L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(pendingLogin));
+
+    // A concurrent refresh (another tab's expiry timer) while the login round-trip is at the
+    // IdP must not break the pending login: no lease, no cookie clearing, no session mutation.
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+    verify(response, never()).addHeader(eq("Set-Cookie"), any());
+    verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
   void acquireRefreshLease_reclaimsStaleLease() {
     String sessionId = validSessionId('s');
     long now = System.currentTimeMillis();
@@ -863,6 +887,97 @@ class SessionServiceTest {
         .expiresAt(expiresAt)
         .idleExpiresAt(expiresAt)
         .build();
+  }
+
+  @Test
+  void revokeSessionsForUser_revokesEveryActiveSession() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("offboarded-user")
+            .withEmail("offboarded-user@example.com");
+    UserSession first = activeSession(validSessionId('a'), user, 1L, 1L);
+    UserSession second = activeSession(validSessionId('b'), user, 2L, 2L);
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of(first, second), List.of());
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of());
+    when(repository.findById(first.getId())).thenReturn(Optional.of(first));
+    when(repository.findById(second.getId())).thenReturn(Optional.of(second));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    assertEquals(2, sessionService.revokeSessionsForUser(user.getId().toString()));
+
+    ArgumentCaptor<UserSession> revoked = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository, times(2)).updateIfVersion(revoked.capture(), anyLong());
+    assertTrue(
+        revoked.getAllValues().stream()
+            .allMatch(session -> session.getStatus() == SessionStatus.REVOKED));
+  }
+
+  @Test
+  void revokeSessionsForUser_stopsAndCountsNothingWhenSessionsCannotBeRevoked() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("stuck-user")
+            .withEmail("stuck-user@example.com");
+    UserSession stuck = activeSession(validSessionId('z'), user, 1L, 1L);
+    // Every compare-and-set loses, so the session stays ACTIVE and is read back each pass.
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of(stuck));
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of());
+    when(repository.findById(stuck.getId())).thenReturn(Optional.of(stuck));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(false);
+
+    assertEquals(0, sessionService.revokeSessionsForUser(user.getId().toString()));
+
+    // Two passes: the first attempts the revoke, the second sees the same batch and gives up
+    // instead of burning every remaining iteration on a row that will not move.
+    verify(repository, times(2))
+        .findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt());
+  }
+
+  @Test
+  void revokeSessionsForUser_alsoRevokesASessionThatIsMidRefresh() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("refreshing-user")
+            .withEmail("refreshing-user@example.com");
+    // A session mid-refresh holds a lease and is invisible to an ACTIVE-only lookup, and
+    // completeRefresh puts it back to ACTIVE — so without this it would outlive the delete.
+    UserSession refreshing =
+        activeSession(validSessionId('r'), user, 3L, 3L).toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 15_000)
+            .build();
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of());
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of(refreshing), List.of());
+    when(repository.findById(refreshing.getId())).thenReturn(Optional.of(refreshing));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    assertEquals(1, sessionService.revokeSessionsForUser(user.getId().toString()));
+
+    ArgumentCaptor<UserSession> revoked = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(revoked.capture(), anyLong());
+    assertEquals(SessionStatus.REVOKED, revoked.getValue().getStatus());
+    assertNull(revoked.getValue().getRefreshLeaseUntil());
+  }
+
+  @Test
+  void revokeSessionsForUser_isANoOpWithoutAUserId() {
+    assertEquals(0, sessionService.revokeSessionsForUser(null));
+    verify(repository, never()).findByUserIdAndStatus(any(), any(SessionStatus.class), anyInt());
   }
 
   private UserSession activeSession(String id, User user, long version, long lastAccessedAt) {

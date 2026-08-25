@@ -98,9 +98,9 @@ class QlikSenseClient:
         Method to initialise websocket connection
         """
         # pylint: disable=import-outside-toplevel
-        import ssl  # noqa: PLC0415
+        import ssl
 
-        from websocket import create_connection  # noqa: PLC0415
+        from websocket import create_connection
 
         if self.socket_connection:
             self.socket_connection.close()

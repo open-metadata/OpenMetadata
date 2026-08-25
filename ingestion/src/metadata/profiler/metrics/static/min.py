@@ -134,8 +134,8 @@ class Min(StaticMetric):
         Maintains a single minimum value (not a list). Compares chunk's min
         with current minimum and returns the smaller value.
         """
-        import pandas as pd  # noqa: PLC0415
-        from pandas import Timestamp  # noqa: PLC0415
+        import pandas as pd
+        from pandas import Timestamp
 
         chunk_min: float | None = None
 

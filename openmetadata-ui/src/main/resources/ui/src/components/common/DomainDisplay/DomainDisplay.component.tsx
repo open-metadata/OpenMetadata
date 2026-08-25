@@ -91,13 +91,11 @@ export const DomainDisplay = ({
             }}
             trigger={['hover']}>
             <Typography.Text
-              className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
+              className={`flex-center flex-shrink-0 cursor-pointer align-middle ant-typography-secondary domain-count-button ${
                 remainingCount <= 9 ? 'h-6 w-6' : ''
               }`}
               data-testid="domain-count-button">
-              <span className="ant-typography domain-count-label">
-                {`+${remainingCount}`}
-              </span>
+              <span className="domain-count-label">{`+${remainingCount}`}</span>
             </Typography.Text>
           </Dropdown>
         </div>

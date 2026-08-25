@@ -50,7 +50,7 @@ class TestDeleteStaleEntitiesMixin:
     def test_builds_request_and_returns_result(self):
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/tables"
-        metadata.client.put.return_value = {
+        metadata.client.delete.return_value = {
             "status": "success",
             "numberOfRowsProcessed": 1,
             "numberOfRowsPassed": 1,
@@ -66,10 +66,10 @@ class TestDeleteStaleEntitiesMixin:
         )
 
         assert isinstance(result, BulkOperationResult)
-        metadata.client.put.assert_called_once()
+        metadata.client.delete.assert_called_once()
         url, kwargs = (
-            metadata.client.put.call_args.args[0],
-            metadata.client.put.call_args.kwargs,
+            metadata.client.delete.call_args.args[0],
+            metadata.client.delete.call_args.kwargs,
         )
         assert url == "/tables/deleteStale"
         body = kwargs["json"]
@@ -84,7 +84,7 @@ class TestDeleteStaleEntitiesMixin:
         metadata.get_suffix.return_value = "/tables"
         http_error = MagicMock()
         http_error.response.status_code = 404
-        metadata.client.put.side_effect = APIError({"message": "not found"}, http_error)
+        metadata.client.delete.side_effect = APIError({"message": "not found"}, http_error)
 
         result = OpenMetadata.delete_stale_entities(
             metadata,
@@ -101,7 +101,7 @@ class TestDeleteStaleEntitiesMixin:
         metadata.get_suffix.return_value = "/tables"
         http_error = MagicMock()
         http_error.response.status_code = 500
-        metadata.client.put.side_effect = APIError({"message": "boom"}, http_error)
+        metadata.client.delete.side_effect = APIError({"message": "boom"}, http_error)
 
         with pytest.raises(APIError):
             OpenMetadata.delete_stale_entities(
@@ -116,7 +116,7 @@ class TestDeleteStaleEntitiesMixin:
         (zero rows), which the client passes through so the caller does not fall back to legacy."""
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/tables"
-        metadata.client.put.return_value = {
+        metadata.client.delete.return_value = {
             "status": "success",
             "numberOfRowsProcessed": 0,
             "numberOfRowsPassed": 0,
@@ -200,3 +200,104 @@ class TestDeleteEntityFromSource:
         metadata.list_all_entities.assert_called_once()
         deleted_fqns = {r.right.entity.fullyQualifiedName.root for r in results if not isinstance(r.right, Barrier)}
         assert deleted_fqns == {"svc.db.sch.t2", "svc.db.sch.t3"}
+
+
+def _scope_sent_to_server(params):
+    """Run a stale deletion and return the scope dict that reached delete_stale_entities."""
+    metadata = MagicMock()
+    metadata.delete_stale_entities.return_value = BulkOperationResult(
+        numberOfRowsProcessed=1, numberOfRowsPassed=1, numberOfRowsFailed=0
+    )
+    list(
+        delete_entity_from_source(
+            metadata=metadata,
+            entity_type=MockEntity,
+            entity_source_state={"svc.d1"},
+            recursive=True,
+            params=params,
+        )
+    )
+    return metadata.delete_stale_entities.call_args.kwargs["scope_params"]
+
+
+class TestServiceScopeIsSentAsFqn:
+    """
+    deleteStale resolves the scope against the stored FQN. Callers pass the service *name*, which
+    for a name needing quotes (a dot, e.g. a version number) is not the FQN - so the scope never
+    resolved and stale deletion silently deleted nothing.
+    """
+
+    def test_service_name_with_a_dot_is_sent_quoted(self):
+        assert _scope_sent_to_server({"service": "Looker- 2.0 Test"}) == {"service": '"Looker- 2.0 Test"'}
+
+    def test_service_name_without_a_dot_is_sent_unchanged(self):
+        assert _scope_sent_to_server({"service": "Looker Prod"}) == {"service": "Looker Prod"}
+
+    def test_already_quoted_service_name_is_not_double_quoted(self):
+        assert _scope_sent_to_server({"service": '"Looker- 2.0 Test"'}) == {"service": '"Looker- 2.0 Test"'}
+
+    def test_non_service_scopes_are_never_quoted(self):
+        """These already arrive as FQNs; quoting a multi-part FQN would break a working scope."""
+        assert _scope_sent_to_server({"databaseSchema": "svc.db.sch"}) == {"databaseSchema": "svc.db.sch"}
+        assert _scope_sent_to_server({"database": "svc.db"}) == {"database": "svc.db"}
+
+    def test_service_stays_the_first_key(self):
+        """delete_stale_entities reads the scope from the first entry, so order must survive."""
+        scope = _scope_sent_to_server({"service": "Drive. 2.0", "directory": "d1"})
+        assert next(iter(scope.items())) == ("service", '"Drive. 2.0"')
+
+    def test_caller_params_are_not_mutated(self):
+        """The legacy fallback reuses the caller's dict and needs the raw name in it."""
+        params = {"service": "Looker- 2.0 Test"}
+        _scope_sent_to_server(params)
+        assert params == {"service": "Looker- 2.0 Test"}
+
+    def test_unquotable_service_name_is_passed_through(self):
+        """A name quote_name rejects must not blow up the whole delete stage."""
+        assert _scope_sent_to_server({"service": 'Looker "Prod"'}) == {"service": 'Looker "Prod"'}
+
+    def test_legacy_fallback_lists_by_the_raw_service_name(self):
+        """`?service=` matches a service by name, so the fallback must not get the quoted FQN."""
+        metadata = MagicMock()
+        metadata.delete_stale_entities.return_value = None
+        metadata.list_all_entities.return_value = [_entity("svc.d1"), _entity("svc.d2")]
+
+        results = list(
+            delete_entity_from_source(
+                metadata=metadata,
+                entity_type=MockEntity,
+                entity_source_state={"svc.d1"},
+                recursive=True,
+                params={"service": "Looker- 2.0 Test"},
+            )
+        )
+
+        assert metadata.list_all_entities.call_args.kwargs["params"] == {"service": "Looker- 2.0 Test"}
+        deleted_fqns = {r.right.entity.fullyQualifiedName.root for r in results if not isinstance(r.right, Barrier)}
+        assert deleted_fqns == {"svc.d2"}
+
+    def test_quoted_fqn_reaches_the_wire(self):
+        """End to end through the real client: the request body carries the service FQN."""
+        metadata = MagicMock()
+        metadata.get_suffix.return_value = "/dashboards"
+        metadata.client.delete.return_value = {
+            "status": "success",
+            "numberOfRowsProcessed": 3,
+            "numberOfRowsPassed": 3,
+            "numberOfRowsFailed": 0,
+        }
+        metadata.delete_stale_entities = lambda **kwargs: OpenMetadata.delete_stale_entities(metadata, **kwargs)
+
+        list(
+            delete_entity_from_source(
+                metadata=metadata,
+                entity_type=MockEntity,
+                entity_source_state={'"Looker- 2.0 Test".1'},
+                recursive=True,
+                params={"service": "Looker- 2.0 Test"},
+            )
+        )
+
+        body = metadata.client.delete.call_args.kwargs["json"]
+        assert body["scopeFqn"] == '"Looker- 2.0 Test"'
+        assert body["scopeEntityType"] == "service"

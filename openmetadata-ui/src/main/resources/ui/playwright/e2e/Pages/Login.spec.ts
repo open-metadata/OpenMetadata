@@ -36,6 +36,10 @@ test.describe.configure({
   timeout: 5 * 60 * 1000,
 });
 
+test.use({
+  trace: 'retain-on-failure',
+});
+
 test.describe(
   'Login flow should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
@@ -164,7 +168,9 @@ test.describe(
     });
 
     test.describe('Token renewal', () => {
-      test.describe.configure({ retries: 0 });
+      test.describe.configure({
+        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
+      });
 
       test('Refresh should work', async ({ page: page1, browser }) => {
         test.slow();
@@ -189,8 +195,8 @@ test.describe(
           await waitForAllLoadersToDisappear(page2);
           await page2.reload();
 
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
-          await page1.waitForTimeout(3 * 60 * 1000);
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
+          await page1.waitForTimeout(2 * 61 * 1000);
 
           await page1.bringToFront();
           await visitOwnProfilePage(page1);

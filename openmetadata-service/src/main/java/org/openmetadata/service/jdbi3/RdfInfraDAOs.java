@@ -28,6 +28,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface RdfInfraDAOs {
   @CreateSqlObject
@@ -62,12 +63,12 @@ public interface RdfInfraDAOs {
     void insert(
         @Bind("id") String id,
         @Bind("status") String status,
-        @Bind("jobConfiguration") String jobConfiguration,
+        @BindJson("jobConfiguration") String jobConfiguration,
         @Bind("totalRecords") long totalRecords,
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("createdBy") String createdBy,
         @Bind("createdAt") long createdAt,
         @Bind("updatedAt") long updatedAt);
@@ -92,7 +93,7 @@ public interface RdfInfraDAOs {
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("startedAt") Long startedAt,
         @Bind("completedAt") Long completedAt,
         @Bind("updatedAt") long updatedAt,

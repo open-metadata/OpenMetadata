@@ -48,6 +48,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface FeedDAOs {
@@ -70,7 +71,7 @@ public interface FeedDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO <tableName>(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Define("tableName") String tableName, @Bind("json") String json);
+    void insert(@Define("tableName") String tableName, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO thread_entity(json) VALUES (:json)",
@@ -78,7 +79,7 @@ public interface FeedDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO thread_entity(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM <tableName> WHERE id = :id")
     String findById(@Define("tableName") String tableName, @BindUUID("id") UUID id);
@@ -300,11 +301,6 @@ public interface FeedDAOs {
         @Define("tableName") String tableName,
         @Bind("cutoffMillis") long cutoffMillis,
         @Bind("batchSize") int batchSize);
-
-    @SqlQuery(
-        "SELECT id FROM thread_entity WHERE type = 'Conversation' AND createdAt < :cutoffMillis LIMIT :batchSize")
-    List<UUID> fetchConversationThreadIdsOlderThan(
-        @Bind("cutoffMillis") long cutoffMillis, @Bind("batchSize") int batchSize);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -673,7 +669,9 @@ public interface FeedDAOs {
         value = "UPDATE <tableName> SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
     void update(
-        @Define("tableName") String tableName, @BindUUID("id") UUID id, @Bind("json") String json);
+        @Define("tableName") String tableName,
+        @BindUUID("id") UUID id,
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = :json where id = :id",
@@ -681,7 +679,7 @@ public interface FeedDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count FROM ( "
@@ -749,47 +747,6 @@ public interface FeedDAOs {
                 original = "toType",
                 parts = {":toType", ".%"})
             String toType);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(
-        @Define("tableName") String tableName, @Bind("entityLink") String entityLink);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1580,7 +1537,7 @@ public interface FeedDAOs {
             "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertTask(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
@@ -1594,7 +1551,7 @@ public interface FeedDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE task_entity SET json = (:json :: jsonb) WHERE id = :id",
         connectionType = POSTGRES)
-    void updateTask(@Bind("id") String id, @Bind("json") String json);
+    void updateTask(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -1742,19 +1699,40 @@ public interface FeedDAOs {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
-        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
-        // same status means different things across task types: terminal for
-        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
-        // non-terminal for Data Access Requests (the dedicated DAR list uses
-        // `approvedCount` / `grantedCount` and the `active` status group instead).
-        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
+        // Row-aware bucketing so openCount + completedCount = total across mixed task types.
+        // Bucket predicates and status/type literals are shared with ListFilter via
+        // TaskBucketSql — see that class for the invariant + drift-guard test.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_OPEN_STATUSES
+            + ") THEN 1"
+            + " WHEN type = '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_TERMINAL_STATUSES
+            + ") THEN 1"
+            + " WHEN type <> '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_IN_PROGRESS
+            + "' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1 ELSE 0 END), 0) AS approvedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_GRANTED
+            + "' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
@@ -1798,7 +1776,7 @@ public interface FeedDAOs {
             "INSERT INTO announcement_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertAnnouncement(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
@@ -2058,7 +2036,7 @@ public interface FeedDAOs {
             "INSERT INTO task_form_schema_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertTaskFormSchema(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {

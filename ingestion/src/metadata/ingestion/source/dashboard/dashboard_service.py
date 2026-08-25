@@ -257,6 +257,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
         self._connection = create_connection(self.service_connection)
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
+        self.connection_obj = self.client
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -649,7 +650,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if self._connection is not None:
             run_test_connection(self.metadata, self._connection)
         else:
-            test_connection_common(self.metadata, self.client, self.service_connection)
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""

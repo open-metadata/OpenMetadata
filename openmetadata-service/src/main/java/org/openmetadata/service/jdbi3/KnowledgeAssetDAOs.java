@@ -33,6 +33,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface KnowledgeAssetDAOs {
   @CreateSqlObject
@@ -463,6 +464,8 @@ public interface KnowledgeAssetDAOs {
             "UPDATE knowledge_center SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id",
         connectionType = POSTGRES)
     void updateFullyQualifiedName(
-        @Bind("id") String pageId, @Bind("json") String json, @BindFQN("fqnHash") String fqnHash);
+        @Bind("id") String pageId,
+        @BindJson("json") String json,
+        @BindFQN("fqnHash") String fqnHash);
   }
 }

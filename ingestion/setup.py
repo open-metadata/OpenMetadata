@@ -19,7 +19,11 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.1",
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
+    # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
+    "airflow": "apache-airflow==3.3.1",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -29,21 +33,22 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs~=2026.3",
-    "great-expectations": "great-expectations~=0.18.0",
-    "great-expectations-1xx": "great-expectations~=1.0",
+    # 1.3 is the floor: GX only gained the validation-action registry there, so on
+    # 1.0-1.2 `Checkpoint.actions` is a closed union that rejects our action outright.
+    "great-expectations": "great-expectations~=1.3",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.1.4",
+    "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
-    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
+    "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
-    "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn>=1.3,<2",
+    "numpy": "numpy>=2,<3",
+    "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -51,7 +56,7 @@ VERSIONS = {
     "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
-    "spacy": "spacy<3.8",
+    "spacy": "spacy>=3.8.2,<3.9",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -71,8 +76,11 @@ VERSIONS = {
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
+    # <1.0: 1.0.0 is a SQLAlchemy-2.0 rewrite (first release since 0.0.5 in 2020) that drops
+    # get_all_table_comments and retypes the dialect methods vertica/metadata.py patches onto it
+    "sqlalchemy-vertica": "sqlalchemy-vertica[vertica-python]>=0.0.5,<1.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=7.4.5",
+    "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -175,14 +183,14 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.4",
+    "collate-sqllineage==2.1.7",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -233,7 +241,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
-        "croniter<3",
+        # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
+        # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its
+        # floor to croniter>=6.2.2 -- a stale "croniter<3" makes the two uninstallable
+        # together. The airflow images already run croniter 6.2.x via the constraints file.
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
@@ -249,7 +260,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
+        # Its SA-1.x call sites are adapted at runtime by
+        # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
@@ -303,7 +316,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
-    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -311,11 +323,15 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "hive": {
         *COMMONS["hive"],
-        "thrift>=0.13,<1",
+        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
+        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
+        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
+        # has to move for this floor to be satisfiable.
+        "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
-        "impyla~=0.18.0",
+        "impyla~=0.24.0",
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
@@ -324,8 +340,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        "impyla[kerberos]~=0.18.0",
-        "thrift>=0.13,<1",
+        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
+        # thrift below the fixed 0.24.0.
+        "impyla[kerberos]~=0.24.0",
+        "thrift>=0.24.0,<1",
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
@@ -365,7 +383,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
+    "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
@@ -376,6 +394,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
+    "prefect": {},  # uses requests
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
@@ -402,6 +421,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -410,7 +430,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
@@ -427,17 +447,18 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
     "google-auth-stubs",
     "types-requests",
-    "pandas-stubs~=2.1.4",
+    "pandas-stubs~=2.2",
     "scipy-stubs",
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
+    "import-linter~=2.13",
     # For publishing
     "twine",
     "build",
@@ -450,6 +471,7 @@ test_unit = {
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -477,6 +499,7 @@ test = {
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
@@ -521,6 +544,7 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",

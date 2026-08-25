@@ -239,4 +239,66 @@ test.describe('CsvJobsTray', () => {
 
     await expect(page.locator('.csv-jobs-tray')).not.toBeVisible();
   });
+  // Lineage exports are background jobs now rather than a websocket-only push, so
+  // they surface in the tray like any other export.
+  test('shows a lineage export job in the tray', async ({ page }) => {
+    const lineageJob = {
+      ...RUNNING_EXPORT_JOB,
+      entityType: 'lineage',
+      jobId: 'pw-tray-lineage-export',
+    };
+    await mockJobsApi(page, [lineageJob]);
+    await activateJobsTray(page);
+    await openTray(page);
+
+    await mockJobsApi(page, [
+      { ...lineageJob, status: 'COMPLETED', progress: 18 },
+    ]);
+    await triggerJobsRefresh(page);
+
+    await expect(page.getByText(/Exported Lineage/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
+  });
+
+  // The tray polls because the completion event only reaches sockets held by the
+  // server that ran the job — on multi-node it usually goes to a peer.
+  test('reaches Completed by polling, without a websocket event', async ({
+    page,
+  }) => {
+    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
+    await activateJobsTray(page);
+    await openTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-item')).toHaveCount(1);
+
+    // Swap the server's answer but fire no socket event and no refresh event;
+    // only the poll can move the tray forward.
+    await mockJobsApi(page, [
+      { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
+    ]);
+
+    await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
+  });
+
+  test('auto-opens the tray for download when the poll completes it, minimised and multi-pod', async ({
+    page,
+  }) => {
+    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
+    await activateJobsTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
+    await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible();
+
+    await mockJobsApi(page, [
+      { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
+    ]);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
+  });
 });

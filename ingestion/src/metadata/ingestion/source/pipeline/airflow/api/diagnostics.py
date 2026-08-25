@@ -247,7 +247,7 @@ def _project_from_credentials(credentials) -> Optional[str]:  # noqa: UP045
 
     if not project:
         try:
-            import google.auth  # noqa: PLC0415
+            import google.auth
 
             _, ambient_project = google.auth.default()
             if ambient_project:
@@ -266,7 +266,7 @@ def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optiona
     access-token code path. Result is not cached: the diagnostic fires only
     on a failed CheckAccess, so a single extra token mint is cheap.
     """
-    from metadata.ingestion.source.pipeline.airflow.api.auth import (  # noqa: PLC0415
+    from metadata.ingestion.source.pipeline.airflow.api.auth import (
         build_gcp_token_callback,
     )
 

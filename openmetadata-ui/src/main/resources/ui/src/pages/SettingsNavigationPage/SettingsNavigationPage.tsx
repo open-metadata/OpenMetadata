@@ -21,20 +21,23 @@ import { NavigationBlocker } from '../../components/common/NavigationBlocker/Nav
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
 
 interface Props {
+  persona: Persona;
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
 }
 
-export const SettingsNavigationPage = ({ onSave }: Props) => {
+export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const { t } = useTranslation();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
@@ -144,12 +147,16 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
-      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.navigation'),
+        })}>
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
-              personaName={t('label.customize-your-navigation')}
+              personaName={getEntityName(persona)}
               onReset={handleReset}
               onSave={handleSave}
             />

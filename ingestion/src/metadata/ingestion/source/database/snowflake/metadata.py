@@ -13,6 +13,7 @@ Snowflake source module
 """
 
 import json  # noqa: I001
+import threading
 import traceback
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
@@ -27,6 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -57,11 +59,13 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -102,18 +106,36 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_SCHEMATA,
+    SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW,
+    SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
-    SNOWFLAKE_SESSION_TAG_QUERY,
+    set_session_tag_query,
+)
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    build_metric_request,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
+    INFO_SCHEMA_TOO_MUCH_DATA,
+    SEMANTIC_CATALOG_CACHE_SIZE,
+    SEMANTIC_CATALOG_VIEWS,
+    SEMANTIC_DIMENSIONS,
+    SEMANTIC_FACTS,
+    SEMANTIC_METRICS,
+    SEMANTIC_VIEW_COLUMN_KINDS,
+    SemanticCatalog,
     _current_database_schema,
+    _get_schema_unique_constraints,
+    build_semantic_view_column,
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_semantic_view_definition,
+    get_semantic_view_names,
+    get_semantic_view_names_reflection,
     get_stage_names,
     get_stage_names_reflection,
     get_stream_definition,
@@ -127,11 +149,13 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_definition,
     get_view_names,
     get_view_names_reflection,
+    merge_semantic_view_column,
     normalize_names,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
@@ -172,17 +196,20 @@ SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_stage_names = get_stage_names
+SnowflakeDialect.get_semantic_view_names = get_semantic_view_names  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
+SnowflakeDialect._get_schema_unique_constraints = _get_schema_unique_constraints
 SnowflakeDialect._get_schema_columns = get_schema_columns
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
 Inspector.get_stage_names = get_stage_names_reflection
+Inspector.get_semantic_view_names = get_semantic_view_names_reflection  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
@@ -190,6 +217,7 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
+Inspector.get_semantic_view_definition = get_semantic_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
@@ -232,6 +260,7 @@ class SnowflakeSource(
         self.external_location_map = {}
         self.schema_tags_map = {}
         self.database_tags_map = {}
+        self._semantic_catalog_local = threading.local()
 
         self._account: Optional[str] = None  # noqa: UP045
         self._org_name: Optional[str] = None  # noqa: UP045
@@ -295,7 +324,7 @@ class SnowflakeSource(
             @event.listens_for(self.engine, "connect")
             def _set_query_tag(dbapi_connection, connection_record):
                 cursor = dbapi_connection.cursor()
-                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.execute(set_session_tag_query(query_tag))
                 cursor.close()
 
     def set_partition_details(self) -> None:
@@ -812,6 +841,17 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stage.name, type_=table_type) for stage in snowflake_stages.get_not_deleted()]
 
+    def _get_semantic_view_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+        """Fetch semantic views from the schema"""
+        table_type = TableType.SemanticView
+
+        snowflake_semantic_views = self.inspector.get_semantic_view_names(schema=schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+
+        return [
+            TableNameAndType(name=semantic_view.name, type_=table_type)
+            for semantic_view in snowflake_semantic_views.get_not_deleted()
+        ]
+
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
@@ -828,6 +868,13 @@ class SnowflakeSource(
 
         if self.service_connection.includeStages:
             table_list.extend(self._get_stage_names_and_types(schema_name))
+
+        if self.service_connection.includeSemanticViews:
+            try:
+                table_list.extend(self._get_semantic_view_names_and_types(schema_name))
+            except Exception as exc:
+                logger.warning(f"Failed to list semantic views for schema [{schema_name}]: {exc}")
+                logger.debug(traceback.format_exc())
 
         return table_list
 
@@ -1051,7 +1098,154 @@ class SnowflakeSource(
         else:
             yield from super().mark_tables_as_deleted()
 
-    def _get_columns_internal(
+    def _get_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+        """Build columns for a semantic view from its dimensions, facts and metrics.
+
+        Semantic views expose logical objects rather than physical columns; each
+        dimension/fact/metric becomes a column. Failures are swallowed (warn +
+        continue) so an unsupported account or missing catalog view never fails
+        ingestion of the semantic view itself.
+        """
+        columns = []
+        try:
+            columns = self._fetch_semantic_view_columns(schema_name, table_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(f"Failed to fetch semantic view columns for [{schema_name}.{table_name}]: {exc}")
+            logger.debug(traceback.format_exc())
+        return columns
+
+    def _fetch_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+        """Merge the schema's dimension/fact rows for one view (deduplicated by
+        column name) into OpenMetadata column dicts."""
+        schema = fqn.unquote_name(schema_name)
+        semantic_view = fqn.unquote_name(table_name)
+        merged: dict[str, dict] = {}
+        for kind, catalog_view in SEMANTIC_VIEW_COLUMN_KINDS:
+            for row in self._semantic_rows(catalog_view, schema, semantic_view):
+                merge_semantic_view_column(merged, kind, row)
+        return [build_semantic_view_column(entry) for entry in merged.values()]
+
+    def _semantic_catalog_cache(self) -> "LRUCache[SemanticCatalog | None]":
+        """Bounded, per-thread LRU of schema-wide semantic catalogs.
+
+        Per-thread because the ``databaseSchema`` topology node runs with
+        ``threads=True`` and each worker walks a different schema: at the default
+        capacity of 2 a shared cache would thrash, every worker evicting the
+        others' schema. Bounded because a schema with very many semantic objects
+        would otherwise be retained for the whole database run (``info_cache``
+        only clears between databases).
+        """
+        if not hasattr(self._semantic_catalog_local, "cache"):
+            self._semantic_catalog_local.cache = LRUCache(SEMANTIC_CATALOG_CACHE_SIZE)
+        return self._semantic_catalog_local.cache
+
+    def _semantic_catalog(self, schema: str) -> Optional[SemanticCatalog]:  # noqa: UP045
+        """Every semantic object in ``schema``, in three queries total.
+
+        Replaces the previous three-queries-per-view pattern, which cost 3N
+        round-trips for N semantic views. Returns ``None`` when Snowflake refuses
+        the bulk query with errno 90030, signalling the per-view fallback.
+        """
+        cache = self._semantic_catalog_cache()
+        if schema in cache:
+            return cache.get(schema)
+
+        catalog: Optional[SemanticCatalog] = {}  # noqa: UP045
+        try:
+            for catalog_view in SEMANTIC_CATALOG_VIEWS:
+                by_view: Dict[str, List[tuple]] = {}  # noqa: UP006
+                query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA.format(catalog_view=catalog_view, schema=schema)
+                for row in self._execute_semantic_query(query):
+                    # SEMANTIC_VIEW_NAME leads the projection; strip it so the rest of
+                    # the row keeps the layout the per-view queries return.
+                    by_view.setdefault(row[0], []).append(row[1:])
+                catalog[catalog_view] = by_view
+        except sa_exc.ProgrammingError as p_err:
+            if getattr(p_err.orig, "errno", None) != INFO_SCHEMA_TOO_MUCH_DATA:
+                raise
+            logger.warning(
+                f"Schema-wide semantic catalog query for [{schema}] returned too much data; "
+                "falling back to per-view queries"
+            )
+            catalog = None
+
+        # The ``None`` 90030 sentinel is cached too, so we do not re-run the bulk
+        # query for every view in the schema just to fail again.
+        cache.put(schema, catalog)
+        return catalog
+
+    def _execute_semantic_query(self, query: str) -> List[tuple]:  # noqa: UP006
+        """Run a semantic catalog query and materialize the rows as plain tuples."""
+        cursor = self.connection.execute(text(query))
+        return [tuple(row) for row in cursor]  # pyright: ignore[reportOptionalIterable]
+
+    def _semantic_rows(self, catalog_view: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
+        """Rows of one catalog view for one semantic view, from the schema-wide
+        batch when available, else from a single per-view query."""
+        catalog = self._semantic_catalog(schema)
+        if catalog is not None:
+            return catalog.get(catalog_view, {}).get(view, [])
+        query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW.format(
+            catalog_view=catalog_view, schema=schema, semantic_view=view
+        )
+        return self._execute_semantic_query(query)
+
+    def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
+        view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]
+        entity = self.metadata.get_by_name(entity=Table, fqn=view_fqn)
+        reference = None
+        if entity is not None:
+            reference = EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
+        return reference
+
+    def yield_table_metrics(
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+    ) -> Iterable[Either[CreateMetricRequest]]:
+        """Yield one Metric entity per Snowflake metric on a semantic view."""
+        view, table_type = table_name_and_type
+        if table_type == TableType.SemanticView:
+            service = self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
+            database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+            schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+            try:
+                query_schema = fqn.unquote_name(schema)
+                query_view = fqn.unquote_name(view)
+                dimension_rows = self._semantic_rows(SEMANTIC_DIMENSIONS, query_schema, query_view)
+                fact_rows = self._semantic_rows(SEMANTIC_FACTS, query_schema, query_view)
+                metric_rows = self._semantic_rows(SEMANTIC_METRICS, query_schema, query_view)
+                logger.info(
+                    f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "
+                    f"with {len(dimension_rows)} dimension(s) and {len(fact_rows)} measure(s)"
+                )
+                if not metric_rows:
+                    return
+                # This view's own CreateTableRequest is still in the sink's bulk buffer
+                # (Metric requests are written immediately, Table requests batch), so
+                # without a flush the lookup below 404s on every first run and the
+                # metrics lose their assets[] back-reference. Gated on metric_rows: the
+                # stage runs for every table, and flushing per table would negate the
+                # bulk sink for every connector.
+                yield Either(right=Barrier(reason=f"semantic_view_metrics:{schema}.{view}"))  # pyright: ignore[reportCallIssue]
+                view_ref = self._semantic_view_reference(database, schema, view)
+                for metric_row in metric_rows:
+                    yield Either(  # pyright: ignore[reportCallIssue]
+                        right=build_metric_request(
+                            service,
+                            database,
+                            schema,
+                            view,
+                            metric_row,
+                            dimension_rows,
+                            fact_rows,
+                            view_ref,
+                        )
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(f"Failed to build metrics for semantic view [{schema}.{view}]: {exc}")
+                logger.debug(traceback.format_exc())
+
+    def _get_columns_internal(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         schema_name: str,
         table_name: str,
@@ -1062,9 +1256,13 @@ class SnowflakeSource(
         """
         Get columns of table/view/stream/stage
         """
-        # Stages do not have columns in Snowflake
+        # Stages do not expose columns in Snowflake
         if table_type == TableType.Stage:
             return []
+
+        # Semantic views expose logical objects (dimensions/facts/metrics) as columns
+        if table_type == TableType.SemanticView:
+            return self._get_semantic_view_columns(schema_name, table_name)
 
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
@@ -1144,6 +1342,8 @@ class SnowflakeSource(
                 schema_definition = inspector.get_view_definition(table_name, schema_name)
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
+            elif table_type == TableType.SemanticView:
+                schema_definition = inspector.get_semantic_view_definition(self.connection, table_name, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
             elif table_type == TableType.Stage:
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type

@@ -25,7 +25,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -36,6 +36,9 @@ jobs:
       - name: Install antlr cli
         run: |
           sudo make install_antlr_cli
+
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
 
       - name: Build OpenMetadata Server Application
         env:
@@ -73,7 +76,7 @@ jobs:
     needs: [ release-project-event-workflow_dispatch ]
     steps:
       - name: Check out the Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set build arguments
         id: build-args

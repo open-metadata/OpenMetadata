@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindConcat;
 
@@ -422,151 +423,91 @@ public interface EntityDataDAOs {
       return "fqnHash";
     }
 
-    @Override
-    default int listCount(ListFilter filter) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
+    /**
+     * A pipeline's service category is not a column on the pipeline row — it lives in {@code
+     * entity_relationship.fromEntity} — so the {@code serviceType} filter has to be a join rather
+     * than a {@link ListFilter} condition. Every listing that honours {@code serviceType} shares
+     * this builder so ordered, unordered and count queries can never drift apart on which rows they
+     * consider in scope.
+     *
+     * <p>Always call this before branching on {@code serviceType}: the condition getters register
+     * derived bind parameters on the filter, and the non-serviceType path relies on them too.
+     */
+    default String serviceTypeJoinCondition(ListFilter filter) {
+      StringBuilder condition =
+          new StringBuilder(
+              "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId");
 
       if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+        condition.append(String.format(" and %s", filter.getPipelineTypeCondition(null)));
       }
 
       if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
+        condition.append(String.format(" and %s", filter.getApplicationTypeCondition()));
       }
 
       if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
+        condition.append(String.format(" and %s", filter.getServiceCondition(null)));
       }
 
       if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
+        condition.append(String.format(" and %s", filter.getProviderCondition(getTableName())));
       }
 
-      Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
+      return condition
+          .append(
+              String.format(
+                  " WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = %d",
+                  CONTAINS.ordinal()))
+          .toString();
+    }
 
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
-                condition);
-        bindMap.put("relation", CONTAINS.ordinal());
-        return listIngestionPipelineCount(condition, bindMap, filter.getQueryParams());
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listCount(filter);
       }
-      return EntityDAO.super.listCount(filter);
+      return listIngestionPipelineCount(condition, new HashMap<>(), filter.getQueryParams());
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-
-      if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
-      if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
-      }
-
-      if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
-      }
-
-      if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
-      }
+      condition =
+          String.format(
+              "%s and (ingestion_pipeline_entity.name > :afterName OR (ingestion_pipeline_entity.name = :afterName AND ingestion_pipeline_entity.id > :afterId))  order by ingestion_pipeline_entity.name ASC,ingestion_pipeline_entity.id ASC LIMIT :limit",
+              condition);
 
       Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
-
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and (ingestion_pipeline_entity.name > :afterName OR (ingestion_pipeline_entity.name = :afterName AND ingestion_pipeline_entity.id > :afterId))  order by ingestion_pipeline_entity.name ASC,ingestion_pipeline_entity.id ASC LIMIT :limit",
-                condition);
-
-        bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("afterName", afterName);
-        bindMap.put("afterId", afterId);
-        bindMap.put("limit", limit);
-        return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
-      }
-      return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+      bindMap.put("afterName", afterName);
+      bindMap.put("afterId", afterId);
+      bindMap.put("limit", limit);
+      return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition =
-          "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-
-      if (filter.getQueryParam("pipelineType") != null) {
-        String pipelineTypeCondition =
-            String.format(" and %s", filter.getPipelineTypeCondition(null));
-        condition += pipelineTypeCondition;
+      String condition = serviceTypeJoinCondition(filter);
+      if (nullOrEmpty(filter.getQueryParam("serviceType"))) {
+        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
-      if (filter.getQueryParam("applicationType") != null) {
-        String applicationTypeCondition =
-            String.format(" and %s", filter.getApplicationTypeCondition());
-        condition += applicationTypeCondition;
-      }
-
-      if (filter.getQueryParam("service") != null) {
-        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
-        condition += serviceCondition;
-      }
-
-      if (filter.getQueryParam("provider") != null) {
-        String providerCondition =
-            String.format(" and %s", filter.getProviderCondition(getTableName()));
-        condition += providerCondition;
-      }
+      condition =
+          String.format(
+              "%s and (ingestion_pipeline_entity.name < :beforeName OR (ingestion_pipeline_entity.name = :beforeName AND ingestion_pipeline_entity.id < :beforeId))  order by ingestion_pipeline_entity.name DESC, ingestion_pipeline_entity.id DESC LIMIT :limit",
+              condition);
 
       Map<String, Object> bindMap = new HashMap<>();
-      String serviceType = filter.getQueryParam("serviceType");
-      String provider = filter.getQueryParam("provider");
-      if (!nullOrEmpty(provider)) {
-        bindMap.put("provider", provider);
-      }
-      if (!nullOrEmpty(serviceType)) {
-        condition =
-            String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and (ingestion_pipeline_entity.name < :beforeName OR (ingestion_pipeline_entity.name = :beforeName AND ingestion_pipeline_entity.id < :beforeId))  order by ingestion_pipeline_entity.name DESC, ingestion_pipeline_entity.id DESC LIMIT :limit",
-                condition);
-
-        bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("beforeName", beforeName);
-        bindMap.put("beforeId", beforeId);
-        bindMap.put("limit", limit);
-        return listBeforeIngestionPipelineByserviceType(
-            condition, bindMap, filter.getQueryParams());
-      }
-      return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+      bindMap.put("beforeName", beforeName);
+      bindMap.put("beforeId", beforeId);
+      bindMap.put("limit", limit);
+      return listBeforeIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
     }
 
     @SqlQuery("SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>")
@@ -587,6 +528,81 @@ public interface EntityDataDAOs {
         @Define("cond") String cond,
         @BindMap Map<String, Object> bindings,
         @BindMap Map<String, String> params);
+
+    /**
+     * The {@code <cond>} every displayName-ordered query below is given: the same scope the
+     * unordered listing uses, so ordering the list can never widen or narrow which rows it returns.
+     * Columns stay table-qualified because the serviceType variant joins {@code
+     * entity_relationship}, which has {@code json} and {@code deleted} columns of its own.
+     */
+    default String displayNameSortCondition(ListFilter filter) {
+      // Unqualified: a table prefix on the pipelineType JSON expression reads as a routine call.
+      return nullOrEmpty(filter.getQueryParam("serviceType"))
+          ? filter.getCondition()
+          : serviceTypeJoinCondition(filter);
+    }
+
+    /**
+     * The SQL for the value the Name column renders — {@code displayName} falling back to {@code
+     * name} — sorted inline. No generated column: the pipeline table is small enough (bounded by
+     * services × pipeline types plus automations) that an unindexed sort is instant, and an
+     * expression index can be added later without a schema change if a deployment ever grows.
+     * ORDER BY and the keyset comparison share this same expression, so its collation governs both
+     * and the cursor value is carried verbatim from Java.
+     */
+    default String displayNameSortExpression() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.displayName')), ''), ingestion_pipeline_entity.name)"
+          : "COALESCE(NULLIF(ingestion_pipeline_entity.json ->> 'displayName', ''), ingestion_pipeline_entity.name)";
+    }
+
+    @SqlQuery(
+        "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
+    List<String> listByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "AND (<displayExpr> <op> :afterDisplayName "
+            + "OR (<displayExpr> = :afterDisplayName "
+            + "AND ingestion_pipeline_entity.id <op> :afterId)) "
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
+    List<String> listAfterByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("afterDisplayName") String afterDisplayName,
+        @Bind("afterId") String afterId);
+
+    // Walks backwards in the reverse direction, then re-sorts the page into the requested order.
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT <displayExpr> AS sort_key, ingestion_pipeline_entity.id, "
+            + "ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
+            + "AND (<displayExpr> <op> :beforeDisplayName "
+            + "OR (<displayExpr> = :beforeDisplayName "
+            + "AND ingestion_pipeline_entity.id <op> :beforeId)) "
+            + "ORDER BY <displayExpr> <reverseOrder>, "
+            + "ingestion_pipeline_entity.id <reverseOrder> LIMIT :limit"
+            + ") last_rows_subquery ORDER BY sort_key <order>, id <order>")
+    List<String> listBeforeByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
+        @Define("order") String order,
+        @Define("reverseOrder") String reverseOrder,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("beforeDisplayName") String beforeDisplayName,
+        @Bind("beforeId") String beforeId);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {

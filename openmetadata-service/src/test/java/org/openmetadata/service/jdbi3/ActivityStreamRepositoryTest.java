@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
@@ -207,6 +208,31 @@ class ActivityStreamRepositoryTest {
     repository.insertBatch(null);
     // empty/null are no-ops
     verify(dao, times(1)).insertBatch(any());
+  }
+
+  @Test
+  void insertBatchRemovesNulCharactersFromStoredValues() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    ActivityEvent event =
+        baseEvent()
+            .withSummary("summary\u0000")
+            .withFieldName("field\u0000")
+            .withOldValue("old\u0000")
+            .withNewValue("new\u0000");
+
+    repository.insertBatch(List.of(event));
+
+    CollectionDAO.ActivityStreamRow row = captureSingleRow(dao);
+    assertEquals("summary", row.summary());
+    assertEquals("field", row.fieldName());
+    assertEquals("old", row.oldValue());
+    assertEquals("new", row.newValue());
+    ActivityEvent storedEvent = JsonUtils.readValue(row.json(), ActivityEvent.class);
+    assertEquals("summary", storedEvent.getSummary());
+    assertEquals("field", storedEvent.getFieldName());
+    assertEquals("old", storedEvent.getOldValue());
+    assertEquals("new", storedEvent.getNewValue());
   }
 
   private static CollectionDAO.ActivityStreamRow captureSingleRow(

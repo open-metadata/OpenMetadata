@@ -43,6 +43,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
@@ -55,13 +56,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -335,7 +340,10 @@ const MetricListPage = () => {
     try {
       setIsMetricActionsOpen(false);
       setIsExporting(true);
-      await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      const exportJob = await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      // Claim the just-started job so the tray always surfaces it, even if it
+      // finishes before the tray's first fetch.
+      markCsvJobOwned((exportJob as { jobId?: string })?.jobId);
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -397,6 +405,20 @@ const MetricListPage = () => {
       },
     });
   }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
+
+  const handleRowAction = useCallback(
+    (key: Key) => {
+      // React Aria fires this on row click/Enter (not on the selection checkbox,
+      // which only toggles selection). Navigate to the activated metric.
+      const metric = metrics.find((item) => item.id === key);
+      if (metric?.fullyQualifiedName) {
+        navigate(
+          getEntityDetailsPath(EntityType.METRIC, metric.fullyQualifiedName)
+        );
+      }
+    },
+    [metrics, navigate]
+  );
 
   const handleSearchTextChange = useCallback(
     (value: string | ChangeEvent<HTMLInputElement>) => {
@@ -504,11 +526,17 @@ const MetricListPage = () => {
         dataIndex: 'description',
         key: 'description',
         width: 420,
-        render: (description: string) => (
-          <p className="m-0 metric-list-description">
-            {description || emptyDash}
-          </p>
-        ),
+        render: (description: string) =>
+          description ? (
+            <RichTextEditorPreviewerV1
+              className="metric-list-description"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              showReadMoreBtn={false}
+            />
+          ) : (
+            emptyDash
+          ),
       },
       glossary: {
         title: t('label.glossary-term-plural'),
@@ -713,7 +741,7 @@ const MetricListPage = () => {
     !statusFilter;
 
   const metricEmptyState = (
-    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
           permission.Create
@@ -760,7 +788,9 @@ const MetricListPage = () => {
       pageTitle={t('label.metric-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
-        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
+        className={classNames('metric-list-page-stack', {
+          'p-b-md m-t-xs': !isAiMode,
+        })}>
         <div>
           {isAiMode ? (
             <HeaderShell
@@ -797,7 +827,10 @@ const MetricListPage = () => {
           )}
         </div>
         <div>
-          <div className="metric-list-table-card">
+          <div
+            className={`metric-list-table-card${
+              isMetricListEmpty ? ' metric-list-table-card--borderless' : ''
+            }`}>
             {isMetricListEmpty ? (
               metricEmptyState
             ) : (
@@ -812,6 +845,7 @@ const MetricListPage = () => {
                       <Button
                         className="metric-list-selection-clear"
                         color="link-gray"
+                        data-testid="clear-metric-selection"
                         iconLeading={XClose}
                         onPress={() => setSelectedMetricIds([])}>
                         {t('label.clear')}
@@ -820,12 +854,14 @@ const MetricListPage = () => {
                     <div className="metric-list-selection-actions">
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-selection-action"
+                          className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-count', {
+                            count: selectedMetricIds.length,
+                          })}
                         </Button>
                       )}
                       {permission.Delete && (
@@ -855,8 +891,8 @@ const MetricListPage = () => {
                     <div className="metric-list-toolbar-actions">
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link metric-list-status-trigger"
-                          color="link-gray"
+                          className="metric-list-toolbar-link"
+                          color="link-color"
                           iconTrailing={ChevronDown}>
                           {statusFilter
                             ? getMetricStatus(statusFilter).label
@@ -884,12 +920,12 @@ const MetricListPage = () => {
                       </Dropdown.Root>
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-all')}
                         </Button>
                       )}
                       <span
@@ -898,7 +934,7 @@ const MetricListPage = () => {
                       />
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           iconLeading={Settings01}>
                           {t('label.customize')}
@@ -987,12 +1023,14 @@ const MetricListPage = () => {
                       ),
                   }}
                   pagination={false}
+                  rowClassName="tw:cursor-pointer"
                   rowKey="id"
                   rowSelection={{
                     selectedRowKeys: selectedMetricIds,
                     onChange: setSelectedMetricIds,
                   }}
                   size="small"
+                  onRowAction={handleRowAction}
                 />
               </>
             )}

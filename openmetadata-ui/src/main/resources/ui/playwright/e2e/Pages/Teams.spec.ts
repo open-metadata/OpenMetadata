@@ -58,6 +58,7 @@ import {
   executionOnOwnerTeam,
   getNewTeamDetails,
   hardDeleteTeam,
+  openAddTeamModal,
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
@@ -192,9 +193,7 @@ test.describe('Teams Page', () => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
-      await page.getByTestId('add-team').waitFor();
-
-      await page.getByTestId('add-team').click();
+      await openAddTeamModal(page);
 
       const newTeamData = await createTeam(page, true);
 
@@ -427,9 +426,7 @@ test.describe('Teams Page', () => {
   test('Create a new public team', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page.getByTestId('add-team').waitFor();
-
-    await page.getByTestId('add-team').click();
+    await openAddTeamModal(page);
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
@@ -470,11 +467,12 @@ test.describe('Teams Page', () => {
 
     try {
       await privateTeam.create(apiContext);
+      const teamName = privateTeam.responseData.name ?? privateTeam.data.name;
+      const teamDisplayName =
+        privateTeam.responseData.displayName ?? privateTeam.data.displayName;
       const privateTeamFqn =
         privateTeam.responseData.fullyQualifiedName ??
-        `Organization.${
-          privateTeam.responseData.name ?? privateTeam.data.name
-        }`;
+        `Organization.${teamName}`;
       const createdTeamResponse = await apiContext.get(
         `/api/v1/teams/name/${encodeURIComponent(privateTeamFqn)}?include=all`
       );
@@ -492,9 +490,7 @@ test.describe('Teams Page', () => {
 
       await page
         .getByTestId('profile-teams-edit-popover')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
+        .getByText(teamDisplayName)
         .click();
 
       const patchUserPromise = page.waitForResponse(
@@ -511,12 +507,35 @@ test.describe('Teams Page', () => {
         page.getByTestId('profile-teams-edit-popover')
       ).not.toBeVisible();
 
-      await page
-        .getByTestId('user-profile-teams')
-        .getByText(
-          privateTeam.responseData.displayName ?? privateTeam.data.displayName
-        )
-        .click();
+      await waitForAllLoadersToDisappear(page);
+
+      // The teams chip only renders the first USER_DATA_SIZE entries; the rest
+      // are not in the DOM until the "+N more" tag is expanded.
+      const teamsCard = page.getByTestId('user-profile-teams');
+      const showMoreTeams = teamsCard.getByTestId('plus-more-count');
+      if (await showMoreTeams.isVisible()) {
+        await showMoreTeams.click();
+      }
+
+      const teamChip = teamsCard.getByTestId(`${teamName}-link`);
+
+      await expect(teamChip).toBeVisible();
+
+      const teamPageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await teamChip.click();
+      const teamPageResult = await teamPageResponse;
+
+      expect(teamPageResult.status()).toBe(200);
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('team-heading')).toContainText(
+        teamDisplayName
+      );
     } finally {
       await privateTeam.delete(apiContext).catch(() => undefined);
       await afterAction().catch(() => undefined);
@@ -838,6 +857,35 @@ test.describe('Teams Page', () => {
     await afterAction();
   });
 
+  test('Total User Count should update after a member is deactivated', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+    const user = new UserClass();
+
+    await user.create(apiContext);
+
+    const team = new TeamClass({
+      name: `pw-stale-count-${id}`,
+      displayName: `pw stale count ${id}`,
+      description: 'playwright team for userCount staleness',
+      teamType: 'Group',
+      users: [user.responseData.id],
+    });
+    await team.create(apiContext);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('1');
+
+    await user.delete(apiContext, false);
+
+    await team.visitTeamPage(page);
+    await expect(page.getByTestId('team-user-count')).toContainText('0');
+
+    await afterAction();
+  });
+
   test.describe('Show Deleted toggle', () => {
     let deletedTeam: TeamClass;
     let activeTeam: TeamClass;
@@ -1046,7 +1094,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('add-placeholder-button')
     ).not.toBeVisible();
     await expect(
-      dataConsumerPage.getByTestId('no-data-placeholder')
+      dataConsumerPage.getByText('No assets linked yet')
     ).toBeVisible();
 
     // Role Tab

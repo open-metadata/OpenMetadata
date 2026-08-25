@@ -15,14 +15,14 @@
 .certification-tag {
   display: flex;
   align-items: center;
-  border-radius: 16px;
-  padding: 0 8px 0 6px;
+  border-radius: var(--om-radius-2xl);
+  padding: 0 var(--om-space-8) 0 var(--om-space-6);
   height: 24px;
 
   img {
     width: 16px;
     height: 16px;
-    margin-right: 6px;
+    margin-right: var(--om-space-6);
   }
 }
 
@@ -33,8 +33,8 @@
 
 .certification-tag-with-name {
   width: fit-content;
-  border-radius: 16px;
-  padding: 4px 10px;
+  border-radius: var(--om-radius-2xl);
+  padding: var(--om-space-4) var(--om-space-10);
 
   .certification-img {
     width: 14px;
@@ -42,7 +42,7 @@
   }
 
   span.certification-text {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     max-width: 120px;
   }
 }

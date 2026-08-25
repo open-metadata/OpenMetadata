@@ -50,6 +50,7 @@ import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -150,9 +151,7 @@ const AppInstall = () => {
         }
       }
     } catch (_) {
-      showErrorToast(
-        t('message.no-application-schema-found', { appName: fqn })
-      );
+      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
     } finally {
       setIsLoading(false);
     }
@@ -318,7 +317,11 @@ const AppInstall = () => {
   return (
     <PageLayoutV1
       className="app-install-page"
-      pageTitle={t('label.application-plural')}>
+      pageTitle={
+        appData
+          ? t('label.install-entity', { entity: getEntityName(appData) })
+          : t('label.application-plural')
+      }>
       {pluginComponent ? (
         // Render plugin's custom app details component
         React.createElement(pluginComponent)

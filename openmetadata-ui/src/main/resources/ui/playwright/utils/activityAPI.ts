@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
+import { waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -27,6 +28,7 @@ export const THUMBS_UP_EMOJI = '👍';
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
 export type ActivityEventType =
+  | 'EntityCreated'
   | 'DescriptionUpdated'
   | 'OwnerUpdated'
   | 'TagsUpdated';
@@ -380,13 +382,7 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   await addReactionButton.click();
   await expect(page.locator('.ant-popover-feed-reactions')).toBeVisible();
 
-  const reactionResponse = page.waitForResponse(
-    (response) =>
-      (response.url().includes('/api/v1/activity') ||
-        response.url().includes('/api/v1/feed')) &&
-      response.url().includes(`/reaction/${THUMBS_UP_REACTION}`) &&
-      response.ok()
-  );
+  const reactionResponse = waitForReactionResponse(page, THUMBS_UP_REACTION);
 
   await page
     .locator(`[data-testid="reaction-button"][title="${THUMBS_UP_REACTION}"]`)

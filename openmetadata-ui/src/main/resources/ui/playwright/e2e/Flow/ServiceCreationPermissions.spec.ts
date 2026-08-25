@@ -111,11 +111,35 @@ const visitAgentCard = async (page: Page) => {
 
 const openPipelineActions = async (page: Page) => {
   const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
-
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
+  // every render, but the async per-FQN permission fetch can still be in
+  // flight when the menu is first opened — some items (edit-gated: redeploy,
+  // edit, pause/resume) are briefly absent. Close and reopen until the
+  // permission-gated items are present instead of polling a single stale
+  // open instance.
+  await expect
+    .poll(
+      async () => {
+        await actionButton.click();
+        await actionsDropdown.waitFor();
+        const hasReDeploy = await actionsDropdown
+          .getByTestId('re-deploy-button')
+          .isVisible()
+          .catch(() => false);
+        if (!hasReDeploy) {
+          await page.keyboard.press('Escape');
+          await actionsDropdown.waitFor({ state: 'hidden' });
+        }
+
+        return hasReDeploy;
+      },
+      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
+    )
+    .toBe(true);
 };
 
 test.describe(
@@ -645,8 +669,12 @@ test.describe(
     }) => {
       await openPipelineActions(page);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
       await expect(
         getAgentCard(page, ingestionPipelineName).getByTestId(
           'run-agent-button'

@@ -36,6 +36,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface SearchReindexDAOs {
   @CreateSqlObject
@@ -80,13 +81,13 @@ public interface SearchReindexDAOs {
     void insert(
         @Bind("id") String id,
         @Bind("status") String status,
-        @Bind("jobConfiguration") String jobConfiguration,
+        @BindJson("jobConfiguration") String jobConfiguration,
         @Bind("targetIndexPrefix") String targetIndexPrefix,
         @Bind("totalRecords") long totalRecords,
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("createdBy") String createdBy,
         @Bind("createdAt") long createdAt,
         @Bind("updatedAt") long updatedAt,
@@ -112,7 +113,7 @@ public interface SearchReindexDAOs {
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("startedAt") Long startedAt,
         @Bind("completedAt") Long completedAt,
         @Bind("updatedAt") long updatedAt,
@@ -173,7 +174,7 @@ public interface SearchReindexDAOs {
         connectionType = POSTGRES)
     void updateStagedIndexMapping(
         @Bind("id") String id,
-        @Bind("stagedIndexMapping") String stagedIndexMapping,
+        @BindJson("stagedIndexMapping") String stagedIndexMapping,
         @Bind("updatedAt") long updatedAt);
 
     @SqlUpdate("UPDATE search_index_job SET updatedAt = :updatedAt WHERE id = :id")
@@ -790,8 +791,9 @@ public interface SearchReindexDAOs {
       // Insert failed due to conflict - check if existing lock is expired
       SearchReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        // Lock is expired, delete it and retry once
-        delete(lockKey);
+        // Keep the cleanup conditional on expiration. Another server may replace the stale row
+        // between this read and the delete, and an unconditional key delete would remove its lock.
+        deleteExpiredLocks(System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }

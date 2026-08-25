@@ -20,6 +20,7 @@ import time
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from pydantic import ValidationError
@@ -179,6 +180,9 @@ from metadata.ingestion.models.tests_data import (
 )
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.ai_governance_sample import (
+    AIGovernanceSampleData,
+)
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
@@ -917,11 +921,18 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
             )
         except Exception as exc:
-            import traceback  # noqa: PLC0415
+            import traceback
 
             logger.warning(f"Drive sample data not found: {exc}")
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
+
+        # Optional, like the drive bundle above: a sampleDataFolder that predates this
+        # fixture set should cost us the AI Governance showcase, not the whole catalog.
+        self.ai_governance = AIGovernanceSampleData.load_optional(
+            Path(sample_data_folder) / "ai_governance",
+            metadata,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -935,7 +946,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
     def prepare(self):
         """Nothing to prepare"""
 
-    def _iter(self, *_, **__) -> Iterable[Entity]:
+    def _iter(self, *_, **__) -> Iterable[Either]:
         yield from self.ingest_domains()
         yield from self.ingest_data_products()
         yield from self.ingest_teams()
@@ -975,6 +986,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
+        if self.ai_governance is not None:
+            for request in self.ai_governance.iter_requests():
+                yield Either(left=None, right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""
@@ -1624,7 +1638,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Patch certification if present in the sample data
             if table.get("certification"):
                 try:
-                    from metadata.generated.schema.type.assetCertification import (  # noqa: PLC0415
+                    from metadata.generated.schema.type.assetCertification import (
                         AssetCertification,
                     )
 
@@ -2359,6 +2373,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 right=OMetaTestSuiteSample(
                     test_suite=CreateTestSuiteRequest(
                         name=test_suite["testSuiteName"],
+                        displayName=test_suite.get("testSuiteDisplayName"),
                         description=test_suite["testSuiteDescription"],
                         basicEntityReference=test_suite["executableEntityReference"],
                     )
@@ -2372,6 +2387,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         for logical_test_suite in self.logical_test_suites["tests"]:
             test_suite = CreateTestSuiteRequest(
                 name=logical_test_suite["testSuiteName"],
+                displayName=logical_test_suite.get("testSuiteDisplayName"),
                 description=logical_test_suite["testSuiteDescription"],
             )  # type: ignore
             test_cases: List[TestCase] = []  # noqa: UP006
@@ -2386,6 +2402,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
             yield Either(right=OMetaLogicalTestSuiteSample(test_suite=test_suite, test_cases=test_cases))
 
+    def _get_test_case_owners(self, test_case: dict) -> EntityReferenceList | None:
+        owners = []
+        for owner_name in test_case.get("owners", []):
+            user: User | None = self.metadata.get_by_name(User, fqn=owner_name)
+            if user:
+                owners.append(EntityReference(id=user.id.root, type="user"))  # pyright: ignore[reportCallIssue]
+        return EntityReferenceList(owners) if owners else None
+
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
         """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
@@ -2396,6 +2420,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 test_case_req = OMetaTestCaseSample(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
+                        displayName=test_case.get("displayName"),
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
@@ -2403,6 +2428,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                             TestCaseParameterValue(**param_values) for param_values in test_case["parameterValues"]
                         ],
                         useDynamicAssertion=test_case.get("useDynamicAssertion", False),
+                        owners=self._get_test_case_owners(test_case),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
@@ -2457,27 +2483,30 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_case_results in self.tests_case_results["testCaseResults"]:
             table_fqn = test_case_results.get("tableFqn", "sample_data.ecommerce_db.shopify.dim_address")
+            test_case_fqn = f"{table_fqn}.{test_case_results['name']}"
             case = self.metadata.get_by_name(
                 TestCase,
-                f"{table_fqn}.{test_case_results['name']}",
+                test_case_fqn,
                 fields=["testSuite", "testDefinition"],
             )
-            if case:
-                for days, result in enumerate(test_case_results["results"]):
-                    test_case_result_req = OMetaTestCaseResultsSample(
-                        test_case_results=TestCaseResult(
-                            timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
-                            testCaseStatus=result["testCaseStatus"],
-                            result=result["result"],
-                            testResultValue=[
-                                TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
-                            ],
-                            minBound=result.get("minBound"),
-                            maxBound=result.get("maxBound"),
-                        ),
-                        test_case_name=case.fullyQualifiedName.root,
-                    )
-                    yield Either(right=test_case_result_req)
+            if not case:
+                logger.warning(f"Test case {test_case_fqn} not found. Skipping its sample results.")
+                continue
+            for days, result in enumerate(test_case_results["results"]):
+                test_case_result_req = OMetaTestCaseResultsSample(
+                    test_case_results=TestCaseResult(
+                        timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
+                        testCaseStatus=result["testCaseStatus"],
+                        result=result["result"],
+                        testResultValue=[
+                            TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
+                        ],
+                        minBound=result.get("minBound"),
+                        maxBound=result.get("maxBound"),
+                    ),  # pyright: ignore[reportCallIssue]
+                    test_case_name=case.fullyQualifiedName.root,
+                )
+                yield Either(right=test_case_result_req, left=None)
             if test_case_results.get("failedRowsSample"):
                 self.metadata.ingest_failed_rows_sample(
                     case,

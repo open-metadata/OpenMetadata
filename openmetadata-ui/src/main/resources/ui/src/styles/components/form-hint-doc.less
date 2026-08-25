@@ -18,7 +18,7 @@
 // Scoped to the hint column so it cannot leak into other
 // RichTextEditorPreviewerV1 usages.
 .form-hint-doc {
-  font-size: 12.5px;
+  font-size: var(--om-font-size-12_5);
   line-height: 1.55;
 
   // Setting the size on this wrapper alone is NOT enough. The doc is rendered
@@ -28,13 +28,13 @@
   // 14px/20px. These selectors deliberately mirror that chain (and add
   // `.form-hint-doc`) to out-specify it; a shorter selector silently loses.
   .block-editor-wrapper .tiptap.ProseMirror {
-    font-size: 12.5px;
+    font-size: var(--om-font-size-12_5);
     line-height: 1.55;
 
     p,
     li,
     span {
-      font-size: 12.5px;
+      font-size: var(--om-font-size-12_5);
       line-height: 1.55;
     }
 
@@ -57,8 +57,8 @@
   // so styling `strong` as mono would turn prose into code.
   code {
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: var(--om-font-size-12_5);
+    font-weight: var(--om-font-weight-semibold);
     color: @grey-800;
   }
 }

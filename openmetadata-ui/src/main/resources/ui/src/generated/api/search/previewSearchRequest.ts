@@ -14,6 +14,11 @@
  * Preview Search Results
  */
 export interface PreviewSearchRequest {
+    /**
+     * Filter documents by deleted param. Defaults to false so the preview mirrors what Explore
+     * shows.
+     */
+    deleted?:     boolean;
     explain?:     boolean;
     fetchSource?: boolean;
     /**
@@ -396,6 +401,7 @@ export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
+    Prefix = "prefix",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
 }

@@ -75,7 +75,7 @@ class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDr
             connection.credentials.gcpImpersonateServiceAccount
             and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
         ):
-            from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from google.auth import (  # pylint: disable=import-outside-toplevel
                 impersonated_credentials,
             )
 

@@ -89,8 +89,24 @@
       animation: lvm-pulse 1.2s ease-in-out infinite;
     }
 
+    &--reconnecting {
+      background-color: var(--lvm-level-warn);
+      animation: lvm-pulse 1.2s ease-in-out infinite;
+    }
+
     &--done {
       background-color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-notice {
+    border-bottom: 1px solid var(--lvm-border);
+    background-color: var(--lvm-surface-2);
+    color: var(--lvm-level-warn);
+    font-size: 12px;
+
+    &--error {
+      color: var(--lvm-level-error);
     }
   }
 
@@ -289,7 +305,7 @@
   }
 
   .lvm-log-level {
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
 
     &--info {
       color: var(--lvm-level-info);

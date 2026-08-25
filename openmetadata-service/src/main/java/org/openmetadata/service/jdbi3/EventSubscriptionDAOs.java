@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface EventSubscriptionDAOs {
   @CreateSqlObject
@@ -75,7 +76,7 @@ public interface EventSubscriptionDAOs {
         @Bind("id") String id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -93,7 +94,7 @@ public interface EventSubscriptionDAOs {
     void upsertFailedEvent(
         @Bind("id") String id,
         @Bind("extension") String extension,
-        @Bind("json") String json,
+        @BindJson("json") String json,
         @Bind("source") String source);
 
     // Batch insert for successful events - reduces connection pool contention
@@ -137,8 +138,6 @@ public interface EventSubscriptionDAOs {
       return result;
     }
 
-    // Batch insert for successful events - reduces connection pool contention
-    // from N connections to 1 when processing multiple events
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
@@ -156,7 +155,7 @@ public interface EventSubscriptionDAOs {
     void batchUpsertSuccessfulChangeEventsInternal(
         @Bind("change_event_id") List<String> changeEventIds,
         @Bind("event_subscription_id") List<String> eventSubscriptionIds,
-        @Bind("json") List<String> jsonList,
+        @BindJson("json") List<String> jsonList,
         @Bind("timestamp") List<Long> timestamps);
 
     @SqlQuery(

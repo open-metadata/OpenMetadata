@@ -11,9 +11,61 @@
 
 name: PostgreSQL PR RDF E2E Tests
 on:
+  merge_group:
   workflow_dispatch:
+  # Same-repo PRs run under pull_request — unprivileged. Merges come
+  # from merge_group above, full dispatch runs from workflow_dispatch.
   pull_request:
     types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - ".github/actions/setup-openmetadata-test-environment/action.yml"
+      - ".github/workflows/playwright-knowledge-graph-postgresql-e2e.yml"
+      - "docker/run_local_docker.sh"
+      - "docker/run_local_docker_common.sh"
+      - "docker/run_local_docker_rdf.sh"
+      - "docker/validate_compose.py"
+      - "docker/development/docker-compose-fuseki.yml"
+      - "docker/development/docker-compose-postgres-fuseki.yml"
+      - "docs/rdf-local-development.md"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/rdf/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx"
+  # Fork PRs need cloud-connector secrets that pull_request events cannot
+  # access on forks. pull_request_target runs in the base repo's context
+  # so those secrets resolve, but requires a maintainer to apply the
+  # "safe to test" label first (enforced by the gate job below). Same-repo
+  # PRs already ran under pull_request above; the gate short-circuits on
+  # them via the head-repo check. Same paths filter as pull_request so
+  # the trigger stays scoped to RDF/ontology work.
+  pull_request_target:
+    types:
+      - labeled
       - opened
       - synchronize
       - reopened
@@ -57,18 +109,107 @@ permissions:
   contents: read
 
 concurrency:
-  group: playwright-rdf-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  # Include event_name in the group so pull_request and pull_request_target
+  # runs on the same PR don't cancel each other — one gates false and skips,
+  # the other does the real work; sharing a group would let the "skip" event
+  # cancel an in-flight real run.
+  group: playwright-rdf-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  build:
+  # Fork-vs-same-repo PR arbitration. Same pattern as
+  # playwright-postgresql-e2e.yml (established by #30485):
+  #   merge_group / workflow_dispatch → always run
+  #   drafts                          → never run
+  #   labeled event with label != "safe to test" → skip
+  #   same-repo PR + pull_request     → run
+  #   fork PR + pull_request_target + "safe to test" (reconciled) → run
+  #   everything else                 → skip
+  gate:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    permissions:
+      checks: read
+      contents: read
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      # Team Label atomically removes stale fork approval on synchronize and
+      # re-adds it only for allowlisted authors. Wait for that reconciliation
+      # instead of relying on another labeled event: GITHUB_TOKEN label writes
+      # intentionally do not trigger a new workflow run.
+      - name: Wait for fork label reconciliation
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Read reconciled fork labels
+        id: fork-labels
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          labels=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}" \
+            --jq '[.labels[].name] | @json')
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
+
+      - name: Compute gate decision
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+          LABELS_JSON: ${{ steps.fork-labels.outputs.labels || toJSON(github.event.pull_request.labels.*.name) }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          decide() { echo "should_run=$1" >> "$GITHUB_OUTPUT"; exit 0; }
+          case "$EVENT" in
+            merge_group|workflow_dispatch) decide true ;;
+          esac
+          if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
+          if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
+          if [[ "$HEAD_REPO" == "$BASE_REPO" ]]; then
+            if [[ "$EVENT" == "pull_request" ]]; then decide true; else decide false; fi
+          fi
+          # Fork PR — pull_request_target must fire and the reconciled labels
+          # for the current head SHA must include "safe to test".
+          if [[ "$EVENT" == "pull_request_target" ]] && \
+             echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
+            decide true
+          fi
+          decide false
+
+  build:
+    needs: gate
+    runs-on: ubuntu-latest
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          # pull_request_target runs in the base repo's context, so
+          # github.sha is the base tip. Explicitly check out the fork's
+          # PR head SHA under that event so we test the PR's code, not
+          # the base. actions/checkout@v7 refuses this by default under
+          # pull_request_target — allow-unsafe-pr-checkout: true opts in;
+          # build/test steps below run inside docker containers so the
+          # fork code cannot exfiltrate GITHUB_TOKEN or secrets.
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Setup JDK 21
         uses: actions/setup-java@v5
@@ -87,6 +228,18 @@ jobs:
       - name: Install antlr cli
         run: sudo make install_antlr_cli
 
+      - name: Restore openmetadata-ui dist cache
+        # Skip cache on fork-PR-via-pull_request_target: that combination
+        # runs base-branch privileged with untrusted checked-out code, so a
+        # cache save would poison the default-branch cache scope (CodeQL
+        # `actions/actions/cache-poisoning`). The same guard lives inside
+        # the composite action as defence in depth, but CodeQL is a static
+        # analyser and needs to see it here at the workflow level.
+        if: >-
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+
       - name: Build with Maven
         run: mvn -DskipTests clean package
 
@@ -99,10 +252,19 @@ jobs:
           retention-days: 1
 
   playwright-rdf-postgresql:
-    name: Playwright RDF (Knowledge Graph + Ontology)
-    needs: [build]
+    # Internal display name only. The required-check status
+    # `Playwright RDF (Knowledge Graph + Ontology)` is published by the
+    # `playwright-rdf-summary` job below (which uses a dynamic name
+    # expression), so a redundant sibling event's synthetic-green cannot
+    # satisfy branch protection before the real pipeline finishes.
+    name: RDF Playwright execution
+    needs: [gate, build]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+    # The previous fork short-circuit (`!github.event.pull_request.head.repo.fork`)
+    # is now handled by the gate — fork PRs only reach this point when
+    # pull_request_target fires AND the reconciled labels include
+    # "safe to test", so it is safe to run the pipeline with secrets.
+    if: ${{ !cancelled() && needs.gate.outputs.should_run == 'true' && needs.build.result == 'success' }}
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -117,9 +279,11 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          # Same head.sha vs base.sha routing as the build job above.
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Prepare temporary distribution directory
         run: mkdir -p "${{ runner.temp }}/openmetadata-distribution"
@@ -244,3 +408,76 @@ jobs:
           docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
           docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
           sudo rm -rf "${PWD}/docker/development/docker-volume"
+
+  # Publishes the required branch-protection check name
+  # `Playwright RDF (Knowledge Graph + Ontology)` ONLY when this run is
+  # authorised by the gate. Every other case (redundant sibling event
+  # for a same-repo PR, fork PR without safe-to-test, draft, spurious
+  # non-safe-to-test labeled event) publishes a differently-named check
+  # so branch protection can distinguish "authoritative for this PR
+  # shape" from "synthetic green / skipped". Without this, GitHub's
+  # protection UI picks the most-recently-completed run of the required
+  # name — and the pull_request_target sibling of a same-repo PR would
+  # finish in ~15s with a green skip while the real pull_request run is
+  # still compiling, making the PR appear mergeable before tests run.
+  #
+  # Decision tree (mirrors the gate + playwright-postgresql-e2e.yml
+  # pattern from #30476):
+  #   gate succeeds with should_run=true              → 'Playwright RDF (Knowledge Graph + Ontology)'
+  #   gate fails (crash / cancelled)                   → 'Playwright RDF (Knowledge Graph + Ontology)' + hard fail
+  #   labeled event with non-'safe to test' label     → '... (label ignored)'
+  #   gate succeeds with should_run=false              → '... (skipped)'
+  playwright-rdf-summary:
+    name: >-
+      ${{
+        (
+          needs.gate.result != 'success'
+          || needs.gate.outputs.should_run == 'true'
+        )
+        && 'Playwright RDF (Knowledge Graph + Ontology)'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'Playwright RDF (Knowledge Graph + Ontology) (label ignored)'
+          || 'Playwright RDF (Knowledge Graph + Ontology) (skipped)'
+        )
+      }}
+    if: ${{ always() && !cancelled() }}
+    needs: [gate, build, playwright-rdf-postgresql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green.
+      # Without this guard, `should_run != 'true'` on an unset output
+      # would fall into the label-ignored/skipped branch above and mask
+      # the gate failure.
+      - name: Guard against missing gate decision
+        if: ${{ needs.gate.result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green."
+          exit 1
+
+      # Short-circuit when gate decided should_run=false. The underlying
+      # jobs are skipped in that case (redundant pull_request_target for
+      # a same-repo PR, or fork PR without safe-to-test), so there's
+      # nothing to summarise. The dynamic job name above already routes
+      # this run to a non-required check name; this step just keeps the
+      # job outcome at ✅.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative required check comes from the sibling event's run."
+
+      # Propagate real upstream failures under the required check name
+      # so the PR fails visibly rather than falling through to green.
+      - name: Fail on upstream failure
+        if: |
+          needs.gate.outputs.should_run == 'true' && (
+            needs.build.result != 'success' ||
+            needs.playwright-rdf-postgresql.result != 'success'
+          )
+        run: |
+          echo "::error::Upstream job failure — build=${{ needs.build.result }}, execution=${{ needs.playwright-rdf-postgresql.result }}."
+          exit 1

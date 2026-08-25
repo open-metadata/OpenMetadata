@@ -38,6 +38,7 @@ import {
 
 export interface TableDetailPageTabProps {
   queryCount: number;
+  isQueryCountLoading: boolean;
   isTourOpen: boolean;
   activeTab: EntityTabs;
   feedCount: FeedCounts;
@@ -302,7 +303,7 @@ class TableClassBase {
       CUSTOM_PROPERTIES_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-        name: i18n.t('label.knowledge-page-plural'),
+        name: i18n.t('label.article-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

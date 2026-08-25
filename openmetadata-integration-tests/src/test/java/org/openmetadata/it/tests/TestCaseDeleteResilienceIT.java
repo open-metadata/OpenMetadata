@@ -17,9 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -32,11 +34,16 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
@@ -64,6 +71,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
  *   <li><b>Test-definition delete confirmation:</b> deleting a test definition that still has test
  *       cases is blocked with a counted message unless {@code recursive=true}, in which case it
  *       cascade-deletes the test cases.
+ *   <li><b>Residual sweep on the bulk cascade:</b> a recursive service hard delete reaps a test
+ *       case whose suite chain is broken, via {@code TableRepository.entitySpecificCleanup}. That
+ *       hook was unreachable while the bulk path looped the no-arg overload, so the cascade left
+ *       orphans behind — and every later Data Quality listing that included one answered 404,
+ *       because {@code PIIMasker.getTestCases} resolves each row's table. The listing's own
+ *       tolerance for a dangling entityLink is covered by {@code PIIMaskerTest}: staging a real
+ *       orphan here would need the table gone from the entity caches too, which no API sequence
+ *       leaves behind once this sweep runs.
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -134,6 +149,41 @@ public class TestCaseDeleteResilienceIT {
   }
 
   @Test
+  void recursiveServiceHardDelete_withBrokenSuiteChain_sweepsResidualTestCase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = createDatabaseService(ns);
+    Table table = createTable(ns, "resid", service.getFullyQualifiedName());
+    TestCase testCase = createSystemTestCase(table, "residCase_" + ns.uniqueShortId());
+    UUID testCaseId = testCase.getId();
+
+    // Break the table -> basic suite -> test case CONTAINS chain the cascade walks, leaving the
+    // test case reachable only through its entityLink. This is the state TableRepository's residual
+    // sweep exists for: legacy data, an earlier partial-failure cascade, or a test case linked only
+    // to a logical suite. Drop the suite -> case edge rather than the table -> suite edge so the
+    // cascade still reaps the basic suite and never leaves one whose table is gone — that state
+    // breaks concurrent GET /testSuites listings.
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .deleteTo(testCaseId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+
+    client
+        .databaseServices()
+        .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    // Pre-fix the bulk path looped the no-arg entitySpecificCleanup overload while TableRepository
+    // overrides only the deletedBy-aware one, so this residual test case outlived the cascade and
+    // every later Data Quality listing that happened to include it answered 404.
+    // The cascade runs inside the DELETE request, but poll briefly rather than asserting straight
+    // through: BaseServiceIT's shared regression treats service subtree deletion as asynchronous.
+    Awaitility.await("residual test case swept by the recursive service cascade")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> assertEquals(0, countById("test_case", testCaseId), "test_case row removed"));
+    assertEquals(0, countRelationshipRows(testCaseId), "all entity_relationship rows removed");
+  }
+
+  @Test
   void deleteTestDefinition_nonRecursive_blockedWithDependentCount(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     TestDefinition testDefinition = createCustomTableTestDefinition(ns);
@@ -200,15 +250,16 @@ public class TestCaseDeleteResilienceIT {
   }
 
   private Table createTable(TestNamespace ns, String prefix) {
+    return createTable(ns, prefix, SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName());
+  }
+
+  private Table createTable(TestNamespace ns, String prefix, String serviceFqn) {
     OpenMetadataClient client = SdkClients.adminClient();
     String id = ns.uniqueShortId();
     Database database =
         client
             .databases()
-            .create(
-                new CreateDatabase()
-                    .withName(prefix + "Db_" + id)
-                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+            .create(new CreateDatabase().withName(prefix + "Db_" + id).withService(serviceFqn));
     DatabaseSchema schema =
         client
             .databaseSchemas()
@@ -224,6 +275,21 @@ public class TestCaseDeleteResilienceIT {
                 .withDatabaseSchema(schema.getFullyQualifiedName())
                 .withColumns(
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+  }
+
+  private DatabaseService createDatabaseService(TestNamespace ns) {
+    MysqlConnection connection =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test")
+            .withAuthType(new basicAuth().withPassword("test"));
+    return SdkClients.adminClient()
+        .databaseServices()
+        .create(
+            new CreateDatabaseService()
+                .withName(ns.prefix("residSvc"))
+                .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+                .withConnection(new DatabaseConnection().withConfig(connection)));
   }
 
   private TestCase createSystemTestCase(Table table, String name) {

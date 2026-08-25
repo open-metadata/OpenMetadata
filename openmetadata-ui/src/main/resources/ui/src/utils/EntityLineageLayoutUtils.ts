@@ -12,7 +12,6 @@
  */
 
 import { graphlib, layout } from '@dagrejs/dagre';
-import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { Edge, Node, ReactFlowInstance } from 'reactflow';
 import { Position } from 'reactflow';
 import type { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -24,10 +23,6 @@ import {
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import { EntityLineageDirection } from '../enums/entity.enum';
-import { useLineageStore } from '../hooks/useLineageStore';
-import { getNodeHeight } from './CanvasUtils';
-import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
-import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
 
 interface LayoutedElements {
   node: Array<Node & { nodeHeight: number }>;
@@ -99,70 +94,6 @@ export const getLayoutedElements = (
   });
 
   return { node: uNode, edge: edgesRequired };
-};
-
-export const getELKLayoutedElements = async (
-  nodes: Node[],
-  edges: Edge[],
-  columnsHavingLineage: Map<string, Set<string>> = new Map()
-) => {
-  const { nodeFilterState, isColumnLevelLineage, isEditMode } =
-    useLineageStore.getState();
-  const elkNodes: ElkNode[] = nodes.map((node) => {
-    const isColumnOnlyFilterActive =
-      (isColumnLevelLineage || nodeFilterState.get(node.id)) ?? false;
-    const columns = isEditMode
-      ? getEntityChildrenAndLabel(node.data.node).children.length
-      : columnsHavingLineage.get(node.id)?.size ?? 0;
-
-    const nodeHeight = getNodeHeight(node, isColumnOnlyFilterActive, columns);
-
-    return {
-      id: node.id,
-      width: NODE_WIDTH,
-      height: nodeHeight,
-    };
-  });
-
-  const elkEdges: ElkExtendedEdge[] = edges.map((edge) => ({
-    id: edge.id,
-    sources: [edge.source],
-    targets: [edge.target],
-  }));
-
-  try {
-    const layoutedGraph = await ELKLayout.layoutGraph(elkNodes, elkEdges);
-    const layoutedMap = new Map(
-      (layoutedGraph?.children ?? []).map((n) => [n.id, n])
-    );
-    const updatedNodes: Node[] = nodes.map((node) => {
-      const layoutedNode = layoutedMap.get(node.id);
-
-      return {
-        ...node,
-        position: { x: layoutedNode?.x ?? 0, y: layoutedNode?.y ?? 0 },
-        height: layoutedNode?.height ?? node.height,
-        hidden: false,
-      };
-    });
-
-    return { nodes: updatedNodes, edges: edges ?? [] };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error occurred while layouting graph:', error);
-
-    return { nodes: [], edges: [] };
-  }
-};
-
-export const positionNodesUsingElk = async (
-  nodes: Node[],
-  edges: Edge[],
-  columnsHavingLineage: Map<string, Set<string>>
-) => {
-  const obj = await getELKLayoutedElements(nodes, edges, columnsHavingLineage);
-
-  return obj;
 };
 
 export const getNodesBoundsReactFlow = (nodes: Node[]) => {

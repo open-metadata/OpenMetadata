@@ -15,13 +15,13 @@
 .description-source-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: var(--om-space-4);
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-semibold);
   line-height: 1;
   cursor: default;
   white-space: nowrap;
-  transition: filter 0.15s ease;
+  transition: filter var(--om-duration-150) ease;
 
   svg {
     flex-shrink: 0;
@@ -54,11 +54,11 @@
 .description-source-container {
   display: inline-flex;
   align-items: self-start;
-  gap: 8px;
+  gap: var(--om-space-8);
   flex-wrap: nowrap;
 
   .description-source-icon {
-    margin-right: 4px;
+    margin-right: var(--om-space-4);
     display: flex;
   }
 }
@@ -67,15 +67,15 @@
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--om-space-6);
 }
 
 .description-source-text {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  gap: var(--om-space-4);
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-medium);
 
   .actor-username {
     max-width: 90px;
@@ -84,12 +84,12 @@
 
 .description-source-separator {
   color: @grey-400;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   line-height: 1;
 }
 
 .description-source-time {
   color: @grey-500;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-medium);
 }

@@ -708,6 +708,9 @@ class ElasticSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
@@ -750,6 +753,9 @@ class ElasticSearchBulkSinkBehaviorTest {
   void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
@@ -786,6 +792,9 @@ class ElasticSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     EmbeddingClient embeddingClient = mock(EmbeddingClient.class);

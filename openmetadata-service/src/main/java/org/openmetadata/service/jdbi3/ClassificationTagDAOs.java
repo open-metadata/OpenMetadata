@@ -59,6 +59,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,7 +217,8 @@ public interface ClassificationTagDAOs {
                 + "'recognizers', :recognizers::jsonb "
                 + ")::jsonb WHERE json->>'fullyQualifiedName' = :tagFqn",
         connectionType = POSTGRES)
-    void patchRecognizers(@Bind("tagFqn") String tagFqn, @Bind("recognizers") String recognizers);
+    void patchRecognizers(
+        @Bind("tagFqn") String tagFqn, @BindJson("recognizers") String recognizers);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -238,7 +240,7 @@ public interface ClassificationTagDAOs {
         @Bind("state") int state,
         @Bind("reason") String reason,
         @Bind("appliedBy") String appliedBy,
-        @Bind("metadata") String metadata);
+        @BindJson("metadata") String metadata);
 
     default void applyTag(
         int source,
@@ -519,6 +521,13 @@ public interface ClassificationTagDAOs {
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQN LIKE :tagFQNPrefix AND targetFQNHash = :targetFQNHash")
     void deleteTagsByPrefixAndTarget(
+        @Bind("source") int source,
+        @Bind("tagFQNPrefix") String tagFQNPrefix,
+        @BindFQN("targetFQNHash") String targetFQNHash);
+
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE targetFQNHash = :targetFQNHash AND NOT (source = :source AND tagFQN LIKE :tagFQNPrefix)")
+    void deleteTagsByTargetExcludingPrefix(
         @Bind("source") int source,
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindFQN("targetFQNHash") String targetFQNHash);
@@ -1091,7 +1100,7 @@ public interface ClassificationTagDAOs {
         @Bind("state") List<Integer> states,
         @Bind("reason") List<String> reasons,
         @Bind("appliedBy") List<String> appliedBys,
-        @Bind("metadata") List<String> metadataList);
+        @BindJson("metadata") List<String> metadataList);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -1153,37 +1162,6 @@ public interface ClassificationTagDAOs {
     @SqlQuery("SELECT COUNT(*) FROM tag_usage")
     long getTotalTagUsageCount();
 
-    // Keyset pagination over the unique (source, tagFQNHash, targetFQNHash) key. The expanded
-    // OR form is required on MySQL — its optimizer turns it into an index range seek, whereas a
-    // row-constructor comparison scans the whole index from the start (verified via
-    // Handler_read_next). Postgres seeks optimally with the row-constructor (Index Only Scan).
-    // The tagFQNHash/targetFQNHash columns are nullable, and comparing a cursor against a NULL hash
-    // yields UNKNOWN — which would silently terminate the scan and skip the remaining rows once the
-    // cursor lands on a NULL-hash row (MySQL sorts NULLs first, so this is reachable early).
-    // Excluding
-    // NULL hashes here keeps the cursor on real keys (preserving the index seek) and makes both
-    // engine
-    // forms scan an identical row set regardless of their differing NULL ordering; the rare
-    // malformed
-    // NULL-hash rows are swept separately via getTagUsagesWithNullHash.
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
-                + "FROM tag_usage "
-                + "WHERE (source > :lastSource "
-                + "OR (source = :lastSource AND tagFQNHash > :lastTagFQNHash) "
-                + "OR (source = :lastSource AND tagFQNHash = :lastTagFQNHash AND targetFQNHash > :lastTargetFQNHash)) "
-                + "AND tagFQNHash IS NOT NULL AND targetFQNHash IS NOT NULL "
-                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata "
-                + "FROM tag_usage "
-                + "WHERE (source, tagFQNHash, targetFQNHash) > (:lastSource, :lastTagFQNHash, :lastTargetFQNHash) "
-                + "AND tagFQNHash IS NOT NULL AND targetFQNHash IS NOT NULL "
-                + "ORDER BY source, tagFQNHash, targetFQNHash LIMIT :limit",
-        connectionType = POSTGRES)
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getTagUsagesAfter(
         @Bind("lastSource") int lastSource,

@@ -38,6 +38,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface WorkflowDocStoreDAOs {
@@ -488,7 +489,7 @@ public interface WorkflowDocStoreDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @Bind("json") String json);
+    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE suggestions SET json = :json where id = :id",
@@ -496,7 +497,7 @@ public interface WorkflowDocStoreDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE suggestions SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
@@ -691,7 +692,7 @@ public interface WorkflowDocStoreDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO recognizer_feedback_entity(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
@@ -702,7 +703,7 @@ public interface WorkflowDocStoreDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE recognizer_feedback_entity SET json = :json :: jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE entityLink = :entityLink")
     List<String> findByEntityLink(@Bind("entityLink") String entityLink);

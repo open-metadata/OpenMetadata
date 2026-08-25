@@ -71,6 +71,14 @@
       "description": "Callback URL",
       "type": "string"
     },
+    "additionalTrustedRedirectUris": {
+      "title": "Additional Trusted Redirect URIs",
+      "description": "Additional redirect URIs allowed for the login flow, beyond the callback URL and the server's own callbacks. Each entry must exactly match the requested redirect URI (scheme, host, port, path, query). Use this to allow browser-extension login redirects such as 'https://<extension-id>.chromiumapp.org/<path>'.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "jwtPrincipalClaims": {
       "title": "Jwt Principal Claims",
       "description": "Jwt Principal Claim",

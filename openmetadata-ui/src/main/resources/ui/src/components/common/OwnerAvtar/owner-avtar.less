@@ -18,8 +18,8 @@
 
 .multi-team-container {
   background-color: @grey-9;
-  border-radius: 16px;
-  padding: 4px 12px;
+  border-radius: var(--om-radius-2xl);
+  padding: var(--om-space-4) var(--om-space-12);
 }
 
 .avatar-group {
@@ -28,13 +28,13 @@
   flex-direction: row;
 
   .owner-avatar-container {
-    margin-left: -4px;
-    transition: transform 0.2s;
+    margin-left: calc(-1 * var(--om-space-4));
+    transition: transform var(--om-duration-200);
 
     &:not(.is-compact-view) {
       &:hover {
         transform: translateY(-2px);
-        z-index: 20 !important;
+        z-index: var(--om-z-20) !important;
       }
     }
   }
@@ -55,7 +55,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2px;
+    padding: var(--om-space-2);
 
     svg {
       color: @primary-heading-color;

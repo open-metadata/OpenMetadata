@@ -62,7 +62,7 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
@@ -337,12 +337,15 @@ jobs:
     - name: Slack on Failure
       if: ${{ always() && !cancelled() && env.DEBUG == 'false' && failure() }}
       continue-on-error: true
-      uses: slackapi/slack-github-action@v4
+      uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
       with:
-        webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        webhook-type: incoming-webhook
+        method: chat.postMessage
+        token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+        # Keep on — the action discards Slack API errors by default.
+        errors: true
         payload: |
           {
+            "channel": "C03EYBDDX17",
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 
@@ -373,7 +376,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v6

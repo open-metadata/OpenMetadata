@@ -18,24 +18,24 @@
 
 .block-menu {
   max-height: 300px;
-  padding: 12px 0px;
+  padding: var(--om-space-12) 0;
   background-color: var(--tw-color-bg-primary);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--om-space-4);
 
   .action {
     background: none;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--om-space-8);
     border: none;
-    padding: 4px 12px;
+    padding: var(--om-space-4) var(--om-space-12);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--om-duration-200);
 
     &:disabled {
       cursor: not-allowed;
@@ -53,7 +53,7 @@
 
     .action-name {
       font-family: inherit;
-      font-size: 0.95rem;
+      font-size: var(--om-font-size-15_2);
     }
   }
 }

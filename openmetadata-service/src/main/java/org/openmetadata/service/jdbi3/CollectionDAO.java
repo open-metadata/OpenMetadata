@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface CollectionDAO
     extends CoreRelationshipDAOs,
@@ -95,7 +96,7 @@ public interface CollectionDAO
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO asset_entity (json, fqnHash) VALUES (:json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
-    void insert(@BindFQN("fqnHash") String fqnHash, @Bind("json") String json);
+    void insert(@BindFQN("fqnHash") String fqnHash, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE asset_entity SET json = :json WHERE id = :id",
@@ -103,7 +104,7 @@ public interface CollectionDAO
     @ConnectionAwareSqlUpdate(
         value = "UPDATE asset_entity SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("json") String json, @Bind("id") String id);
+    void update(@BindJson("json") String json, @Bind("id") String id);
 
     @SqlQuery("SELECT json FROM asset_entity WHERE id = :id")
     String getById(@Bind("id") String id);

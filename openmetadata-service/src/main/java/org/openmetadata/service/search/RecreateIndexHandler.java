@@ -9,5 +9,17 @@ import java.util.Set;
 public interface RecreateIndexHandler {
   ReindexContext reCreateIndexes(Set<String> entities);
 
-  default void finalizeReindex(EntityReindexContext entityReindexContext, boolean reindexSuccess) {}
+  /**
+   * Promote the staged index for an entity to serve live traffic.
+   *
+   * @return {@code true} when the entity reached a correct terminal serving state (staged index
+   *     promoted, or an empty staged index intentionally discarded); {@code false} when promotion
+   *     failed (e.g. the alias swap failed or threw) and the entity must be retried. Callers use
+   *     this to keep the entity eligible for the finalization retry rather than silently leaving it
+   *     on a stale index.
+   */
+  default boolean finalizeReindex(
+      EntityReindexContext entityReindexContext, boolean reindexSuccess) {
+    return true;
+  }
 }

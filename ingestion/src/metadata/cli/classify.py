@@ -38,7 +38,7 @@ def run_classification(config_path: Path) -> None:
     config_dict = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.workflow.classification import AutoClassificationWorkflow  # noqa: PLC0415
+        from metadata.workflow.classification import AutoClassificationWorkflow
 
         config_dict = load_config_file(config_path)
         logger.debug("Using workflow config:\n%s", redacted_config(config_dict))

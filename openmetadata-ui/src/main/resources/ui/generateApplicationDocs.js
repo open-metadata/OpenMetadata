@@ -80,8 +80,14 @@ const generateMarkdown = (schema) => {
 
   if (schema.properties) {
     for (const [key, prop] of Object.entries(schema.properties)) {
-      if (prop.type === 'array') {
-        markdown += processProperty(key, prop.items, schema);
+      // An array's own title/description document the field; only arrays of objects need their
+      // item properties expanded. Passing prop.items unconditionally dropped both.
+      if (prop.type === 'array' && prop.items && prop.items.properties) {
+        markdown += processProperty(
+          key,
+          { ...prop, properties: prop.items.properties },
+          schema
+        );
       } else {
         markdown += processProperty(key, prop, schema);
       }

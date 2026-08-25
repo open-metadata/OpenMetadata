@@ -367,8 +367,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    await getResourceLimit('bot', true, true);
-    await reloadBotMap();
+    await Promise.all([getResourceLimit('bot', true, true), reloadBotMap()]);
     fetchBots(showDeleted);
   }, [selectedUser, reloadBotMap]);
 
@@ -441,6 +440,7 @@ const BotListV1 = ({
             size="small"
             onClick={handleShowDeletedBots}
           />
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
           <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
         </Space>
       </Col>
@@ -482,6 +482,7 @@ const BotListV1 = ({
               id="switch-deleted"
               onClick={handleShowDeletedBots}
             />
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 

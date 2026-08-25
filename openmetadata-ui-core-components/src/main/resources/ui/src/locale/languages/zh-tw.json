@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "關閉",
+    "close-navigation-menu": "關閉導覽選單",
+    "copy-link": "複製連結",
+    "current-page": "目前頁面",
+    "date-range-picker": "日期範圍選擇器",
+    "delete": "刪除",
+    "edit": "編輯",
+    "expand-navigation-menu": "展開導覽選單",
+    "field-documentation": "欄位文件",
+    "hidden-breadcrumbs": "隱藏的階層路徑",
+    "loading": "載入中…",
+    "next-page": "前往下一頁",
+    "open-menu": "開啟選單",
+    "page": "頁面",
+    "pagination": "分頁",
+    "pagination-navigation": "分頁導覽",
+    "previous-page": "前往上一頁",
+    "records": "記錄",
+    "remove-filter": "移除篩選器",
+    "select-dates": "選取日期",
+    "show-hidden-breadcrumbs": "顯示隱藏的階層路徑",
+    "today": "今天"
+  }
+}

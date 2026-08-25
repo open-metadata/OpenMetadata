@@ -16,45 +16,45 @@
   border-bottom: solid;
   border-bottom-width: 0.6px;
   border-color: @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   .domains-header {
     display: flex;
-    gap: 8px;
+    gap: var(--om-space-8);
     align-items: center;
-    margin-bottom: 12px;
-    padding-left: 14px;
-    padding-right: 14px;
+    margin-bottom: var(--om-space-12);
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
     .domains-title {
-      font-weight: 600;
-      font-size: 13px;
+      font-weight: var(--om-font-weight-semibold);
+      font-size: var(--om-font-size-13);
       color: @grey-900;
     }
   }
 
   .domains-content {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
 
     .no-data-placeholder {
       color: @grey-500;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
 
     .domains-display {
       .domains-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: var(--om-space-8);
 
         .domain-item {
           display: flex;
           align-items: center;
           height: 26px;
           border: 1px solid @grey-40;
-          border-radius: 6px !important;
+          border-radius: var(--om-radius-md) !important;
           background-color: var(--tw-color-bg-primary);
           min-width: 0;
-          transition: all 0.2s ease;
+          transition: all var(--om-duration-200) ease;
           overflow: hidden;
 
           .domain-card-bar {
@@ -64,20 +64,20 @@
             align-items: center;
             width: 100%;
             min-width: 0;
-            padding-top: 3px;
-            padding-bottom: 3px;
+            padding-top: var(--om-space-3);
+            padding-bottom: var(--om-space-3);
 
             .domain-card-content {
               display: flex;
               align-items: center;
               width: 100%;
               min-width: 0;
-              gap: 4px;
+              gap: var(--om-space-4);
 
               .domain-card-icon {
                 width: 14px;
                 height: 14px;
-                border-radius: 2px;
+                border-radius: var(--om-radius-xs);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -90,8 +90,8 @@
               }
 
               .domain-name {
-                font-size: 12px;
-                font-weight: 400;
+                font-size: var(--om-font-size-xs);
+                font-weight: var(--om-font-weight-regular);
                 color: @grey-700;
                 white-space: nowrap;
                 overflow: hidden;
@@ -111,10 +111,10 @@
           background-color: transparent;
           border: none;
           color: @primary-7;
-          font-size: 12px;
-          font-weight: 400;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all var(--om-duration-200) ease;
 
           &:hover {
             text-decoration: underline;
@@ -136,7 +136,7 @@
   }
   .domain-select-popover {
     .ant-popover-inner {
-      border-radius: 16px !important;
+      border-radius: var(--om-radius-2xl) !important;
     }
   }
 }

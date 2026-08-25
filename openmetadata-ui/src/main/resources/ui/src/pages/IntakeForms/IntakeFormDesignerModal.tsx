@@ -32,10 +32,14 @@ import { CreateIntakeForm } from '../../generated/api/governance/createIntakeFor
 import { CustomProperty } from '../../generated/entity/type';
 import {
   FieldKind,
-  RequiredField,
+  IntakeFormField,
   TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
+import {
+  getIntakeFormFields,
+  toLegacyRequiredFields,
+} from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
@@ -45,9 +49,10 @@ interface FieldRow {
   path: string;
   label: string;
   kind: FieldKind;
-  selected: boolean;
+  included: boolean;
+  required: boolean;
   errorMessage?: string;
-  // True when this row corresponds to a previously-required custom property
+  // True when this row corresponds to a previously-included custom property
   // whose definition is no longer in the current metadata-type lookup —
   // shown so the admin can deselect it deliberately instead of losing the
   // constraint silently on save.
@@ -121,8 +126,8 @@ const IntakeFormDesignerModal = ({
   useEffect(() => {
     const natives: IntakeFormNativeField[] =
       intakeFormClassBase.getNativeFields(entityType);
-    const existingSelections = new Map<string, RequiredField>(
-      (initialValue?.requiredFields ?? []).map((rf) => [rf.fieldPath, rf])
+    const existingSelections = new Map<string, IntakeFormField>(
+      getIntakeFormFields(initialValue).map((field) => [field.fieldPath, field])
     );
 
     const nativeRows: FieldRow[] = natives.map((nf) => {
@@ -132,7 +137,8 @@ const IntakeFormDesignerModal = ({
         path: nf.path,
         label: t(nf.labelKey),
         kind: FieldKind.Native,
-        selected: Boolean(existing),
+        included: true,
+        required: Boolean(existing?.required),
         errorMessage: existing?.errorMessage,
       };
     });
@@ -148,16 +154,17 @@ const IntakeFormDesignerModal = ({
         path,
         label: cp.displayName ?? cp.name ?? path,
         kind: FieldKind.CustomProperty,
-        selected: Boolean(existing),
+        included: Boolean(existing),
+        required: Boolean(existing?.required),
         errorMessage: existing?.errorMessage,
       };
     });
 
-    // Preserve previously-required custom-property fields whose definition is
+    // Preserve previously-included custom-property fields whose definition is
     // missing from the current metadata-type lookup. Without this, rebuilding
     // rows when the custom-property fetch returns an empty list (real empty,
     // or after a transient error followed by an empty cache) silently drops
-    // any extension.* required field on save. We surface them as an orphan
+    // any extension.* form field on save. We surface them as an orphan
     // row so the admin can deselect them deliberately.
     const orphanCustomRows: FieldRow[] = Array.from(existingSelections.values())
       .filter(
@@ -169,7 +176,8 @@ const IntakeFormDesignerModal = ({
         path: rf.fieldPath,
         label: rf.fieldLabel,
         kind: FieldKind.CustomProperty,
-        selected: true,
+        included: true,
+        required: Boolean(rf.required),
         errorMessage: rf.errorMessage,
         isOrphan: true,
       }));
@@ -184,13 +192,16 @@ const IntakeFormDesignerModal = ({
   }, []);
 
   const handleOk = async () => {
-    const requiredFields: RequiredField[] = rows
-      .filter((row) => row.selected)
+    const formFields: IntakeFormField[] = rows
+      .filter((row) =>
+        row.kind === FieldKind.Native ? row.required : row.included
+      )
       .map((row) => ({
         fieldPath: row.path,
         fieldLabel: row.label,
         fieldKind: row.kind,
-        errorMessage: row.errorMessage || undefined,
+        required: row.required,
+        errorMessage: row.required ? row.errorMessage || undefined : undefined,
       }));
 
     // One intake form per entity type — name is deterministically derived.
@@ -209,7 +220,8 @@ const IntakeFormDesignerModal = ({
       description: description || undefined,
       entityType,
       enabled,
-      requiredFields,
+      formFields,
+      requiredFields: toLegacyRequiredFields(formFields),
       // Carry forward server-managed fields on edit. The designer UI doesn't
       // expose an owners picker today, but `createOrUpdateIntakeForm` PUTs
       // the whole entity — without this, any previously configured owners
@@ -229,18 +241,43 @@ const IntakeFormDesignerModal = ({
     [rows]
   );
 
-  const renderFieldRow = (record: FieldRow) => (
+  const renderFieldRow = (record: FieldRow, allowOptional: boolean) => (
     <Box
       align="center"
       className="tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
       key={record.path}>
+      {allowOptional && (
+        <div className="tw:w-20">
+          <Checkbox
+            aria-label={`${t('label.include')} ${record.label}`}
+            data-testid={`include-${record.path}`}
+            isSelected={record.included}
+            onChange={(included) =>
+              updateRow(
+                record.path,
+                included
+                  ? { included }
+                  : {
+                      included,
+                      required: false,
+                      errorMessage: undefined,
+                    }
+              )
+            }
+          />
+        </div>
+      )}
       <div className="tw:w-20">
         <Checkbox
           aria-label={record.label}
           data-testid={`require-${record.path}`}
-          isSelected={record.selected}
-          onChange={(isSelected) =>
-            updateRow(record.path, { selected: isSelected })
+          isDisabled={allowOptional && !record.included}
+          isSelected={record.required}
+          onChange={(required) =>
+            updateRow(record.path, {
+              required,
+              errorMessage: required ? record.errorMessage : undefined,
+            })
           }
         />
       </div>
@@ -256,7 +293,7 @@ const IntakeFormDesignerModal = ({
         <Input
           aria-label={t('label.custom-error-message')}
           data-testid={`error-${record.path}`}
-          isDisabled={!record.selected}
+          isDisabled={!record.required}
           placeholder={t('message.optional-custom-error')}
           value={record.errorMessage ?? ''}
           onChange={(value) => updateRow(record.path, { errorMessage: value })}
@@ -268,12 +305,21 @@ const IntakeFormDesignerModal = ({
   const renderFieldTable = (
     fieldRows: FieldRow[],
     emptyMessage: string,
-    isLoading: boolean
+    isLoading: boolean,
+    allowOptional = false
   ) => (
     <Box
       className="tw:overflow-hidden tw:rounded-lg tw:outline-1 tw:outline-secondary"
       direction="col">
       <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
+        {allowOptional && (
+          <Typography
+            className="tw:w-20 tw:text-tertiary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.include')}
+          </Typography>
+        )}
         <Typography
           className="tw:w-20 tw:text-tertiary"
           size="text-xs"
@@ -305,7 +351,8 @@ const IntakeFormDesignerModal = ({
           </Typography>
         </Box>
       )}
-      {!isLoading && fieldRows.map(renderFieldRow)}
+      {!isLoading &&
+        fieldRows.map((field) => renderFieldRow(field, allowOptional))}
     </Box>
   );
 
@@ -324,6 +371,7 @@ const IntakeFormDesignerModal = ({
   return (
     <SlideoutMenu
       isDismissable
+      dialogClassName="tw:overflow-hidden!"
       isOpen={open}
       width="75%"
       onOpenChange={(isOpenState) => {
@@ -331,102 +379,115 @@ const IntakeFormDesignerModal = ({
           onCancel();
         }
       }}>
-      <SlideoutMenu.Header onClose={onCancel}>
-        <Typography size="text-lg" weight="semibold">
-          {title}
-        </Typography>
-      </SlideoutMenu.Header>
-
-      <SlideoutMenu.Content data-testid="intake-form-designer-modal">
-        <Alert
-          title={t('message.intake-form-one-per-type-help', {
-            entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
-          })}
-          variant="brand"
-        />
-
-        <Box className="tw:gap-1.5" direction="col">
-          <Typography size="text-sm" weight="semibold">
-            {t('label.description')}
-          </Typography>
-          <TextArea
-            aria-label={t('label.description')}
-            data-testid="intake-form-description"
-            placeholder={t('message.intake-form-description-placeholder')}
-            value={description}
-            onChange={setDescription}
-          />
-        </Box>
-
-        <Box align="center" className="tw:gap-3">
-          <Typography size="text-sm" weight="semibold">
-            {t('label.enabled')}
-          </Typography>
-          <Toggle
-            aria-label={t('label.enabled')}
-            data-testid="intake-form-enabled"
-            isSelected={enabled}
-            onChange={setEnabled}
-          />
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.intake-form-enabled-help')}
-          </Typography>
-        </Box>
-
-        <Divider />
-
-        <Box className="tw:gap-3" direction="col">
-          <Box className="tw:gap-1" direction="col">
-            <Typography size="text-md" weight="semibold">
-              {t('label.native-field-plural')}
+      {() => (
+        <>
+          <SlideoutMenu.Header onClose={onCancel}>
+            <Typography size="text-lg" weight="semibold">
+              {title}
             </Typography>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {t('message.intake-form-native-fields-help')}
-            </Typography>
-          </Box>
-          {renderFieldTable(nativeRows, t('message.no-native-fields'), false)}
-        </Box>
+          </SlideoutMenu.Header>
 
-        <Divider />
+          <SlideoutMenu.Content
+            className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-hidden! tw:p-0!"
+            data-testid="intake-form-designer-modal">
+            <div className="tw:absolute tw:inset-0 tw:flex tw:flex-col tw:gap-6 tw:overflow-y-auto tw:px-4 tw:py-6 tw:pt-0 tw:md:px-6">
+              <Alert
+                title={t('message.intake-form-one-per-type-help', {
+                  entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
+                })}
+                variant="brand"
+              />
 
-        <Box className="tw:gap-3" direction="col">
-          <Box align="center" className="tw:gap-2">
-            <Typography size="text-md" weight="semibold">
-              {t('label.custom-property-plural')}
-            </Typography>
-            <Badge color="gray" size="sm" type="pill-color">
-              {customRows.length}
-            </Badge>
-          </Box>
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.intake-form-custom-properties-help')}
-          </Typography>
-          {renderFieldTable(
-            customRows,
-            t('message.no-custom-properties-defined'),
-            loadingProps
-          )}
-        </Box>
-      </SlideoutMenu.Content>
+              <Box className="tw:gap-1.5" direction="col">
+                <Typography size="text-sm" weight="semibold">
+                  {t('label.description')}
+                </Typography>
+                <TextArea
+                  aria-label={t('label.description')}
+                  data-testid="intake-form-description"
+                  placeholder={t('message.intake-form-description-placeholder')}
+                  value={description}
+                  onChange={setDescription}
+                />
+              </Box>
 
-      <SlideoutMenu.Footer>
-        <Box className="tw:justify-end tw:gap-3">
-          <Button
-            color="tertiary"
-            data-testid="intake-form-cancel"
-            size="sm"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="intake-form-submit"
-            size="sm"
-            onClick={handleOk}>
-            {initialValue ? t('label.save') : t('label.create')}
-          </Button>
-        </Box>
-      </SlideoutMenu.Footer>
+              <Box align="center" className="tw:gap-3">
+                <Typography size="text-sm" weight="semibold">
+                  {t('label.enabled')}
+                </Typography>
+                <Toggle
+                  aria-label={t('label.enabled')}
+                  data-testid="intake-form-enabled"
+                  isSelected={enabled}
+                  onChange={setEnabled}
+                />
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t('message.intake-form-enabled-help')}
+                </Typography>
+              </Box>
+
+              <Divider />
+
+              <Box className="tw:gap-3" direction="col">
+                <Box className="tw:gap-1" direction="col">
+                  <Typography size="text-md" weight="semibold">
+                    {t('label.native-field-plural')}
+                  </Typography>
+                  <Typography className="tw:text-tertiary" size="text-sm">
+                    {t('message.intake-form-native-fields-help')}
+                  </Typography>
+                </Box>
+                {renderFieldTable(
+                  nativeRows,
+                  t('message.no-native-fields'),
+                  false
+                )}
+              </Box>
+
+              <Divider />
+
+              <Box className="tw:gap-3" direction="col">
+                <Box align="center" className="tw:gap-2">
+                  <Typography size="text-md" weight="semibold">
+                    {t('label.custom-property-plural')}
+                  </Typography>
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {customRows.length}
+                  </Badge>
+                </Box>
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t('message.intake-form-custom-properties-help')}
+                </Typography>
+                {renderFieldTable(
+                  customRows,
+                  t('message.no-custom-properties-defined'),
+                  loadingProps,
+                  true
+                )}
+              </Box>
+            </div>
+          </SlideoutMenu.Content>
+
+          <SlideoutMenu.Footer>
+            <Box className="tw:justify-end tw:gap-3">
+              <Button
+                color="tertiary"
+                data-testid="intake-form-cancel"
+                size="sm"
+                onClick={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="intake-form-submit"
+                size="sm"
+                onClick={handleOk}>
+                {initialValue ? t('label.save') : t('label.create')}
+              </Button>
+            </Box>
+          </SlideoutMenu.Footer>
+        </>
+      )}
     </SlideoutMenu>
   );
 };

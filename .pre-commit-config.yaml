@@ -40,3 +40,56 @@ repos:
         language: script
         files: \.java$
         require_serial: true
+      - id: token-audit
+        name: Design token audit (no hardcoded CSS values)
+        description: Fails if committed UI CSS/LESS contains hardcoded colors or spacing instead of design tokens. See openmetadata-ui/src/main/resources/ui/specs/.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/token-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(less|css)$
+        require_serial: true
+      - id: token-drift
+        name: Design token drift (generated files, token refs, spec links)
+        description: Fails if tokens.css / token-reference.md are stale (run yarn token-gen), a referenced token is undefined, or a component spec links to a missing file.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/design-tokens/check-drift.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/(src/styles/tokens\.css|src/.*\.(less|css)|specs/.*\.md)$
+        pass_filenames: false
+        require_serial: true
+      - id: ui-prettier
+        name: Prettier (UI)
+        description: Fails if changed UI TS/TSX/JS/JSX/JSON is not prettier-formatted (matches CI ui-checkstyle). Fix with `yarn --cwd openmetadata-ui/src/main/resources/ui ui-checkstyle:changed`.
+        entry: scripts/check-ui-format.sh
+        language: script
+        files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx|json)$
+        exclude: /generated/
+        require_serial: true
+      - id: ui-license-header
+        name: Apache-2.0 license header (UI)
+        description: Fails if a changed UI source file is missing the Apache-2.0 header (matches CI ui-checkstyle). Fix with `yarn --cwd openmetadata-ui/src/main/resources/ui license-header-fix`.
+        entry: scripts/check-ui-license.sh
+        language: script
+        files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx)$
+        exclude: /generated/
+        require_serial: true
+      - id: tw-audit
+        name: Tailwind audit (no hardcoded values in TSX)
+        description: Fails if committed .tsx/.ts uses arbitrary Tailwind color/spacing/radius values that map to a design-system utility (e.g. tw:bg-[#2e90fa] -> tw:bg-brand-500).
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js)$
+        require_serial: true
+      - id: tw-deprecation-guard
+        name: Antd + Less deprecation guard (no new debt)
+        description: Fails if a change adds a new .less file or a new `import ... from 'antd'`. Existing usage is fine; use UntitledUI + Tailwind for new work.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-deprecation-guard.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
+        pass_filenames: false
+        require_serial: true
+      - id: core-components-i18n
+        name: core-components i18n checks (gates 1+2+3)
+        description: Fails if core-components `t()` keys, locale files, or the language-set are out of sync. Run `yarn check-i18n-all` in openmetadata-ui-core-components/src/main/resources/ui.
+        entry: bash -c 'cd openmetadata-ui-core-components/src/main/resources/ui && yarn check-i18n-all'
+        language: system
+        files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
+        pass_filenames: false

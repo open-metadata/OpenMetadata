@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
@@ -653,8 +654,11 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private Set<String> trustedSamlRedirects() {
-    return org.openmetadata.service.security.SecurityUtil.trustedRedirects(
-        authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+    Set<String> trusted =
+        org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+            authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+    trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
+    return trusted;
   }
 
   private ServiceProviderConfig samlSp() {

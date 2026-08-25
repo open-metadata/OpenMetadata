@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "閉じる",
+    "close-navigation-menu": "ナビゲーションメニューを閉じる",
+    "copy-link": "リンクをコピー",
+    "current-page": "現在のページ",
+    "date-range-picker": "日付範囲ピッカー",
+    "delete": "削除",
+    "edit": "編集",
+    "expand-navigation-menu": "ナビゲーションメニューを展開",
+    "field-documentation": "フィールドドキュメント",
+    "hidden-breadcrumbs": "非表示のパンくずリスト",
+    "loading": "読み込み中…",
+    "next-page": "次のページへ",
+    "open-menu": "メニューを開く",
+    "page": "ページ",
+    "pagination": "ページネーション",
+    "pagination-navigation": "ページネーションナビゲーション",
+    "previous-page": "前のページへ",
+    "records": "レコード",
+    "remove-filter": "フィルターを削除",
+    "select-dates": "日付を選択",
+    "show-hidden-breadcrumbs": "非表示のパンくずリストを表示",
+    "today": "今日"
+  }
+}

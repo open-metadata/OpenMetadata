@@ -53,8 +53,10 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface CoreRelationshipDAOs {
@@ -83,7 +85,7 @@ public interface CoreRelationshipDAOs {
         @BindUUID("id") UUID id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -101,7 +103,7 @@ public interface CoreRelationshipDAOs {
         @BindUUID("id") List<UUID> id,
         @Bind("extension") List<String> extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") List<String> json);
+        @BindJson("json") List<String> json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -185,8 +187,23 @@ public interface CoreRelationshipDAOs {
             "INSERT INTO entity_extension (id, extension, json,jsonschema) VALUES (:id, :extension, :json::jsonb,:jsonschema) "
                 + "ON CONFLICT (id, extension) DO UPDATE SET json = EXCLUDED.json , jsonschema = EXCLUDED.jsonschema",
         connectionType = POSTGRES)
-    void bulkUpsertExtensions(
+    void bulkUpsertExtensionsInternal(
         @BindBean List<ExtensionWithIdAndSchemaObject> extensionWithIdObjects);
+
+    default void bulkUpsertExtensions(List<ExtensionWithIdAndSchemaObject> extensionWithIdObjects) {
+      List<ExtensionWithIdAndSchemaObject> sanitizedExtensions =
+          extensionWithIdObjects.stream()
+              .map(
+                  extension ->
+                      ExtensionWithIdAndSchemaObject.builder()
+                          .id(extension.getId())
+                          .extension(extension.getExtension())
+                          .json(JsonStorageUtils.sanitizeNulCharacters(extension.getJson()))
+                          .jsonschema(extension.getJsonschema())
+                          .build())
+              .toList();
+      bulkUpsertExtensionsInternal(sanitizedExtensions);
+    }
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
@@ -203,36 +220,51 @@ public interface CoreRelationshipDAOs {
     List<ExtensionRecord> getExtensionsByJsonSchema(
         @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
 
+    // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
+    // side materialises more than one page: the global top-:limit under this ORDER BY is always a
+    // subset of the union of each branch's own top-:limit. UNION ALL is safe because
+    // entity_extension only ever holds superseded versions while <table> holds the current one, so
+    // the same (id, updatedAt) cannot appear in both.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "(SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json FROM <table> "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + "UNION ALL "
+                + "(SELECT id, updatedAt, json FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
                 + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + ") combined "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "(SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json::jsonb FROM <table> "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + "UNION ALL "
+                + "(SELECT id, updatedAt, json::jsonb FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
                 + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + ") combined "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(ExtensionMapper.class)
@@ -241,6 +273,7 @@ public interface CoreRelationshipDAOs {
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
         @Define("cursorCondition") String cursorCondition,
+        @Define("sortOrder") String sortOrder,
         @Bind("entityType") String entityType,
         @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
         @Bind("cursorId") String cursorId,
@@ -470,7 +503,7 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -865,6 +898,43 @@ public interface CoreRelationshipDAOs {
         @BindList("relation") List<Integer> relation);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL)")
+    int countNonDeletedChildFiles(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildFilesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN test_case tc ON er.toId = tc.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (tc.deleted = false OR tc.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedTestCasesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -878,13 +948,21 @@ public interface CoreRelationshipDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId OR fromId = :fromId) AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :fromId) "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE  (json->'pipeline'->>'id' =:fromId OR fromId = :fromId) AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :fromId "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -1116,13 +1194,21 @@ public interface CoreRelationshipDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE  (json->'pipeline'->>'id' = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -1151,14 +1237,23 @@ public interface CoreRelationshipDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "AND json->>'source' = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation AND json->>'source' = :source "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findLineageBySourcePipeline(
@@ -1203,9 +1298,6 @@ public interface CoreRelationshipDAOs {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
-    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
-    long getTotalRelationshipCount();
-
     // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
     // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
     // can
@@ -1230,29 +1322,8 @@ public interface CoreRelationshipDAOs {
         @Bind("relationType") String relationType,
         @Bind("limit") int limit);
 
-    @SqlQuery(
-        "SELECT COUNT(*) FROM entity_relationship er "
-            + "JOIN context_file cf ON er.toId = cf.id "
-            + "WHERE er.fromId = :fromId AND er.fromEntity = :fromEntity AND er.relation = :relation "
-            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL)")
-    int countNonDeletedChildFiles(
-        @BindUUID("fromId") UUID fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
-
-    @SqlQuery(
-        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
-            + "JOIN context_file cf ON er.toId = cf.id "
-            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
-            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL) "
-            + "GROUP BY er.fromId")
-    @RegisterRowMapper(ToRelationshipCountMapper.class)
-    List<EntityRelationshipCount> countNonDeletedChildFilesBatch(
-        @BindList("fromIds") List<String> fromIds,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
+    @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
+    long getTotalRelationshipCount();
 
     //
     // Delete Operations
@@ -1413,8 +1484,9 @@ public interface CoreRelationshipDAOs {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE (json->>'$.pipeline.id' = :toId "
+                + "OR toId = :toId) AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -1482,8 +1554,11 @@ public interface CoreRelationshipDAOs {
       }
     }
 
-    // Like RelationshipObjectMapper but also selects relationType. The keyset cursor needs it, and
-    // callers paging the full PK need it; the plain RelationshipObjectMapper does not select it.
+    // Like RelationshipObjectMapper but also projects relationType, needed by the keyset scan so
+    // its
+    // cursor can advance over the full primary key. Kept separate because the 27 other queries
+    // using
+    // RelationshipObjectMapper do not select relationType.
     class RelationshipWithTypeObjectMapper implements RowMapper<EntityRelationshipObject> {
       @Override
       public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -1521,35 +1596,7 @@ public interface CoreRelationshipDAOs {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation,
-        @Bind("json") String json);
-
-    // Batch counterpart of insert(...) for INSERT-only callers that loop one round trip per row.
-    // Binds the FieldRelationship bean's pre-hashed fromFQNHash/toFQNHash directly (callers must
-    // hash via FullyQualifiedName.buildHash, mirroring @BindFQN on the single-row insert), and
-    // omits the nullable json column so the per-row Postgres ::jsonb cast is unnecessary.
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT IGNORE INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation) "
-                + "VALUES <values>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation) "
-                + "VALUES <values> ON CONFLICT (fromFQNHash, toFQNHash, relation) DO NOTHING",
-        connectionType = POSTGRES)
-    void insertMany(
-        @BindBeanList(
-                value = "values",
-                propertyNames = {
-                  "fromFQNHash",
-                  "toFQNHash",
-                  "fromFQN",
-                  "toFQN",
-                  "fromType",
-                  "toType",
-                  "relation"
-                })
-            List<FieldRelationship> values);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -1572,7 +1619,7 @@ public interface CoreRelationshipDAOs {
         @Bind("toType") String toType,
         @Bind("relation") int relation,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlQuery(
         "SELECT json FROM field_relationship WHERE "
@@ -1744,5 +1791,19 @@ public interface CoreRelationshipDAOs {
       private String jsonSchema;
       private String json;
     }
+
+    void insertMany(
+        @BindBeanList(
+                value = "values",
+                propertyNames = {
+                  "fromFQNHash",
+                  "toFQNHash",
+                  "fromFQN",
+                  "toFQN",
+                  "fromType",
+                  "toType",
+                  "relation"
+                })
+            List<FieldRelationship> values);
   }
 }

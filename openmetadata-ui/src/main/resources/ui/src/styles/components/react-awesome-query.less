@@ -58,7 +58,7 @@
       .ant-btn:not(.ant-btn-primary),
     &.qb-lite .rule_group:not(:hover) .rule_group_ext--drag-handler {
       width: inherit;
-      padding: 0 7px;
+      padding: 0 var(--om-space-7);
       overflow: hidden;
       opacity: 1;
     }
@@ -76,7 +76,7 @@
     }
 
     .rule--label {
-      font-weight: normal; // override the default font-weight of 600
+      font-weight: var(--om-font-weight-regular); // override the default font-weight of 600
     }
   }
 
@@ -106,7 +106,7 @@
   }
 
   .group-or-rule-container.group-container {
-    padding-right: 0px;
+    padding-right: 0;
 
     & > .group.group-or-rule {
       background-color: transparent;
@@ -121,7 +121,7 @@
           left: 50%;
           top: 0px;
           transform: translate(-50%, 16px);
-          z-index: 1;
+          z-index: var(--om-z-1);
 
           .ant-btn-group button span {
             text-transform: uppercase;
@@ -141,10 +141,10 @@
         .action.action--ADD-GROUP {
           position: absolute;
           bottom: 8px;
-          z-index: 1;
+          z-index: var(--om-z-1);
           max-width: 128px;
           border-color: @primary-color;
-          border-radius: 4px;
+          border-radius: var(--om-radius-sm);
           left: 0;
           right: 0;
           margin: auto;
@@ -158,26 +158,26 @@
   }
 
   .rule--body {
-    margin-right: 124px;
+    margin-right: var(--om-space-124);
   }
 
   .group--children {
-    padding-top: 22px;
-    padding-bottom: 22px;
+    padding-top: var(--om-space-22);
+    padding-bottom: var(--om-space-22);
 
     .group-or-rule-container.group-container,
     .group-or-rule-container.rule-container {
       .group.group-or-rule,
       .rule.group-or-rule {
-        background: #f9fbfc;
+        background: var(--om-legacy-color-f9fbfc);
         /* table */
 
-        border: 1px solid #dde3ea;
-        border-radius: 4px;
+        border: 1px solid var(--om-legacy-color-dde3ea);
+        border-radius: var(--om-radius-sm);
         box-sizing: border-box;
 
         &:not(:first-child) {
-          padding: 16px 8px;
+          padding: var(--om-space-16) var(--om-space-8);
         }
       }
 
@@ -191,7 +191,7 @@
             right: 36px;
             top: 60px;
             left: auto;
-            z-index: 1;
+            z-index: var(--om-z-1);
             transform: none;
 
             .ant-btn-group button span {
@@ -203,10 +203,10 @@
             position: absolute;
             right: 36px;
             bottom: 32px;
-            z-index: 1;
+            z-index: var(--om-z-1);
             display: block;
             border-color: @primary-color;
-            border-radius: 4px;
+            border-radius: var(--om-radius-sm);
           }
 
           .action.action--ADD-GROUP {
@@ -217,9 +217,9 @@
             position: absolute;
             right: 10px;
             top: 10px;
-            z-index: 1;
+            z-index: var(--om-z-1);
 
-            font-size: 16px;
+            font-size: var(--om-font-size-md);
           }
         }
       }
@@ -231,7 +231,7 @@
         .rule--header {
           .ant-btn-group {
             align-self: end;
-            margin-bottom: 14px;
+            margin-bottom: var(--om-space-14);
           }
         }
       }
@@ -252,11 +252,11 @@
   .rule--field,
   .rule--operator,
   .rule--widget {
-    margin: 0px;
+    margin: 0;
 
     .rule--label {
-      font-weight: normal;
-      margin-bottom: 6px;
+      font-weight: var(--om-font-weight-regular);
+      margin-bottom: var(--om-space-6);
     }
   }
 }
@@ -314,7 +314,7 @@
   }
 
   .widget--sep {
-    margin: @margin-xss 0px;
+    margin: @margin-xss 0;
 
     .rule--label {
       display: none;

@@ -126,6 +126,35 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void customPropertiesTypedMustBeNestedWhereExtensionExists() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      if (properties.has("extension")) {
+        JsonNode typed = properties.get("customPropertiesTyped");
+        boolean nested = typed != null && "nested".equals(typed.path("type").asText());
+        if (!nested) {
+          String detail = typed == null ? "missing" : "\"" + typed.path("type").asText("") + "\"";
+          violations.add(entity + " (customPropertiesTyped=" + detail + ")");
+        }
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every index whose mapping declares a top-level 'extension' field (i.e. it stores "
+            + "custom-property values) must also declare 'customPropertiesTyped' with "
+            + "\"type\": \"nested\". SearchIndex writes customPropertiesTyped into every such doc; "
+            + "if the mapping omits it, OpenSearch dynamic-maps it as a plain object and the nested "
+            + "custom-property search query fails at runtime with '[nested] nested object under "
+            + "path [customPropertiesTyped] is not of nested type'. Violations: "
+            + violations);
+  }
+
+  @Test
   void aiGovernanceProjectionFieldsMustBeMappedExplicitly() {
     List<String> violations = new ArrayList<>();
     for (String entity : List.of("aiApplication", "llmModel", "mcpServer")) {

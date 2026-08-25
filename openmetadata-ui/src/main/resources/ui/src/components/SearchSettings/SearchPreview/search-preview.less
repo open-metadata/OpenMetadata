@@ -19,38 +19,38 @@
   min-height: 0;
 
   .header-title {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .search-preview-header {
-    gap: 12px;
+    gap: var(--om-space-12);
   }
 
   .search-preview-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--om-space-12);
     flex-wrap: wrap;
   }
 
   .ranking-details-control {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
     white-space: nowrap;
   }
 
   .search-box {
     background-color: @grey-1;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
 
     .ant-input {
       background-color: @grey-1;
-      padding: 8px;
-      font-size: 14px;
+      padding: var(--om-space-8);
+      font-size: var(--om-font-size-sm);
 
       &:hover,
       &:focus,
@@ -71,13 +71,13 @@
   .search-results-container {
     flex: 1;
     overflow-y: auto;
-    margin-top: 12px;
-    padding: 8px 0;
+    margin-top: var(--om-space-12);
+    padding: var(--om-space-8) 0;
 
     .search-card {
       background-color: @grey-1;
-      margin-bottom: 12px;
-      border-radius: 10px;
+      margin-bottom: var(--om-space-12);
+      border-radius: var(--om-radius-10);
     }
   }
 }
@@ -86,7 +86,7 @@
   background-color: @blue-14;
   border: 1px solid @grey-15;
   color: @primary-heading-color;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   &:hover {
     background-color: @blue-14;
     border-color: @grey-15;
@@ -98,7 +98,7 @@
   background-color: @primary-heading-color;
   border: 1px solid @primary-heading-color;
   color: var(--tw-color-text-white);
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   &:hover {
     background-color: @primary-heading-color;
     border-color: @primary-heading-color;

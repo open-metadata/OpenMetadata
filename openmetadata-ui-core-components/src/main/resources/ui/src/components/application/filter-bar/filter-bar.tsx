@@ -13,6 +13,7 @@
 import { XClose } from '@untitledui/icons';
 import type { ComponentPropsWithRef, FC, ReactNode } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 
 interface FilterBarRootProps extends ComponentPropsWithRef<'div'> {
@@ -85,17 +86,23 @@ const FilterRow = ({
   onRemove,
   className,
   ...props
-}: FilterRowProps) => (
-  <div className={cx('tw:flex tw:items-start tw:gap-1', className)} {...props}>
-    <div className="tw:flex tw:items-center tw:gap-3">{children}</div>
-    <AriaButton
-      aria-label="Remove filter"
-      className="tw:flex tw:size-9 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover"
-      onPress={onRemove}>
-      <XClose className="tw:size-5" />
-    </AriaButton>
-  </div>
-);
+}: FilterRowProps) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div
+      className={cx('tw:flex tw:items-start tw:gap-1', className)}
+      {...props}>
+      <div className="tw:flex tw:items-center tw:gap-3">{children}</div>
+      <AriaButton
+        aria-label={t('label.remove-filter', 'Remove filter')}
+        className="tw:flex tw:size-9 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover"
+        onPress={onRemove}>
+        <XClose className="tw:size-5" />
+      </AriaButton>
+    </div>
+  );
+};
 
 interface FilterIconButtonProps {
   /** Icon component to render */

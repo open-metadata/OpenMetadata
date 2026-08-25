@@ -41,6 +41,7 @@ import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/datab
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
@@ -63,6 +64,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
   deleteContextMemory,
@@ -75,6 +77,7 @@ import {
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -225,7 +228,9 @@ const ContextCenterMemoriesPage: FC = () => {
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
           getVisibleMemoryCount(),
-          getVisibleMemoryCount({ pinned: true }),
+          // TODO: Unhide when pin feature releases in post-2.0
+          // getVisibleMemoryCount({ pinned: true }),
+          Promise.resolve(0),
           authorFilter
             ? getVisibleMemoryCount({ author: authorFilter })
             : Promise.resolve(0),
@@ -381,6 +386,9 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
@@ -488,6 +496,11 @@ const ContextCenterMemoriesPage: FC = () => {
     [memoryCounts, t]
   );
 
+  const allAssetsLabel = t('label.all-entity', {
+    entity: t('label.asset-plural'),
+  });
+  const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+
   const headerActions = (
     <Button
       color="primary"
@@ -504,6 +517,7 @@ const ContextCenterMemoriesPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
+      <DocumentTitle title={t('label.memory-plural')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           actionsSlot={headerActions}
@@ -676,10 +690,7 @@ const ContextCenterMemoriesPage: FC = () => {
                               : 'tw:text-secondary'
                           }
                           weight="medium">
-                          {selectedAsset?.label ??
-                            t('label.all-entity', {
-                              entity: t('label.asset-plural'),
-                            })}
+                          {selectedAsset?.label ?? allAssetsLabel}
                         </Typography>
                       </div>
                       <ChevronDown
@@ -730,8 +741,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             : 'tw:text-secondary'
                         }
                         weight="medium">
-                        {selectedAuthor?.label ??
-                          t('label.all-entity', { entity: t('label.author') })}
+                        {selectedAuthor?.label ?? allAuthorsLabel}
                       </Typography>
                     </div>
                     <ChevronDown
@@ -743,6 +753,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Popover>
                     <div className="tw:p-2 tw:border-b tw:border-secondary">
                       <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                         autoFocus
                         className="tw:w-full"
                         icon={SearchLg}
@@ -779,12 +790,8 @@ const ContextCenterMemoriesPage: FC = () => {
                       <Dropdown.Item
                         id="all-authors"
                         key="all-authors"
-                        textValue={t('label.all-entity', {
-                          entity: t('label.author'),
-                        })}>
-                        <span>
-                          {t('label.all-entity', { entity: t('label.author') })}
-                        </span>
+                        textValue={allAuthorsLabel}>
+                        <span>{allAuthorsLabel}</span>
                       </Dropdown.Item>
                       {isAuthorOptionsLoading && (
                         <Dropdown.Item

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -59,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
-import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
@@ -115,6 +115,7 @@ public class PersonaContextBuilder {
           ContextSection.ARTICLES,
           ContextSection.METRICS);
   private static final Set<String> KEYWORD_SORT_ENTITY_TYPES = Set.of("testCase", "user", "team");
+
   private static final String[] SEARCH_FIELDS = {
     "id",
     "name",
@@ -263,14 +264,15 @@ public class PersonaContextBuilder {
         }
       }
     } catch (IOException | RuntimeException exception) {
-      ServiceUnavailableException unavailable =
-          new ServiceUnavailableException(
-              "Failed to evaluate persona context rule '"
-                  + rule.getName()
-                  + "': "
-                  + exception.getMessage());
-      unavailable.initCause(exception);
-      throw unavailable;
+      // ServiceUnavailableException(String) already fixes the cause to null, so initCause() on it
+      // always throws IllegalStateException and swallows the real failure.
+      throw new ServiceUnavailableException(
+          "Failed to evaluate persona context rule '"
+              + rule.getName()
+              + "': "
+              + exception.getMessage(),
+          Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
+          exception);
     }
     return new RuleSearchResult(matched, documents);
   }
@@ -589,7 +591,8 @@ public class PersonaContextBuilder {
       profiles =
           Entity.getCollectionDAO()
               .profilerDataTimeSeriesDao()
-              .getLatestExtensionsBatch(fqns, TableRepository.TABLE_PROFILE_EXTENSION);
+              .getLatestExtensionsBatch(
+                  fqns, CollectionDAO.ProfilerDataTimeSeriesDAO.TABLE_PROFILE_EXTENSION);
     } catch (RuntimeException exception) {
       LOG.warn("Failed to load batched persona profile summaries: {}", exception.getMessage());
       return;

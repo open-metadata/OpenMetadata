@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   group: ui-checkstyle-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
@@ -104,6 +104,15 @@ jobs:
       lint_playwright_changed_files: ${{ steps.lint_playwright.outputs.changed_files }}
       lint_core_components_result: ${{ steps.lint_core_components.outcome }}
       lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
+      i18n_core_result: ${{ steps.i18n_core.outcome }}
+      i18n_core_changed_files: ${{ steps.i18n_core.outputs.changed_files }}
+      tw_audit_result: ${{ steps.tw_audit.outcome }}
+      tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
+      tw_guard_result: ${{ steps.tw_guard.outcome }}
+      tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
+      eslint_summary: ${{ steps.lint_src.outputs.summary }}
+      eslint_details: ${{ steps.lint_src.outputs.details }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -115,17 +124,37 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
-          cache: yarn
-          cache-dependency-path: |
-            ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
-            ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}/yarn.lock
 
       - name: Install Antlr4 CLI
         run: sudo make install_antlr_cli
 
+      # setup-node's built-in `cache: yarn` is exact-key only — a yarn.lock
+      # change leaves the cache completely cold and exposes installs to transient
+      # registry 5xx. An explicit cache with restore-keys falls back to the most
+      # recent lockfile's cache so a lockfile change only fetches the delta.
+      # RESTORE-ONLY: this workflow runs on PR refs whose exact key is never
+      # reused; saving here would duplicate ~700 MB per run and evict main-scoped
+      # caches. The main-scoped copy is saved by populate-playwright-apt-cache.yml.
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_WORKING_DIRECTORY)) }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+
       - name: Install UI Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Get changed src files
         id: changed-src-files
@@ -150,8 +179,21 @@ jobs:
             exit 0
           fi
           TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          # Report findings BEFORE --fix, so the PR comment reflects what the
+          # contributor actually wrote. Reporting only; the gate is the git-diff
+          # check at the end of this step.
+          #
+          # Deliberately part of this step rather than its own: every `run:`
+          # executing PR-authored code in this pull_request_target job is a
+          # CodeQL "poisonable step" (there are already 5 in this file, and 22
+          # repo-wide). Adding a separate step would add a sixth for no gain in
+          # isolation — it would run the same command with the same privileges.
           if [ -n "$TS_FILES" ]; then
+            yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
+            node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
             yarn organize-imports:cli $TS_FILES
+          else
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
           fi
           yarn lint:base --fix $CHANGED_FILES
           yarn pretty:base --write $CHANGED_FILES
@@ -263,7 +305,32 @@ jobs:
 
       - name: Install Core Components Yarn Packages
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
-        run: yarn install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+
+      - name: I18n Sync (core-components)
+        id: i18n_core
+        continue-on-error: true
+        working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
+        run: |
+          yarn check-i18n-all
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -20)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
 
       - name: Get changed core-components files
         id: changed-core-components-files
@@ -294,6 +361,44 @@ jobs:
             echo "EOF" >> "$GITHUB_OUTPUT"
             git checkout -- .
             git clean -fd
+            exit 1
+          fi
+
+      - name: Tailwind Audit (no hardcoded values)
+        id: tw_audit
+        if: steps.changed-src-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-src-files.outputs.all_changed_files }}
+        run: |
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          if [ -z "${TS_FILES// }" ]; then
+            echo "No TSX/TS files to audit."
+            exit 0
+          fi
+          if ! node scripts/tw-audit.js $TS_FILES > /tmp/tw-audit.out 2>&1; then
+            cat /tmp/tw-audit.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/tw-audit.out | grep -E 'errors|Files with|^  +[0-9]' | head -30 | sed 's/^/  /')
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Antd + Less Deprecation Guard (no new debt)
+        id: tw_guard
+        if: steps.changed-ui-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          if ! node ${{ env.UI_WORKING_DIRECTORY }}/scripts/tw-deprecation-guard.js "$BASE_SHA" > /tmp/tw-guard.out 2>&1; then
+            cat /tmp/tw-guard.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/tw-guard.out | grep -E '^    ' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
@@ -357,12 +462,36 @@ jobs:
                 result:  '${{ needs.checkstyle.outputs.lint_core_components_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_core_components_changed_files) }} || '',
               },
+              {
+                name:    'Core Components - I18n Sync',
+                reason:  'Core-components `t()` keys, locale files, or language-set are out of sync. Run `yarn check-i18n-all` locally.',
+                result:  '${{ needs.checkstyle.outputs.i18n_core_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.i18n_core_changed_files) }} || '',
+              },
+              {
+                name:    'Tailwind Audit',
+                reason:  'Hardcoded Tailwind values found. Use a design-system utility (run `yarn tw-audit:report` for the token each value maps to).',
+                result:  '${{ needs.checkstyle.outputs.tw_audit_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.tw_audit_changed_files) }} || '',
+              },
+              {
+                name:    'Antd + Less Deprecation Guard',
+                reason:  'A new `antd` import or new `.less` file was added. Use UntitledUI + Tailwind for new work.',
+                result:  '${{ needs.checkstyle.outputs.tw_guard_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.tw_guard_changed_files) }} || '',
+              },
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
             const commentId = '${{ steps.fc.outputs.comment-id }}';
 
-            if (failures.length === 0) {
+            const eslintFindings = '${{ needs.checkstyle.outputs.eslint_has_findings }}' === 'true';
+            const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
+            const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
+
+            // Warnings do not fail the build, so a comment posted only on
+            // failure would hide them entirely — which defeats the warn tier.
+            if (failures.length === 0 && !eslintFindings) {
               if (commentId) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
@@ -381,11 +510,28 @@ jobs:
               return lines.join('\n');
             });
 
+            const title = failures.length
+              ? '### ❌ UI Checkstyle Failed'
+              : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
+
+            const eslintSection = eslintFindings
+              ? [
+                  `#### 🔍 ESLint findings in this PR's files — ${eslintSummary}`,
+                  '',
+                  'Errors block the build. Warnings do not yet — they are rules whose backlog is still',
+                  'being worked down, listed so this PR does not add to it. See `docs/ui-code-quality-gate.md`.',
+                  '',
+                  eslintDetails,
+                  '',
+                ]
+              : [];
+
             const body = [
               '<!-- check:ui-checkstyle-summary -->',
-              '### ❌ UI Checkstyle Failed',
+              title,
               '',
               ...sections.flatMap(s => [s, '']),
+              ...eslintSection,
               '---',
               '**Fix locally (fast - only checks files changed in this branch):**',
               '```bash',
@@ -420,9 +566,12 @@ jobs:
           if [ "${{ needs.checkstyle.outputs.lint_src_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.license_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.i18n_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.i18n_core_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.app_docs_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ]; then
+             [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
             echo "One or more checks failed."
             exit 1
           fi

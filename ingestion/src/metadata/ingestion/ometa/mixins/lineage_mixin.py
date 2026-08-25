@@ -633,7 +633,7 @@ class OMetaLineageMixin(Generic[T]):
 
         # pylint: disable=import-outside-toplevel,cyclic-import
         # importing inside the method to avoid circular import
-        from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query  # noqa: PLC0415
+        from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 
         if database_service:
             connection_type = database_service.serviceType.value

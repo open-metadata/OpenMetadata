@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "إغلاق",
+    "close-navigation-menu": "إغلاق قائمة التنقل",
+    "copy-link": "نسخ الرابط",
+    "current-page": "الصفحة الحالية",
+    "date-range-picker": "منتقي نطاق التاريخ",
+    "delete": "حذف",
+    "edit": "تحرير",
+    "expand-navigation-menu": "توسيع قائمة التنقل",
+    "field-documentation": "وثائق الحقل",
+    "hidden-breadcrumbs": "مسارات التنقل المخفية",
+    "loading": "جارٍ التحميل…",
+    "next-page": "الانتقال إلى الصفحة التالية",
+    "open-menu": "فتح القائمة",
+    "page": "صفحة",
+    "pagination": "ترقيم الصفحات",
+    "pagination-navigation": "تنقل ترقيم الصفحات",
+    "previous-page": "الانتقال إلى الصفحة السابقة",
+    "records": "السجلات",
+    "remove-filter": "إزالة التصفية",
+    "select-dates": "اختر التواريخ",
+    "show-hidden-breadcrumbs": "إظهار مسارات التنقل المخفية",
+    "today": "اليوم"
+  }
+}

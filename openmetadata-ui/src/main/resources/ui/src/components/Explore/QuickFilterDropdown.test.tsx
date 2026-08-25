@@ -63,9 +63,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     label: React.ReactNode;
     'data-testid'?: string;
   }) => (
-    <label data-testid={testId}>
+    <label data-testid={testId} htmlFor={testId}>
+      {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- labeled via wrapping label */}
       <input
         checked={Boolean(isSelected)}
+        id={testId}
         type="checkbox"
         onChange={(event) => onChange(event.target.checked)}
       />
@@ -82,6 +84,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     placeholder?: string;
   }) => (
     <input
+      aria-label="search"
       data-testid="search-input"
       placeholder={placeholder}
       value={value}
@@ -212,6 +215,19 @@ describe('QuickFilterDropdown', () => {
     expect(onSearch).toHaveBeenCalledWith('tab', 'entityType');
 
     jest.useRealTimers();
+  });
+
+  // Without a containing block on the list, the Checkbox's absolutely
+  // positioned hidden input resolves against the popover root, escapes the
+  // list's clip, and lets a click on an off-screen option scroll the page.
+  it('should own the containing block for its option list', () => {
+    renderDropdown();
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('quick-filter-option-list')).toHaveClass(
+      'tw:relative'
+    );
   });
 
   it('should close when the route pathname changes', () => {

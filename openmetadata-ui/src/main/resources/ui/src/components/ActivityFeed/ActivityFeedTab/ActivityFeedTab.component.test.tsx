@@ -15,6 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { getFeedCount } from '../../../rest/feedsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTab } from './ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -25,6 +27,27 @@ const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
+const mockFetchEntityActivity = jest.fn();
+const mockFetchUserActivity = jest.fn();
+let mockActivityEvents: { id: string; timestamp: number }[] = [];
+let mockConversationCount = 0;
+let mockActivityCount = 0;
+let mockLoading = false;
+let mockTasks: { id: string }[] = [];
+let mockEntityPaging: { after?: string } = {};
+let mockIsInView = false;
+let mockLocation: { pathname: string; key: string; state: unknown } = {
+  pathname: '/',
+  key: 'initial',
+  state: null,
+};
+
+// Only useLocation is overridden; MemoryRouter and useNavigate stay real so the
+// component's own navigate('.', ...) call still works.
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: () => mockLocation,
+}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -50,7 +73,7 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../../hooks/useElementInView', () => ({
-  useElementInView: () => [{ current: null }, false],
+  useElementInView: () => [{ current: null }, mockIsInView],
 }));
 
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
@@ -60,15 +83,15 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     entityThread: [],
     getFeedData: mockGetFeedData,
     getTaskData: mockGetTaskData,
-    loading: false,
-    entityPaging: {},
-    tasks: [],
+    loading: mockLoading,
+    entityPaging: mockEntityPaging,
+    tasks: mockTasks,
     selectedTask: null,
     setActiveTask: jest.fn(),
-    activityEvents: [],
+    activityEvents: mockActivityEvents,
     isActivityLoading: false,
-    fetchEntityActivity: jest.fn(),
-    fetchUserActivity: jest.fn(),
+    fetchEntityActivity: mockFetchEntityActivity,
+    fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
     setActiveActivity: jest.fn(),
@@ -82,9 +105,7 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
+  getFeedCount: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -95,11 +116,18 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
+  // Real implementations — folding the /feed/count array and summing the tab
+  // total are the behaviours the tests below exercise.
+  aggregateFeedCountResponse: jest.requireActual('../../../utils/FeedUtilsPure')
+    .aggregateFeedCountResponse,
+  getFeedTotalCount: jest.requireActual('../../../utils/FeedUtilsPure')
+    .getFeedTotalCount,
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
-      conversationCount: 0,
+      conversationCount: mockConversationCount,
+      activityCount: mockActivityCount,
       mentionCount: 0,
-      totalCount: 0,
+      totalCount: mockConversationCount + mockActivityCount,
       totalTasksCount: 0,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -122,8 +150,15 @@ jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>
 jest.mock('../ActivityFeedList/TaskListV1.component', () =>
   jest
     .fn()
-    .mockImplementation(({ emptyPlaceholderText }) => (
-      <div data-testid="task-list">{emptyPlaceholderText}</div>
+    .mockImplementation(({ emptyPlaceholderText, isLoading, onAfterClose }) => (
+      <div data-loading={String(isLoading)} data-testid="task-list">
+        <button
+          aria-label="close task"
+          data-testid="task-after-close"
+          onClick={onAfterClose}
+        />
+        {emptyPlaceholderText}
+      </div>
     ))
 );
 
@@ -162,9 +197,31 @@ const renderComponent = (subTab = ActivityFeedTabs.TASKS) => {
   );
 };
 
+const renderUserComponent = (subTab = ActivityFeedTabs.TASKS) => {
+  mockUseRequiredParams.mockReturnValue({ tab: 'activity_feed', subTab });
+
+  return render(
+    <MemoryRouter>
+      <ActivityFeedTab
+        {...defaultProps}
+        columns={undefined}
+        entityType={EntityType.USER}
+      />
+    </MemoryRouter>
+  );
+};
+
 describe('ActivityFeedTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockActivityEvents = [];
+    mockConversationCount = 0;
+    mockActivityCount = 0;
+    mockLoading = false;
+    mockTasks = [];
+    mockEntityPaging = {};
+    mockIsInView = false;
+    mockLocation = { pathname: '/', key: 'initial', state: null };
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
@@ -173,32 +230,262 @@ describe('ActivityFeedTab', () => {
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+    (getFeedCount as jest.Mock).mockResolvedValue([
+      {
+        entityLink: '<#E::user::admin>',
+        conversationCount: 0,
+        mentionCount: 0,
+      },
+    ]);
   });
 
-  describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {
-    it('calls getFeedData with FeedFilter.MENTIONS when mentions tab is active', async () => {
-      renderComponent(ActivityFeedTabs.MENTIONS);
+  describe('Activity fetch is gated by tab', () => {
+    it('does NOT fetch entity activity on the Tasks tab', async () => {
+      renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() => {
-        const calls = mockGetFeedData.mock.calls;
-        const mentionsCall = calls.find(
-          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
-        );
-
-        expect(mentionsCall).toBeDefined();
+        expect(mockGetTaskData).toHaveBeenCalled();
       });
+
+      expect(mockFetchEntityActivity).not.toHaveBeenCalled();
     });
 
-    it('does not call getFeedData with FeedFilter.MENTIONS when tasks tab is active', async () => {
+    it('fetches entity activity on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        expect(mockFetchEntityActivity).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('All count = conversations + activity events', () => {
+    it('sums the server conversationCount and activityCount (not client-loaded length)', async () => {
+      mockConversationCount = 3;
+      mockActivityCount = 2;
+      // Client-loaded list has fewer items than the server activity total; the
+      // badge must reflect the SERVER total, so it stays correct under pagination.
+      mockActivityEvents = [{ id: 'a1', timestamp: 1 }];
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        const counts = screen
+          .getAllByTestId('filter-count')
+          .map((el) => el.textContent);
+
+        // All badge must be 3 (conversations) + 2 (activity server total) = 5,
+        // NOT 3 + activityEvents.length (1).
+        expect(counts).toContain('5');
+      });
+    });
+  });
+
+  describe('User entity feed counts tolerate an empty /feed/count response', () => {
+    it('still renders the tab when the feed count response is empty', async () => {
+      // A user with no threads gets back [] — indexing res[0] threw here, which
+      // was swallowed by the catch and left the whole tab unrendered.
+      (getFeedCount as jest.Mock).mockResolvedValue([]);
+
+      renderUserComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => expect(getFeedCount).toHaveBeenCalled());
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(screen.getByTestId('task-list')).toBeInTheDocument();
+    });
+  });
+
+  describe('Mentions sub-tab fetches tasks the user is mentioned in', () => {
+    it('calls getTaskData with FeedFilter.MENTIONS and never getFeedData', async () => {
+      renderComponent(ActivityFeedTabs.MENTIONS);
+
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          FeedFilter.MENTIONS,
+          undefined,
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      // The mentions list renders off provider `tasks`, so routing it through
+      // getFeedData (which writes entityThread) left the previous My Tasks
+      // list on screen.
+      expect(mockGetFeedData).not.toHaveBeenCalled();
+    });
+
+    it('renders the task list, not the feed list, on the mentions sub-tab', async () => {
+      renderComponent(ActivityFeedTabs.MENTIONS);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toBeInTheDocument()
+      );
+
+      expect(screen.queryByTestId('feed-list')).not.toBeInTheDocument();
+      expect(screen.getByText('message.no-mentions')).toBeInTheDocument();
+    });
+
+    it('does not pass FeedFilter.MENTIONS on the my-tasks sub-tab', async () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() => expect(mockGetTaskData).toHaveBeenCalled());
 
-      const mentionsCall = mockGetFeedData.mock.calls.find(
-        ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
+      expect(
+        mockGetTaskData.mock.calls.find(
+          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
+        )
+      ).toBeUndefined();
+      expect(
+        mockGetFeedData.mock.calls.find(
+          ([feedFilter]) => feedFilter === FeedFilter.MENTIONS
+        )
+      ).toBeUndefined();
+    });
+  });
+
+  describe('Sub-tab changes show the loader, never a stale list', () => {
+    it('switches the in-list loader back on for a first-page refetch after paginating', async () => {
+      mockTasks = [{ id: 'stale-my-task' }];
+      // Scrolled to the bottom with a cursor: the one path that legitimately
+      // turns the in-list loader off.
+      mockEntityPaging = { after: 'cursor-1' };
+      mockIsInView = true;
+
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          'cursor-1',
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
       );
 
-      expect(mentionsCall).toBeUndefined();
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'false'
+        )
+      );
+
+      // onAfterClose refetches the first page, and the provider clears `tasks`
+      // for it. Once pagination has cleared isFirstLoad, only switching it back
+      // on keeps the loader up — otherwise the emptied list renders the
+      // "no tasks" placeholder next to the pagination spinner.
+      mockLoading = true;
+      fireEvent.click(screen.getByTestId('task-after-close'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'true'
+        )
+      );
+    });
+
+    it('brings the loader back when a task notification refreshes after paginating', async () => {
+      mockTasks = [{ id: 'stale-my-task' }];
+      mockEntityPaging = { after: 'cursor-1' };
+      mockIsInView = true;
+
+      const { rerender } = renderComponent(ActivityFeedTabs.TASKS);
+
+      // Paginating is what clears isFirstLoad and arms the defect.
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          'cursor-1',
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'false'
+        )
+      );
+
+      mockGetTaskData.mockClear();
+      mockLoading = true;
+      // Clicking a task notification for the same entity keeps the component
+      // mounted and only changes location.state.
+      mockLocation = {
+        pathname: '/',
+        key: 'after-notification',
+        state: { tasksRefreshKey: 1 },
+      };
+
+      rerender(
+        <MemoryRouter>
+          <ActivityFeedTab {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      // The refresh really did start a first-page fetch, and the provider clears
+      // the rows for it, so the loader must be on rather than the placeholder.
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          undefined,
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      expect(screen.getByTestId('task-list')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+    });
+
+    it('brings the loader back when the sub-tab changes via the URL', async () => {
+      mockTasks = [{ id: 'stale-my-task' }];
+      // A scrolled-to-bottom list with a cursor pages in, which is the one path
+      // that legitimately turns the in-list loader off.
+      mockEntityPaging = { after: 'cursor-1' };
+      mockIsInView = true;
+
+      const { rerender } = renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(mockGetTaskData).toHaveBeenCalledWith(
+          undefined,
+          'cursor-1',
+          EntityType.TABLE,
+          'test.db.table',
+          'open'
+        )
+      );
+
+      mockLoading = true;
+      // Entity pages never pass the `subTab` prop — the switch arrives as a URL
+      // param, which is why keying the loader reset off `subTab` was a no-op and
+      // left the previous sub-tab's list on screen.
+      mockUseRequiredParams.mockReturnValue({
+        tab: 'activity_feed',
+        subTab: ActivityFeedTabs.MENTIONS,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <ActivityFeedTab {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-list')).toHaveAttribute(
+          'data-loading',
+          'true'
+        )
+      );
     });
   });
 
@@ -279,6 +566,25 @@ describe('ActivityFeedTab', () => {
           screen.getByText('message.no-closed-tasks-title')
         ).toBeInTheDocument();
       });
+    });
+
+    it('fires exactly one fetch per task filter change', async () => {
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => expect(mockGetTaskData).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
+      fireEvent.click(await screen.findByTestId('closed-tasks'));
+
+      // The fetch effect already refires on taskFilter, so the handler calling
+      // getTaskData itself as well fired two identical requests per click.
+      await waitFor(() =>
+        expect(
+          mockGetTaskData.mock.calls.filter(
+            ([, , , , statusGroup]) => statusGroup === 'closed'
+          )
+        ).toHaveLength(1)
+      );
     });
   });
 });

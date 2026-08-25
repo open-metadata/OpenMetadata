@@ -32,6 +32,7 @@ import org.openmetadata.service.audit.AuditLogRecordMapper;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface ActivityAuditDAOs {
   @CreateSqlObject
@@ -73,8 +74,8 @@ public interface ActivityAuditDAOs {
         @Bind("fieldName") String fieldName,
         @Bind("oldValue") String oldValue,
         @Bind("newValue") String newValue,
-        @Bind("domains") String domains,
-        @Bind("json") String json);
+        @BindJson("domains") String domains,
+        @BindJson("json") String json);
 
     // Batch insert for activity events - one round-trip per change event instead of one per row
     @Transaction
@@ -294,6 +295,16 @@ public interface ActivityAuditDAOs {
     @SqlUpdate("DELETE FROM activity_stream WHERE timestamp < :cutoff")
     int deleteOlderThan(@Bind("cutoff") long cutoffTimestamp);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entityType = :entityType AND entityId = :entityId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM activity_stream WHERE entitytype = :entityType AND entityid = :entityId",
+        connectionType = POSTGRES)
+    int deleteByEntity(@Bind("entityType") String entityType, @Bind("entityId") String entityId);
+
     @SqlQuery("SELECT json FROM activity_stream WHERE id = :id")
     String findById(@Bind("id") String id);
 
@@ -303,7 +314,7 @@ public interface ActivityAuditDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void updateJson(@Bind("id") String id, @Bind("json") String json);
+    void updateJson(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -355,6 +366,50 @@ public interface ActivityAuditDAOs {
         @Bind("after") long after,
         @Bind("limit") int limit);
 
+    // Relationship.FOLLOWS ordinal = 11. Only users follow entities, so unlike ownership there is
+    // no team leg to this query.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowers(
+        @Bind("userId") String userId, @Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND JSON_OVERLAPS(domains, :domainJson) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
+                + "WHERE domain_id IN (<domainIds>)) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowersAndDomains(
+        @Bind("userId") String userId,
+        @Bind("domainJson") String domainJson,
+        @BindList("domainIds") List<String> domainIds,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
@@ -399,7 +454,7 @@ public interface ActivityAuditDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO activity_stream_config(id, json) VALUES (:id, :json::jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("id") String id, @Bind("json") String json);
+    void insert(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream_config SET json = :json WHERE id = :id",
@@ -407,7 +462,7 @@ public interface ActivityAuditDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream_config SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("id") String id, @Bind("json") String json);
+    void update(@Bind("id") String id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM activity_stream_config WHERE id = :id")
     String findById(@Bind("id") String id);

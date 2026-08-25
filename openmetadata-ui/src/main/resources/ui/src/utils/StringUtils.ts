@@ -55,9 +55,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const wordsCount = words.length;
 
   if (wordsCount === 1) {
-    // In case of only one word (possibly too long URL)
-    // return the whole word instead of trimming
-    return content.split(' ')[0];
+    return slicedContent;
   }
 
   // Eliminate word at the end to avoid using broken words
@@ -263,13 +261,14 @@ export const customServiceComparator = (a: string, b: string): number => {
  */
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
+// Looked up one character at a time by the character class in escapeESReservedCharacters,
+// so every key here must be a single character — a multi-character key would be unreachable.
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': String.raw`\+`,
   '-': String.raw`\-`,
   '=': String.raw`\=`,
   '&': String.raw`\&`,
-  '&&': String.raw`\&&`,
-  '||': String.raw`\||`,
+  '|': String.raw`\|`,
   '>': String.raw`\>`,
   '<': String.raw`\<`,
   '!': String.raw`\!`,

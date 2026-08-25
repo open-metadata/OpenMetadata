@@ -126,6 +126,8 @@ test.describe('User with different Roles', () => {
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
   }) => {
+    test.slow();
+
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();

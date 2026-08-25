@@ -23,6 +23,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface AiGovernanceDAOs {
   @CreateSqlObject
@@ -147,8 +148,8 @@ public interface AiGovernanceDAOs {
         @Bind("id") String id,
         @Bind("runningOn") String runningOn,
         @Bind("completedAt") long completedAt,
-        @Bind("artifacts") String artifacts,
-        @Bind("manifest") String manifest,
+        @BindJson("artifacts") String artifacts,
+        @BindJson("manifest") String manifest,
         @Bind("updatedBy") String updatedBy);
 
     @ConnectionAwareSqlUpdate(
@@ -266,7 +267,7 @@ public interface AiGovernanceDAOs {
         @Define("table") String table,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -281,7 +282,7 @@ public interface AiGovernanceDAOs {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -382,7 +383,7 @@ public interface AiGovernanceDAOs {
         @Define("table") String table,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -397,7 +398,7 @@ public interface AiGovernanceDAOs {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM <table> WHERE serverId = :serverId AND timestamp = :timestamp",

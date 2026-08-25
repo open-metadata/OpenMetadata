@@ -1,14 +1,17 @@
 package org.openmetadata.sdk.services.tests;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -65,6 +68,18 @@ public class TestCaseResolutionStatusService {
   }
 
   /**
+   * Bulk create resolution statuses — e.g. assign or resolve a selection of incidents at once.
+   *
+   * @param createRequests One create request per incident, up to 100 per call
+   * @return Per-entry success/failure results
+   */
+  public BulkOperationResult bulkCreate(List<CreateTestCaseResolutionStatus> createRequests)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT, BASE_PATH + "/bulk", createRequests, BulkOperationResult.class);
+  }
+
+  /**
    * Get a resolution status by state ID.
    *
    * @param stateId The state ID
@@ -103,6 +118,23 @@ public class TestCaseResolutionStatusService {
     }
     ResultList<TestCaseResolutionStatus> result =
         httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+    return new ListResponse<>(result);
+  }
+
+  /**
+   * List open incident counts grouped by a dimension (table, testDefinition, or owner).
+   *
+   * @param queryParams Query parameters; `groupBy` is required
+   * @return List of incident groups with counts
+   */
+  public ListResponse<TestCaseIncidentGroup> listIncidentGroups(Map<String, String> queryParams)
+      throws OpenMetadataException {
+    String path = BASE_PATH + "/incidentGroups";
+    if (queryParams != null && !queryParams.isEmpty()) {
+      path += "?" + buildQueryString(queryParams);
+    }
+    ResultList<TestCaseIncidentGroup> result =
+        httpClient.execute(HttpMethod.GET, path, null, getIncidentGroupResultListType());
     return new ListResponse<>(result);
   }
 
@@ -155,6 +187,11 @@ public class TestCaseResolutionStatusService {
   @SuppressWarnings("unchecked")
   private Class<ResultList<TestCaseResolutionStatus>> getResultListType() {
     return (Class<ResultList<TestCaseResolutionStatus>>) (Class<?>) ResultList.class;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Class<ResultList<TestCaseIncidentGroup>> getIncidentGroupResultListType() {
+    return (Class<ResultList<TestCaseIncidentGroup>>) (Class<?>) ResultList.class;
   }
 
   // ===================================================================

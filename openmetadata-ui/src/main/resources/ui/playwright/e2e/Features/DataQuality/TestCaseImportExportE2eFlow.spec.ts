@@ -60,7 +60,7 @@ const test = base.extend<{
 
 test.describe(
   'Test Case Import/Export/Edit - End-to-End Flow with Admin',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
@@ -108,7 +108,7 @@ test.describe(
 
 test.describe(
   'Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 

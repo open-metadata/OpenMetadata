@@ -167,6 +167,7 @@ const TagsForm = ({
   isClassification,
   isEditing = false,
   isTier = false,
+  isParentAutoClassificationEnabled = false,
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
@@ -530,8 +531,11 @@ const TagsForm = ({
 
   const autoClassificationComponent = useMemo(
     () =>
-      tagClassBase.getAutoClassificationComponent(isClassification || false),
-    [isClassification]
+      tagClassBase.getAutoClassificationComponent(
+        isClassification || false,
+        isParentAutoClassificationEnabled
+      ),
+    [isClassification, isParentAutoClassificationEnabled]
   );
 
   return (
@@ -573,7 +577,7 @@ const TagsForm = ({
             {({ field, fieldState }) => (
               <Box
                 aria-invalid={fieldState.invalid || undefined}
-                className="tw:gap-[6px]"
+                className="tw:gap-1.5"
                 direction="col">
                 <FormItemLabel required label={t('label.description')} />
                 <RichTextEditor

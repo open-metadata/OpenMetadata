@@ -28,6 +28,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface OAuthDAOs {
   @CreateSqlObject
@@ -63,10 +64,10 @@ public interface OAuthDAOs {
         @Bind("clientId") String clientId,
         @Bind("clientSecret") String clientSecret,
         @Bind("clientName") String clientName,
-        @Bind("redirectUris") String redirectUris,
-        @Bind("grantTypes") String grantTypes,
+        @BindJson("redirectUris") String redirectUris,
+        @BindJson("grantTypes") String grantTypes,
         @Bind("authMethod") String authMethod,
-        @Bind("scopes") String scopes);
+        @BindJson("scopes") String scopes);
 
     @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
     void delete(@Bind("clientId") String clientId);
@@ -93,7 +94,7 @@ public interface OAuthDAOs {
         @Bind("codeChallenge") String codeChallenge,
         @Bind("codeChallengeMethod") String codeChallengeMethod,
         @Bind("redirectUri") String redirectUri,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate(
@@ -126,7 +127,7 @@ public interface OAuthDAOs {
         @Bind("accessTokenEncrypted") String accessTokenEncrypted,
         @Bind("clientId") String clientId,
         @Bind("userName") String userName,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate("DELETE FROM oauth_access_tokens WHERE token_hash = :tokenHash")
@@ -155,7 +156,7 @@ public interface OAuthDAOs {
         @Bind("refreshTokenEncrypted") String refreshTokenEncrypted,
         @Bind("clientId") String clientId,
         @Bind("userName") String userName,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate("UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE token_hash = :tokenHash")
@@ -203,7 +204,7 @@ public interface OAuthDAOs {
         @Bind("codeChallengeMethod") String codeChallengeMethod,
         @Bind("redirectUri") String redirectUri,
         @Bind("mcpState") String mcpState,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("pac4jState") String pac4jState,
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier,

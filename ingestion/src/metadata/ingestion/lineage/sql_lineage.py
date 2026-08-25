@@ -198,6 +198,12 @@ def search_table_entities(
     Returns:
         A list of Table entities from the first service where found, otherwise None
     """
+    if not table:
+        logger.debug(
+            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
+        )
+        return None
+
     if isinstance(service_names, str):
         service_names = [service_names]
 
@@ -259,9 +265,15 @@ def get_table_fqn_from_query_name(
     """
     Method to extract database, schema and table name
     from raw table name used in query
+
+    The split is quote-aware: connectors are free to put a `.` inside a single name
+    component (Dremio flattens nested folder paths into `folder.subfolder`), in which
+    case that component reaches us quoted. Splitting such a name on every `.` would
+    tear the quoted identifier in half and yield components with unbalanced quotes,
+    which `fqn.quote_name` then rejects with `Invalid name "folder`.
     """
 
-    split_table = table_name.split(".")
+    split_table = fqn.split_raw_name(table_name)
     empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat  # noqa: UP006
 
     if len(split_table) > 3:
@@ -995,7 +1007,7 @@ def _build_temp_table_lineage(
     Returns:
         List of TempLineageTable objects with fromEntity and toEntity fields.
     """
-    from metadata.generated.schema.type.entityLineage import TempLineageTable  # noqa: PLC0415
+    from metadata.generated.schema.type.entityLineage import TempLineageTable
 
     if len(table_chain) < 2:
         return [TempLineageTable(fromEntity=from_fqn, toEntity=to_fqn)]

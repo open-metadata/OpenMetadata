@@ -176,6 +176,7 @@ export enum TabSpecificField {
   TERM_COUNT = 'termCount',
   TESTS = 'tests',
   TESTSUITE = 'testSuite',
+  TEST_SUITES = 'testSuites',
   TEST_CASE_RESULT = 'testCaseResult',
   TEST_DEFINITION = 'testDefinition',
   UI_CUSTOMIZATION = 'uiCustomization',

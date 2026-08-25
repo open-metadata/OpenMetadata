@@ -70,6 +70,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type = '';
+  exploreTabName?: string;
   serviceCategory?: GlobalSettingOptions;
   serviceType?: ServiceTypes;
   childrenTabId?: string;

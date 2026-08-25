@@ -29,7 +29,6 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
   </properties>
 
@@ -168,18 +167,6 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-assets</artifactId>
     </dependency>
-    <!--
-      HTTP/2 connector factories. Not used by default (see conf/openmetadata.yaml,
-      applicationConnectors). Operators who run Jetty without an HTTP/2-terminating
-      load balancer in front can flip the connector type to h2c to get multiplexed
-      chunk downloads on first paint. AWS ALB / CloudFront speak HTTP/2 to the
-      browser but use HTTP/1.1 to the origin, so this won't help that path; useful
-      mainly for direct-access deployments (Docker Compose, on-prem, local dev).
-    -->
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-http2</artifactId>
-    </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
@@ -206,9 +193,8 @@
       dropwizard-http2 registers `type: h2` (TLS) and `type: h2c` (cleartext) connector
       factories via META-INF/services. Adding the dep is what makes those connector types
       available in conf/openmetadata.yaml — without it, "type: h2c" fails at startup with
-      "unknown connector type". Both factories are backward-compatible with HTTP/1.1 clients
-      on the same port (cleartext via Upgrade, TLS via ALPN), so adopting them does not
-      break existing clients.
+      "unknown connector type". Both factories retain HTTP/1.1 on the same port. Browser
+      multiplexing requires the TLS h2 connector; mainstream browsers do not negotiate h2c.
     -->
     <dependency>
       <groupId>io.dropwizard</groupId>
@@ -590,6 +576,11 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.http2</groupId>
+      <artifactId>jetty-http2-client-transport</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -1356,6 +1347,14 @@
             <include>**/*Tests.java</include>
             <include>**/*TestCase.java</include>
           </includes>
+          <!--
+            Entity schema used only by SchemaFieldExtractorTest to prove that schema lookup follows
+            the directory layout. Kept out of src/test/resources so that it stays out of the
+            published test-jar and never registers as an entity type in dependent modules.
+          -->
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.basedir}/src/test/schema-probe</additionalClasspathElement>
+          </additionalClasspathElements>
         </configuration>
       </plugin>
     </plugins>

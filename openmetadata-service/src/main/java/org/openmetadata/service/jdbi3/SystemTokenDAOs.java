@@ -32,6 +32,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -63,6 +65,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.jdbi.BindJson;
+import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface SystemTokenDAOs {
@@ -76,6 +80,53 @@ public interface SystemTokenDAOs {
   UserSessionDAO getUserSessionDAO();
 
   interface SystemDAO {
+    @SqlQuery(
+        "SELECT (SELECT COUNT(*) FROM type_entity WHERE nameHash IN (<typeHashes>)) + "
+            + "(SELECT COUNT(*) FROM policy_entity WHERE fqnHash IN (<policyHashes>)) + "
+            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>)) + "
+            + "(SELECT COUNT(*) FROM task_form_schema_entity WHERE fqnHash IN (<taskFormSchemaHashes>)) + "
+            + "(SELECT COUNT(*) FROM doc_store WHERE fqnHash IN (<documentHashes>)) + "
+            + "(SELECT COUNT(*) FROM workflow_definition_entity WHERE fqnHash IN (<workflowDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM event_subscription_entity WHERE nameHash IN (<eventSubscriptionHashes>)) + "
+            + "(SELECT COUNT(*) FROM notification_template_entity WHERE fqnHash IN (<notificationTemplateHashes>)) + "
+            + "(SELECT COUNT(*) FROM learning_resource_entity WHERE fqnHash IN (<learningResourceHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_definition WHERE nameHash IN (<testDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_connection_definition WHERE nameHash IN (<testConnectionDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM web_analytic_event WHERE fqnHash IN (<webAnalyticEventHashes>)) + "
+            + "(SELECT COUNT(*) FROM data_insight_chart WHERE fqnHash IN (<dataInsightChartHashes>)) + "
+            + "(SELECT COUNT(*) FROM di_chart_entity WHERE name IN (<dataInsightCustomChartNames>)) + "
+            + "(SELECT COUNT(*) FROM bot_entity WHERE nameHash IN (<botHashes>)) + "
+            + "(SELECT COUNT(*) FROM classification WHERE nameHash IN (<classificationHashes>)) + "
+            + "(SELECT COUNT(*) FROM tag WHERE fqnHash IN (<tagHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_entity WHERE nameHash IN (<glossaryHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash IN (<glossaryTermHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_policy_entity WHERE fqnHash IN (<aiGovernancePolicyHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_framework_entity WHERE fqnHash IN (<aiGovernanceFrameworkHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>))")
+    long countRequiredSeedData(
+        @BindListFQN("typeHashes") List<String> typeNames,
+        @BindListFQN("policyHashes") List<String> policyNames,
+        @BindListFQN("roleHashes") List<String> roleNames,
+        @BindListFQN("taskFormSchemaHashes") List<String> taskFormSchemaNames,
+        @BindListFQN("documentHashes") List<String> documentNames,
+        @BindListFQN("workflowDefinitionHashes") List<String> workflowDefinitionNames,
+        @BindListFQN("eventSubscriptionHashes") List<String> eventSubscriptionNames,
+        @BindListFQN("notificationTemplateHashes") List<String> notificationTemplateNames,
+        @BindListFQN("learningResourceHashes") List<String> learningResourceNames,
+        @BindListFQN("testDefinitionHashes") List<String> testDefinitionNames,
+        @BindListFQN("testConnectionDefinitionHashes") List<String> testConnectionDefinitionNames,
+        @BindListFQN("webAnalyticEventHashes") List<String> webAnalyticEventNames,
+        @BindListFQN("dataInsightChartHashes") List<String> dataInsightChartNames,
+        @BindList("dataInsightCustomChartNames") List<String> dataInsightCustomChartNames,
+        @BindListFQN("botHashes") List<String> botNames,
+        @BindListFQN("classificationHashes") List<String> classificationNames,
+        @BindListFQN("tagHashes") List<String> tagNames,
+        @BindListFQN("glossaryHashes") List<String> glossaryNames,
+        @BindListFQN("glossaryTermHashes") List<String> glossaryTermNames,
+        @BindListFQN("aiGovernancePolicyHashes") List<String> aiGovernancePolicyNames,
+        @BindListFQN("aiGovernanceFrameworkHashes") List<String> aiGovernanceFrameworkNames,
+        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "
@@ -166,6 +217,18 @@ public interface SystemTokenDAOs {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json) ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT into openmetadata_settings (configType, json)"
+                + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertSettings(@Bind("configType") String configType, @BindJson("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE openmetadata_settings SET json = :updatedJson "
                 + "WHERE configType = :configType "
                 + "AND SHA2(CAST(json AS CHAR), 256) = "
@@ -178,8 +241,8 @@ public interface SystemTokenDAOs {
         connectionType = POSTGRES)
     int updateSettingsIfCurrent(
         @Bind("configType") String configType,
-        @Bind("expectedJson") String expectedJson,
-        @Bind("updatedJson") String updatedJson);
+        @BindJson("expectedJson") String expectedJson,
+        @BindJson("updatedJson") String updatedJson);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -195,19 +258,7 @@ public interface SystemTokenDAOs {
                 + "AND json = (:expectedJson :: jsonb)",
         connectionType = POSTGRES)
     int updateGlossaryTermRelationSettingsIfCurrent(
-        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT into openmetadata_settings (configType, json)"
-                + "VALUES (:configType, :json) ON DUPLICATE KEY UPDATE json = :json",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT into openmetadata_settings (configType, json)"
-                + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
-        connectionType = POSTGRES)
-    void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+        @BindJson("expectedJson") String expectedJson, @BindJson("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
@@ -272,6 +323,8 @@ public interface SystemTokenDAOs {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case APP_CONFIGURATION -> JsonUtils.readValue(json, AppConfiguration.class);
+            case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -387,7 +440,7 @@ public interface SystemTokenDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO user_tokens (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
@@ -395,7 +448,7 @@ public interface SystemTokenDAOs {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @Bind("json") String json);
+    void update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
@@ -459,7 +512,7 @@ public interface SystemTokenDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO user_session (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -472,7 +525,7 @@ public interface SystemTokenDAOs {
     int updateIfVersion(
         @Bind("id") String id,
         @Bind("expectedVersion") long expectedVersion,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlUpdate("DELETE FROM user_session WHERE id = :id")
     void delete(@Bind("id") String id);

@@ -14,26 +14,31 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
-import { EntityType } from '../enums/entity.enum';
 import { Document } from '../generated/entity/docStore/document';
 import {
   PersonaPreferences,
   UICustomization,
 } from '../generated/system/ui/uiCustomization';
 import { AppMode } from '../generated/type/personaPreferences';
-import { getDocumentByFQN } from '../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+} from '../rest/queries/docStoreQuery';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import {
+  AppModeSession,
   clearAppModeSessionOnly,
+  getAppDefaultMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
+  removeAppModeSession,
+  resolveEffectiveAppMode,
   writeAppMode,
 } from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
-
-const PERSONA_APP_MODE_QUERY_KEY = 'persona-app-mode-doc';
 
 /**
  * Translate the admin-facing `AppMode` enum stored on a persona into the
@@ -67,17 +72,28 @@ const resolvePersonaAppMode = (
 /**
  * Single source of truth for resolving the active app mode at boot.
  *
- * Precedence (top wins):
+ * Precedence (top wins) — this order is shared with
+ * `resolveEffectiveAppMode` (used by `AuthProvider`'s pre-session
+ * bootstrap) so the two entry points can never disagree:
+ *
  *   1. Desktop app — handled outside this hook; the desktop shell calls
  *      `writeAppMode(AI_APP_MODE)` directly and the resolver bails on the
  *      relevant state (no persona to fetch, sessionStorage tuple always
  *      present after that write).
- *   2. Current session tuple whose `personaAppMode` matches what the
- *      persona currently says → keep it. Refreshes and same-persona
- *      re-runs leave the user's chosen mode alone.
- *   3. Persona's `appMode` if set.
- *   4. User preference (`usePersistentStorage[user].appMode`).
- *   5. `DEFAULT_APP_MODE`.
+ *   2. Current session tuple, if valid (mode is registered). This is
+ *      the user's manual in-tab switch and it wins unconditionally —
+ *      including over a persona change that happened after the tuple
+ *      was written. Rationale: the user's *right-now* click in this
+ *      tab must not be silently undone by an admin editing the
+ *      persona doc mid-session.
+ *   3. Fresh cross-tab hint (`localStorage['omAppModeHint']`) — carries
+ *      the user's most-recent active choice into a newly-opened tab.
+ *   4. User preference (`usePersistentStorage[user].appMode`) — the
+ *      server-side "remember" toggle. A persistent user choice.
+ *   5. Persona's `appMode` if set — the admin-curated group default.
+ *   6. Tenant-wide app-mode default (`appConfiguration.defaultAppMode`,
+ *      cached via `setAppDefaultMode` — see `AuthProvider`'s bootstrap).
+ *   7. `DEFAULT_APP_MODE`.
  *
  * The install gate is applied on top of the candidate: if a non-default
  * candidate is not registered in `useAppRoutesRegistry`, the resolver
@@ -90,15 +106,21 @@ const resolvePersonaAppMode = (
  * the resolver falls through to compute a fresh candidate.
  *
  * Consumers should invoke this hook exactly once, high in the tree
- * (e.g. `AppRoot`). It has no return value — its effects are `writeAppMode`
- * / `clearAppMode` calls.
+ * (e.g. `AppRoot`). Its work is done through effects — `writeAppMode` /
+ * `clearAppMode` calls. It returns the `registrySettled` flag described
+ * below so the router can tell "the owning plugin has not registered its
+ * routes yet" apart from "no plugin owns this mode", which are otherwise
+ * indistinguishable from an empty registry.
  */
-export const useResolvedAppMode = (): void => {
+export const useResolvedAppMode = (): boolean => {
   const defaultPersonaId = useApplicationStore(
     (state) => state.currentUser?.defaultPersona?.id
   );
   const defaultPersonaName = useApplicationStore(
     (state) => state.currentUser?.defaultPersona?.name
+  );
+  const defaultPersonaFqn = useApplicationStore(
+    (state) => state.currentUser?.defaultPersona?.fullyQualifiedName
   );
   const currentUser = useApplicationStore((state) => state.currentUser);
   const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
@@ -141,20 +163,30 @@ export const useResolvedAppMode = (): void => {
     return () => clearTimeout(id);
   }, [applicationsLoaded]);
 
-  const hasDefaultPersona = Boolean(defaultPersonaId && defaultPersonaName);
+  const personaFqn = personaDocFqn(
+    defaultPersonaFqn ? { fullyQualifiedName: defaultPersonaFqn } : null
+  );
+  // Folds `personaFqn` in so this can never disagree with the query's
+  // `enabled` condition below — if it did, a persona with an id/name but
+  // no fullyQualifiedName would leave the query permanently disabled
+  // (`isPending` stays true in React Query v5) while the effect below
+  // keeps waiting on `isPersonaPending`, deadlocking the resolver.
+  const hasDefaultPersona = Boolean(
+    defaultPersonaId && defaultPersonaName && personaFqn
+  );
 
   // Persona docs are edited server-side (admin UI). If we cached forever,
   // an admin flipping the persona's appMode wouldn't take effect until the
   // user closed and re-opened the tab. A 5-min stale window + refetch on
   // window focus keeps edits reasonably fresh without turning the resolver
-  // into a chatty consumer.
+  // into a chatty consumer. Goes through the same `docStore` cache slot
+  // (docStoreQuery.ts) that useCustomPages/MyDataPage use, so an admin's
+  // save (CustomizablePage's queryClient.setQueryData) is visible here too.
   const { data: personaDoc, isPending: isPersonaPending } = useQuery({
-    queryKey: [PERSONA_APP_MODE_QUERY_KEY, defaultPersonaName],
-    queryFn: () =>
-      getDocumentByFQN(`${EntityType.PERSONA}.${defaultPersonaName}`),
-    enabled: hasDefaultPersona,
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: hasDefaultPersona && !!personaFqn,
     staleTime: 5 * 60 * 1000,
-    gcTime: Infinity,
     refetchOnWindowFocus: true,
     retry: false,
   });
@@ -189,7 +221,7 @@ export const useResolvedAppMode = (): void => {
     //     plugin owning the mode is truly uninstalled. Clear ONLY
     //     this tab's session tuple (not the shared hint — sibling
     //     tabs might legitimately be using it) and fall through.
-    const validSession =
+    let validSession: AppModeSession | null =
       session && isModeRegistered(session.mode) ? session : null;
     if (session && !validSession) {
       if (!registrySettled) {
@@ -198,8 +230,31 @@ export const useResolvedAppMode = (): void => {
       clearAppModeSessionOnly();
     }
 
-    if (validSession && validSession.personaAppMode === currentPersonaAppMode) {
+    // Non-boot sessions win unconditionally — a `'manual'` tuple came
+    // from a user's UI toggle in this tab (rung 1: manual switch
+    // wins) and a `'resolver'` tuple is our own authoritative resolve
+    // from a prior run, both immune to persona / registry updates
+    // that happen after the write. A `'boot'` tuple is provisional
+    // (see `AuthProvider.hydrateAndResolveAppMode`) — we clear it
+    // and null out the local reference so downstream code (hint
+    // adoption, candidate write) proceeds as if there had been no
+    // session at all.
+    if (validSession && validSession.source !== 'boot') {
       return;
+    }
+    if (validSession && validSession.source === 'boot') {
+      // Remove the sessionStorage tuple but leave the store on the
+      // boot-written value: `writeAppMode(candidate, ..., 'resolver')`
+      // below overwrites the store cleanly, so the only currentMode
+      // change subscribers see is the final resolver value. A
+      // `clearAppModeSessionOnly()` here would reset the store to
+      // DEFAULT_APP_MODE first, and Zustand's synchronous subscriber
+      // notification would drive one render at DEFAULT before the
+      // resolver's write lands — enough to route a non-default URL
+      // (e.g. /ai-automations, /observability/*) through the Classic
+      // catch-all and redirect it to /404.
+      removeAppModeSession();
+      validSession = null;
     }
 
     // Cross-tab hint: when this tab has no session (fresh open, e.g. a
@@ -211,7 +266,7 @@ export const useResolvedAppMode = (): void => {
     const hint = validSession ? null : readAppModeHint();
     if (isAppModeHintFresh(hint) && hint) {
       if (isModeRegistered(hint.mode)) {
-        writeAppMode(hint.mode, currentPersonaAppMode);
+        writeAppMode(hint.mode, currentPersonaAppMode, { source: 'resolver' });
 
         return;
       }
@@ -229,9 +284,16 @@ export const useResolvedAppMode = (): void => {
       }
     }
 
-    const preferredMode = preferences.appMode ?? null;
-    const candidate =
-      currentPersonaAppMode ?? preferredMode ?? DEFAULT_APP_MODE;
+    // Precedence for the "no valid session, no fresh hint" case: user
+    // pref (server "remember") > persona > tenant default > constant.
+    // Shared with `resolveEffectiveAppMode` in `useAppMode.ts` so the
+    // async resolver here and the boot-time write in `AuthProvider`
+    // encode exactly the same policy.
+    const candidate = resolveEffectiveAppMode(
+      preferences.appMode ?? null,
+      currentPersonaAppMode,
+      getAppDefaultMode()
+    );
 
     // Install gate: refuse to write a non-default mode that isn't
     // registered yet. When the route registers later, this effect
@@ -240,7 +302,7 @@ export const useResolvedAppMode = (): void => {
       return;
     }
 
-    writeAppMode(candidate, currentPersonaAppMode);
+    writeAppMode(candidate, currentPersonaAppMode, { source: 'resolver' });
   }, [
     isAuthenticated,
     currentUser?.name,
@@ -252,4 +314,6 @@ export const useResolvedAppMode = (): void => {
     registeredRoutes,
     registrySettled,
   ]);
+
+  return registrySettled;
 };

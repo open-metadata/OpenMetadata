@@ -146,7 +146,7 @@ class CouchbaseSource(CommonNoSQLSource):
         Method to get actual data available within table
         need to be overridden by sources
         """
-        from couchbase.exceptions import QueryIndexNotFoundException  # noqa: PLC0415
+        from couchbase.exceptions import QueryIndexNotFoundException
 
         try:
             condition = self.get_index_condition(schema_name)

@@ -14,6 +14,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.util.List;
@@ -92,6 +93,11 @@ public class StoredProcedureResource
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter stored procedures by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter stored procedures by database schema",
               schema = @Schema(type = "string", example = "customerDatabaseSchema"))
           @QueryParam("databaseSchema")
@@ -120,6 +126,9 @@ public class StoredProcedureResource
           Include include) {
     ListFilter filter =
         new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -345,7 +354,7 @@ public class StoredProcedureResource
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleStoredProcedures",
@@ -371,7 +380,17 @@ public class StoredProcedureResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
-      @Context SecurityContext securityContext, @Valid BulkDeleteStaleRequest request) {
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
     return deleteStaleEntities(securityContext, request);
   }
 

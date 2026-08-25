@@ -1055,7 +1055,11 @@ const APIEndpointSchemaV1: React.FC<{
             <span className="tag-container" key={tag.tagFQN}>
               {tag.displayName || tag.name}
             </span>
-          )) || <span className="text-grey-muted">{t('label.no-tags')}</span>}
+          )) || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.tag-plural') })}
+            </span>
+          )}
         </div>
       ),
     },

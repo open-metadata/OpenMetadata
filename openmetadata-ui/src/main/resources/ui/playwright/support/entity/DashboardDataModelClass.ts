@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -157,18 +158,49 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
+    let serviceResponse = await apiContext.post(
       '/api/v1/services/dashboardServices',
       {
         data: this.service,
       }
     );
-    const entityResponse = await apiContext.post(
-      '/api/v1/dashboard/datamodels',
-      {
+    // A leftover service from a previous run (or a rare uuid collision) makes
+    // the beforeAll flake with a 409. Fall back to fetching the existing
+    // service so the test can reuse it and stay deterministic.
+    if (serviceResponse.status() === 409) {
+      serviceResponse = await apiContext.get(
+        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          this.service.name
+        )}`
+      );
+    }
+    if (!serviceResponse.ok()) {
+      throw new Error(
+        `Dashboard service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
+      );
+    }
+
+    // The data model references the service just created. On a slow backend the
+    // service is occasionally not yet resolvable, yielding a transient 5xx.
+    // Retry those so the beforeAll is deterministic rather than surfacing a
+    // misleading "missing fully qualified name" further down.
+    let entityResponse = await apiContext.post('/api/v1/dashboard/datamodels', {
+      data: this.entity,
+    });
+    for (
+      let attempt = 0;
+      attempt < 3 && entityResponse.status() >= 500;
+      attempt++
+    ) {
+      entityResponse = await apiContext.post('/api/v1/dashboard/datamodels', {
         data: this.entity,
-      }
-    );
+      });
+    }
+    if (!entityResponse.ok()) {
+      throw new Error(
+        `Dashboard data model create failed (${entityResponse.status()}): ${await entityResponse.text()}`
+      );
+    }
 
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
@@ -196,17 +228,22 @@ export class DashboardDataModelClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(
+      response,
+      'DashboardDataModelClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,

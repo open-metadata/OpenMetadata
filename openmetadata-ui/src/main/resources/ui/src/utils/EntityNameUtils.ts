@@ -106,7 +106,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiCollection: t('label.api-collection'),
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
-    page: t('label.knowledge-page'),
+    page: t('label.article'),
     directory: t('label.directory'),
     file: t('label.file'),
     spreadsheet: t('label.spreadsheet'),
@@ -203,7 +203,7 @@ export const EntityTypeName: Record<EntityType, string> = {
     'label.app-market-place-definition'
   ),
   [EntityType.DOC_STORE]: t('label.doc-store'),
-  [EntityType.KNOWLEDGE_PAGE]: t('label.knowledge-page'),
+  [EntityType.KNOWLEDGE_PAGE]: t('label.article'),
   [EntityType.knowledgePanels]: t('label.knowledge-panels'),
   [EntityType.GOVERN]: t('label.govern'),
   [EntityType.ALL]: t('label.all'),
@@ -234,5 +234,5 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
   [EntityType.TABLE_COLUMN]: t('label.column'),
-  [EntityType.KNOWLEDGE_CENTER]: t('label.knowledge-center'),
+  [EntityType.KNOWLEDGE_CENTER]: t('label.context-center'),
 };

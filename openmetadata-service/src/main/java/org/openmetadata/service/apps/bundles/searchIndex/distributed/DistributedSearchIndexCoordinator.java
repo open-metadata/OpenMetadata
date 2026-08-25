@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
@@ -295,7 +294,7 @@ public class DistributedSearchIndexCoordinator {
    */
   private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
       EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = repo.getReindexFilter();
     String afterName = "";
     String afterId = "";
     long currentOffset = 0;
@@ -1017,49 +1016,99 @@ public class DistributedSearchIndexCoordinator {
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name());
     List<SearchIndexPartitionRecord> processing =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
-    List<SearchIndexPartitionRecord> failed =
-        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name());
-    List<SearchIndexPartitionRecord> cancelled =
-        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name());
-
     if (pending.isEmpty() && processing.isEmpty()) {
-      // All partitions are done
-      IndexJobStatus newStatus;
-      if (job.getStatus() == IndexJobStatus.STOPPING) {
-        newStatus = IndexJobStatus.STOPPED;
-      } else if (!failed.isEmpty() || !cancelled.isEmpty()) {
-        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
-      } else {
-        newStatus = IndexJobStatus.COMPLETED;
-      }
+      // All partitions finished. A stop request terminates immediately; every other job hands off
+      // to
+      // the promotion phase instead of completing. PROMOTING is non-terminal, so the coordinator
+      // and
+      // its pod stay alive until markPromotionComplete() runs after every staged index is promoted.
+      // This closes the race where the pod was torn down on COMPLETED mid-promotion, leaving the
+      // tail
+      // of entities on stale pre-reindex indexes (fielddata/nested mapping errors after an
+      // upgrade).
+      boolean stopping = job.getStatus() == IndexJobStatus.STOPPING;
+      IndexJobStatus newStatus = stopping ? IndexJobStatus.STOPPED : IndexJobStatus.PROMOTING;
 
-      // Get final aggregated stats
-      AggregatedStatsRecord stats = partitionDAO.getAggregatedStats(jobId.toString());
+      writeJobStatusWithStats(jobDAO, job, newStatus, stopping);
 
-      SearchIndexJob completed =
-          job.toBuilder()
-              .status(newStatus)
-              .processedRecords(stats != null ? stats.processedRecords() : 0)
-              .successRecords(stats != null ? stats.successRecords() : 0)
-              .failedRecords(stats != null ? stats.failedRecords() : 0)
-              .completedAt(System.currentTimeMillis())
-              .updatedAt(System.currentTimeMillis())
-              .build();
-
-      updateJob(jobDAO, completed);
-
-      // Drop the precomputed cursor cache for this job — once terminal it can never be
-      // re-claimed, and long-running servers would otherwise leak ~one entry per reindex
-      // run for the lifetime of the process.
+      // Partitions are all terminal now, so the precomputed cursor cache can never be re-claimed;
+      // drop it to avoid leaking ~one entry per reindex run for the process lifetime.
       partitionStartCursors.remove(jobId);
 
-      LOG.info(
-          "Job {} completed with status {} (success: {}, failed: {})",
-          jobId,
-          newStatus,
-          completed.getSuccessRecords(),
-          completed.getFailedRecords());
+      LOG.info("Job {} finished processing, status -> {}", jobId, newStatus);
     }
+  }
+
+  /**
+   * Flip a job from PROMOTING to its terminal status once the strategy has finished promoting every
+   * staged index: COMPLETED when everything promoted cleanly, COMPLETED_WITH_ERRORS when a partition
+   * failed/was cancelled or some staged index could not be promoted. No-op unless the job is still
+   * PROMOTING, so it is idempotent and safe if another server already terminalized the job.
+   */
+  public void markPromotionComplete(UUID jobId, boolean allPromoted) {
+    SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+    SearchIndexJobRecord jobRecord = jobDAO.findById(jobId.toString());
+    if (jobRecord == null || recordToJob(jobRecord).getStatus() != IndexJobStatus.PROMOTING) {
+      return;
+    }
+
+    IndexJobStatus finalStatus =
+        allPromoted && !hasFailedOrCancelledPartitions(jobId)
+            ? IndexJobStatus.COMPLETED
+            : IndexJobStatus.COMPLETED_WITH_ERRORS;
+
+    writeJobStatusWithStats(jobDAO, recordToJob(jobRecord), finalStatus, true);
+    LOG.info(
+        "Job {} promotion finished, status -> {} (allPromoted={})",
+        jobId,
+        finalStatus,
+        allPromoted);
+  }
+
+  /**
+   * Terminalize a finished-but-orphaned job (RUNNING with all partitions terminal, or stuck
+   * PROMOTING) as COMPLETED_WITH_ERRORS: it processed its data, but a cold recovery cannot confirm
+   * its staged indexes were promoted, so the run is not treated as a clean rebuild. No-op if the job
+   * is already terminal.
+   */
+  public void markOrphanedJobCompletedWithErrors(UUID jobId) {
+    SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+    SearchIndexJobRecord jobRecord = jobDAO.findById(jobId.toString());
+    if (jobRecord == null || recordToJob(jobRecord).isTerminal()) {
+      return;
+    }
+    writeJobStatusWithStats(
+        jobDAO, recordToJob(jobRecord), IndexJobStatus.COMPLETED_WITH_ERRORS, true);
+    partitionStartCursors.remove(jobId);
+    LOG.info(
+        "Job {} terminalized as COMPLETED_WITH_ERRORS (orphaned before promotion was confirmed)",
+        jobId);
+  }
+
+  private boolean hasFailedOrCancelledPartitions(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    return !partitionDAO
+            .findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name())
+            .isEmpty()
+        || !partitionDAO
+            .findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name())
+            .isEmpty();
+  }
+
+  private void writeJobStatusWithStats(
+      SearchIndexJobDAO jobDAO, SearchIndexJob job, IndexJobStatus status, boolean terminal) {
+    AggregatedStatsRecord stats =
+        collectionDAO.searchIndexPartitionDAO().getAggregatedStats(job.getId().toString());
+    SearchIndexJob updated =
+        job.toBuilder()
+            .status(status)
+            .processedRecords(stats != null ? stats.processedRecords() : 0)
+            .successRecords(stats != null ? stats.successRecords() : 0)
+            .failedRecords(stats != null ? stats.failedRecords() : 0)
+            .completedAt(terminal ? System.currentTimeMillis() : null)
+            .updatedAt(System.currentTimeMillis())
+            .build();
+    updateJob(jobDAO, updated);
   }
 
   /**

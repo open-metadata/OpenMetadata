@@ -57,6 +57,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface AccessControlDAOs {
@@ -65,6 +66,9 @@ public interface AccessControlDAOs {
 
   @CreateSqlObject
   UserDAO userDAO();
+
+  @CreateSqlObject
+  UserPreferencesDAO userPreferencesDAO();
 
   @CreateSqlObject
   TeamDAO teamDAO();
@@ -1025,7 +1029,7 @@ public interface AccessControlDAOs {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -1034,7 +1038,7 @@ public interface AccessControlDAOs {
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatchRows(@Bind("json") List<String> jsons);
+    void insertBatchRows(@BindJson("json") List<String> jsons);
 
     default void insertBatch(List<String> jsons) {
       if (nullOrEmpty(jsons)) {
@@ -1206,5 +1210,28 @@ public interface AccessControlDAOs {
     default boolean supportsSoftDelete() {
       return false;
     }
+  }
+
+  interface UserPreferencesDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO user_preferences (userId, json, updatedAt) VALUES (:userId, :json, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE json = :json, updatedAt = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO user_preferences (userId, json, updatedAt) VALUES (:userId, (:json :: jsonb), :updatedAt) "
+                + "ON CONFLICT (userId) DO UPDATE SET json = (:json :: jsonb), updatedAt = :updatedAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @BindUUID("userId") UUID userId,
+        @Bind("json") String json,
+        @Bind("updatedAt") long updatedAt);
+
+    @SqlQuery("SELECT json FROM user_preferences WHERE userId = :userId")
+    String findByUserId(@BindUUID("userId") UUID userId);
+
+    @SqlUpdate("DELETE FROM user_preferences WHERE userId = :userId")
+    void deleteByUserId(@BindUUID("userId") UUID userId);
   }
 }
