@@ -75,6 +75,7 @@ public class GetEntityTool implements McpTool {
   private static final String INCLUDE_LINEAGE = "lineage";
   private static final String INCLUDE_QUALITY = "quality";
   private static final String TEST_SUITE_KEY = "testSuite";
+  private static final String CERTIFICATION_KEY = "certification";
   private static final int NEIGHBOUR_DEPTH = 1;
 
   private static final String COLUMN_OFFSET_PARAM = "columnOffset";
@@ -243,6 +244,7 @@ public class GetEntityTool implements McpTool {
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
+    resolveCertification(cleaned);
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
     addIncludes(windowed, entityType, fqn, McpParams.getStringList(params, INCLUDE_PARAM));
     return windowed;
@@ -346,6 +348,23 @@ public class GetEntityTool implements McpTool {
       result = health;
     }
     return result;
+  }
+
+  /**
+   * Resolves certification expiry here too, not only in search hits.
+   *
+   * <p>The asymmetry was the trap: search returned "Certification.Gold (EXPIRED 2026-07-29)" while
+   * this tool handed back {@code expiryDate: 1785312839519} beside {@code state: "Confirmed"}. A
+   * caller reported converting the epoch by hand to notice a badge had lapsed four weeks earlier —
+   * "arguably the most actionable thing about this asset, and easy to skim straight past".
+   */
+  private static void resolveCertification(Map<String, Object> entity) {
+    Object certification = entity.get(CERTIFICATION_KEY);
+    if (certification != null) {
+      entity.put(
+          CERTIFICATION_KEY,
+          McpResponseTrim.slimCertification(certification, System.currentTimeMillis()));
+    }
   }
 
   /**
