@@ -68,6 +68,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => (
     <div data-testid={testId}>
       <input
+        aria-label={hint}
         data-testid="group-input"
         value={inputValue}
         onChange={(event) => onInputChange(event.target.value)}
@@ -219,7 +220,7 @@ describe('MetricGroupSelect', () => {
   });
 
   it('bounds the option request and renders an accessible loading state', async () => {
-    let resolveGroups: (value: unknown) => void = () => undefined;
+    let resolveGroups: (value: unknown) => void = (_value) => undefined;
     (getMetricGroups as jest.Mock).mockReturnValueOnce(
       new Promise((resolve: (value: unknown) => void) => {
         resolveGroups = resolve;

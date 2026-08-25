@@ -59,8 +59,14 @@ export interface VisibleMetricTableRow {
   depth: number;
 }
 
+export const LOAD_MORE_ROW_PREFIX = 'load-more:';
+export const GROUP_ROW_PREFIX = 'group:';
+
 export const isGroupRow = (row: MetricTableRow): row is MetricGroupRow =>
   (row as MetricGroupRow).isGroupRow === true;
+
+export const isLoadMoreRow = (row: MetricTableRow): row is MetricLoadMoreRow =>
+  (row as MetricLoadMoreRow).isLoadMoreRow === true;
 
 /** A row that stands in for something other than a metric, so it can never be acted on. */
 export const isSyntheticRow = (row: MetricTableRow): boolean =>
@@ -76,12 +82,6 @@ export const createGroupRow = (group: MetricGroup): MetricGroupRow => ({
   group,
   memberCount: group.metricCount ?? group.metrics?.length ?? 0,
 });
-
-export const LOAD_MORE_ROW_PREFIX = 'load-more:';
-export const GROUP_ROW_PREFIX = 'group:';
-
-export const isLoadMoreRow = (row: MetricTableRow): row is MetricLoadMoreRow =>
-  (row as MetricLoadMoreRow).isLoadMoreRow === true;
 
 export const createLoadMoreRow = ({
   parentId,

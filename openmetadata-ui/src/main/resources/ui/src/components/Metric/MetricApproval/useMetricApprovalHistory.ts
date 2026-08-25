@@ -52,17 +52,17 @@ const getWorkflowOutcome = (
   name?: string
 ): MetricApprovalHistoryItem['outcome'] => {
   const normalizedName = name?.toLocaleLowerCase() ?? '';
+  let outcome: MetricApprovalHistoryItem['outcome'];
+
   if (normalizedName.includes('rollback')) {
-    return 'rollback';
-  }
-  if (normalizedName.includes('reject')) {
-    return 'rejected';
-  }
-  if (normalizedName.includes('approve')) {
-    return 'approved';
+    outcome = 'rollback';
+  } else if (normalizedName.includes('reject')) {
+    outcome = 'rejected';
+  } else if (normalizedName.includes('approve')) {
+    outcome = 'approved';
   }
 
-  return;
+  return outcome;
 };
 
 export const getMetricApprovalOutcome = (

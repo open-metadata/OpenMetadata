@@ -30,8 +30,13 @@ describe('MetricActivity utilities', () => {
     const userQuery = getMetricMentionQuery('Please ask @ali');
 
     expect(userQuery).toEqual({ denotation: '@', query: 'ali', start: 11 });
+
+    if (!userQuery) {
+      throw new Error('Expected the mention query to be parsed');
+    }
+
     expect(
-      insertMetricMention('Please ask @ali', userQuery!, {
+      insertMetricMention('Please ask @ali', userQuery, {
         displayName: 'Alice',
         fullyQualifiedName: 'alice',
         id: 'user-1',

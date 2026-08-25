@@ -234,7 +234,7 @@ describe('useMetricHierarchy', () => {
   });
 
   it('ignores stale group membership when search changes during expansion', async () => {
-    let resolveStaleMembers: (value: unknown) => void = () => undefined;
+    let resolveStaleMembers: (value: unknown) => void = (_value) => undefined;
     (getMetricHierarchy as jest.Mock).mockResolvedValue({
       data: [
         {
@@ -414,7 +414,11 @@ describe('useMetricHierarchy', () => {
 
     expect(root).toBeDefined();
 
-    act(() => result.current.toggleExpand(true, root!));
+    if (!root) {
+      throw new Error('Expected an expanded root Metric');
+    }
+
+    act(() => result.current.toggleExpand(true, root));
 
     await waitFor(() =>
       expect(

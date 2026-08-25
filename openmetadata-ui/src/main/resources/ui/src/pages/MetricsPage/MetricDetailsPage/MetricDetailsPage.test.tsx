@@ -260,7 +260,7 @@ describe('MetricDetailsPage', () => {
   });
 
   it('optimistically follows and rolls back when the mutation fails', async () => {
-    let rejectFollow: (error: Error) => void = () => undefined;
+    let rejectFollow: (error: Error) => void = (_error) => undefined;
     (addMetricFollower as jest.Mock).mockReturnValueOnce(
       new Promise((_, reject) => {
         rejectFollow = reject;
@@ -288,7 +288,7 @@ describe('MetricDetailsPage', () => {
       followers: [{ id: 'current-user', type: 'user' }],
     } as Metric;
     (getMetricByFqn as jest.Mock).mockResolvedValue(followedMetric);
-    let rejectUnfollow: (error: Error) => void = () => undefined;
+    let rejectUnfollow: (error: Error) => void = (_error) => undefined;
     (removeMetricFollower as jest.Mock).mockReturnValueOnce(
       new Promise((_, reject) => {
         rejectUnfollow = reject;

@@ -167,7 +167,7 @@ describe('useMetricAssetsTab', () => {
   });
 
   it('isolates per-card detail loading and errors and supports retry', async () => {
-    let resolveFirstDetails: (value: unknown) => void = () => undefined;
+    let resolveFirstDetails: (value: unknown) => void = (_value) => undefined;
     (getMetricTabAssets as jest.Mock).mockResolvedValue({
       data: [firstRelation, secondRelation],
       paging: { limit: 10, offset: 0, total: 2 },

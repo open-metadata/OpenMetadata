@@ -257,7 +257,7 @@ describe('MetricDefinitionCard', () => {
   });
 
   it('keeps a failed edit open and disables dismissal while saving', async () => {
-    let rejectUpdate: (error: Error) => void = () => undefined;
+    let rejectUpdate: (error: Error) => void = (_error) => undefined;
     const onUpdate = jest.fn().mockReturnValue(
       new Promise((_, reject) => {
         rejectUpdate = reject;

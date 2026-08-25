@@ -17,6 +17,7 @@ import ts from 'typescript';
 
 const SOURCE_EXTENSION = /\.(?:js|jsx|ts|tsx)$/;
 const TEST_FILE = /\.(?:test|spec)\.(?:js|jsx|ts|tsx)$/;
+const RUNTIME_DEPENDENCY_CACHE_MAX_SIZE = 500;
 const SOURCE_ROOT = path.resolve(__dirname, '../..');
 const SOURCE_CANDIDATE_SUFFIXES = [
   '',
@@ -102,6 +103,45 @@ const isRuntimeImport = (node: ts.ImportDeclaration) => {
   );
 };
 
+const visitRuntimeModuleReferences = (
+  sourceFile: ts.SourceFile,
+  recordModule: (moduleName: string) => void
+) => {
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      isRuntimeImport(node)
+    ) {
+      recordModule(node.moduleSpecifier.text);
+    }
+
+    if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier) &&
+      !node.isTypeOnly
+    ) {
+      recordModule(node.moduleSpecifier.text);
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      ((ts.isIdentifier(node.expression) &&
+        node.expression.text === 'require') ||
+        node.expression.kind === ts.SyntaxKind.ImportKeyword)
+    ) {
+      recordModule(node.arguments[0].text);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+};
+
 const resolveSourceDependency = (filePath: string, moduleName: string) => {
   const importPath = moduleName.startsWith('.')
     ? path.resolve(path.dirname(filePath), moduleName)
@@ -161,39 +201,10 @@ const findRuntimeDependencies = (filePath: string) => {
     }
   };
 
-  const visit = (node: ts.Node) => {
-    if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      isRuntimeImport(node)
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      !node.isTypeOnly
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteralLike(node.arguments[0]) &&
-      ((ts.isIdentifier(node.expression) &&
-        node.expression.text === 'require') ||
-        node.expression.kind === ts.SyntaxKind.ImportKeyword)
-    ) {
-      recordModule(node.arguments[0].text);
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(sourceFile);
+  visitRuntimeModuleReferences(sourceFile, recordModule);
+  if (runtimeDependencyCache.size >= RUNTIME_DEPENDENCY_CACHE_MAX_SIZE) {
+    runtimeDependencyCache.clear();
+  }
   runtimeDependencyCache.set(filePath, dependencies);
 
   return dependencies;
@@ -257,39 +268,7 @@ const findLegacyImports = (filePath: string) => {
     }
   };
 
-  const visit = (node: ts.Node) => {
-    if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      isRuntimeImport(node)
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteralLike(node.moduleSpecifier) &&
-      !node.isTypeOnly
-    ) {
-      recordModule(node.moduleSpecifier.text);
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteralLike(node.arguments[0]) &&
-      ((ts.isIdentifier(node.expression) &&
-        node.expression.text === 'require') ||
-        node.expression.kind === ts.SyntaxKind.ImportKeyword)
-    ) {
-      recordModule(node.arguments[0].text);
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(sourceFile);
+  visitRuntimeModuleReferences(sourceFile, recordModule);
 
   return violations;
 };

@@ -66,7 +66,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div {...props}>
           {children}
-          <button data-testid="mock-slideout-close" onClick={onClose} />
+          <button
+            aria-label="label.close"
+            data-testid="mock-slideout-close"
+            onClick={onClose}
+          />
         </div>
       ),
     }

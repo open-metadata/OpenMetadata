@@ -537,7 +537,7 @@ describe('MetricMetadataEditor', () => {
   });
 
   it('locks inputs during a mutation and keeps a failed edit open', async () => {
-    let rejectUpdate: (error: Error) => void = () => undefined;
+    let rejectUpdate: (error: Error) => void = (_error) => undefined;
     const onUpdate = jest.fn().mockReturnValue(
       new Promise((_, reject) => {
         rejectUpdate = reject;

@@ -184,7 +184,7 @@ describe('MetricReferencePicker', () => {
   });
 
   it('shows a retryable error and a loading announcement', async () => {
-    let rejectSearch: (error: Error) => void = () => undefined;
+    let rejectSearch: (error: Error) => void = (_error) => undefined;
     (searchQuery as jest.Mock).mockReturnValueOnce(
       new Promise((_, reject) => {
         rejectSearch = reject;
