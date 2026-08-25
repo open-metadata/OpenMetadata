@@ -37,6 +37,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 const mockGetAppConfiguration = getAppConfiguration as jest.Mock;
 const mockPatchAppConfiguration = patchAppConfiguration as jest.Mock;
 

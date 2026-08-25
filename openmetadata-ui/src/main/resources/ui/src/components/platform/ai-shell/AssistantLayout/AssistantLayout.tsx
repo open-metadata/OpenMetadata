@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'antd';
-import classNames from 'classnames';
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { useAppModeBanners, useAppModeOverlays } from '../appModeExtensions';
 import Sidebar from '../Sidebar/Sidebar';
 import './assistant-layout.less';
-
-const { Content } = Layout;
 
 interface AssistantLayoutProps {
   children: React.ReactNode;
@@ -52,19 +48,16 @@ const AssistantLayout: React.FC<AssistantLayoutProps> = ({ children }) => {
 
   return (
     <>
-      <Layout className="assistant-layout h-full flex flex-row">
+      <div className="assistant-layout h-full flex flex-row">
         <Sidebar />
 
-        <Content
-          className={classNames(
-            'assistant-content m-r-md tw:my-1.5 p-b-0 border-radius-card'
-          )}>
+        <main className="assistant-content m-r-md tw:my-1.5 p-b-0 border-radius-card">
           {banners.map(({ key, component: Banner }) => (
             <Banner key={key} />
           ))}
           {children}
-        </Content>
-      </Layout>
+        </main>
+      </div>
       {overlays.map(({ key, component: Overlay }) => (
         <Overlay key={key} />
       ))}
