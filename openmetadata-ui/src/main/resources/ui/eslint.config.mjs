@@ -177,7 +177,10 @@ export default [
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-use-before-define': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — safe reorders
+      // where possible, documented disables for mutual-recursion / derived-below
+      // cases. Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-use-before-define': 'error',
       'no-unused-expressions': 'off',
       '@typescript-eslint/no-unused-expressions': [
         'error',
