@@ -35,6 +35,53 @@ interface OntologyExpressionEditorProps {
 
 const MAX_EXPRESSION_DEPTH = 4;
 
+export const defaultExpression = (kind: ExpressionKind): OntologyExpression => {
+  let expression: OntologyExpression;
+
+  switch (kind) {
+    case ExpressionKind.Intersection:
+    case ExpressionKind.Union:
+      expression = { kind, operands: [] };
+
+      break;
+    case ExpressionKind.NamedClass:
+      expression = { classIri: '', kind };
+
+      break;
+    case ExpressionKind.OneOf:
+      expression = { individualIris: [], kind };
+
+      break;
+    case ExpressionKind.Restriction:
+      expression = {
+        filler: { classIri: '', kind: ExpressionKind.NamedClass },
+        kind,
+        propertyIri: '',
+        restrictionKind: RestrictionKind.Some,
+      };
+
+      break;
+  }
+
+  return expression;
+};
+
+const isBooleanExpression = (kind: ExpressionKind) =>
+  kind === ExpressionKind.Intersection || kind === ExpressionKind.Union;
+
+const usesCardinality = (kind: RestrictionKind) =>
+  [RestrictionKind.Exact, RestrictionKind.Max, RestrictionKind.Min].includes(
+    kind
+  );
+
+const nonNegative = (value: string) => Math.max(0, Number(value) || 0);
+
+const splitValues = (value: string) =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const OntologyExpressionEditor = ({
   depth = 0,
   expression,
@@ -267,52 +314,5 @@ const OntologyExpressionEditor = ({
     </Card>
   );
 };
-
-export const defaultExpression = (kind: ExpressionKind): OntologyExpression => {
-  let expression: OntologyExpression;
-
-  switch (kind) {
-    case ExpressionKind.Intersection:
-    case ExpressionKind.Union:
-      expression = { kind, operands: [] };
-
-      break;
-    case ExpressionKind.NamedClass:
-      expression = { classIri: '', kind };
-
-      break;
-    case ExpressionKind.OneOf:
-      expression = { individualIris: [], kind };
-
-      break;
-    case ExpressionKind.Restriction:
-      expression = {
-        filler: { classIri: '', kind: ExpressionKind.NamedClass },
-        kind,
-        propertyIri: '',
-        restrictionKind: RestrictionKind.Some,
-      };
-
-      break;
-  }
-
-  return expression;
-};
-
-const isBooleanExpression = (kind: ExpressionKind) =>
-  kind === ExpressionKind.Intersection || kind === ExpressionKind.Union;
-
-const usesCardinality = (kind: RestrictionKind) =>
-  [RestrictionKind.Exact, RestrictionKind.Max, RestrictionKind.Min].includes(
-    kind
-  );
-
-const nonNegative = (value: string) => Math.max(0, Number(value) || 0);
-
-const splitValues = (value: string) =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
 
 export default OntologyExpressionEditor;

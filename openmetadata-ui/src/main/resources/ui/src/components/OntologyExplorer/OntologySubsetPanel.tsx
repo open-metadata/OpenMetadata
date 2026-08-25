@@ -46,6 +46,36 @@ interface SubsetFormState extends BuildOntologySubset {
   includeRelationships: boolean;
 }
 
+const defaults = (glossary: Glossary): SubsetFormState => ({
+  changeSetDescription: glossary.description,
+  changeSetDisplayName: glossary.displayName ?? glossary.name,
+  changeSetName: `subset-${glossary.name}`,
+  includeDescendants: true,
+  includeRelationships: true,
+  sourceGlossaryId: '',
+  sourceTermIds: [],
+  targetGlossaryId: glossary.id,
+});
+
+const textField = (
+  name: string,
+  label: string,
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({ label, name, type });
+
+const requiredField = (
+  name: string,
+  label: string,
+  t: ReturnType<typeof useTranslation>['t'],
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({
+  label,
+  name,
+  required: true,
+  rules: { required: t('label.field-required', { field: label }) },
+  type,
+});
+
 const OntologySubsetPanel = ({
   glossaries,
   graphData,
@@ -209,35 +239,5 @@ const OntologySubsetPanel = ({
     </HookForm>
   );
 };
-
-const defaults = (glossary: Glossary): SubsetFormState => ({
-  changeSetDescription: glossary.description,
-  changeSetDisplayName: glossary.displayName ?? glossary.name,
-  changeSetName: `subset-${glossary.name}`,
-  includeDescendants: true,
-  includeRelationships: true,
-  sourceGlossaryId: '',
-  sourceTermIds: [],
-  targetGlossaryId: glossary.id,
-});
-
-const textField = (
-  name: string,
-  label: string,
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({ label, name, type });
-
-const requiredField = (
-  name: string,
-  label: string,
-  t: ReturnType<typeof useTranslation>['t'],
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({
-  label,
-  name,
-  required: true,
-  rules: { required: t('label.field-required', { field: label }) },
-  type,
-});
 
 export default OntologySubsetPanel;

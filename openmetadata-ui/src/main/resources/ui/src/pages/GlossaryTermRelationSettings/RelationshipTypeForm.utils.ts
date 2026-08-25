@@ -51,61 +51,6 @@ export const DEFAULT_RELATIONSHIP_TYPE_FORM: RelationshipTypeFormValues = {
   rdfPredicate: '',
 };
 
-export const toRelationshipTypeForm = (
-  relationshipType: RelationshipType
-): RelationshipTypeFormValues => ({
-  cardinality: relationshipType.cardinality,
-  cardinalityPreset: deriveCardinalityPreset(relationshipType.cardinality),
-  category: toRequestCategory(relationshipType.category),
-  characteristics: relationshipType.characteristics.map(
-    toRequestCharacteristic
-  ),
-  crossGlossaryAllowed: relationshipType.crossGlossaryAllowed,
-  description: relationshipType.description,
-  disjointWith: relationshipType.disjointWith?.map(toReferenceName),
-  displayName: relationshipType.displayName,
-  domain: relationshipType.domain,
-  entityStatus: toRequestEntityStatus(relationshipType.entityStatus),
-  inverse: relationshipType.inverse
-    ? toReferenceName(relationshipType.inverse)
-    : undefined,
-  iri: relationshipType.iri,
-  name: relationshipType.name,
-  owners: relationshipType.owners,
-  paletteKey: toRequestPalette(relationshipType.paletteKey),
-  propertyChain: relationshipType.propertyChain?.map(toReferenceName),
-  range: relationshipType.range,
-  rdfPredicate: relationshipType.rdfPredicate,
-  replacedBy: relationshipType.replacedBy
-    ? toReferenceName(relationshipType.replacedBy)
-    : undefined,
-  reviewers: relationshipType.reviewers,
-});
-
-export const toRelationshipTypeRequest = (
-  form: RelationshipTypeFormValues
-): CreateRelationshipType => ({
-  cardinality: cardinalityForPreset(form),
-  category: form.category,
-  characteristics: form.characteristics,
-  crossGlossaryAllowed: form.crossGlossaryAllowed,
-  description: form.description.trim(),
-  disjointWith: form.disjointWith,
-  displayName: form.displayName.trim(),
-  domain: form.domain,
-  entityStatus: form.entityStatus,
-  inverse: form.inverse || undefined,
-  iri: form.iri || undefined,
-  name: form.name.trim(),
-  owners: form.owners,
-  paletteKey: form.paletteKey,
-  propertyChain: form.propertyChain,
-  range: form.range,
-  rdfPredicate: form.rdfPredicate.trim(),
-  replacedBy: form.replacedBy,
-  reviewers: form.reviewers,
-});
-
 export const deriveCardinalityPreset = (
   cardinality: Cardinality | undefined
 ): CardinalityPreset => {
@@ -247,3 +192,58 @@ const toRequestEntityStatus = (
 
   return requestStatus;
 };
+
+export const toRelationshipTypeForm = (
+  relationshipType: RelationshipType
+): RelationshipTypeFormValues => ({
+  cardinality: relationshipType.cardinality,
+  cardinalityPreset: deriveCardinalityPreset(relationshipType.cardinality),
+  category: toRequestCategory(relationshipType.category),
+  characteristics: relationshipType.characteristics.map(
+    toRequestCharacteristic
+  ),
+  crossGlossaryAllowed: relationshipType.crossGlossaryAllowed,
+  description: relationshipType.description,
+  disjointWith: relationshipType.disjointWith?.map(toReferenceName),
+  displayName: relationshipType.displayName,
+  domain: relationshipType.domain,
+  entityStatus: toRequestEntityStatus(relationshipType.entityStatus),
+  inverse: relationshipType.inverse
+    ? toReferenceName(relationshipType.inverse)
+    : undefined,
+  iri: relationshipType.iri,
+  name: relationshipType.name,
+  owners: relationshipType.owners,
+  paletteKey: toRequestPalette(relationshipType.paletteKey),
+  propertyChain: relationshipType.propertyChain?.map(toReferenceName),
+  range: relationshipType.range,
+  rdfPredicate: relationshipType.rdfPredicate,
+  replacedBy: relationshipType.replacedBy
+    ? toReferenceName(relationshipType.replacedBy)
+    : undefined,
+  reviewers: relationshipType.reviewers,
+});
+
+export const toRelationshipTypeRequest = (
+  form: RelationshipTypeFormValues
+): CreateRelationshipType => ({
+  cardinality: cardinalityForPreset(form),
+  category: form.category,
+  characteristics: form.characteristics,
+  crossGlossaryAllowed: form.crossGlossaryAllowed,
+  description: form.description.trim(),
+  disjointWith: form.disjointWith,
+  displayName: form.displayName.trim(),
+  domain: form.domain,
+  entityStatus: form.entityStatus,
+  inverse: form.inverse || undefined,
+  iri: form.iri || undefined,
+  name: form.name.trim(),
+  owners: form.owners,
+  paletteKey: form.paletteKey,
+  propertyChain: form.propertyChain,
+  range: form.range,
+  rdfPredicate: form.rdfPredicate.trim(),
+  replacedBy: form.replacedBy,
+  reviewers: form.reviewers,
+});

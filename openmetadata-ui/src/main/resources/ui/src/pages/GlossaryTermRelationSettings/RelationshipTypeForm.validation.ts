@@ -25,18 +25,19 @@ import {
 const ENTITY_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9]*$/;
 const ABSOLUTE_IRI_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:.+/;
 
-export const validateRelationshipTypeForm = (
-  form: RelationshipTypeFormValues,
+const findPredicateConflict = (
+  rdfPredicate: string,
   editing: RelationshipType | undefined,
-  relationshipTypes: RelationshipType[],
-  t: TFunction
-): Record<string, string> => {
-  const errors = {
-    ...validateIdentity(form, editing, relationshipTypes, t),
-    ...validateCharacteristics(form, t),
-  };
+  relationshipTypes: RelationshipType[]
+): RelationshipType | undefined => {
+  const normalizedPredicate = rdfPredicate.trim();
+  const duplicate = relationshipTypes.find(
+    (relationshipType) =>
+      relationshipType.id !== editing?.id &&
+      relationshipType.rdfPredicate === normalizedPredicate
+  );
 
-  return errors;
+  return duplicate;
 };
 
 const validateIdentity = (
@@ -71,35 +72,9 @@ const validateIdentity = (
   return errors;
 };
 
-const findPredicateConflict = (
-  rdfPredicate: string,
-  editing: RelationshipType | undefined,
-  relationshipTypes: RelationshipType[]
-): RelationshipType | undefined => {
-  const normalizedPredicate = rdfPredicate.trim();
-  const duplicate = relationshipTypes.find(
-    (relationshipType) =>
-      relationshipType.id !== editing?.id &&
-      relationshipType.rdfPredicate === normalizedPredicate
-  );
-
-  return duplicate;
-};
-
-const validateCharacteristics = (
-  form: RelationshipTypeFormValues,
-  t: TFunction
-): Record<string, string> => {
-  const characteristics = new Set(form.characteristics ?? []);
-  const cardinality = toRelationshipTypeRequest(form).cardinality;
-  const violation = getCharacteristicViolation(characteristics, cardinality);
-  const errors: Record<string, string> = {};
-  if (violation) {
-    errors.characteristics = t(violation);
-  }
-
-  return errors;
-};
+const hasOpposingSymmetry = (characteristics: Set<Characteristic>): boolean =>
+  characteristics.has(Characteristic.Symmetric) &&
+  characteristics.has(Characteristic.Asymmetric);
 
 const getCharacteristicViolation = (
   characteristics: Set<Characteristic>,
@@ -123,6 +98,31 @@ const getCharacteristicViolation = (
   return violation;
 };
 
-const hasOpposingSymmetry = (characteristics: Set<Characteristic>): boolean =>
-  characteristics.has(Characteristic.Symmetric) &&
-  characteristics.has(Characteristic.Asymmetric);
+const validateCharacteristics = (
+  form: RelationshipTypeFormValues,
+  t: TFunction
+): Record<string, string> => {
+  const characteristics = new Set(form.characteristics ?? []);
+  const cardinality = toRelationshipTypeRequest(form).cardinality;
+  const violation = getCharacteristicViolation(characteristics, cardinality);
+  const errors: Record<string, string> = {};
+  if (violation) {
+    errors.characteristics = t(violation);
+  }
+
+  return errors;
+};
+
+export const validateRelationshipTypeForm = (
+  form: RelationshipTypeFormValues,
+  editing: RelationshipType | undefined,
+  relationshipTypes: RelationshipType[],
+  t: TFunction
+): Record<string, string> => {
+  const errors = {
+    ...validateIdentity(form, editing, relationshipTypes, t),
+    ...validateCharacteristics(form, t),
+  };
+
+  return errors;
+};

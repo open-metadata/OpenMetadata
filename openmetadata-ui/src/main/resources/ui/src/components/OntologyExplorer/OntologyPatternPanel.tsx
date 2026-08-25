@@ -50,6 +50,63 @@ interface OntologyPatternPanelProps {
   glossary: Glossary;
 }
 
+interface PatternTermFieldsProps {
+  description: string;
+  displayName: string;
+  termKey: PatternTermKey;
+}
+
+const textField = (
+  name: string,
+  label: string,
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({ label, name, type });
+
+const requiredField = (
+  name: string,
+  label: string,
+  t: ReturnType<typeof useTranslation>['t'],
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({
+  label,
+  name,
+  required: true,
+  rules: { required: t('label.field-required', { field: label }) },
+  type,
+});
+
+const PatternTermFields = ({
+  description,
+  displayName,
+  termKey,
+}: PatternTermFieldsProps) => {
+  const { t } = useTranslation();
+  const paths = patternTermPaths[termKey];
+
+  return (
+    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
+      <div>
+        <Typography size="text-sm" weight="semibold">
+          {displayName}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {description}
+        </Typography>
+      </div>
+      {getField(requiredField(paths.name, t('label.name'), t))}
+      {getField(textField(paths.displayName, t('label.display-name')))}
+      {getField(
+        requiredField(
+          paths.description,
+          t('label.description'),
+          t,
+          FieldTypes.TEXTAREA
+        )
+      )}
+    </Card>
+  );
+};
+
 const OntologyPatternPanel = ({ glossary }: OntologyPatternPanelProps) => {
   const { t } = useTranslation();
   const form = useForm<OntologyPatternFormState>({
@@ -199,62 +256,5 @@ const OntologyPatternPanel = ({ glossary }: OntologyPatternPanelProps) => {
     </HookForm>
   );
 };
-
-interface PatternTermFieldsProps {
-  description: string;
-  displayName: string;
-  termKey: PatternTermKey;
-}
-
-const PatternTermFields = ({
-  description,
-  displayName,
-  termKey,
-}: PatternTermFieldsProps) => {
-  const { t } = useTranslation();
-  const paths = patternTermPaths[termKey];
-
-  return (
-    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
-      <div>
-        <Typography size="text-sm" weight="semibold">
-          {displayName}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {description}
-        </Typography>
-      </div>
-      {getField(requiredField(paths.name, t('label.name'), t))}
-      {getField(textField(paths.displayName, t('label.display-name')))}
-      {getField(
-        requiredField(
-          paths.description,
-          t('label.description'),
-          t,
-          FieldTypes.TEXTAREA
-        )
-      )}
-    </Card>
-  );
-};
-
-const textField = (
-  name: string,
-  label: string,
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({ label, name, type });
-
-const requiredField = (
-  name: string,
-  label: string,
-  t: ReturnType<typeof useTranslation>['t'],
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({
-  label,
-  name,
-  required: true,
-  rules: { required: t('label.field-required', { field: label }) },
-  type,
-});
 
 export default OntologyPatternPanel;

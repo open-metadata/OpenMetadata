@@ -63,6 +63,203 @@ interface FieldSelection {
   subsetTermId: string;
 }
 
+const defaultSelections = (diff: OntologyStructuralDiff): FieldSelection[] =>
+  diff.data.map((termDiff) => ({
+    fields: termDiff.sourceChangedFields.filter(
+      (field) => !termDiff.conflictingFields.includes(field)
+    ),
+    subsetTermId: termDiff.subsetTerm.id,
+  }));
+
+const toMergeField = (field: DiffField): MergeField => {
+  let result: MergeField;
+
+  switch (field) {
+    case DiffField.Attributes:
+      result = MergeField.Attributes;
+
+      break;
+    case DiffField.ConceptMappings:
+      result = MergeField.ConceptMappings;
+
+      break;
+    case DiffField.Description:
+      result = MergeField.Description;
+
+      break;
+    case DiffField.DisplayName:
+      result = MergeField.DisplayName;
+
+      break;
+    case DiffField.EntityStatus:
+      result = MergeField.EntityStatus;
+
+      break;
+    case DiffField.Name:
+      result = MergeField.Name;
+
+      break;
+    case DiffField.Parent:
+      result = MergeField.Parent;
+
+      break;
+    case DiffField.Relationships:
+      result = MergeField.Relationships;
+
+      break;
+  }
+
+  return result;
+};
+
+const stateLabel = (
+  state: DiffState,
+  t: ReturnType<typeof useTranslation>['t']
+) => {
+  let label: string;
+
+  switch (state) {
+    case DiffState.Conflict:
+      label = t('label.conflict-resolution');
+
+      break;
+    case DiffState.Mergeable:
+      label = t('label.merge');
+
+      break;
+    case DiffState.SourceChanged:
+      label = `${t('label.source')} ${t('label.change')}`;
+
+      break;
+    case DiffState.SubsetChanged:
+      label = `${t('label.target')} ${t('label.change')}`;
+
+      break;
+    case DiffState.Unchanged:
+      label = t('label.no-change');
+
+      break;
+  }
+
+  return label;
+};
+
+const fieldLabel = (
+  field: DiffField,
+  t: ReturnType<typeof useTranslation>['t']
+) => {
+  let label: string;
+
+  switch (field) {
+    case DiffField.Attributes:
+      label = t('label.custom-property-plural');
+
+      break;
+    case DiffField.ConceptMappings:
+      label = t('label.mapping-plural');
+
+      break;
+    case DiffField.Description:
+      label = t('label.description');
+
+      break;
+    case DiffField.DisplayName:
+      label = t('label.display-name');
+
+      break;
+    case DiffField.EntityStatus:
+      label = t('label.entity-status');
+
+      break;
+    case DiffField.Name:
+      label = t('label.name');
+
+      break;
+    case DiffField.Parent:
+      label = t('label.parent');
+
+      break;
+    case DiffField.Relationships:
+      label = t('label.relationship-plural');
+
+      break;
+  }
+
+  return label;
+};
+
+const defaults = (glossary: Glossary): StructureFormState => ({
+  changeSetDescription: glossary.description,
+  changeSetDisplayName: glossary.displayName ?? glossary.name,
+  changeSetName: `merge-${glossary.name}`,
+  sourceGlossaryId: '',
+  subsetTermIds: [],
+  targetGlossaryId: glossary.id,
+});
+
+const textField = (
+  name: string,
+  label: string,
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({ label, name, type });
+
+const requiredField = (
+  name: string,
+  label: string,
+  t: ReturnType<typeof useTranslation>['t'],
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({
+  label,
+  name,
+  required: true,
+  rules: { required: t('label.field-required', { field: label }) },
+  type,
+});
+
+interface DiffSelectionProps {
+  selection?: FieldSelection;
+  termDiff: TermDiff;
+  onToggle: (subsetTermId: string, field: DiffField, selected: boolean) => void;
+}
+
+const DiffSelection = ({
+  selection,
+  termDiff,
+  onToggle,
+}: DiffSelectionProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
+      <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
+        <Typography size="text-sm" weight="semibold">
+          {termDiff.subsetTerm.displayName ?? termDiff.subsetTerm.name}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {stateLabel(termDiff.state, t)}
+        </Typography>
+      </div>
+      <div className="tw:flex tw:flex-wrap tw:gap-3">
+        {termDiff.sourceChangedFields.map((field) => {
+          const isConflict = termDiff.conflictingFields.includes(field);
+
+          return (
+            <Checkbox
+              isDisabled={isConflict}
+              isSelected={selection?.fields.includes(field) ?? false}
+              key={field}
+              label={fieldLabel(field, t)}
+              onChange={(selected) =>
+                onToggle(termDiff.subsetTerm.id, field, selected)
+              }
+            />
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
 const OntologyStructurePanel = ({
   glossaries,
   graphData,
@@ -293,202 +490,5 @@ const OntologyStructurePanel = ({
     </HookForm>
   );
 };
-
-interface DiffSelectionProps {
-  selection?: FieldSelection;
-  termDiff: TermDiff;
-  onToggle: (subsetTermId: string, field: DiffField, selected: boolean) => void;
-}
-
-const DiffSelection = ({
-  selection,
-  termDiff,
-  onToggle,
-}: DiffSelectionProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
-        <Typography size="text-sm" weight="semibold">
-          {termDiff.subsetTerm.displayName ?? termDiff.subsetTerm.name}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {stateLabel(termDiff.state, t)}
-        </Typography>
-      </div>
-      <div className="tw:flex tw:flex-wrap tw:gap-3">
-        {termDiff.sourceChangedFields.map((field) => {
-          const isConflict = termDiff.conflictingFields.includes(field);
-
-          return (
-            <Checkbox
-              isDisabled={isConflict}
-              isSelected={selection?.fields.includes(field) ?? false}
-              key={field}
-              label={fieldLabel(field, t)}
-              onChange={(selected) =>
-                onToggle(termDiff.subsetTerm.id, field, selected)
-              }
-            />
-          );
-        })}
-      </div>
-    </Card>
-  );
-};
-
-const defaultSelections = (diff: OntologyStructuralDiff): FieldSelection[] =>
-  diff.data.map((termDiff) => ({
-    fields: termDiff.sourceChangedFields.filter(
-      (field) => !termDiff.conflictingFields.includes(field)
-    ),
-    subsetTermId: termDiff.subsetTerm.id,
-  }));
-
-const toMergeField = (field: DiffField): MergeField => {
-  let result: MergeField;
-
-  switch (field) {
-    case DiffField.Attributes:
-      result = MergeField.Attributes;
-
-      break;
-    case DiffField.ConceptMappings:
-      result = MergeField.ConceptMappings;
-
-      break;
-    case DiffField.Description:
-      result = MergeField.Description;
-
-      break;
-    case DiffField.DisplayName:
-      result = MergeField.DisplayName;
-
-      break;
-    case DiffField.EntityStatus:
-      result = MergeField.EntityStatus;
-
-      break;
-    case DiffField.Name:
-      result = MergeField.Name;
-
-      break;
-    case DiffField.Parent:
-      result = MergeField.Parent;
-
-      break;
-    case DiffField.Relationships:
-      result = MergeField.Relationships;
-
-      break;
-  }
-
-  return result;
-};
-
-const stateLabel = (
-  state: DiffState,
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  let label: string;
-
-  switch (state) {
-    case DiffState.Conflict:
-      label = t('label.conflict-resolution');
-
-      break;
-    case DiffState.Mergeable:
-      label = t('label.merge');
-
-      break;
-    case DiffState.SourceChanged:
-      label = `${t('label.source')} ${t('label.change')}`;
-
-      break;
-    case DiffState.SubsetChanged:
-      label = `${t('label.target')} ${t('label.change')}`;
-
-      break;
-    case DiffState.Unchanged:
-      label = t('label.no-change');
-
-      break;
-  }
-
-  return label;
-};
-
-const fieldLabel = (
-  field: DiffField,
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  let label: string;
-
-  switch (field) {
-    case DiffField.Attributes:
-      label = t('label.custom-property-plural');
-
-      break;
-    case DiffField.ConceptMappings:
-      label = t('label.mapping-plural');
-
-      break;
-    case DiffField.Description:
-      label = t('label.description');
-
-      break;
-    case DiffField.DisplayName:
-      label = t('label.display-name');
-
-      break;
-    case DiffField.EntityStatus:
-      label = t('label.entity-status');
-
-      break;
-    case DiffField.Name:
-      label = t('label.name');
-
-      break;
-    case DiffField.Parent:
-      label = t('label.parent');
-
-      break;
-    case DiffField.Relationships:
-      label = t('label.relationship-plural');
-
-      break;
-  }
-
-  return label;
-};
-
-const defaults = (glossary: Glossary): StructureFormState => ({
-  changeSetDescription: glossary.description,
-  changeSetDisplayName: glossary.displayName ?? glossary.name,
-  changeSetName: `merge-${glossary.name}`,
-  sourceGlossaryId: '',
-  subsetTermIds: [],
-  targetGlossaryId: glossary.id,
-});
-
-const textField = (
-  name: string,
-  label: string,
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({ label, name, type });
-
-const requiredField = (
-  name: string,
-  label: string,
-  t: ReturnType<typeof useTranslation>['t'],
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({
-  label,
-  name,
-  required: true,
-  rules: { required: t('label.field-required', { field: label }) },
-  type,
-});
 
 export default OntologyStructurePanel;

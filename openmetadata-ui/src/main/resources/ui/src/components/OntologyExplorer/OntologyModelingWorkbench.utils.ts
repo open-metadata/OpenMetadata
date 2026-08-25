@@ -74,6 +74,69 @@ export interface OntologyAxiomFormState {
   targetIri: string;
 }
 
+function termPaths(key: PatternTermKey) {
+  return {
+    description: `${key}.description`,
+    displayName: `${key}.displayName`,
+    name: `${key}.name`,
+  };
+}
+
+function emptyTerm(): PatternTermForm {
+  return { description: '', displayName: '', name: '' };
+}
+
+function optional(value: string) {
+  const trimmed = value.trim();
+  const result = trimmed || undefined;
+
+  return result;
+}
+
+function termInput(form: PatternTermForm): TermInput {
+  return {
+    description: form.description.trim(),
+    displayName: optional(form.displayName),
+    name: form.name.trim(),
+  };
+}
+
+function measuredKpi(form: OntologyPatternFormState): MeasuredKpi {
+  return {
+    dimension: termInput(form.dimension),
+    kpi: termInput(form.kpi),
+    metric: termInput(form.metric),
+  };
+}
+
+function productHierarchy(form: OntologyPatternFormState): ProductHierarchy {
+  return {
+    feature: termInput(form.feature),
+    portfolio: termInput(form.portfolio),
+    product: termInput(form.product),
+  };
+}
+
+function regulatoryControl(form: OntologyPatternFormState): RegulatoryControl {
+  return {
+    control: termInput(form.control),
+    evidence: termInput(form.evidence),
+    requirement: termInput(form.requirement),
+  };
+}
+
+function literal(form: OntologyAxiomFormState) {
+  const hasLiteral = Boolean(form.literalValue.trim());
+  const result = hasLiteral
+    ? {
+        datatypeIri: optional(form.literalDatatypeIri),
+        value: form.literalValue,
+      }
+    : undefined;
+
+  return result;
+}
+
 export const createEmptyPatternForm = (): OntologyPatternFormState => ({
   changeSetDescription: '',
   changeSetDisplayName: '',
@@ -199,66 +262,3 @@ export const isOntologyPatternReady = (
 
   return hasMetadata && hasTerms;
 };
-
-function termPaths(key: PatternTermKey) {
-  return {
-    description: `${key}.description`,
-    displayName: `${key}.displayName`,
-    name: `${key}.name`,
-  };
-}
-
-function emptyTerm(): PatternTermForm {
-  return { description: '', displayName: '', name: '' };
-}
-
-function measuredKpi(form: OntologyPatternFormState): MeasuredKpi {
-  return {
-    dimension: termInput(form.dimension),
-    kpi: termInput(form.kpi),
-    metric: termInput(form.metric),
-  };
-}
-
-function productHierarchy(form: OntologyPatternFormState): ProductHierarchy {
-  return {
-    feature: termInput(form.feature),
-    portfolio: termInput(form.portfolio),
-    product: termInput(form.product),
-  };
-}
-
-function regulatoryControl(form: OntologyPatternFormState): RegulatoryControl {
-  return {
-    control: termInput(form.control),
-    evidence: termInput(form.evidence),
-    requirement: termInput(form.requirement),
-  };
-}
-
-function termInput(form: PatternTermForm): TermInput {
-  return {
-    description: form.description.trim(),
-    displayName: optional(form.displayName),
-    name: form.name.trim(),
-  };
-}
-
-function literal(form: OntologyAxiomFormState) {
-  const hasLiteral = Boolean(form.literalValue.trim());
-  const result = hasLiteral
-    ? {
-        datatypeIri: optional(form.literalDatatypeIri),
-        value: form.literalValue,
-      }
-    : undefined;
-
-  return result;
-}
-
-function optional(value: string) {
-  const trimmed = value.trim();
-  const result = trimmed || undefined;
-
-  return result;
-}

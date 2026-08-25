@@ -43,6 +43,80 @@ interface CharacteristicOption {
   label: string;
 }
 
+const parseCategory = (key: Key | null): Category | undefined => {
+  const value = String(key ?? '');
+  const category = (() => {
+    switch (value) {
+      case Category.Core:
+        return Category.Core;
+      case Category.Custom:
+        return Category.Custom;
+      case Category.OwlSkos:
+        return Category.OwlSkos;
+      default:
+        return undefined;
+    }
+  })();
+
+  return category;
+};
+
+const parseCardinalityPreset = (
+  key: Key | null
+): CardinalityPreset | undefined => {
+  const value = String(key ?? '');
+  const preset = (() => {
+    switch (value) {
+      case CardinalityPreset.Custom:
+        return CardinalityPreset.Custom;
+      case CardinalityPreset.ManyToMany:
+        return CardinalityPreset.ManyToMany;
+      case CardinalityPreset.ManyToOne:
+        return CardinalityPreset.ManyToOne;
+      case CardinalityPreset.OneToMany:
+        return CardinalityPreset.OneToMany;
+      case CardinalityPreset.OneToOne:
+        return CardinalityPreset.OneToOne;
+      default:
+        return undefined;
+    }
+  })();
+
+  return preset;
+};
+
+const parsePaletteKey = (key: Key | null): PaletteKey | undefined => {
+  const value = String(key ?? '');
+  const palette = (() => {
+    switch (value) {
+      case PaletteKey.Amber:
+        return PaletteKey.Amber;
+      case PaletteKey.Blue:
+        return PaletteKey.Blue;
+      case PaletteKey.Gray:
+        return PaletteKey.Gray;
+      case PaletteKey.Green:
+        return PaletteKey.Green;
+      case PaletteKey.Indigo:
+        return PaletteKey.Indigo;
+      case PaletteKey.Pink:
+        return PaletteKey.Pink;
+      case PaletteKey.Purple:
+        return PaletteKey.Purple;
+      case PaletteKey.Rose:
+        return PaletteKey.Rose;
+      case PaletteKey.Teal:
+        return PaletteKey.Teal;
+      case PaletteKey.Violet:
+        return PaletteKey.Violet;
+      default:
+        return undefined;
+    }
+  })();
+
+  return palette;
+};
+
 const RelationshipTypeForm = ({
   errors,
   isEditing,
@@ -253,80 +327,6 @@ const RelationshipTypeForm = ({
       />
     </div>
   );
-};
-
-const parseCategory = (key: Key | null): Category | undefined => {
-  const value = String(key ?? '');
-  const category = (() => {
-    switch (value) {
-      case Category.Core:
-        return Category.Core;
-      case Category.Custom:
-        return Category.Custom;
-      case Category.OwlSkos:
-        return Category.OwlSkos;
-      default:
-        return undefined;
-    }
-  })();
-
-  return category;
-};
-
-const parseCardinalityPreset = (
-  key: Key | null
-): CardinalityPreset | undefined => {
-  const value = String(key ?? '');
-  const preset = (() => {
-    switch (value) {
-      case CardinalityPreset.Custom:
-        return CardinalityPreset.Custom;
-      case CardinalityPreset.ManyToMany:
-        return CardinalityPreset.ManyToMany;
-      case CardinalityPreset.ManyToOne:
-        return CardinalityPreset.ManyToOne;
-      case CardinalityPreset.OneToMany:
-        return CardinalityPreset.OneToMany;
-      case CardinalityPreset.OneToOne:
-        return CardinalityPreset.OneToOne;
-      default:
-        return undefined;
-    }
-  })();
-
-  return preset;
-};
-
-const parsePaletteKey = (key: Key | null): PaletteKey | undefined => {
-  const value = String(key ?? '');
-  const palette = (() => {
-    switch (value) {
-      case PaletteKey.Amber:
-        return PaletteKey.Amber;
-      case PaletteKey.Blue:
-        return PaletteKey.Blue;
-      case PaletteKey.Gray:
-        return PaletteKey.Gray;
-      case PaletteKey.Green:
-        return PaletteKey.Green;
-      case PaletteKey.Indigo:
-        return PaletteKey.Indigo;
-      case PaletteKey.Pink:
-        return PaletteKey.Pink;
-      case PaletteKey.Purple:
-        return PaletteKey.Purple;
-      case PaletteKey.Rose:
-        return PaletteKey.Rose;
-      case PaletteKey.Teal:
-        return PaletteKey.Teal;
-      case PaletteKey.Violet:
-        return PaletteKey.Violet;
-      default:
-        return undefined;
-    }
-  })();
-
-  return palette;
 };
 
 export default RelationshipTypeForm;

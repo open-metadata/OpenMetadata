@@ -54,6 +54,103 @@ interface OntologyAxiomPanelProps {
 
 const LIVE_VALIDATION_DELAY_MILLIS = 450;
 
+const isClassExpressionAxiom = (axiomType: AxiomType) =>
+  [
+    AxiomType.ClassAssertion,
+    AxiomType.DisjointWith,
+    AxiomType.EquivalentClass,
+    AxiomType.SubclassOf,
+  ].includes(axiomType);
+
+const resetShape = (
+  form: ReturnType<typeof useForm<OntologyAxiomFormState>>,
+  axiomType: AxiomType
+) => {
+  form.setValue(
+    'expressions',
+    isClassExpressionAxiom(axiomType)
+      ? [defaultExpression(ExpressionKind.NamedClass)]
+      : []
+  );
+  form.setValue('literalDatatypeIri', '');
+  form.setValue('literalValue', '');
+  form.setValue('propertyIri', '');
+  form.setValue('targetIri', '');
+};
+
+const axiomTypeLabel = (
+  axiomType: AxiomType,
+  t: ReturnType<typeof useTranslation>['t']
+) => {
+  let label: string;
+
+  switch (axiomType) {
+    case AxiomType.ClassAssertion:
+      label = t('label.classification');
+
+      break;
+    case AxiomType.DataPropertyAssertion:
+      label = t('label.custom-property');
+
+      break;
+    case AxiomType.DisjointWith:
+      label = t('label.conflict-resolution');
+
+      break;
+    case AxiomType.EquivalentClass:
+      label = t('label.exact-match');
+
+      break;
+    case AxiomType.ObjectPropertyAssertion:
+      label = t('label.relationship');
+
+      break;
+    case AxiomType.SubclassOf:
+      label = t('label.child-of');
+
+      break;
+  }
+
+  return label;
+};
+
+const requiredField = (
+  name: string,
+  label: string,
+  t: ReturnType<typeof useTranslation>['t'],
+  type: FieldTypes = FieldTypes.TEXT
+): FieldProp => ({
+  label,
+  name,
+  required: true,
+  rules: { required: t('label.field-required', { field: label }) },
+  type,
+});
+
+const ProfileResult = ({ profile }: { profile: OntologyProfileReport }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Alert
+      title={
+        profile.valid
+          ? t('label.validation-passed')
+          : t('label.validation-failed')
+      }
+      variant={profile.valid ? 'success' : 'error'}>
+      {profile.violations.length ? (
+        <ul className="tw:m-0 tw:list-disc tw:pl-5">
+          {profile.violations.map((violation) => (
+            <li key={`${violation.code}-${violation.path}`}>
+              {violation.message}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Alert>
+  );
+};
+
 const OntologyAxiomPanel = ({ glossary }: OntologyAxiomPanelProps) => {
   const { t } = useTranslation();
   const form = useForm<OntologyAxiomFormState>({
@@ -318,102 +415,5 @@ const OntologyAxiomPanel = ({ glossary }: OntologyAxiomPanelProps) => {
     </HookForm>
   );
 };
-
-const ProfileResult = ({ profile }: { profile: OntologyProfileReport }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      title={
-        profile.valid
-          ? t('label.validation-passed')
-          : t('label.validation-failed')
-      }
-      variant={profile.valid ? 'success' : 'error'}>
-      {profile.violations.length ? (
-        <ul className="tw:m-0 tw:list-disc tw:pl-5">
-          {profile.violations.map((violation) => (
-            <li key={`${violation.code}-${violation.path}`}>
-              {violation.message}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </Alert>
-  );
-};
-
-const resetShape = (
-  form: ReturnType<typeof useForm<OntologyAxiomFormState>>,
-  axiomType: AxiomType
-) => {
-  form.setValue(
-    'expressions',
-    isClassExpressionAxiom(axiomType)
-      ? [defaultExpression(ExpressionKind.NamedClass)]
-      : []
-  );
-  form.setValue('literalDatatypeIri', '');
-  form.setValue('literalValue', '');
-  form.setValue('propertyIri', '');
-  form.setValue('targetIri', '');
-};
-
-const isClassExpressionAxiom = (axiomType: AxiomType) =>
-  [
-    AxiomType.ClassAssertion,
-    AxiomType.DisjointWith,
-    AxiomType.EquivalentClass,
-    AxiomType.SubclassOf,
-  ].includes(axiomType);
-
-const axiomTypeLabel = (
-  axiomType: AxiomType,
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  let label: string;
-
-  switch (axiomType) {
-    case AxiomType.ClassAssertion:
-      label = t('label.classification');
-
-      break;
-    case AxiomType.DataPropertyAssertion:
-      label = t('label.custom-property');
-
-      break;
-    case AxiomType.DisjointWith:
-      label = t('label.conflict-resolution');
-
-      break;
-    case AxiomType.EquivalentClass:
-      label = t('label.exact-match');
-
-      break;
-    case AxiomType.ObjectPropertyAssertion:
-      label = t('label.relationship');
-
-      break;
-    case AxiomType.SubclassOf:
-      label = t('label.child-of');
-
-      break;
-  }
-
-  return label;
-};
-
-const requiredField = (
-  name: string,
-  label: string,
-  t: ReturnType<typeof useTranslation>['t'],
-  type: FieldTypes = FieldTypes.TEXT
-): FieldProp => ({
-  label,
-  name,
-  required: true,
-  rules: { required: t('label.field-required', { field: label }) },
-  type,
-});
 
 export default OntologyAxiomPanel;

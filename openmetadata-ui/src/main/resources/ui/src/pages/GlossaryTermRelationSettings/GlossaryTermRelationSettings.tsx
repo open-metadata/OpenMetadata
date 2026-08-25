@@ -59,6 +59,61 @@ const RELATIONSHIP_TYPE_FETCH_PAGE_SIZE = 1000;
 const RELATIONSHIP_TYPE_FIELDS = 'owners,reviewers';
 const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 
+const fetchAllRelationshipTypes = async (): Promise<RelationshipType[]> => {
+  const relationshipTypes: RelationshipType[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await listRelationshipTypes({
+      fields: RELATIONSHIP_TYPE_FIELDS,
+      limit: RELATIONSHIP_TYPE_FETCH_PAGE_SIZE,
+      ...(after ? { after } : {}),
+    });
+    relationshipTypes.push(...response.data);
+    after = response.paging.after;
+  } while (after);
+
+  return relationshipTypes;
+};
+
+const getRelationshipTypePage = (
+  relationshipTypes: RelationshipType[],
+  relationshipTypeId: string,
+  pageSize: number
+): number => {
+  const index = relationshipTypes.findIndex(
+    (relationshipType) => relationshipType.id === relationshipTypeId
+  );
+
+  return Math.floor(Math.max(index, 0) / pageSize) + 1;
+};
+
+const clampPage = (
+  currentPage: number,
+  relationshipTypeCount: number,
+  pageSize: number
+): number =>
+  Math.min(
+    currentPage,
+    Math.max(Math.ceil(relationshipTypeCount / pageSize), 1)
+  );
+
+const upsertRelationshipType = (
+  current: RelationshipType[],
+  saved: RelationshipType
+): RelationshipType[] => {
+  const exists = current.some(
+    (relationshipType) => relationshipType.id === saved.id
+  );
+  const updated = exists
+    ? current.map((relationshipType) =>
+        relationshipType.id === saved.id ? saved : relationshipType
+      )
+    : [...current, saved];
+
+  return updated.sort((left, right) => left.name.localeCompare(right.name));
+};
+
 const GlossaryTermRelationSettingsPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -403,61 +458,6 @@ const GlossaryTermRelationSettingsPage = () => {
       </div>
     </PageLayoutV1>
   );
-};
-
-const fetchAllRelationshipTypes = async (): Promise<RelationshipType[]> => {
-  const relationshipTypes: RelationshipType[] = [];
-  let after: string | undefined;
-
-  do {
-    const response = await listRelationshipTypes({
-      fields: RELATIONSHIP_TYPE_FIELDS,
-      limit: RELATIONSHIP_TYPE_FETCH_PAGE_SIZE,
-      ...(after ? { after } : {}),
-    });
-    relationshipTypes.push(...response.data);
-    after = response.paging.after;
-  } while (after);
-
-  return relationshipTypes;
-};
-
-const getRelationshipTypePage = (
-  relationshipTypes: RelationshipType[],
-  relationshipTypeId: string,
-  pageSize: number
-): number => {
-  const index = relationshipTypes.findIndex(
-    (relationshipType) => relationshipType.id === relationshipTypeId
-  );
-
-  return Math.floor(Math.max(index, 0) / pageSize) + 1;
-};
-
-const clampPage = (
-  currentPage: number,
-  relationshipTypeCount: number,
-  pageSize: number
-): number =>
-  Math.min(
-    currentPage,
-    Math.max(Math.ceil(relationshipTypeCount / pageSize), 1)
-  );
-
-const upsertRelationshipType = (
-  current: RelationshipType[],
-  saved: RelationshipType
-): RelationshipType[] => {
-  const exists = current.some(
-    (relationshipType) => relationshipType.id === saved.id
-  );
-  const updated = exists
-    ? current.map((relationshipType) =>
-        relationshipType.id === saved.id ? saved : relationshipType
-      )
-    : [...current, saved];
-
-  return updated.sort((left, right) => left.name.localeCompare(right.name));
 };
 
 export default GlossaryTermRelationSettingsPage;

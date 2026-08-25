@@ -20,6 +20,12 @@ import {
   EMPTY_PATTERN_FORM,
 } from './OntologyModelingWorkbench.utils';
 
+const term = (name: string) => ({
+  description: `${name} description`,
+  displayName: name,
+  name,
+});
+
 describe('OntologyModelingWorkbench utilities', () => {
   it('builds the closed measured-KPI request without unrelated pattern payloads', () => {
     const request = buildOntologyPatternRequest('glossary-id', {
@@ -71,10 +77,4 @@ describe('OntologyModelingWorkbench utilities', () => {
     expect(request.literal).toBeUndefined();
     expect(request.propertyIri).toBeUndefined();
   });
-});
-
-const term = (name: string) => ({
-  description: `${name} description`,
-  displayName: name,
-  name,
 });

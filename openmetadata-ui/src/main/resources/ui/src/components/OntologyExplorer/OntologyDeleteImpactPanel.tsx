@@ -36,6 +36,36 @@ interface OntologyDeleteImpactPanelProps {
   onDeleted: () => void;
 }
 
+const ImpactCounts = ({ report }: { report: OntologyImpactReport }) => {
+  const { t } = useTranslation();
+  const counts = [
+    { count: report.children.length, label: t('label.children') },
+    {
+      count: report.relationships.length,
+      label: t('label.relationship-plural'),
+    },
+    { count: report.boundAssetCount, label: t('label.asset-plural') },
+    { count: report.conceptMappings.length, label: t('label.mapping-plural') },
+  ];
+
+  return (
+    <div className="tw:grid tw:grid-cols-2 tw:gap-2">
+      {counts.map((item) => (
+        <div
+          className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3"
+          key={item.label}>
+          <Typography size="text-lg" weight="semibold">
+            {item.count}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-xs">
+            {item.label}
+          </Typography>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const OntologyDeleteImpactPanel = ({
   node,
   nodes,
@@ -176,36 +206,6 @@ const OntologyDeleteImpactPanel = ({
         </Button>
       )}
     </Card>
-  );
-};
-
-const ImpactCounts = ({ report }: { report: OntologyImpactReport }) => {
-  const { t } = useTranslation();
-  const counts = [
-    { count: report.children.length, label: t('label.children') },
-    {
-      count: report.relationships.length,
-      label: t('label.relationship-plural'),
-    },
-    { count: report.boundAssetCount, label: t('label.asset-plural') },
-    { count: report.conceptMappings.length, label: t('label.mapping-plural') },
-  ];
-
-  return (
-    <div className="tw:grid tw:grid-cols-2 tw:gap-2">
-      {counts.map((item) => (
-        <div
-          className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3"
-          key={item.label}>
-          <Typography size="text-lg" weight="semibold">
-            {item.count}
-          </Typography>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {item.label}
-          </Typography>
-        </div>
-      ))}
-    </div>
   );
 };
 

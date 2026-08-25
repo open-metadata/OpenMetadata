@@ -30,6 +30,14 @@ interface OntologyTermSelectionProps {
   onChange: (termIds: string[]) => void;
 }
 
+const matches = (node: OntologyNode, query: string) => {
+  const normalized = query.trim().toLocaleLowerCase();
+  const label = (node.originalLabel ?? node.label).toLocaleLowerCase();
+  const result = !normalized || label.includes(normalized);
+
+  return result;
+};
+
 const OntologyTermSelection = ({
   label,
   maxItems,
@@ -89,14 +97,6 @@ const OntologyTermSelection = ({
       </div>
     </Card>
   );
-};
-
-const matches = (node: OntologyNode, query: string) => {
-  const normalized = query.trim().toLocaleLowerCase();
-  const label = (node.originalLabel ?? node.label).toLocaleLowerCase();
-  const result = !normalized || label.includes(normalized);
-
-  return result;
 };
 
 export default OntologyTermSelection;

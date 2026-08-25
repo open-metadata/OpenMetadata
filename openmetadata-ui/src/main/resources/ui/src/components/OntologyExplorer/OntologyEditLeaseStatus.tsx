@@ -23,6 +23,44 @@ interface OntologyEditLeaseStatusProps {
   onRetry: () => void;
 }
 
+const statusLabel = (
+  state: OntologyEditLeaseState,
+  hasResource: boolean,
+  holder: string | undefined,
+  t: ReturnType<typeof useTranslation>['t']
+) => {
+  let label: string;
+
+  if (!hasResource) {
+    label = `${t('label.select')} ${t('label.glossary')}`;
+  } else {
+    switch (state) {
+      case 'owned':
+        label = `${t('label.edit')} · ${t('label.active')}`;
+
+        break;
+      case 'acquiring':
+        label = t('label.loading');
+
+        break;
+      case 'contended':
+        label = `${t('label.edit')}: ${holder ?? t('label.user')}`;
+
+        break;
+      case 'lost':
+        label = t('label.edit');
+
+        break;
+      case 'idle':
+        label = `${t('label.select')} ${t('label.glossary')}`;
+
+        break;
+    }
+  }
+
+  return label;
+};
+
 const OntologyEditLeaseStatus = ({
   hasResource,
   lock,
@@ -61,44 +99,6 @@ const OntologyEditLeaseStatus = ({
       ) : null}
     </div>
   );
-};
-
-const statusLabel = (
-  state: OntologyEditLeaseState,
-  hasResource: boolean,
-  holder: string | undefined,
-  t: ReturnType<typeof useTranslation>['t']
-) => {
-  let label: string;
-
-  if (!hasResource) {
-    label = `${t('label.select')} ${t('label.glossary')}`;
-  } else {
-    switch (state) {
-      case 'owned':
-        label = `${t('label.edit')} · ${t('label.active')}`;
-
-        break;
-      case 'acquiring':
-        label = t('label.loading');
-
-        break;
-      case 'contended':
-        label = `${t('label.edit')}: ${holder ?? t('label.user')}`;
-
-        break;
-      case 'lost':
-        label = t('label.edit');
-
-        break;
-      case 'idle':
-        label = `${t('label.select')} ${t('label.glossary')}`;
-
-        break;
-    }
-  }
-
-  return label;
 };
 
 export default OntologyEditLeaseStatus;

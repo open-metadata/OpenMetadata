@@ -42,6 +42,86 @@ interface ExplanationContext {
   targetId: string;
 }
 
+const buildExplanationContext = (
+  edge: MergedEdge,
+  nodes: OntologyNode[],
+  relationshipTypes: RelationshipType[]
+) => {
+  const source = nodes.find((node) => node.id === edge.from);
+  const target = nodes.find((node) => node.id === edge.to);
+  const relationshipType = relationshipTypes.find(
+    (candidate) => candidate.name === edge.relationType
+  );
+  let context: ExplanationContext | undefined;
+
+  if (source?.glossaryId && target && relationshipType) {
+    context = {
+      glossaryId: source.glossaryId,
+      predicateIri: relationshipType.rdfPredicate,
+      sourceId: source.id,
+      targetId: target.id,
+    };
+  }
+
+  return context;
+};
+
+const entityIri = (baseUri: string, entityId: string) => {
+  const normalizedBaseUri = baseUri.endsWith('/') ? baseUri : `${baseUri}/`;
+
+  return `${normalizedBaseUri}entity/glossaryTerm/${entityId}`;
+};
+
+const yesOrNo = (value: boolean, t: ReturnType<typeof useTranslation>['t']) =>
+  t(value ? 'label.yes' : 'label.no');
+
+const ExplanationResult = ({
+  explanation,
+}: {
+  explanation: OntologyInferenceExplanation;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Alert
+      title={`${t('label.rule-plural')}: ${explanation.explanations.length}`}
+      variant={explanation.inferred ? 'success' : 'warning'}>
+      <div className="tw:flex tw:flex-col tw:gap-3">
+        <Typography size="text-sm">
+          {t('label.inference')}: {yesOrNo(explanation.inferred, t)}
+        </Typography>
+        {explanation.explanations.length ? (
+          explanation.explanations.map((item) => (
+            <Card
+              className="tw:flex tw:flex-col tw:gap-1 tw:border tw:border-secondary tw:p-3"
+              key={item.graphUri}>
+              <Typography size="text-sm" weight="semibold">
+                {item.rule.displayName ?? item.rule.name}
+              </Typography>
+              {item.rule.description ? (
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {item.rule.description}
+                </Typography>
+              ) : null}
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {t('label.count')}: {item.tripleCount}
+              </Typography>
+              {item.lastMaterializedAt ? (
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {t('label.last-updated')}:{' '}
+                  {formatDateTime(item.lastMaterializedAt)}
+                </Typography>
+              ) : null}
+            </Card>
+          ))
+        ) : (
+          <Typography size="text-sm">{t('label.no-data')}</Typography>
+        )}
+      </div>
+    </Alert>
+  );
+};
+
 const OntologyInferenceExplanationPanel = ({
   edge,
   nodes,
@@ -109,85 +189,5 @@ const OntologyInferenceExplanationPanel = ({
     </div>
   ) : null;
 };
-
-const ExplanationResult = ({
-  explanation,
-}: {
-  explanation: OntologyInferenceExplanation;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Alert
-      title={`${t('label.rule-plural')}: ${explanation.explanations.length}`}
-      variant={explanation.inferred ? 'success' : 'warning'}>
-      <div className="tw:flex tw:flex-col tw:gap-3">
-        <Typography size="text-sm">
-          {t('label.inference')}: {yesOrNo(explanation.inferred, t)}
-        </Typography>
-        {explanation.explanations.length ? (
-          explanation.explanations.map((item) => (
-            <Card
-              className="tw:flex tw:flex-col tw:gap-1 tw:border tw:border-secondary tw:p-3"
-              key={item.graphUri}>
-              <Typography size="text-sm" weight="semibold">
-                {item.rule.displayName ?? item.rule.name}
-              </Typography>
-              {item.rule.description ? (
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {item.rule.description}
-                </Typography>
-              ) : null}
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {t('label.count')}: {item.tripleCount}
-              </Typography>
-              {item.lastMaterializedAt ? (
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.last-updated')}:{' '}
-                  {formatDateTime(item.lastMaterializedAt)}
-                </Typography>
-              ) : null}
-            </Card>
-          ))
-        ) : (
-          <Typography size="text-sm">{t('label.no-data')}</Typography>
-        )}
-      </div>
-    </Alert>
-  );
-};
-
-const buildExplanationContext = (
-  edge: MergedEdge,
-  nodes: OntologyNode[],
-  relationshipTypes: RelationshipType[]
-) => {
-  const source = nodes.find((node) => node.id === edge.from);
-  const target = nodes.find((node) => node.id === edge.to);
-  const relationshipType = relationshipTypes.find(
-    (candidate) => candidate.name === edge.relationType
-  );
-  let context: ExplanationContext | undefined;
-
-  if (source?.glossaryId && target && relationshipType) {
-    context = {
-      glossaryId: source.glossaryId,
-      predicateIri: relationshipType.rdfPredicate,
-      sourceId: source.id,
-      targetId: target.id,
-    };
-  }
-
-  return context;
-};
-
-const entityIri = (baseUri: string, entityId: string) => {
-  const normalizedBaseUri = baseUri.endsWith('/') ? baseUri : `${baseUri}/`;
-
-  return `${normalizedBaseUri}entity/glossaryTerm/${entityId}`;
-};
-
-const yesOrNo = (value: boolean, t: ReturnType<typeof useTranslation>['t']) =>
-  t(value ? 'label.yes' : 'label.no');
 
 export default OntologyInferenceExplanationPanel;

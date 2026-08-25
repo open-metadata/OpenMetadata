@@ -62,6 +62,144 @@ const RelationField = ({ label, value }: RelationFieldProps) => (
   </div>
 );
 
+function switchProvenance(provenance: Provenance): UpdateProvenance {
+  switch (provenance) {
+    case Provenance.AISuggested:
+      return UpdateProvenance.AISuggested;
+    case Provenance.Imported:
+      return UpdateProvenance.Imported;
+    case Provenance.Inferred:
+      return UpdateProvenance.Inferred;
+    case Provenance.Manual:
+    default:
+      return UpdateProvenance.Manual;
+  }
+}
+
+function toUpdateProvenance(provenance?: Provenance): UpdateProvenance {
+  return switchProvenance(provenance ?? Provenance.Manual);
+}
+
+function toUpdateProvenanceValue(key: Key): UpdateProvenance {
+  let provenance = UpdateProvenance.Manual;
+  switch (String(key)) {
+    case Provenance.AISuggested:
+      provenance = UpdateProvenance.AISuggested;
+
+      break;
+    case Provenance.Imported:
+      provenance = UpdateProvenance.Imported;
+
+      break;
+    case Provenance.Inferred:
+      provenance = UpdateProvenance.Inferred;
+
+      break;
+    case Provenance.Manual:
+      break;
+  }
+
+  return provenance;
+}
+
+function switchStatus(status: EntityStatus): UpdateEntityStatus {
+  switch (status) {
+    case EntityStatus.Approved:
+      return UpdateEntityStatus.Approved;
+    case EntityStatus.Archived:
+      return UpdateEntityStatus.Archived;
+    case EntityStatus.Deprecated:
+      return UpdateEntityStatus.Deprecated;
+    case EntityStatus.InReview:
+      return UpdateEntityStatus.InReview;
+    case EntityStatus.Rejected:
+      return UpdateEntityStatus.Rejected;
+    case EntityStatus.Unprocessed:
+      return UpdateEntityStatus.Unprocessed;
+    case EntityStatus.Draft:
+    default:
+      return UpdateEntityStatus.Draft;
+  }
+}
+
+function toUpdateStatus(status?: EntityStatus): UpdateEntityStatus {
+  return switchStatus(status ?? EntityStatus.Draft);
+}
+
+function toUpdateStatusValue(key: Key): UpdateEntityStatus {
+  let status = UpdateEntityStatus.Draft;
+  switch (String(key)) {
+    case EntityStatus.Approved:
+      status = UpdateEntityStatus.Approved;
+
+      break;
+    case EntityStatus.Archived:
+      status = UpdateEntityStatus.Archived;
+
+      break;
+    case EntityStatus.Deprecated:
+      status = UpdateEntityStatus.Deprecated;
+
+      break;
+    case EntityStatus.InReview:
+      status = UpdateEntityStatus.InReview;
+
+      break;
+    case EntityStatus.Rejected:
+      status = UpdateEntityStatus.Rejected;
+
+      break;
+    case EntityStatus.Unprocessed:
+      status = UpdateEntityStatus.Unprocessed;
+
+      break;
+    case EntityStatus.Draft:
+      break;
+  }
+
+  return status;
+}
+
+function getProvenanceLabel(
+  provenance: Provenance | undefined,
+  t: ReturnType<typeof useTranslation>['t']
+): string {
+  switch (provenance) {
+    case Provenance.AISuggested:
+      return t('label.suggestion');
+    case Provenance.Imported:
+      return t('label.imported');
+    case Provenance.Inferred:
+      return t('label.ontology-inferred');
+    case Provenance.Manual:
+    default:
+      return t('label.manual');
+  }
+}
+
+function getStatusLabel(
+  status: EntityStatus | undefined,
+  t: ReturnType<typeof useTranslation>['t']
+): string {
+  switch (status) {
+    case EntityStatus.Approved:
+      return t('label.approved');
+    case EntityStatus.InReview:
+      return t('label.in-review');
+    case EntityStatus.Archived:
+      return t('label.archived');
+    case EntityStatus.Deprecated:
+      return t('label.deprecated');
+    case EntityStatus.Rejected:
+      return t('label.rejected');
+    case EntityStatus.Unprocessed:
+      return t('label.unprocessed');
+    case EntityStatus.Draft:
+    default:
+      return t('label.draft');
+  }
+}
+
 export const OntologyRelationDetailsPanel = ({
   edge,
   isEditable,
@@ -268,141 +406,3 @@ export const OntologyRelationDetailsPanel = ({
     </aside>
   );
 };
-
-function toUpdateProvenance(provenance?: Provenance): UpdateProvenance {
-  return switchProvenance(provenance ?? Provenance.Manual);
-}
-
-function toUpdateProvenanceValue(key: Key): UpdateProvenance {
-  let provenance = UpdateProvenance.Manual;
-  switch (String(key)) {
-    case Provenance.AISuggested:
-      provenance = UpdateProvenance.AISuggested;
-
-      break;
-    case Provenance.Imported:
-      provenance = UpdateProvenance.Imported;
-
-      break;
-    case Provenance.Inferred:
-      provenance = UpdateProvenance.Inferred;
-
-      break;
-    case Provenance.Manual:
-      break;
-  }
-
-  return provenance;
-}
-
-function switchProvenance(provenance: Provenance): UpdateProvenance {
-  switch (provenance) {
-    case Provenance.AISuggested:
-      return UpdateProvenance.AISuggested;
-    case Provenance.Imported:
-      return UpdateProvenance.Imported;
-    case Provenance.Inferred:
-      return UpdateProvenance.Inferred;
-    case Provenance.Manual:
-    default:
-      return UpdateProvenance.Manual;
-  }
-}
-
-function toUpdateStatus(status?: EntityStatus): UpdateEntityStatus {
-  return switchStatus(status ?? EntityStatus.Draft);
-}
-
-function toUpdateStatusValue(key: Key): UpdateEntityStatus {
-  let status = UpdateEntityStatus.Draft;
-  switch (String(key)) {
-    case EntityStatus.Approved:
-      status = UpdateEntityStatus.Approved;
-
-      break;
-    case EntityStatus.Archived:
-      status = UpdateEntityStatus.Archived;
-
-      break;
-    case EntityStatus.Deprecated:
-      status = UpdateEntityStatus.Deprecated;
-
-      break;
-    case EntityStatus.InReview:
-      status = UpdateEntityStatus.InReview;
-
-      break;
-    case EntityStatus.Rejected:
-      status = UpdateEntityStatus.Rejected;
-
-      break;
-    case EntityStatus.Unprocessed:
-      status = UpdateEntityStatus.Unprocessed;
-
-      break;
-    case EntityStatus.Draft:
-      break;
-  }
-
-  return status;
-}
-
-function switchStatus(status: EntityStatus): UpdateEntityStatus {
-  switch (status) {
-    case EntityStatus.Approved:
-      return UpdateEntityStatus.Approved;
-    case EntityStatus.Archived:
-      return UpdateEntityStatus.Archived;
-    case EntityStatus.Deprecated:
-      return UpdateEntityStatus.Deprecated;
-    case EntityStatus.InReview:
-      return UpdateEntityStatus.InReview;
-    case EntityStatus.Rejected:
-      return UpdateEntityStatus.Rejected;
-    case EntityStatus.Unprocessed:
-      return UpdateEntityStatus.Unprocessed;
-    case EntityStatus.Draft:
-    default:
-      return UpdateEntityStatus.Draft;
-  }
-}
-
-function getProvenanceLabel(
-  provenance: Provenance | undefined,
-  t: ReturnType<typeof useTranslation>['t']
-): string {
-  switch (provenance) {
-    case Provenance.AISuggested:
-      return t('label.suggestion');
-    case Provenance.Imported:
-      return t('label.imported');
-    case Provenance.Inferred:
-      return t('label.ontology-inferred');
-    case Provenance.Manual:
-    default:
-      return t('label.manual');
-  }
-}
-
-function getStatusLabel(
-  status: EntityStatus | undefined,
-  t: ReturnType<typeof useTranslation>['t']
-): string {
-  switch (status) {
-    case EntityStatus.Approved:
-      return t('label.approved');
-    case EntityStatus.InReview:
-      return t('label.in-review');
-    case EntityStatus.Archived:
-      return t('label.archived');
-    case EntityStatus.Deprecated:
-      return t('label.deprecated');
-    case EntityStatus.Rejected:
-      return t('label.rejected');
-    case EntityStatus.Unprocessed:
-      return t('label.unprocessed');
-    case EntityStatus.Draft:
-    default:
-      return t('label.draft');
-  }
-}
