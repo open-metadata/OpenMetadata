@@ -645,6 +645,7 @@ describe('ActivityFeedProvider', () => {
       });
 
       await act(async () => {
+        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
         resolveSlowRequest({
           data: [{ ...mockActivityEvents[0], summary: 'Stale result' }],
           paging: {},

@@ -74,10 +74,8 @@ function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
     if (!must_not.every(isValidCondition)) {
       return false;
     }
-  } else if (must_not) {
-    if (!isValidCondition(must_not)) {
-      return false;
-    }
+  } else if (must_not && !isValidCondition(must_not)) {
+    return false;
   }
 
   return true;

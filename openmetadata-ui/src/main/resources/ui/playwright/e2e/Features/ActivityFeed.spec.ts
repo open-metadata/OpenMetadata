@@ -30,7 +30,6 @@ import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
-  removeLandingBanner,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
@@ -168,7 +167,6 @@ test.describe('FeedWidget on landing page', () => {
         try {
           // Set persona as default
           await redirectToHomePage(adminPage);
-          await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage);
           await setUserDefaultPersona(adminPage, testPersona.data.displayName);
 
@@ -199,7 +197,6 @@ test.describe('FeedWidget on landing page', () => {
           }
 
           await redirectToHomePage(adminPage);
-          await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage);
         } finally {
           await adminPage.close();
@@ -224,7 +221,6 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
-    await removeLandingBanner(page);
     await waitForAllLoadersToDisappear(page);
   });
 

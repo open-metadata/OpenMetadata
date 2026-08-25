@@ -276,14 +276,8 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         properties: visibleProperties,
         showDivider: false,
       });
-    } else if (isLDAPConfig) {
-      // LDAP configuration - all fields in a single group without extra grouping
-      groups.push({
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    } else if (isSAMLConfig) {
-      // SAML configuration - all fields in a single group without extra grouping
+    } else if (isLDAPConfig || isSAMLConfig) {
+      // LDAP/SAML configuration - all fields in a single group without extra grouping
       groups.push({
         properties: visibleProperties,
         showDivider: false,
@@ -302,6 +296,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     <Fragment>
       {title && title.trim() !== '' && (
         <Space className="w-full justify-between header-title-wrapper">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- field-group title caption, not a form control */}
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':

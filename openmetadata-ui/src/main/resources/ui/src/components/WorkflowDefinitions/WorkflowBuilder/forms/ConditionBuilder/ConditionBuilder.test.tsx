@@ -73,6 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (v: string) => void;
   }) => (
     <input
+      aria-label="Value"
       data-testid={props['data-testid']}
       disabled={props.isDisabled}
       value={props.value ?? ''}
@@ -87,6 +88,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (checked: boolean) => void;
   }) => (
     <input
+      aria-label="Toggle"
       checked={props.isSelected ?? false}
       data-testid={props['data-testid'] ?? 'toggle'}
       disabled={props.isDisabled}

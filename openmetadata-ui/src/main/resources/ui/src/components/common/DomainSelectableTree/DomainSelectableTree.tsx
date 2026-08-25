@@ -646,6 +646,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the tree opens
         autoFocus
         className="tw:mb-2"
         icon={SearchLg}
