@@ -26,6 +26,7 @@ import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 
 export default [
   // Base recommended configs
@@ -438,6 +439,7 @@ export default [
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     plugins: {
+      'openmetadata-playwright': openMetadataPlaywright,
       playwright,
     },
     rules: {
@@ -500,6 +502,14 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+
+      // A facet aggregation wait must name the value it is waiting for, not just
+      // the endpoint or field: a dropdown fires one aggregation when it opens and
+      // one per typed search, so a wait that names neither can resolve off the
+      // wrong one and run the test ahead of the request it queued (#31859). Warn
+      // rather than error while the remaining 27 call sites are migrated to
+      // playwright/utils/searchAggregation.ts.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
 
       // Playwright rules — aspirational (warn): existing violations to fix over time
       'playwright/missing-playwright-await': 'warn',

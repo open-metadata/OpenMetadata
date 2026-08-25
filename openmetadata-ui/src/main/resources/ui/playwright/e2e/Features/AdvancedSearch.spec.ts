@@ -1057,7 +1057,7 @@ test.describe(
 
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);
@@ -1081,7 +1081,7 @@ test.describe(
         await page.getByTestId('search-dropdown-Data Assets').click();
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);
