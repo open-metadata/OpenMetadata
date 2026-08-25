@@ -49,7 +49,6 @@ class OMetaQueryMixin:
         return str(result.hexdigest())
 
     def _qualified_query_fqn(self, service_name: str, query_hash: str) -> str:
-        """Server Query FQN is service.hash, not the bare SQL checksum."""
         return f"{model_str(service_name)}.{query_hash}"
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
@@ -63,9 +62,7 @@ class OMetaQueryMixin:
                 if resp and resp.get("id"):
                     query_entity = Query(**resp)
             except APIError as err:
-                # Concurrent create: look up the FQN we just raced on, then still
-                # attach usage/users/usedBy. Do not reuse __get_query_by_hash — it
-                # caches misses.
+                # Same SQL created by another table in this run — fetch it so usage still attaches.
                 if err.status_code == 409:
                     query_entity = self.get_by_name(entity=Query, fqn=fqn)
                 else:
