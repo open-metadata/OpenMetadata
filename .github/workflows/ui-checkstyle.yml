@@ -307,11 +307,13 @@ jobs:
           # rule can be disabled unjustified. Neither can be caught by
           # justified-rule-disable.js itself: ESLint filters a rule's own
           # reports on lines its own disable comment covers, so a rule cannot
-          # police a directive that disables the rule. .ts/.tsx only: the
-          # rule's own RuleTester fixtures that exercise these exact strings
-          # live in a .test.js file, which the --include filters below skip.
+          # police a directive that disables the rule. eslint-rules/ is excluded
+          # by path: the plugin's own source and RuleTester fixtures quote these
+          # exact strings deliberately, and it is a linter rather than a test —
+          # eslint.config.mjs does not apply the guardrail rules to it either.
           if MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?\s*(\*/|$)|eslint-disable.*om-playwright/justified-rule-disable' \
-               playwright/ --include='*.ts' --include='*.tsx'); then
+               playwright/ --include='*.ts' --include='*.tsx' \
+               --exclude-dir='eslint-rules'); then
             echo "$MATCHES"
             echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
@@ -329,7 +331,7 @@ jobs:
           # ratchet down instead of just never growing.
           if { yarn test:eslint-rules && \
                yarn lint:playwright:full && \
-               node scripts/generate-playwright-rule-table.js --check; } > /tmp/pw-guardrails.out 2>&1; then
+               node scripts/generate-playwright-rule-table.ts --check; } > /tmp/pw-guardrails.out 2>&1; then
             RESULT=0
           else
             RESULT=$?
@@ -508,7 +510,7 @@ jobs:
               },
               {
                 name:    'Playwright - Guardrails + ESLint + Prettier + Organise Imports',
-                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.js --check`.',
+                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.ts --check`.',
                 result:  '${{ needs.checkstyle.outputs.lint_playwright_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
               },
