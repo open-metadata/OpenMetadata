@@ -11,28 +11,21 @@
  *  limitations under the License.
  */
 
+import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
+import type { Key } from '@openmetadata/ui-core-components';
 import {
-  CloseOutlined,
-  HolderOutlined,
-  RedoOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
-import {
+  Box,
   Button,
   Card,
-  Col,
-  Row,
-  Space,
-  Switch,
+  Toggle,
   Tree,
-  TreeDataNode,
-  TreeProps,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { DotsGrid } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual } from 'lodash';
-import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -68,7 +61,9 @@ import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,
   getSidebarTreeData,
-  isValidSidebarTree,
+  moveSidebarNode,
+  moveSidebarNodeToRoot,
+  SidebarDropPosition,
   SidebarTreeNode,
 } from './CustomizeAppModeSidebarPage.utils';
 
@@ -260,89 +255,66 @@ const CustomizeAppModeSidebarPage = () => {
     []
   );
 
-  // Nested drag: reorder at the top level, or move an item in/out of the
-  // "More" node's children. Only the "More" node may hold children (enforced
-  // by `allowDrop` + a post-move `isValidSidebarTree` guard that reverts an
-  // illegal drop).
-  const onDrop: TreeProps['onDrop'] = (info) => {
-    const dragKey = info.dragNode.key;
-    const dropKey = info.node.key;
-    const dropPos = info.node.pos.split('-');
-    const relativeDropPosition =
-      info.dropPosition - Number(dropPos[dropPos.length - 1]);
+  // Reorder at the top level, or move an item into/out of the "More" node's
+  // children. `moveSidebarNode` / `moveSidebarNodeToRoot` revert any drop that
+  // would break the structural invariant (only "More" may hold children).
+  const handleItemMove = useCallback(
+    ({
+      sourceKey,
+      targetKey,
+      dropPosition,
+    }: {
+      sourceKey: Key;
+      targetKey: Key;
+      dropPosition: SidebarDropPosition;
+    }) => {
+      setTreeData((prev) =>
+        moveSidebarNode(
+          prev,
+          String(sourceKey),
+          String(targetKey),
+          dropPosition
+        )
+      );
+    },
+    []
+  );
 
-    const loop = (
-      data: SidebarTreeNode[],
-      key: Key,
-      callback: (
-        node: SidebarTreeNode,
-        index: number,
-        arr: SidebarTreeNode[]
-      ) => void
-    ) => {
-      for (let i = 0; i < data.length; i++) {
-        if (data[i].key === key) {
-          return callback(data[i], i, data);
-        }
-        if (data[i].children) {
-          loop(data[i].children!, key, callback);
-        }
-      }
-    };
+  const handleItemRootDrop = useCallback((sourceKey: Key) => {
+    setTreeData((prev) => moveSidebarNodeToRoot(prev, String(sourceKey)));
+  }, []);
 
-    setTreeData((prev) => {
-      // Dropping a node onto itself is a no-op. Without this guard the node is
-      // spliced out and then never re-found by the re-insertion loop.
-      if (dragKey === dropKey) {
-        return prev;
-      }
-
-      const next = cloneDeep(prev);
-
-      let dragNode: SidebarTreeNode | undefined;
-      loop(next, dragKey, (node, index, arr) => {
-        arr.splice(index, 1);
-        dragNode = node;
-      });
-      if (!dragNode) {
-        return prev;
-      }
-
-      if (!info.dropToGap) {
-        loop(next, dropKey, (node) => {
-          node.children = node.children ?? [];
-          node.children.unshift(dragNode!);
-        });
-      } else {
-        loop(next, dropKey, (_node, index, arr) => {
-          const insertIndex = relativeDropPosition <= 0 ? index : index + 1;
-          arr.splice(insertIndex, 0, dragNode!);
-        });
-      }
-
-      return isValidSidebarTree(next) ? next : prev;
-    });
-  };
-
-  const titleRenderer = (node: TreeDataNode) => {
-    const { navIcon: Icon } = node as SidebarTreeNode;
+  const renderTreeItem = (node: SidebarTreeNode) => {
+    const Icon = node.navIcon;
 
     return (
-      <div className="space-between">
-        <span className="d-flex items-center gap-2">
-          {Icon && (
-            <Icon className="tw:text-fg-tertiary" height={20} width={20} />
-          )}
-          {node.title as string}
-        </span>
-        <Switch
-          checked={!hiddenKeys.includes(node.key as string)}
-          data-testid={`ask-sidebar-switch-${node.key}`}
-          onChange={(checked) =>
-            handleVisibilityToggle(checked, node.key as string)
-          }
-        />
-      </div>
+      <Tree.Item id={node.key} key={node.key} textValue={node.title}>
+        <Tree.ItemContent hasChildItems={Boolean(node.children?.length)}>
+          <Box
+            align="center"
+            className="tw:w-full tw:justify-between"
+            direction="row">
+            <Box align="center" direction="row" gap={2}>
+              <DotsGrid
+                aria-hidden
+                className="tw:size-4 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+                data-testid="ask-sidebar-drag-handle"
+              />
+              {Icon && (
+                <Icon className="tw:text-fg-tertiary" height={20} width={20} />
+              )}
+              <Typography size="text-sm">{node.title}</Typography>
+            </Box>
+            <Toggle
+              aria-label={node.title}
+              data-testid={`ask-sidebar-switch-${node.key}`}
+              isSelected={!hiddenKeys.includes(node.key)}
+              onChange={(checked) => handleVisibilityToggle(checked, node.key)}
+            />
+          </Box>
+        </Tree.ItemContent>
+        {node.children?.map((child) => renderTreeItem(child))}
+      </Tree.Item>
     );
   };
 
@@ -360,75 +332,74 @@ const CustomizeAppModeSidebarPage = () => {
         pageTitle={t('label.customize-entity', {
           entity: t('label.app-mode-sidebar'),
         })}>
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
-            <Card
-              className="customize-page-header"
-              data-testid="customize-app-mode-sidebar-header">
-              <div className="d-flex items-center justify-between">
-                <div>
-                  <Typography.Title
-                    className="m-0"
+        <Box className="tw:flex tw:flex-col tw:gap-5">
+          <Card
+            className="customize-page-header"
+            data-testid="customize-app-mode-sidebar-header">
+            <Card.Content>
+              <Box
+                align="center"
+                className="tw:w-full tw:justify-between"
+                direction="row">
+                <Box direction="col">
+                  <Typography
+                    as="h5"
                     data-testid="customize-page-title"
-                    level={5}>
+                    size="text-lg"
+                    weight="semibold">
                     {t('label.customize-entity', {
                       entity: t('label.app-mode-sidebar'),
                     })}
-                  </Typography.Title>
-                  <Typography.Paragraph className="m-0">
+                  </Typography>
+                  <Typography className="tw:text-secondary" size="text-sm">
                     {t('message.customize-app-mode-sidebar-description')}
-                  </Typography.Paragraph>
-                </div>
-                <Space>
+                  </Typography>
+                </Box>
+                <Box align="center" direction="row" gap={2}>
                   <Button
+                    color="secondary"
                     data-testid="reset-button"
-                    disabled={isSaving}
-                    icon={<RedoOutlined />}
-                    onClick={handleReset}>
+                    iconLeading={<RedoOutlined />}
+                    isDisabled={isSaving}
+                    onPress={handleReset}>
                     {t('label.reset')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="save-button"
-                    disabled={disableSave}
-                    icon={<SaveOutlined />}
-                    loading={isSaving}
-                    type="primary"
-                    onClick={handleSave}>
+                    iconLeading={<SaveOutlined />}
+                    isDisabled={disableSave}
+                    isLoading={isSaving}
+                    onPress={handleSave}>
                     {t('label.save')}
                   </Button>
                   <Button
+                    aria-label={t('label.cancel')}
+                    color="secondary"
                     data-testid="cancel-button"
-                    disabled={isSaving}
-                    icon={<CloseOutlined />}
-                    onClick={handleCancel}
+                    iconLeading={<CloseOutlined />}
+                    isDisabled={isSaving}
+                    onPress={handleCancel}
                   />
-                </Space>
-              </div>
-            </Card>
-          </Col>
+                </Box>
+              </Box>
+            </Card.Content>
+          </Card>
 
-          <Col span={24}>
-            <Card
-              className="custom-navigation-tree-container"
-              title={t('label.app-mode-sidebar')}>
+          <Card className="custom-navigation-tree-container">
+            <Card.Header title={t('label.app-mode-sidebar')} />
+            <Card.Content>
               <Tree
-                blockNode
-                defaultExpandAll
-                // dropPosition 0 = drop INTO a node (nest). Only the "More"
-                // node accepts children; gap drops (reorder / move out) are
-                // always allowed.
-                allowDrop={({ dropNode, dropPosition }) =>
-                  dropPosition !== 0 || dropNode.key === MORE_NAV_KEY
-                }
-                draggable={{ icon: <HolderOutlined /> }}
-                itemHeight={48}
-                titleRender={titleRenderer}
-                treeData={treeData}
-                onDrop={onDrop}
-              />
-            </Card>
-          </Col>
-        </Row>
+                aria-label={t('label.app-mode-sidebar')}
+                defaultExpandedKeys={new Set([MORE_NAV_KEY])}
+                selectionMode="none"
+                onItemMove={handleItemMove}
+                onItemRootDrop={handleItemRootDrop}>
+                {treeData.map((node) => renderTreeItem(node))}
+              </Tree>
+            </Card.Content>
+          </Card>
+        </Box>
       </PageLayoutV1>
     </NavigationBlocker>
   );

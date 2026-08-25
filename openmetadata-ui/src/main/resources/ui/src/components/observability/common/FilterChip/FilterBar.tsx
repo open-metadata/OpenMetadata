@@ -12,7 +12,6 @@
  */
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import { PlusCircle, XCircle } from '@untitledui/icons';
-import { MenuProps } from 'antd';
 import { isString } from 'lodash';
 import { useCallback, useState } from 'react';
 import type { Selection } from 'react-aria-components';
@@ -25,10 +24,19 @@ interface AdvancedMenuItem {
   label: string;
 }
 
+// Structural shape of the incoming menu entries. Kept loose (optional key,
+// unknown label, nullable) so an antd `ItemType[]` — which may include
+// dividers, group items, nulls and ReactNode labels — is assignable without
+// importing antd; the render below keeps only the real { key, string label }
+// entries.
+type AdvancedMenuInput = ReadonlyArray<
+  { key?: string | number; label?: unknown } | null | undefined
+>;
+
 export interface FilterBarProps {
   filters: FilterDescriptor[];
   /** Omit to hide the "Advanced" add/remove-filter dropdown (e.g. incidents). */
-  advancedMenu?: MenuProps['items'];
+  advancedMenu?: AdvancedMenuInput;
   selectedFilter?: string[];
   hasActiveFilters: boolean;
   /** Trigger style for the filter chips. Defaults to `chip`. */

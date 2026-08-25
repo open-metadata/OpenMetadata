@@ -21,6 +21,8 @@ import {
   getSidebarNavigationItems,
   getSidebarTreeData,
   isValidSidebarTree,
+  moveSidebarNode,
+  moveSidebarNodeToRoot,
   SidebarTreeNode,
 } from './CustomizeAppModeSidebarPage.utils';
 
@@ -134,9 +136,16 @@ describe('getSidebarNavigationItems', () => {
   });
 });
 
-describe('isValidSidebarTree', () => {
-  const leaf = (key: string): SidebarTreeNode => ({ key, title: key });
+const leaf = (key: string): SidebarTreeNode => ({ key, title: key });
 
+const more = (children: SidebarTreeNode[]): SidebarTreeNode => ({
+  key: MORE_NAV_KEY,
+  title: 'More',
+  isLeaf: false,
+  children,
+});
+
+describe('isValidSidebarTree', () => {
   it('accepts top-level leaves and a More node holding leaf children', () => {
     expect(
       isValidSidebarTree([
@@ -162,5 +171,66 @@ describe('isValidSidebarTree', () => {
         },
       ])
     ).toBe(false);
+  });
+});
+
+describe('moveSidebarNode', () => {
+  it('reorders two top-level items', () => {
+    const tree = [leaf('a'), leaf('b'), more([])];
+    const next = moveSidebarNode(tree, 'a', 'b', 'after');
+
+    expect(next.map((n) => n.key)).toEqual(['b', 'a', MORE_NAV_KEY]);
+  });
+
+  it('nests a top-level item into the More node on an "on" drop', () => {
+    const tree = [leaf('a'), leaf('b'), more([])];
+    const next = moveSidebarNode(tree, 'a', MORE_NAV_KEY, 'on');
+
+    expect(next.map((n) => n.key)).toEqual(['b', MORE_NAV_KEY]);
+    expect(
+      next.find((n) => n.key === MORE_NAV_KEY)?.children?.map((c) => c.key)
+    ).toEqual(['a']);
+  });
+
+  it('moves an item out of More back to the top level', () => {
+    const tree = [leaf('a'), more([leaf('b')])];
+    const next = moveSidebarNode(tree, 'b', 'a', 'before');
+
+    expect(next.map((n) => n.key)).toEqual(['b', 'a', MORE_NAV_KEY]);
+    expect(next.find((n) => n.key === MORE_NAV_KEY)?.children).toEqual([]);
+  });
+
+  it('reverts a drop that would nest under a non-More node', () => {
+    const tree = [leaf('a'), leaf('b'), more([])];
+
+    expect(moveSidebarNode(tree, 'a', 'b', 'on')).toBe(tree);
+  });
+
+  it('is a no-op when source and target are the same', () => {
+    const tree = [leaf('a'), more([])];
+
+    expect(moveSidebarNode(tree, 'a', 'a', 'before')).toBe(tree);
+  });
+
+  it('returns the original tree for an unknown source key', () => {
+    const tree = [leaf('a'), more([])];
+
+    expect(moveSidebarNode(tree, 'missing', 'a', 'before')).toBe(tree);
+  });
+});
+
+describe('moveSidebarNodeToRoot', () => {
+  it('appends a More child to the end of the top level', () => {
+    const tree = [leaf('a'), more([leaf('b')])];
+    const next = moveSidebarNodeToRoot(tree, 'b');
+
+    expect(next.map((n) => n.key)).toEqual(['a', MORE_NAV_KEY, 'b']);
+    expect(next.find((n) => n.key === MORE_NAV_KEY)?.children).toEqual([]);
+  });
+
+  it('returns the original tree for an unknown source key', () => {
+    const tree = [leaf('a'), more([])];
+
+    expect(moveSidebarNodeToRoot(tree, 'missing')).toBe(tree);
   });
 });

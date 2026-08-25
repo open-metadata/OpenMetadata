@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { TreeDataNode } from 'antd';
 import { isEmpty } from 'lodash';
 import {
   IconComponent,
@@ -22,8 +21,16 @@ import {
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import i18n from '../../utils/i18next/LocalUtil';
 
-/** Tree node carrying the nav item's icon through for the editor row. */
-export interface SidebarTreeNode extends TreeDataNode {
+/**
+ * Editor tree node for the app-mode sidebar. A flat model: top-level items,
+ * plus the single "More" node that may hold leaf children. `isLeaf` mirrors
+ * the old rc-tree flag — kept so the "More" node stays a valid drop target
+ * even when it has emptied out.
+ */
+export interface SidebarTreeNode {
+  key: string;
+  title: string;
+  isLeaf?: boolean;
   navIcon?: IconComponent;
   children?: SidebarTreeNode[];
 }
@@ -213,3 +220,129 @@ export const isValidSidebarTree = (nodes: SidebarTreeNode[]): boolean =>
 
     return isEmpty(node.children);
   });
+
+/** Drop position relative to the target, from the core Tree's onItemMove. */
+export type SidebarDropPosition = 'before' | 'after' | 'on';
+
+// Detach `sourceKey` from the tree (top level or the "More" node's children),
+// returning the detached node and the remaining tree. Returns node `undefined`
+// when the key is absent.
+const detachNode = (
+  nodes: SidebarTreeNode[],
+  sourceKey: string
+): { node?: SidebarTreeNode; rest: SidebarTreeNode[] } => {
+  let detached: SidebarTreeNode | undefined;
+
+  const rest = nodes.reduce<SidebarTreeNode[]>((acc, node) => {
+    if (node.key === sourceKey) {
+      detached = node;
+
+      return acc;
+    }
+
+    if (node.children?.length) {
+      const prunedChildren = node.children.filter((child) => {
+        if (child.key === sourceKey) {
+          detached = child;
+
+          return false;
+        }
+
+        return true;
+      });
+      acc.push({ ...node, children: prunedChildren });
+    } else {
+      acc.push(node);
+    }
+
+    return acc;
+  }, []);
+
+  return { node: detached, rest };
+};
+
+// Insert `node` relative to `targetKey` (top level or inside the "More" node).
+// `on` nests into the target; `before`/`after` place it beside the target.
+const insertNode = (
+  nodes: SidebarTreeNode[],
+  node: SidebarTreeNode,
+  targetKey: string,
+  position: SidebarDropPosition
+): SidebarTreeNode[] => {
+  if (position === 'on') {
+    return nodes.map((current) =>
+      current.key === targetKey
+        ? { ...current, children: [node, ...(current.children ?? [])] }
+        : current
+    );
+  }
+
+  const topIndex = nodes.findIndex((current) => current.key === targetKey);
+  if (topIndex !== -1) {
+    const next = [...nodes];
+    next.splice(position === 'before' ? topIndex : topIndex + 1, 0, node);
+
+    return next;
+  }
+
+  // Target is nested under the "More" node — insert beside it there.
+  return nodes.map((current) => {
+    const childIndex = (current.children ?? []).findIndex(
+      (child) => child.key === targetKey
+    );
+    if (childIndex === -1) {
+      return current;
+    }
+    const children = [...(current.children ?? [])];
+    children.splice(
+      position === 'before' ? childIndex : childIndex + 1,
+      0,
+      node
+    );
+
+    return { ...current, children };
+  });
+};
+
+/**
+ * Move `sourceKey` beside/into `targetKey` and return the new tree. Reverts to
+ * the original tree when the move is a no-op or would violate
+ * {@link isValidSidebarTree} (e.g. nesting under anything but "More").
+ */
+export const moveSidebarNode = (
+  nodes: SidebarTreeNode[],
+  sourceKey: string,
+  targetKey: string,
+  position: SidebarDropPosition
+): SidebarTreeNode[] => {
+  if (sourceKey === targetKey) {
+    return nodes;
+  }
+
+  const { node, rest } = detachNode(nodes, sourceKey);
+  if (!node) {
+    return nodes;
+  }
+
+  const next = insertNode(rest, node, targetKey, position);
+
+  return isValidSidebarTree(next) ? next : nodes;
+};
+
+/**
+ * Move `sourceKey` to the end of the top level (used when a node is dropped on
+ * the tree's empty root). Reverts if the result is structurally invalid.
+ */
+export const moveSidebarNodeToRoot = (
+  nodes: SidebarTreeNode[],
+  sourceKey: string
+): SidebarTreeNode[] => {
+  const { node, rest } = detachNode(nodes, sourceKey);
+  if (!node) {
+    return nodes;
+  }
+
+  const next = [...rest, node];
+
+  return isValidSidebarTree(next) ? next : nodes;
+};
