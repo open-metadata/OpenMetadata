@@ -71,8 +71,12 @@ jest.mock(
     jest.fn().mockImplementation(({ versionHandler, onBack }) => (
       <div>
         EntityVersionTimeLine
-        <div onClick={() => versionHandler('0.7')}>versionHandler</div>
-        <div onClick={onBack}>onBack</div>
+        <div role="presentation" onClick={() => versionHandler('0.7')}>
+          versionHandler
+        </div>
+        <div role="presentation" onClick={onBack}>
+          onBack
+        </div>
       </div>
     ))
 );
