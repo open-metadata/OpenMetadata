@@ -185,7 +185,8 @@ const resolveClientPagination = <T,>(
       typeof cfg.total === 'number' && cfg.total > rowCount
         ? cfg.total
         : undefined,
-    controlledCurrent: typeof cfg.current === 'number' ? cfg.current : undefined,
+    controlledCurrent:
+      typeof cfg.current === 'number' ? cfg.current : undefined,
   };
 };
 
@@ -448,14 +449,8 @@ const TableV2 = <T extends object>(
         hasParentPagination,
         (rest.dataSource ?? []).length
       ),
-    [
-      rest.pagination,
-      pageSizeOverride,
-      hasParentPagination,
-      rest.dataSource,
-    ]
+    [rest.pagination, pageSizeOverride, hasParentPagination, rest.dataSource]
   );
-
 
   /**
    * Changing the page size invalidates the current page — AntD resets to the
