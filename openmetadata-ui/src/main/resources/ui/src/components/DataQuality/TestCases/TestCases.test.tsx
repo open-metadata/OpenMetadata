@@ -120,6 +120,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
   default: jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div data-testid="searchbar-component">
       <input
+        aria-label="Search"
         data-testid="search-input"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}
@@ -410,7 +411,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*sale*',
+            q: 'sale',
           })
         );
       });
@@ -524,7 +525,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*test*',
+            q: 'test',
             testCaseStatus: 'Failed',
           })
         );

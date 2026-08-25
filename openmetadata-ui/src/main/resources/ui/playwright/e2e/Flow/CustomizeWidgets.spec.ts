@@ -22,11 +22,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  getApiContext,
-  redirectToHomePage,
-  removeLandingBanner,
-} from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAndVerifyWidget,
   removeAndVerifyWidget,
@@ -238,7 +234,6 @@ test.afterAll(
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 });

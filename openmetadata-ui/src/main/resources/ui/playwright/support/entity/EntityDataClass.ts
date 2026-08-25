@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import { isUndefined } from 'lodash';
 import * as path from 'path';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
@@ -184,8 +185,13 @@ export class EntityDataClass {
       `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
     );
 
-    const typesData = (await typesInfo.json()).data;
-    const createdMetadataType = await cpMetadataType.json();
+    const typesData = (
+      await okJson(typesInfo, 'EntityDataClass.setupCustomPropertyData')
+    ).data;
+    const createdMetadataType = await okJson(
+      cpMetadataType,
+      'EntityDataClass.setupCustomPropertyData'
+    );
 
     // Map and prepare the data required for creating custom properties of different types
     const cpCreationData = getCustomPropertyCreationData(typesData);

@@ -132,7 +132,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
-    useDomainTableColumns();
+    useDomainTableColumns({
+      onEntityClick: domainListing.actionHandlers.onEntityClick,
+    });
 
   const selectedDomainEntities = useMemo(
     () =>

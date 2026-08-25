@@ -88,6 +88,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
         )}
         data-testid="markdown-parser">
         <BlockEditor
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabled; BlockEditor prop
           autoFocus={false}
           content={viewerValue}
           editable={false}

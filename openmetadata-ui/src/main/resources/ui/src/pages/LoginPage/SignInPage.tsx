@@ -222,6 +222,7 @@ const SignInPage = () => {
                     },
                   ]}>
                   <Input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-in form
                     autoFocus
                     className="input-field"
                     placeholder={t('label.email')}

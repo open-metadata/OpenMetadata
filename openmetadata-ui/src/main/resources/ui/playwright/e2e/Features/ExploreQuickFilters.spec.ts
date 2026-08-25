@@ -73,13 +73,15 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-          name: domain.responseData.name,
-          displayName: domain.responseData.displayName,
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            displayName: domain.responseData.displayName,
+          },
+        ],
       },
       {
         op: 'add',

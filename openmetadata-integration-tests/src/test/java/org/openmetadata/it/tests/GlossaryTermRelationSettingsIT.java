@@ -518,6 +518,88 @@ public class GlossaryTermRelationSettingsIT {
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_systemDefinedRelationTypeFieldCannotBeModified() throws Exception {
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    boolean toggled = false;
+    boolean originalIsTransitive = false;
+    for (JsonNode type : relationTypes) {
+      if ("partOf".equals(type.get("name").asText())) {
+        JsonNode sys = type.get("isSystemDefined");
+        assertTrue(sys != null && sys.asBoolean(), "'partOf' should be system-defined");
+        originalIsTransitive = type.get("isTransitive").asBoolean();
+        ((ObjectNode) type).put("isTransitive", !originalIsTransitive);
+        toggled = true;
+        break;
+      }
+    }
+    assertTrue(toggled, "'partOf' should exist in default settings");
+
+    ObjectNode modifiedSettings = MAPPER.createObjectNode();
+    modifiedSettings.set("relationTypes", relationTypes);
+    int status = updateSettingsAndGetStatus(modifiedSettings);
+    assertTrue(
+        status >= 400,
+        "Editing a field of system-defined 'partOf' via settings PUT must be rejected. Got: "
+            + status);
+
+    JsonNode after = getSettings();
+    for (JsonNode type : after.get("config_value").get("relationTypes")) {
+      if ("partOf".equals(type.get("name").asText())) {
+        assertEquals(
+            originalIsTransitive,
+            type.get("isTransitive").asBoolean(),
+            "'partOf' isTransitive must be unchanged after a rejected edit");
+      }
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_cannotCreateSystemDefinedRelationTypeViaSettingsPut() throws Exception {
+    String fakeName = "fakeSystem" + System.currentTimeMillis();
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ObjectNode fakeType = MAPPER.createObjectNode();
+    fakeType.put("name", fakeName);
+    fakeType.put("displayName", "Fake System Type");
+    fakeType.put("isSymmetric", false);
+    fakeType.put("isTransitive", false);
+    fakeType.put("isCrossGlossaryAllowed", true);
+    fakeType.put("category", "associative");
+    fakeType.put("isSystemDefined", true);
+    fakeType.put("color", "#22c55e");
+    fakeType.put("cardinality", "MANY_TO_MANY");
+    relationTypes.add(fakeType);
+
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    int status = updateSettingsAndGetStatus(newSettings);
+    assertTrue(
+        status >= 400,
+        "Creating a system-defined relation type via settings PUT must be rejected. Got: "
+            + status);
+
+    JsonNode after = getSettings();
+    boolean present = false;
+    for (JsonNode type : after.get("config_value").get("relationTypes")) {
+      if (fakeName.equals(type.get("name").asText())) {
+        present = true;
+        break;
+      }
+    }
+    assertFalse(present, "Fabricated system-defined type must not be persisted");
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
       mode = ResourceAccessMode.READ)
   void test_systemDefinedRelationTypesHaveCorrectDesignSystemColors() throws Exception {
     JsonNode settings = getSettings();

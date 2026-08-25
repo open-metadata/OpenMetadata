@@ -29,6 +29,10 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });

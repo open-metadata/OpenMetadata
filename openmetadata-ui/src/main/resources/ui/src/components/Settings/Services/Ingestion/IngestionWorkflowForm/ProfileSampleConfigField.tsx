@@ -221,6 +221,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
           <Form.Item className="m-t-md" colon={false}>
             <div className="flex items-center gap-2">
               <Switch
+                aria-label={t('label.smart-sampling')}
                 checked={config.smartSampling ?? true}
                 data-testid="smart-sampling-toggle"
                 onChange={(checked) =>
@@ -230,6 +231,7 @@ const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
                   })
                 }
               />
+              {/* eslint-disable-next-line jsx-a11y/label-has-for -- Switch above has its own aria-label */}
               <label>{t('label.smart-sampling')}</label>
               <Typography className="tw:text-tertiary" size="text-sm">
                 ({t('message.smart-sampling-hint')})

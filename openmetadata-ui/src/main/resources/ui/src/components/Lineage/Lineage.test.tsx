@@ -218,6 +218,7 @@ jest.mock('reactflow', () => ({
     }) => (
       <div
         data-testid="react-flow-component"
+        role="presentation"
         onClick={(e) => {
           if ((e.target as HTMLElement).dataset.testid === 'react-flow-node') {
             onNodeClick?.(e, { id: 'node-1' });

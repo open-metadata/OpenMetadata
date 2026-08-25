@@ -174,6 +174,7 @@ export const StraightEdge = (props: EdgeProps) => {
         {label && (
           <div
             className={labelClassName}
+            role="presentation"
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px, ${stackedLabelY}px)`,
