@@ -30,11 +30,12 @@ public class DataInsightsSearchConfiguration {
       try {
         byType.put(DataAssetType.fromValue(entityType), attributeFields);
       } catch (IllegalArgumentException e) {
+        // Chaining `e` would hide this message: Jackson's any-setter path reports the root cause,
+        // so the operator would see fromValue's bare "<key>" instead.
         throw new IllegalArgumentException(
             String.format(
                 "%s declares mappingFields for '%s', which is not a Data Insights asset type",
-                DataInsightsSearchInterface.DATA_INSIGHTS_SEARCH_CONFIG_PATH, entityType),
-            e);
+                DataInsightsSearchInterface.DATA_INSIGHTS_SEARCH_CONFIG_PATH, entityType));
       }
     }
   }

@@ -39,9 +39,11 @@ class DataInsightsSearchConfigurationTest {
             Exception.class,
             () -> JsonUtils.readOrConvertValue(withTypo, DataInsightsSearchConfiguration.class));
 
+    // Asserting the whole sentence, not just the key: Jackson's reference chain already names
+    // "tabel", so a key-only assertion passes with the guard deleted.
     assertTrue(
-        causeChain(failure).contains("tabel"),
-        "the failure must name the offending key, got: " + causeChain(failure));
+        causeChain(failure).contains("'tabel', which is not a Data Insights asset type"),
+        "the failure must say why the key is rejected, got: " + causeChain(failure));
   }
 
   private static DataInsightsSearchConfiguration.MappingFields readShippedConfig() {
