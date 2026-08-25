@@ -726,6 +726,13 @@ export interface AllowedFieldField {
      */
     description: string;
     /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
+    /**
      * Field name that can be used in searchFields
      */
     name: string;

@@ -1,11 +1,15 @@
 package org.openmetadata.service.resources.system;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.Field;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.RankingConfiguration;
@@ -13,6 +17,8 @@ import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
 import org.openmetadata.service.exception.SystemSettingsException;
+import org.openmetadata.service.search.HighlightFieldClassifier;
+import org.openmetadata.service.search.HighlightFieldClassifier.HighlightSupport;
 
 public class SearchSettingsHandler {
   private static final int MIN_AGGREGATE_SIZE = 100;
@@ -131,6 +137,70 @@ public class SearchSettingsHandler {
                 fieldName, assetType));
       }
     }
+  }
+
+  /**
+   * Marks each allowed field with whether the index mapping can highlight it, so the UI can offer
+   * the highlight toggle only where it would work.
+   *
+   * <p>Derived rather than configured: the flag is computed from the same classifier that rejects a
+   * bad value in {@link #validateHighlightFields}, so the toggle the UI offers and the save the API
+   * accepts can never disagree. Storing it in the seed instead would create a second source of truth
+   * that drifts the first time a mapping changes.
+   */
+  public void annotateHighlightableFields(SearchSettings searchSettings) {
+    if (searchSettings != null) {
+      for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
+        annotateHighlightableFields(allowedFields);
+      }
+    }
+  }
+
+  private void annotateHighlightableFields(AllowedSearchFields allowedFields) {
+    for (Field field : listOrEmpty(allowedFields.getFields())) {
+      HighlightSupport support =
+          HighlightFieldClassifier.classify(allowedFields.getEntityType(), field.getName());
+      field.setHighlight(support == HighlightSupport.SUPPORTED);
+    }
+  }
+
+  /**
+   * Rejects highlight fields that the index mapping cannot highlight.
+   *
+   * <p>Deliberately not part of {@link #validateSearchSettings}: that runs inside {@link
+   * #mergeSearchSettings}, which {@code SettingsCache} calls at startup, and a cluster carrying a
+   * bad value from before this check existed must not be unable to boot. This runs on the incoming
+   * REST payload only, so a bad value is rejected when an admin tries to save it.
+   */
+  public void validateHighlightFields(SearchSettings searchSettings) {
+    if (searchSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
+        validateHighlightFields(assetConfig);
+      }
+    }
+  }
+
+  private void validateHighlightFields(AssetTypeConfiguration assetConfig) {
+    for (String field : listOrEmpty(assetConfig.getHighlightFields())) {
+      HighlightSupport support =
+          HighlightFieldClassifier.classify(assetConfig.getAssetType(), field);
+      if (support != HighlightSupport.SUPPORTED) {
+        throw new SystemSettingsException(
+            unsupportedHighlightMessage(field, assetConfig.getAssetType(), support));
+      }
+    }
+  }
+
+  private String unsupportedHighlightMessage(
+      String field, String assetType, HighlightSupport support) {
+    String reason =
+        support == HighlightSupport.NOT_ANALYZABLE
+            ? "is mapped as a flattened field, which has no analyzer and fails the highlight phase"
+            : "is not indexed (enabled:false in the index mapping), so it can never be highlighted";
+    return String.format(
+        "Highlight field '%s' for asset type '%s' %s. Remove it from highlightFields.",
+        field, assetType, reason);
   }
 
   public void validateGlobalSettings(GlobalSettings globalSettings) {

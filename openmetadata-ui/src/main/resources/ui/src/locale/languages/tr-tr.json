@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "Alan Adları getirilirken bir hata oluştu",
     "fetch-pipeline-status-error": "İş akışı durumu alınırken hata oluştu.",
     "field-ca-certs-description": "Sertifika yolu yapılandırmaya eklenmelidir. Yol, Alım Konteynerinde yerel olmalıdır.",
+    "field-cannot-be-highlighted": "Bu alan vurgulanamaz. Yalnızca çözümlenmiş metin alanları vurgulamayı destekler.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "Silinmiş varlıklar için {{field}} verisi mevcut değil.",
     "field-insight": "Türe göre {{field}} içeren veri varlıklarının yüzdesini gösterir.",

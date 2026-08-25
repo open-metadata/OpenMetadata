@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "डोमेन्स आणताना त्रुटी आली",
     "fetch-pipeline-status-error": "पाइपलाइन स्थिती मिळवताना त्रुटी.",
     "field-ca-certs-description": "प्रमाणपत्र पथ संरचनेत जोडणे आवश्यक आहे. पथ अंतर्ग्रहण कंटेनरमध्ये स्थानिक असावा.",
+    "field-cannot-be-highlighted": "हे फील्ड हायलाइट करता येत नाही. फक्त विश्लेषित मजकूर फील्ड हायलाइटिंगला समर्थन देतात.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "मिटवलेल्या घटकांसाठी {{field}} डेटा उपलब्ध नाही.",
     "field-insight": "{{field}} असलेल्या डेटा ॲसेटंचे प्रकारानुसार टक्केवारी दर्शवा.",

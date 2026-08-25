@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "حدث خطأ أثناء جلب النطاقات",
     "fetch-pipeline-status-error": "خطأ أثناء جلب حالة سير العمل.",
     "field-ca-certs-description": "يجب إضافة مسار الشهادة في التكوين. يجب أن يكون المسار محليًا في حاوية الاستيعاب.",
+    "field-cannot-be-highlighted": "لا يمكن تمييز هذا الحقل. الحقول النصية المحللة فقط هي التي تدعم التمييز.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "بيانات {{field}} غير متوفرة للكيانات المحذوفة.",
     "field-insight": "عرض النسبة المئوية لأصول البيانات ذات {{field}} حسب النوع.",

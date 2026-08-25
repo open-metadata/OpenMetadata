@@ -184,6 +184,7 @@ public class SystemResource {
               CommonUtil.getResourceAsStream(
                   EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
           defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
+          searchSettingsHandler.annotateHighlightableFields(defaultSearchSettingsCache);
         } else {
           throw new IllegalArgumentException("Default search settings file not found.");
         }
@@ -618,6 +619,7 @@ public class SystemResource {
       SearchSettings incomingSearchSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
       searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
+      searchSettingsHandler.validateHighlightFields(incomingSearchSettings);
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);

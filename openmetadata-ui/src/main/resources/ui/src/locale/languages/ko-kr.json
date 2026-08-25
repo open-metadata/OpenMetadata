@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "도메인을 가져오는 중 오류가 발생했습니다",
     "fetch-pipeline-status-error": "파이프라인 상태를 가져오는 중 오류가 발생했습니다.",
     "field-ca-certs-description": "인증서 경로를 구성에 추가해야 합니다. 경로는 수집 컨테이너 내에서 로컬이어야 합니다.",
+    "field-cannot-be-highlighted": "이 필드는 하이라이트할 수 없습니다. 분석된 텍스트 필드만 하이라이트를 지원합니다.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "삭제된 엔티티에 대한 {{field}} 데이터를 사용할 수 없습니다.",
     "field-insight": "유형별 {{field}}가 있는 데이터 자산의 비율을 표시합니다.",

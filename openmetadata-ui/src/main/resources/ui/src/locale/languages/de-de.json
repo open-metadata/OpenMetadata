@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "Beim Abrufen der Bereiche ist ein Fehler aufgetreten",
     "fetch-pipeline-status-error": "Fehler beim Abrufen des Pipeline-Status.",
     "field-ca-certs-description": "Der Zertifikatpfad muss in der Konfiguration hinzugefügt werden. Der Pfad sollte lokal im Ingestion-Container sein.",
+    "field-cannot-be-highlighted": "Dieses Feld kann nicht hervorgehoben werden. Nur analysierte Textfelder unterstützen die Hervorhebung.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "{{field}}-Daten sind für gelöschte Entitäten nicht verfügbar.",
     "field-insight": "Zeigen Sie den Prozentsatz der Datenressourcen mit {{field}} nach Typ an.",

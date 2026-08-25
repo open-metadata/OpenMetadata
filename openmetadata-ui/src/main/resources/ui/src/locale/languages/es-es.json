@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "Ocurrió un error al obtener los dominios",
     "fetch-pipeline-status-error": "Error al obtener el estado del pipeline.",
     "field-ca-certs-description": "La ruta del certificado debe agregarse en la configuración. La ruta debe ser local en el contenedor de ingestión.",
+    "field-cannot-be-highlighted": "Este campo no se puede resaltar. Solo los campos de texto analizados admiten el resaltado.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "Los datos de {{field}} no están disponibles para las entidades eliminadas.",
     "field-insight": "Mostrar el porcentaje de activos de datos con {{field}} por tipo.",

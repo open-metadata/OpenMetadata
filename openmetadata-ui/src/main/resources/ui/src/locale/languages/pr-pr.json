@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "هنگام واکشی دامنه‌ها خطایی رخ داد",
     "fetch-pipeline-status-error": "خطا در دریافت وضعیت لوله داده.",
     "field-ca-certs-description": "مسیر گواهی‌نامه باید به پیکربندی اضافه شود. مسیر باید به صورت محلی در کانتینر Ingestion باشد.",
+    "field-cannot-be-highlighted": "Este campo não pode ser destacado. Apenas campos de texto analisados suportam destaque.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "داده {{field}} برای موجودیت‌های حذف شده در دسترس نیست.",
     "field-insight": "درصد دارایی‌های داده‌ای دارای {{field}} را بر اساس نوع نمایش دهید.",

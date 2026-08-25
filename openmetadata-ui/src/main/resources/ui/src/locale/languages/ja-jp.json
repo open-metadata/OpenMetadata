@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "ドメインの取得中にエラーが発生しました",
     "fetch-pipeline-status-error": "パイプラインのステータス取得中にエラーが発生しました。",
     "field-ca-certs-description": "証明書のパスは取り込みコンテナ内のローカルパスで設定する必要があります。",
+    "field-cannot-be-highlighted": "このフィールドはハイライトできません。ハイライトに対応しているのは解析済みのテキストフィールドのみです。",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "削除されたエンティティには {{field}} データがありません。",
     "field-insight": "タイプ別に {{field}} を持つデータアセットの割合を表示します。",

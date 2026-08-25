@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "擷取領域時發生錯誤",
     "fetch-pipeline-status-error": "擷取管線狀態時發生錯誤。",
     "field-ca-certs-description": "憑證路徑需要在組態中新增。該路徑應位於擷取容器的本機。",
+    "field-cannot-be-highlighted": "此欄位無法醒目顯示。僅經過分析的文字欄位支援醒目顯示。",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "{{field}} 資料不適用於已刪除的實體。",
     "field-insight": "依類型顯示具有 {{field}} 的資料資產百分比。",

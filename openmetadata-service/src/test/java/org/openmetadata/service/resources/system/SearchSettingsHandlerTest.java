@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.common.utils.CommonUtil;
@@ -24,14 +25,23 @@ import org.openmetadata.schema.api.search.RankingSignals;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.util.EntityUtil;
 
 class SearchSettingsHandlerTest {
 
   private SearchSettingsHandler searchSettingsHandler;
   private SearchSettings defaultSearchSettings;
+
+  @BeforeAll
+  static void loadIndexMappings() throws IOException {
+    // The highlight-field check classifies against the real index mappings; without this the
+    // classifier cannot see any mapping and reports every field as supported.
+    IndexMappingLoader.init();
+  }
 
   @BeforeEach
   void setUp() throws IOException {
@@ -99,6 +109,141 @@ class SearchSettingsHandlerTest {
           allowedFieldEntityTypes.contains(assetType),
           "Asset type '" + assetType + "' has no corresponding allowedFields entry");
     }
+  }
+
+  @Test
+  void shippedDefaultHighlightFieldsAreAllHighlightable() {
+    // The seed is what every fresh cluster saves, so it must pass the check an admin's payload has
+    // to pass. If a mapping change makes a shipped highlight field unhighlightable, this fails
+    // before the setting reaches a cluster.
+    searchSettingsHandler.validateHighlightFields(defaultSearchSettings);
+  }
+
+  @Test
+  void annotateMarksHighlightabilityFromTheIndexMapping() {
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    assertEquals(
+        Boolean.TRUE,
+        allowedField("table", "description").getHighlight(),
+        "An analyzed text field must be offered the highlight toggle");
+    assertEquals(
+        Boolean.FALSE,
+        allowedField("table", "extension.someCustomProperty").getHighlight(),
+        "A custom property lives under enabled:false `extension` and can never be highlighted");
+  }
+
+  @Test
+  void annotatedFlagAgreesWithWhatTheSavePathAccepts() {
+    // The UI decides what to offer from this flag while the API decides what to accept from the
+    // classifier. If they ever disagreed, the UI would offer a toggle whose save 400s.
+    searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
+
+    List<String> disagreements = new ArrayList<>();
+    for (AllowedSearchFields allowed : defaultSearchSettings.getAllowedFields()) {
+      for (Field field : allowed.getFields()) {
+        boolean saveAccepts = saveAccepts(allowed.getEntityType(), field.getName());
+        if (!Boolean.valueOf(saveAccepts).equals(field.getHighlight())) {
+          disagreements.add(allowed.getEntityType() + ":" + field.getName());
+        }
+      }
+    }
+
+    assertTrue(
+        disagreements.isEmpty(),
+        "highlight flag disagrees with what validateHighlightFields accepts: " + disagreements);
+  }
+
+  private boolean saveAccepts(String entityType, String fieldName) {
+    boolean accepted = true;
+    try {
+      searchSettingsHandler.validateHighlightFields(highlightSettings(entityType, fieldName));
+    } catch (SystemSettingsException e) {
+      accepted = false;
+    }
+    return accepted;
+  }
+
+  private Field allowedField(String entityType, String fieldName) {
+    return defaultSearchSettings.getAllowedFields().stream()
+        .filter(allowed -> entityType.equals(allowed.getEntityType()))
+        .flatMap(allowed -> allowed.getFields().stream())
+        .filter(field -> fieldName.equals(field.getName()))
+        .findFirst()
+        .orElseGet(
+            () -> {
+              // Not every probe field is shipped in allowedFields; annotate one so the assertion
+              // still exercises the classifier rather than silently passing on a missing entry.
+              Field probe = new Field().withName(fieldName).withDescription("probe");
+              AllowedSearchFields allowed =
+                  new AllowedSearchFields()
+                      .withEntityType(entityType)
+                      .withFields(new ArrayList<>(List.of(probe)));
+              searchSettingsHandler.annotateHighlightableFields(
+                  new SearchSettings().withAllowedFields(new ArrayList<>(List.of(allowed))));
+              return probe;
+            });
+  }
+
+  @Test
+  void queryTimeGuardKeepsEveryShippedHighlightField() {
+    // The OpenSearch guard classifies without knowing the target index, so it uses the union of
+    // unsupported paths across all mappings. That union must never swallow a field the product
+    // actually ships — a name that is enabled:false in one index but analyzed in another would be
+    // dropped from highlights everywhere.
+    List<String> dropped =
+        defaultSearchSettings.getAssetTypeConfigurations().stream()
+            .flatMap(config -> CommonUtil.listOrEmpty(config.getHighlightFields()).stream())
+            .distinct()
+            .filter(HighlightFieldClassifier::isHighlightUnsafeField)
+            .toList();
+
+    assertTrue(
+        dropped.isEmpty(), "Shipped highlight fields dropped by the query-time guard: " + dropped);
+  }
+
+  @Test
+  void saveIsRejectedForNonIndexedHighlightField() {
+    SearchSettings settings = highlightSettings("table", "extension.someCustomProperty");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(settings));
+
+    assertTrue(
+        exception.getMessage().contains("extension.someCustomProperty"),
+        "Message must name the offending field: " + exception.getMessage());
+    assertTrue(
+        exception.getMessage().contains("not indexed"),
+        "Message must explain why: " + exception.getMessage());
+  }
+
+  @Test
+  void saveIsRejectedForFlattenedHighlightField() {
+    SearchSettings settings = highlightSettings("aiApplication", "aiGovernance.complianceStatus");
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> searchSettingsHandler.validateHighlightFields(settings));
+
+    assertTrue(
+        exception.getMessage().contains("flattened"),
+        "Message must explain why: " + exception.getMessage());
+  }
+
+  @Test
+  void saveIsAcceptedForAnalyzedHighlightField() {
+    searchSettingsHandler.validateHighlightFields(highlightSettings("table", "description"));
+  }
+
+  private SearchSettings highlightSettings(String assetType, String highlightField) {
+    AssetTypeConfiguration assetConfig =
+        new AssetTypeConfiguration()
+            .withAssetType(assetType)
+            .withHighlightFields(new ArrayList<>(List.of(highlightField)));
+    return new SearchSettings().withAssetTypeConfigurations(new ArrayList<>(List.of(assetConfig)));
   }
 
   @Test

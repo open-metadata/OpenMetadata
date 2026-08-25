@@ -3467,6 +3467,7 @@
     "fetch-domain-list-error": "Une erreur s'est produite lors de la récupération des domaines",
     "fetch-pipeline-status-error": "Une erreur est survenue lors de la récupération du statut de la pipeline.",
     "field-ca-certs-description": "Chemin où le certificat est stocké. Le chemin doit être local au conteneur d'Ingestion.",
+    "field-cannot-be-highlighted": "Ce champ ne peut pas être mis en surbrillance. Seuls les champs de texte analysés prennent en charge la mise en surbrillance.",
     "field-count-required": "{{count}} required",
     "field-data-is-not-available-for-deleted-entities": "les données {{field}} ne sont pas disponibles pour les entités supprimées.",
     "field-insight": "Montre le pourcentage de resources de données avec {{field}} par type.",
