@@ -183,7 +183,16 @@ public class RootCauseAnalysisTool implements McpTool {
     // results are already resolved for upstream nodes by the same helper - the root was simply
     // excluded from it.
     if (rootFails) {
-      upstreamAnalysis.put("rootFailingTests", addTestCaseResultForTestSuite(rootNode));
+      Map<String, Object> rootTests = addTestCaseResultForTestSuite(rootNode);
+      // A list with no total reads as possibly-trimmed, especially beside this tool's own notice
+      // that node and edge details are trimmed for context. A caller spent a call establishing that
+      // 3 was the complete set rather than a slice. Say so here instead.
+      Object results = rootTests.get("testCaseResults");
+      if (results instanceof List<?> list) {
+        rootTests.put("failingTestCount", list.size());
+        rootTests.put("complete", Boolean.TRUE);
+      }
+      upstreamAnalysis.put("rootFailingTests", rootTests);
     }
     upstreamAnalysis.put("failingUpstreamNodesCount", nodes.size());
     if (!nodes.isEmpty()) {
