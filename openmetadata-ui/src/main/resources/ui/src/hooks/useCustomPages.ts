@@ -16,6 +16,7 @@ import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
+import { getPersonaPage } from '../utils/CustomizePage/PersonaPage.utils';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
@@ -28,9 +29,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona?.fullyQualifiedName}`;
     try {
       const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType)
-      );
+      setCustomizedPage(getPersonaPage(doc, pageType) ?? null);
       setNavigation(doc.data?.navigation);
     } catch (error) {
       // Need to reset Navigation to avoid showing old navigation items
