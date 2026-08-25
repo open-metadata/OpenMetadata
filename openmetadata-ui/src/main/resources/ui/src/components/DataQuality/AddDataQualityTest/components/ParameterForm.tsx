@@ -167,6 +167,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 mode={{ name: CSMode.SQL }}
                 title={
                   <div className="ant-form-item-label">
+                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
                     <label className="d-flex align-items-center">
                       <Typography.Text className="form-label-title">
                         {label}

@@ -75,8 +75,12 @@ describe('AddTestSuitePipeline', () => {
           ScheduleInterval
           {topChildren}
           {children}
-          <div onClick={onDeploy}>submit</div>
-          <div onClick={onBack}>cancel</div>
+          <button type="button" onClick={onDeploy}>
+            submit
+          </button>
+          <button type="button" onClick={onBack}>
+            cancel
+          </button>
         </div>
       )
     );
@@ -148,6 +152,7 @@ describe('AddTestSuitePipeline', () => {
     jest.spyOn(Form, 'Provider').mockImplementation(
       jest.fn().mockImplementation(({ onFormChange, children }) => (
         <div
+          role="presentation"
           onClick={() =>
             onFormChange('', {
               forms: {
@@ -215,6 +220,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   raiseOnError: true,
@@ -269,6 +275,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: [testCaseObject, 'test-case-string'],
@@ -311,6 +318,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: undefined,
@@ -369,6 +377,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   testCases: [testCase1, 'string-test', testCase2],
@@ -490,10 +499,18 @@ describe('AddTestSuitePipeline', () => {
       const props = lastCall[0] as {
         hideTableFilter?: boolean;
         columnFilters?: string;
+        testCaseParams?: Record<string, unknown>;
       };
 
       expect(props.hideTableFilter).toBe(true);
       expect(props.columnFilters).toBe(`fullyQualifiedName:"${tableFqn}"`);
+      // Issue #31077: the picker's `q` is free text, so the suite scope must travel as first-class
+      // filter params. Without these the basic-suite picker lists every test case in the instance.
+      expect(props.testCaseParams).toEqual({
+        testSuiteId: undefined,
+        entityLink: `<#E::table::${tableFqn}>`,
+        includeAllTests: true,
+      });
     });
 
     it('does not pass hideTableFilter or columnFilters when testSuite is logical (not basic)', () => {
@@ -516,10 +533,13 @@ describe('AddTestSuitePipeline', () => {
       const props = lastCall[0] as {
         hideTableFilter?: boolean;
         columnFilters?: string;
+        testCaseParams?: Record<string, unknown>;
       };
 
       expect(props.hideTableFilter).toBe(false);
       expect(props.columnFilters).toBeUndefined();
+      // A logical suite scopes by id; no entityLink, since it is not bound to one table.
+      expect(props.testCaseParams).toEqual({ testSuiteId: 'logical-suite-id' });
     });
   });
 
@@ -678,6 +698,7 @@ describe('AddTestSuitePipeline', () => {
           <div>
             {children}
             <div
+              role="presentation"
               onClick={() =>
                 onDeploy({
                   ...initialData,

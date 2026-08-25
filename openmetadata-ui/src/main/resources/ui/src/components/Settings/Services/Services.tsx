@@ -507,7 +507,7 @@ const Services = ({ serviceName }: ServicesProps) => {
               </Col>
               <Col span={24}>
                 <div className="m-b-xss" data-testid="service-type">
-                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="m-b-0">{`${t('label.type')}:`}</span>
                   <span className="font-normal m-l-xss text-grey-body">
                     {service.serviceType}
                   </span>
