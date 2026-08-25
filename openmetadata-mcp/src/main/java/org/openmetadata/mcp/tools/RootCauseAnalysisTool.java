@@ -41,6 +41,14 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 public class RootCauseAnalysisTool implements McpTool {
 
   private static final int DEFAULT_DEPTH = 3;
+
+  /**
+   * The bucket ceiling {@code EntityTimeSeriesRepository.buildAggregationNodes} applies when the
+   * caller passes no limit. Mirrored here so a full page can be reported as possibly-truncated
+   * rather than asserted complete.
+   */
+  private static final int RESULT_BUCKET_CAP = 100;
+
   private static final int MAX_DEPTH = 10;
   // Slimming budgets come from McpResponseTrim so RCA's lineage-derived payload stays within
   // LLM/MCP context limits. The backend (searchDataQualityLineage / searchLineageWithDirection)
@@ -189,8 +197,7 @@ public class RootCauseAnalysisTool implements McpTool {
       // 3 was the complete set rather than a slice. Say so here instead.
       Object results = rootTests.get("testCaseResults");
       if (results instanceof List<?> list) {
-        rootTests.put("failingTestCount", list.size());
-        rootTests.put("complete", Boolean.TRUE);
+        annotateCompleteness(rootTests, list.size());
       }
       upstreamAnalysis.put("rootFailingTests", rootTests);
     }
@@ -581,13 +588,27 @@ public class RootCauseAnalysisTool implements McpTool {
     return hint;
   }
 
+  /**
+   * Failing tests for one node's suite, and - when it could not answer - why.
+   *
+   * <p>This used to return a bare empty map for three different situations: the node has no suite,
+   * the search backend threw, and the suite genuinely has no failing tests. Beside a {@code status:
+   * "failed"} verdict those are opposite meanings, and the caller could not tell them apart.
+   */
   private Map<String, Object> addTestCaseResultForTestSuite(Map<String, Object> node) {
     Map<String, Object> testCaseResult = new HashMap<>();
     Map<String, Object> testSuiteMap = JsonUtils.getMap(node.get("testSuite"));
-    if (testSuiteMap == null || testSuiteMap.get("id") == null) {
-      return testCaseResult;
+    String testSuiteId = testSuiteMap == null ? null : (String) testSuiteMap.get("id");
+    if (testSuiteId == null) {
+      testCaseResult.put(
+          "note", "No test suite is attached to this asset, so no test results could be read.");
+    } else {
+      readFailingTests(testSuiteId, testCaseResult);
     }
-    String testSuiteId = (String) testSuiteMap.get("id");
+    return testCaseResult;
+  }
+
+  private void readFailingTests(String testSuiteId, Map<String, Object> testCaseResult) {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseStatus", "Failed");
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
@@ -612,8 +633,37 @@ public class RootCauseAnalysisTool implements McpTool {
       }
     } catch (IOException e) {
       LOG.error("Failed to fetch test case results for test suite: {}", testSuiteId, e);
+      testCaseResult.put(
+          "unavailable",
+          "The test-result backend could not be reached, so which tests are failing here is"
+              + " unknown. This is not the same as none failing.");
     }
-    return testCaseResult;
+  }
+
+  /**
+   * States how many tests are failing and whether that is all of them.
+   *
+   * <p>{@code complete} was hardcoded true, which the lookup cannot back. {@code
+   * listLatestFromSearch} is called with a null limit, and {@code
+   * EntityTimeSeriesRepository.buildAggregationNodes} turns a null limit into a terms aggregation of
+   * {@link #RESULT_BUCKET_CAP} buckets - so a suite with more failing tests than that is silently
+   * truncated, and {@code totalCount} is set from the returned list, which cannot reveal the cut.
+   * Landing on the cap is therefore the one case where completeness is unknowable, and it says so.
+   */
+  @VisibleForTesting
+  static void annotateCompleteness(Map<String, Object> tests, int failingCount) {
+    boolean atCap = failingCount >= RESULT_BUCKET_CAP;
+    tests.put("failingTestCount", failingCount);
+    tests.put("complete", !atCap);
+    if (atCap) {
+      tests.put(
+          "completeNote",
+          String.format(
+              "The test-result lookup returns at most %d tests, and that many came back, so more may"
+                  + " be failing. Use search_metadata with entityType='testCase' and a filter on"
+                  + " originEntityFQN for the full set.",
+              RESULT_BUCKET_CAP));
+    }
   }
 
   private static int clampDepth(int depth) {

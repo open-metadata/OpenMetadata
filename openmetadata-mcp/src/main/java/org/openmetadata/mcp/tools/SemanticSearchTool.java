@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -109,11 +110,7 @@ public class SemanticSearchTool implements McpTool {
       return buildResponse(query, response, size, from);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
-      return errorResponse(
-          "Semantic search failed: "
-              + McpResponseTrim.summarizeFailure(e, true)
-              + " Semantic search depends on an embedding backend; when it is unavailable, use"
-              + " search_metadata with a queryFilter instead of retrying this tool.");
+      return errorResponse(failureMessage(e));
     }
   }
 
@@ -194,22 +191,6 @@ public class SemanticSearchTool implements McpTool {
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
-    // The backend reports totalHits - raw matches before parent-level grouping - and this tool was
-    // discarding it, publishing returnedCount under the name totalFound. Beside hasMore:true that
-    // reads as a contradiction, and it left callers unable to tell whether an inventory was
-    // complete. Report the real total when the backend gives one, and say when it did not.
-    Long backendTotal = response.getTotalHits();
-    if (backendTotal != null) {
-      result.put("totalFound", backendTotal);
-    } else {
-      result.put("totalFound", cleanedResults.size());
-    }
-    if (backendTotal == null) {
-      result.put(
-          "totalFoundIsPageCount",
-          "The backend did not report a corpus total, so 'totalFound' is this page's count. Use"
-              + " 'hasMore'/'nextCursor' to discover whether more results exist.");
-    }
     result.put(
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
@@ -224,7 +205,36 @@ public class SemanticSearchTool implements McpTool {
         response,
         "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
             + "Adjust 'threshold' to filter by similarity score.");
+    addParentTotal(result, from);
     return result;
+  }
+
+  /**
+   * Publishes {@code totalFound} in the same unit as everything else in the response: entities.
+   *
+   * <p>{@code VectorSearchResponse.totalHits} is tempting and wrong. The vector service indexes
+   * several chunks per entity and {@code totalHits} counts chunks, while {@code results} is
+   * collapsed to one row per parent and {@code returnedCount}, {@code size}, {@code from} and
+   * {@code nextCursor} all count parents - {@link VectorPagingContract} says so in as many words.
+   * Reporting it made eight matching tables read as {@code totalFound: 96}, which is not a number
+   * about anything the caller asked for. Mirroring {@code returnedCount} instead, as this did
+   * before, was also wrong but at least shared a unit.
+   *
+   * <p>So: report what is actually known. Once paging has stopped, {@code from + returnedCount} is
+   * the exact number of entities that matched. While it continues, that same figure is a lower
+   * bound, and it is labelled as one rather than passed off as a total.
+   */
+  @VisibleForTesting
+  static void addParentTotal(Map<String, Object> result, int from) {
+    int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+    result.put("totalFound", from + returned);
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))) {
+      result.put("totalFoundIsLowerBound", Boolean.TRUE);
+      result.put(
+          "totalFoundNote",
+          "'totalFound' counts the entities seen so far, not the whole corpus - more exist. Page"
+              + " with 'nextCursor' until 'hasMore' is absent to get the exact count.");
+    }
   }
 
   /**
@@ -463,6 +473,26 @@ public class SemanticSearchTool implements McpTool {
     }
 
     return Collections.emptyMap();
+  }
+
+  /**
+   * Describes a failure as what it actually was.
+   *
+   * <p>This used to pass {@code serverFault = true} unconditionally and append "use search_metadata
+   * instead of retrying this tool" to every failure, so a bad {@code filters} value, an unparseable
+   * cursor or a coercion error on {@code size} were all reported to the model as an embedding
+   * backend outage - telling it its arguments were fine and steering it off the tool permanently for
+   * something it caused and could have corrected.
+   */
+  private static String failureMessage(Exception e) {
+    boolean backendFault =
+        DefaultToolContext.isServerFault(DefaultToolContext.resolveStatusCode(e));
+    String advice =
+        backendFault
+            ? " Semantic search depends on an embedding backend; when it is unavailable, use"
+                + " search_metadata with a queryFilter instead of retrying this tool."
+            : " This is a problem with the arguments, not the backend - correct them and retry.";
+    return "Semantic search failed: " + McpResponseTrim.summarizeFailure(e, backendFault) + advice;
   }
 
   private Map<String, Object> errorResponse(String message) {
