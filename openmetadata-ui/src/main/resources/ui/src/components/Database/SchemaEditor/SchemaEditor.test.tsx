@@ -175,6 +175,27 @@ describe('SchemaEditor component test', () => {
       expect(getEditorValue()).toBe('select 2');
     });
 
+    it('should let a later edit win over a value deferred to blur', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
+
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      fireEvent.change(input, { target: { value: 'select 3' } });
+      fireEvent.blur(input);
+
+      expect(getEditorValue()).toBe('select 3');
+    });
+
+    it('should apply a value immediately when the editor is read only', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} readOnly />);
+
+      fireEvent.focus(screen.getByTestId('code-mirror-editor-input'));
+      rerender(<SchemaEditor {...mockProps} readOnly value="select 2" />);
+
+      expect(getEditorValue()).toBe('select 2');
+    });
+
     it('should defer a value that arrives mid-edit until blur', () => {
       const { rerender } = render(<SchemaEditor {...mockProps} />);
       const input = screen.getByTestId('code-mirror-editor-input');

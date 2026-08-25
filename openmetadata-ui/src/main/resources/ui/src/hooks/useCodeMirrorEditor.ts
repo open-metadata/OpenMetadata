@@ -82,6 +82,9 @@ export const useCodeMirrorEditor = ({
 
   const handleChange = useCallback(
     (doc: string) => {
+      // A fresh edit supersedes an external value that was waiting for blur;
+      // otherwise blur would overwrite what was just typed.
+      pendingExternalRef.current = null;
       // The buffer is left exactly as typed; only what the parent receives is
       // formatted. Reformatting the buffer mid-edit is what used to move the
       // caret after an auto-closed bracket.
@@ -107,7 +110,9 @@ export const useCodeMirrorEditor = ({
       return;
     }
 
-    if (editorRef.current?.view?.hasFocus) {
+    // A read-only editor stays focusable but has no edit to protect, so it takes
+    // the update straight away rather than waiting for blur.
+    if (!readOnly && editorRef.current?.view?.hasFocus) {
       pendingExternalRef.current = nextValue;
 
       return;
@@ -115,7 +120,7 @@ export const useCodeMirrorEditor = ({
 
     pendingExternalRef.current = null;
     setInternalValue(nextValue);
-  }, [value, autoFormat]);
+  }, [value, autoFormat, readOnly]);
 
   return {
     editorRef,
