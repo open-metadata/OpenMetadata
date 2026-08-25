@@ -29,6 +29,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { isImageUrl } from '../../utils/IconUtils';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
@@ -156,6 +157,8 @@ const Certification = ({
             const iconURL = certificate.style?.iconURL;
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
+            const iconSize =
+              iconURL && isImageUrl(iconURL) ? 40 : 28;
 
             return (
               <div
@@ -176,7 +179,7 @@ const Certification = ({
                       alt={title}
                       fallback={<CertificationIcon height={28} width={28} />}
                       iconValue={iconURL}
-                      size={28}
+                      size={iconSize}
                     />
                   </div>
                   <div>
