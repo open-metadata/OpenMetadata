@@ -20,6 +20,7 @@ import {
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import { DefaultAppMode } from '../../../generated/api/configuration/appConfiguration';
 import {
   getAppConfiguration,
@@ -101,6 +102,7 @@ const DefaultAppModePage: React.FC = () => {
 
   return (
     <Box className="tw:p-6" data-testid="default-app-mode-page" direction="col">
+      <DocumentTitle title={pageTitle} />
       <Typography as="h1" className="tw:text-2xl tw:font-semibold tw:mb-2">
         {pageTitle}
       </Typography>
