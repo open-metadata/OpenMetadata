@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -35,8 +36,60 @@ import org.openmetadata.schema.utils.JsonUtils;
 class HighlightFieldSaveValidationIT {
 
   private static final String CONTAINER_ASSET_TYPE = "container";
+  private static final String TABLE_ASSET_TYPE = "table";
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+
+  /**
+   * Guards the wiring, not the computation. The unit tests call {@code
+   * annotateHighlightableFields} directly, so they pass even if nothing in production calls it —
+   * which is exactly what happened: the annotation was hooked to {@code readDefaultSearchSettings},
+   * while the served payload comes from the store that {@code SettingsCache.initialize} writes
+   * without annotating. Every field then serialized as the POJO default {@code false}, disabling
+   * every highlight toggle in the UI. This asserts the flag on the response the UI actually reads.
+   */
+  @Test
+  void servedAllowedFieldsCarryTheHighlightFlag() throws Exception {
+    final JsonNode tableFields = allowedFieldsFor(TABLE_ASSET_TYPE);
+
+    assertTrue(tableFields.size() > 0, "table allowedFields must not be empty");
+    assertEquals(
+        Boolean.TRUE,
+        highlightOf(tableFields, "description"),
+        "an analyzed text field must be served highlight=true");
+    assertEquals(
+        Boolean.TRUE,
+        highlightOf(tableFields, "name"),
+        "an analyzed text field must be served highlight=true");
+  }
+
+  private JsonNode allowedFieldsFor(final String entityType) throws Exception {
+    JsonNode result = null;
+    final JsonNode allowedFields =
+        JsonUtils.readTree(currentSettingsJson()).path("config_value").path("allowedFields");
+    for (final JsonNode entry : allowedFields) {
+      if (entityType.equals(entry.path("entityType").asText())) {
+        result = entry.path("fields");
+      }
+    }
+    if (result == null) {
+      throw new AssertionError("no allowedFields entry for " + entityType);
+    }
+    return result;
+  }
+
+  private Boolean highlightOf(final JsonNode fields, final String fieldName) {
+    Boolean result = null;
+    for (final JsonNode field : fields) {
+      if (fieldName.equals(field.path("name").asText())) {
+        result = field.path("highlight").asBoolean();
+      }
+    }
+    if (result == null) {
+      throw new AssertionError("no allowedFields entry named " + fieldName);
+    }
+    return result;
+  }
 
   @Test
   void savingHighlightFieldOnNonIndexedPathIsRejected() throws Exception {

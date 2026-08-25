@@ -257,6 +257,38 @@ test.describe('Search Settings', () => {
       await expect(boostModeSelect).toHaveText('Replace');
     });
 
+    test('Highlight toggle is offered for analyzed fields', async ({
+      page,
+    }) => {
+      // The highlight toggle is driven by allowedFields[].highlight, which the server derives from
+      // the index mapping. Nothing in the shipped settings is unhighlightable, so every toggle here
+      // must be enabled. A backend that stops annotating the flag serves the schema default (false)
+      // for every field and silently disables all of them — the Jest test cannot catch that,
+      // because it supplies entityFields as props.
+      const settingsResponse = page.waitForResponse(
+        '/api/v1/system/settings/searchSettings'
+      );
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+      await tableCard.click();
+
+      expect((await settingsResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('entity-search-settings-header')
+      ).toBeVisible();
+
+      await openMatchingFieldsPanel(page);
+      await page.getByTestId('field-container-header').first().click();
+
+      const highlightFieldToggle = page.getByTestId('highlight-field-switch');
+
+      await expect(highlightFieldToggle).toBeVisible();
+      await expect(highlightFieldToggle).toBeEnabled();
+    });
+
     test('Restore default search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 

@@ -184,7 +184,6 @@ public class SystemResource {
               CommonUtil.getResourceAsStream(
                   EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
           defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
-          searchSettingsHandler.annotateHighlightableFields(defaultSearchSettingsCache);
         } else {
           throw new IllegalArgumentException("Default search settings file not found.");
         }
@@ -279,7 +278,33 @@ public class SystemResource {
     if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return systemRepository.getConfigWithKey(name);
+    Settings settings = systemRepository.getConfigWithKey(name);
+    if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+      settings = withHighlightFlags(settings);
+    }
+    return settings;
+  }
+
+  /**
+   * Derives {@code allowedFields[].highlight} from the index mapping on the way out.
+   *
+   * <p>Annotating on read rather than at seed time is deliberate: the stored settings are written by
+   * several paths — {@code SettingsCache.initialize} loads the seed itself, and older clusters
+   * persisted their settings before this flag existed — so anything that relies on the stored value
+   * being annotated is one new write path away from serving {@code false} for every field, which
+   * would disable every highlight toggle in the UI. Derived here, the served flag is correct
+   * regardless of what is in the database.
+   */
+  private Settings withHighlightFlags(Settings settings) {
+    Settings result = settings;
+    if (settings != null && settings.getConfigValue() != null) {
+      SearchSettings searchSettings =
+          JsonUtils.convertValue(settings.getConfigValue(), SearchSettings.class);
+      searchSettingsHandler.annotateHighlightableFields(searchSettings);
+      result =
+          new Settings().withConfigType(settings.getConfigType()).withConfigValue(searchSettings);
+    }
+    return result;
   }
 
   @GET
