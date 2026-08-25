@@ -801,13 +801,6 @@ the second after a cleanup and commit the rewritten baseline — that commit is 
 down. Neither will let a *new* violation through; adding to the baseline needs an explicit
 `--suppress-all`.
 
-### Flake Report
-
-`yarn flake:report` aggregates Playwright's JSON reporter output into a per-shard flake summary. It
-is a **local utility only** — the CI upload is not wired up, because the postgres/mysql e2e workflows
-were unified into `playwright-e2e-reusable.yml` and re-siting the step belongs in its own change. The
-script and its tests ship so that wiring is a one-step follow-up rather than a rewrite.
-
 ### Rule Levels
 
 Every guardrail rule — `playwright/*` and `om-playwright/*` — runs at `error`. Existing violations at

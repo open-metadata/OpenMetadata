@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 
 /**
  * Scopes a row lookup to the test's own entity by unique name rather than by
@@ -40,12 +40,4 @@ export const getRowByName = (
   const rows = rowSelector ? page.locator(rowSelector) : page.getByRole('row');
 
   return rows.filter({ hasText: name });
-};
-
-export const expectRowFor = async (
-  page: Page,
-  name: string,
-  rowSelector?: string
-): Promise<void> => {
-  await expect(getRowByName(page, name, rowSelector)).toBeVisible();
 };

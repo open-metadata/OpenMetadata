@@ -47,7 +47,6 @@
     "lint:playwright": "yarn lint:base './playwright/**/*.{ts,tsx}'",
     "lint:playwright:suppressions": "yarn lint:playwright --prune-suppressions",
     "generate:playwright-rules": "node scripts/generate-playwright-rule-table.ts",
-    "flake:report": "node scripts/aggregate-flake-report.ts playwright/output/results.json playwright/output/flake-report.json",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
     "pretty": "yarn pretty:base . --write",
     "pretty:src": "yarn pretty:base './src/**/*.{js,jsx,ts,tsx,json}' --write",
