@@ -254,7 +254,9 @@ plugins: Dict[str, Set[str]] = {
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
+        # Its SA-1.x call sites are adapted at runtime by
+        # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
