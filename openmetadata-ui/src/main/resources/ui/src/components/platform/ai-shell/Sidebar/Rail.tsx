@@ -19,9 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 import {
-    useAppModeSidebarHeader,
-    useAppModeSidebarRailFooter,
-    useAppModeSidebarRecentRail
+  useAppModeSidebarHeader,
+  useAppModeSidebarRailFooter,
+  useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
 import MoreNavPopover from './MoreNavPopover';
@@ -177,10 +177,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           node.type === 'more' ? (
             <MoreNavPopover items={node.children} key="more" variant="rail" />
           ) : (
-            <RailNavButton
-              item={toRailItem(node.item)}
-              key={node.item.key}
-            />
+            <RailNavButton item={toRailItem(node.item)} key={node.item.key} />
           )
         )}
       </nav>

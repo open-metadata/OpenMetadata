@@ -44,8 +44,7 @@ const mockTranslations: Record<string, string> = {
   'label.use-natural-language-search': 'Use natural language search',
   'message.explore-assets-indexed': '{{total}} assets indexed',
   'message.explore-assets-indexed-suffix': 'assets indexed',
-  'message.explore-search-placeholder':
-    'Search across your Context Platform',
+  'message.explore-search-placeholder': 'Search across your Context Platform',
   'message.natural-language-search-active': 'Natural language search active',
 };
 
@@ -88,15 +87,12 @@ jest.mock('../../../../components/AppBar/Suggestions', () => ({
     ),
 }));
 
-jest.mock(
-  '../../../../hooks/currentUserStore/useCurrentUserStore',
-  () => ({
-    useCurrentUserPreferences: () => ({
-      preferences: { isNLPActive: mockPersistedNLPActive },
-      setPreference: mockSetPreference,
-    }),
-  })
-);
+jest.mock('../../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: () => ({
+    preferences: { isNLPActive: mockPersistedNLPActive },
+    setPreference: mockSetPreference,
+  }),
+}));
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: (
@@ -300,12 +296,10 @@ describe('ExploreSearchCard', () => {
     render(<ExploreSearchCard />);
 
     expect(screen.getByTestId('explore-search-card')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('explore-search-card-icon')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('explore-search-card-title')
-    ).toHaveTextContent('Explore Assets');
+    expect(screen.getByTestId('explore-search-card-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('explore-search-card-title')).toHaveTextContent(
+      'Explore Assets'
+    );
     expect(
       screen.queryByTestId('explore-search-card-subtitle')
     ).not.toBeInTheDocument();
@@ -329,9 +323,7 @@ describe('ExploreSearchCard', () => {
     const ossHeaderTitleRow = headerLayout.parentElement;
     const ossHeaderTitleContent = ossHeaderTitleRow?.parentElement;
 
-    expect(screen.getByTestId('explore-search-card')).toHaveClass(
-      'tw:w-full'
-    );
+    expect(screen.getByTestId('explore-search-card')).toHaveClass('tw:w-full');
     expect(headerLayout).toHaveClass('tw:w-full', 'tw:min-w-0', 'tw:flex-1');
     // Intentional cross-repository contract: AI Explore relies on the OSS
     // HeaderShell title slot remaining flexible instead of using its
@@ -351,9 +343,7 @@ describe('ExploreSearchCard', () => {
       'tw:mx-auto',
       'tw:px-8'
     );
-    expect(screen.getByTestId('explore-search-form')).toHaveClass(
-      'tw:w-full'
-    );
+    expect(screen.getByTestId('explore-search-form')).toHaveClass('tw:w-full');
   });
 
   it('displays asset count after async fetch', async () => {
@@ -368,9 +358,9 @@ describe('ExploreSearchCard', () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getByTestId('explore-search-card-stats')
-    ).toHaveTextContent('12,480 assets indexed');
+    expect(screen.getByTestId('explore-search-card-stats')).toHaveTextContent(
+      '12,480 assets indexed'
+    );
     expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ trackTotalHits: true })
     );
@@ -447,9 +437,9 @@ describe('ExploreSearchCard', () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getByTestId('explore-search-suggestions')
-    ).toHaveTextContent('table:orders');
+    expect(screen.getByTestId('explore-search-suggestions')).toHaveTextContent(
+      'table:orders'
+    );
   });
 
   it('closes standard search suggestions when clicking outside', async () => {
@@ -472,9 +462,7 @@ describe('ExploreSearchCard', () => {
         await Promise.resolve();
       });
 
-      expect(
-        screen.getByTestId('explore-search-popover')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('explore-search-popover')).toBeInTheDocument();
 
       fireEvent.blur(searchInput, { relatedTarget: document.body });
       fireEvent.pointerDown(document.body);
@@ -506,16 +494,12 @@ describe('ExploreSearchCard', () => {
         await Promise.resolve();
       });
 
-      expect(
-        screen.getByTestId('explore-search-popover')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('explore-search-popover')).toBeInTheDocument();
 
       fireEvent.pointerDown(searchInput);
       fireEvent.click(searchInput);
 
-      expect(
-        screen.getByTestId('explore-search-popover')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('explore-search-popover')).toBeInTheDocument();
     } finally {
       globalThis.PointerEvent = originalPointerEvent;
     }
@@ -669,9 +653,7 @@ describe('ExploreSearchCard', () => {
     mockIsNLPEnabled = false;
     render(<ExploreSearchCard />);
 
-    expect(
-      screen.queryByTestId('explore-nlp-toggle')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('explore-nlp-toggle')).not.toBeInTheDocument();
   });
 
   it('shows active NLP state when NLP is on', () => {

@@ -17,7 +17,7 @@ import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
 import KeepAliveRoutes, {
-    KeepAliveRoute
+  KeepAliveRoute,
 } from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
 import { useSyncActiveModule } from '../state/useActiveModule';

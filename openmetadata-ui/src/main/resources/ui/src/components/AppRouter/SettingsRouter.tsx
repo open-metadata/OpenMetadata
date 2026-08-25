@@ -16,8 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import {
-    GlobalSettingOptions,
-    GlobalSettingsMenuCategory
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -26,9 +26,9 @@ import { TeamType } from '../../generated/entity/teams/team';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
-    getSettingCategoryPath,
-    getSettingPathRelative,
-    getTeamsWithFqnPath
+  getSettingCategoryPath,
+  getSettingPathRelative,
+  getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';

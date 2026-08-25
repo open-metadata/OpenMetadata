@@ -21,8 +21,8 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { observabilityModule } from '../components/observability/ObservabilityModule/observability.module';
 import { AppModule } from '../components/platform/ai-shell/AppModule.types';
 import {
-    SIDEBAR_LIST,
-    SIDEBAR_NESTED_KEYS
+  SIDEBAR_LIST,
+  SIDEBAR_NESTED_KEYS,
 } from '../constants/LeftSidebar.constants';
 
 /**

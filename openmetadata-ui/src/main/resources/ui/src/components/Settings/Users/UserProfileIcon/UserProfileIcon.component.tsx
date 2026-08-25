@@ -29,12 +29,12 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-    getImageWithResolutionAndFallback,
-    ImageQuality
+  getImageWithResolutionAndFallback,
+  ImageQuality,
 } from '../../../../utils/ProfilerUtils';
 import {
-    getTeamAndUserDetailsPath,
-    getUserPath
+  getTeamAndUserDetailsPath,
+  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';

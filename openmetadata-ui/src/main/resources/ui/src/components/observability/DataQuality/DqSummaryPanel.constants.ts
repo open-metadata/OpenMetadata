@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    DQ_CHART_BLUE_COLOR,
-    DQ_CHART_FAILED_COLOR,
-    DQ_CHART_SUCCESS_COLOR,
-    DQ_CHART_WARNING_COLOR,
-    GREY_200
+  DQ_CHART_BLUE_COLOR,
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+  DQ_CHART_WARNING_COLOR,
+  GREY_200,
 } from '../../../constants/Color.constants';
 import { TestSummarySegmentId } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 

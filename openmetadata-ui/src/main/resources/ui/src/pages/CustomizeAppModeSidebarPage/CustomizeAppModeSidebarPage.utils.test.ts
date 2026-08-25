@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-    IconComponent,
-    MainNavItem,
-    MORE_NAV_KEY
+  IconComponent,
+  MainNavItem,
+  MORE_NAV_KEY,
 } from '../../components/platform/ai-shell/Sidebar/navConfig';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
-    getSidebarHiddenKeys,
-    getSidebarNavigationItems,
-    getSidebarTreeData,
-    isValidSidebarTree,
-    SidebarTreeNode
+  getSidebarHiddenKeys,
+  getSidebarNavigationItems,
+  getSidebarTreeData,
+  isValidSidebarTree,
+  SidebarTreeNode,
 } from './CustomizeAppModeSidebarPage.utils';
 
 jest.mock('../../utils/i18next/LocalUtil', () => ({
@@ -128,9 +128,7 @@ describe('getSidebarNavigationItems', () => {
         pageId: MORE_NAV_KEY,
         title: 'label.more',
         isHidden: false,
-        children: [
-          { id: 'b', pageId: 'b', title: 'label.b', isHidden: true },
-        ],
+        children: [{ id: 'b', pageId: 'b', title: 'label.b', isHidden: true }],
       },
     ]);
   });

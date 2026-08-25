@@ -15,8 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import '../../../DataQuality/DataQualityDashboard/data-quality-dashboard.style.less';
 import DqDashboardSectionContent, {
-    DQ_DASHBOARD_SECTIONS,
-    type DqDashboardSectionKey
+  DQ_DASHBOARD_SECTIONS,
+  type DqDashboardSectionKey,
 } from '../../../DataQuality/DataQualityDashboard/DqDashboardSectionContent.component';
 import { useDataQualityDashboardFilters } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import DqFilterBar from './DqFilterBar';

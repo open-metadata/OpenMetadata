@@ -21,7 +21,8 @@ export const OBSERVABILITY_ROUTES = {
   OBSERVABILITY: '/observability',
   OBSERVABILITY_DATA_QUALITY_BASE: '/observability/data-quality',
   OBSERVABILITY_DATA_QUALITY: '/observability/data-quality/:tab?',
-  OBSERVABILITY_DATA_QUALITY_SUB_TAB: '/observability/data-quality/:tab/:subTab',
+  OBSERVABILITY_DATA_QUALITY_SUB_TAB:
+    '/observability/data-quality/:tab/:subTab',
   OBSERVABILITY_PIPELINE: '/observability/pipeline',
   OBSERVABILITY_PIPELINE_DETAILS: '/observability/pipeline/:fqn',
   OBSERVABILITY_PIPELINE_DETAILS_WITH_TAB: '/observability/pipeline/:fqn/:tab',
@@ -32,7 +33,8 @@ export const OBSERVABILITY_ROUTES = {
   OBSERVABILITY_TEST_LIBRARY: '/observability/test-library',
   OBSERVABILITY_TEST_SUITE_DETAILS: '/observability/test-suites/:fqn',
   OBSERVABILITY_TEST_CASE_DETAILS: '/observability/test-case/:fqn',
-  OBSERVABILITY_TEST_CASE_DETAILS_WITH_TAB: '/observability/test-case/:fqn/:tab',
+  OBSERVABILITY_TEST_CASE_DETAILS_WITH_TAB:
+    '/observability/test-case/:fqn/:tab',
   OBSERVABILITY_TEST_CASE_VERSION:
     '/observability/test-case/:fqn/versions/:version',
   OBSERVABILITY_TEST_CASE_VERSION_WITH_TAB:

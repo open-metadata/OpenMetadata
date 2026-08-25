@@ -18,29 +18,29 @@ import { DateFilterType } from 'Models';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import {
-    ActivityEvent,
-    ActivityEventType
+  ActivityEvent,
+  ActivityEventType,
 } from '../../../../generated/entity/activity/activityEvent';
 import { CardStyle, Thread } from '../../../../generated/entity/feed/thread';
 import {
-    Task,
-    TaskStatus,
-    TaskType
+  Task,
+  TaskStatus,
+  TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
 import {
-    addActivityReaction,
-    removeActivityReaction,
-    updateThread
+  addActivityReaction,
+  removeActivityReaction,
+  updateThread,
 } from '../../../../rest/feedsAPI';
 import {
-    formatDateTimeLong,
-    getCurrentMillis,
-    getEndOfDayInMillis,
-    getEpochMillisForPastDays,
-    getRelativeCalendar,
-    getRelativeTime,
-    getStartOfDayInMillis
+  formatDateTimeLong,
+  getCurrentMillis,
+  getEndOfDayInMillis,
+  getEpochMillisForPastDays,
+  getRelativeCalendar,
+  getRelativeTime,
+  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;

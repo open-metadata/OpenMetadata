@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-    borderAfter,
-    Box,
-    Button,
-    Dropdown,
-    Input
+  borderAfter,
+  Box,
+  Button,
+  Dropdown,
+  Input,
 } from '@openmetadata/ui-core-components';
 import {
-    Check,
-    ChevronDown,
-    Columns01,
-    LayoutAlt04,
-    SearchLg,
-    Table
+  Check,
+  ChevronDown,
+  Columns01,
+  LayoutAlt04,
+  SearchLg,
+  Table,
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -34,8 +34,8 @@ import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
-    FilterDescriptor,
-    FilterValue
+  FilterDescriptor,
+  FilterValue,
 } from '../../../DataQuality/TestCases/FilterChip.interface';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 

@@ -12,22 +12,22 @@
  */
 
 import {
-    CloseOutlined,
-    HolderOutlined,
-    RedoOutlined,
-    SaveOutlined
+  CloseOutlined,
+  HolderOutlined,
+  RedoOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
 import {
-    Button,
-    Card,
-    Col,
-    Row,
-    Space,
-    Switch,
-    Tree,
-    TreeDataNode,
-    TreeProps,
-    Typography
+  Button,
+  Card,
+  Col,
+  Row,
+  Space,
+  Switch,
+  Tree,
+  TreeDataNode,
+  TreeProps,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -41,13 +41,13 @@ import { NavigationBlocker } from '../../components/common/NavigationBlocker/Nav
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useAllAppModules } from '../../components/platform/ai-shell/sharedAppModules';
 import {
-    APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
-    APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
-    APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT
+  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
+  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
+  APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT,
 } from '../../components/platform/ai-shell/Sidebar/appModeSidebar.constants';
 import {
-    buildMainNavItems,
-    MORE_NAV_KEY
+  buildMainNavItems,
+  MORE_NAV_KEY,
 } from '../../components/platform/ai-shell/Sidebar/navConfig';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -56,20 +56,20 @@ import { Document } from '../../generated/entity/docStore/document';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import { useFqn } from '../../hooks/useFqn';
 import {
-    createDocument,
-    getDocumentByFQN,
-    updateDocument
+  createDocument,
+  getDocumentByFQN,
+  updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
-    getSidebarHiddenKeys,
-    getSidebarNavigationItems,
-    getSidebarTreeData,
-    isValidSidebarTree,
-    SidebarTreeNode
+  getSidebarHiddenKeys,
+  getSidebarNavigationItems,
+  getSidebarTreeData,
+  isValidSidebarTree,
+  SidebarTreeNode,
 } from './CustomizeAppModeSidebarPage.utils';
 
 /**
@@ -97,8 +97,9 @@ const CustomizeAppModeSidebarPage = () => {
 
   const storedNavigation = useMemo(
     () =>
-      (docStoreDocument?.data?.[APP_MODE_SIDEBAR_CUSTOMIZATION_KEY] ??
-        null) as NavigationItem[] | null,
+      (docStoreDocument?.data?.[APP_MODE_SIDEBAR_CUSTOMIZATION_KEY] ?? null) as
+        | NavigationItem[]
+        | null,
     [docStoreDocument]
   );
 
@@ -118,10 +119,7 @@ const CustomizeAppModeSidebarPage = () => {
 
   const disableSave = useMemo(
     () =>
-      isEqual(
-        baseline,
-        getSidebarNavigationItems(items, treeData, hiddenKeys)
-      ),
+      isEqual(baseline, getSidebarNavigationItems(items, treeData, hiddenKeys)),
     [items, baseline, treeData, hiddenKeys]
   );
 

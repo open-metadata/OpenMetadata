@@ -50,8 +50,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
-    getPersonaDetailsPath,
-    getSettingPath
+  getPersonaDetailsPath,
+  getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';

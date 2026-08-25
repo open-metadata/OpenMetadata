@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Dialog,
-    DialogTrigger,
-    Modal,
-    ModalOverlay,
-    Tabs,
-    Tooltip,
-    Typography
+  Box,
+  Button,
+  Dialog,
+  DialogTrigger,
+  Modal,
+  ModalOverlay,
+  Tabs,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import classNames from 'classnames';

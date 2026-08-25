@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-    borderAfter,
-    Box,
-    EmptyPlaceholderAction
+  borderAfter,
+  Box,
+  EmptyPlaceholderAction,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
 import classNames from 'classnames';

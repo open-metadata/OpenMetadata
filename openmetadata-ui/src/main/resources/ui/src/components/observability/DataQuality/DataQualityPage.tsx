@@ -23,7 +23,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import DataQualityProvider, {
-    useDataQualityProvider
+  useDataQualityProvider,
 } from '../../../pages/DataQuality/DataQualityProvider';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';

@@ -12,17 +12,17 @@
  */
 
 import React, {
-    PropsWithChildren,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  PropsWithChildren,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { matchPath, Route, Routes, useLocation } from 'react-router-dom';
 import {
-    createRouteActivationStore,
-    RouteActivationProvider,
-    RouteActivationStore
+  createRouteActivationStore,
+  RouteActivationProvider,
+  RouteActivationStore,
 } from '../context/RouteActivationContext';
 import './keep-alive-routes.less';
 

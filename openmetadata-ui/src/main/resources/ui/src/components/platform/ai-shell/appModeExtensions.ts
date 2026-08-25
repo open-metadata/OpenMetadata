@@ -12,9 +12,9 @@
  */
 
 import {
-    AppModeRoutesFallbackContribution,
-    AppModeSlotContribution,
-    EXTENSION_POINTS
+  AppModeRoutesFallbackContribution,
+  AppModeSlotContribution,
+  EXTENSION_POINTS,
 } from '../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 

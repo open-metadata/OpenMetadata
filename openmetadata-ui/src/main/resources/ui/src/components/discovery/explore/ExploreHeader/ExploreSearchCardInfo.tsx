@@ -14,7 +14,10 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExploreHeaderIcon } from '../../../../assets/svg/explore-header-icon.svg';
-import { GRAY_700, TEST_STATUS_COLORS } from '../../../../constants/Color.constants';
+import {
+  GRAY_700,
+  TEST_STATUS_COLORS,
+} from '../../../../constants/Color.constants';
 
 export interface ExploreSearchCardInfoProps {
   assetCount: number | null;

@@ -17,9 +17,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import {
-    useAppModeSidebarHeader,
-    useAppModeSidebarMainFooter,
-    useAppModeSidebarRecent
+  useAppModeSidebarHeader,
+  useAppModeSidebarMainFooter,
+  useAppModeSidebarRecent,
 } from '../appModeExtensions';
 import MoreNavPopover from './MoreNavPopover';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';

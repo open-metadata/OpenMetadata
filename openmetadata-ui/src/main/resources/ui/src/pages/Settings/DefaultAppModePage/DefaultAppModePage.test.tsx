@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import {
-    getAppConfiguration,
-    patchAppConfiguration
+  getAppConfiguration,
+  patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
 import DefaultAppModePage from './DefaultAppModePage';
 

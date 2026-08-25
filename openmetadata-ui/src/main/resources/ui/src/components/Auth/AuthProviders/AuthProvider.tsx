@@ -13,44 +13,44 @@
 
 import { removeSession } from '@analytics/session-utils';
 import type {
-    Configuration,
-    IPublicClientApplication
+  Configuration,
+  IPublicClientApplication,
 } from '@azure/msal-browser';
 import {
-    AxiosError,
-    AxiosRequestHeaders,
-    InternalAxiosRequestConfig
+  AxiosError,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil, isNumber } from 'lodash';
 import type { WebStorageStateStore } from 'oidc-client';
 import {
-    ComponentType,
-    createContext,
-    ReactNode,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  ComponentType,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
-    REFRESHABLE_AUTH_ERRORS,
-    UN_AUTHORIZED_EXCLUDED_PATHS
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../../../constants/Auth.constants';
 import {
-    APP_ROUTER_ROUTES as ROUTES,
-    REDIRECT_PATHNAME
+  APP_ROUTER_ROUTES as ROUTES,
+  REDIRECT_PATHNAME,
 } from '../../../constants/router.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
-    AuthenticationConfiguration,
-    ClientType
+  AuthenticationConfiguration,
+  ClientType,
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
@@ -58,23 +58,23 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import {
-    derivePreferencesFromList,
-    hydrateBackendSyncedPreferences,
-    resetBackendSyncState
+  derivePreferencesFromList,
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    clearAppMode,
-    isAppModeHintFresh,
-    readAppModeHint,
-    readAppModeSession,
-    resolveEffectiveAppMode,
-    resolveInitialAppMode,
-    resolvePersonaAppMode,
-    setAppDefaultMode,
-    translatePreferenceMode,
-    translateWireMode,
-    writeAppMode
+  clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
+  readAppModeSession,
+  resolveEffectiveAppMode,
+  resolveInitialAppMode,
+  resolvePersonaAppMode,
+  setAppDefaultMode,
+  translatePreferenceMode,
+  translateWireMode,
+  writeAppMode,
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -83,8 +83,8 @@ import axiosClient from '../../../rest';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
-    fetchAuthenticationConfig,
-    fetchAuthorizerConfig
+  fetchAuthenticationConfig,
+  fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { personaDocFqn } from '../../../rest/queries/docStoreQuery';
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
@@ -92,36 +92,36 @@ import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
-    extractDetailsFromToken,
-    getAuthConfig,
-    getUrlPathnameExpiry,
-    getUserManagerConfig,
-    prepareUserProfileFromClaims,
-    validateAuthFields
+  extractDetailsFromToken,
+  getAuthConfig,
+  getUrlPathnameExpiry,
+  getUserManagerConfig,
+  prepareUserProfileFromClaims,
+  validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import {
-    clearOidcToken,
-    getOidcToken,
-    getRefreshToken
+  clearOidcToken,
+  getOidcToken,
+  getRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import {
-    LazyAuth0Authenticator,
-    LazyBasicAuthAuthenticator,
-    LazyGenericAuthenticator,
-    LazyMsalAuthenticator,
-    LazyOidcAuthenticator,
-    LazyOktaAuthenticator
+  LazyAuth0Authenticator,
+  LazyBasicAuthAuthenticator,
+  LazyGenericAuthenticator,
+  LazyMsalAuthenticator,
+  LazyOidcAuthenticator,
+  LazyOktaAuthenticator,
 } from '../AppAuthenticators/LazyAuthenticators';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import {
-    LazyAuth0ProviderWrapper,
-    LazyBasicAuthProviderWrapper,
-    LazyMsalProviderWrapper,
-    LazyOktaAuthProviderWrapper
+  LazyAuth0ProviderWrapper,
+  LazyBasicAuthProviderWrapper,
+  LazyMsalProviderWrapper,
+  LazyOktaAuthProviderWrapper,
 } from './LazyAuthProviderWrappers';
 
 interface AuthProviderProps {

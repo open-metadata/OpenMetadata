@@ -19,8 +19,8 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
 import {
-    getCustomizePageCategories,
-    getCustomizePageOptions
+  getCustomizePageCategories,
+  getCustomizePageOptions,
 } from '../../../../utils/Persona/PersonaUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 

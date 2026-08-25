@@ -20,22 +20,19 @@ import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    CreateKnowledgePage,
-    PageType
+  CreateKnowledgePage,
+  PageType,
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import {
-    CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
-    CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY
+  CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
 } from '../../../utils/ContextCenterQueryKeys';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
-    showErrorToast,
-    showSuccessToast
-} from '../../../utils/ToastUtils';
-import {
-    QuickLinkFormModal,
-    QuickLinkFormModalFormData
+  QuickLinkFormModal,
+  QuickLinkFormModalFormData,
 } from '../../KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { Intent } from '../../platform/ai-shell/AppModule.types';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';

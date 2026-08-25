@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { AppModule, IconComponent, SubNavConfig, SubNavItem } from '../AppModule.types';
+import {
+  AppModule,
+  IconComponent,
+  SubNavConfig,
+  SubNavItem,
+} from '../AppModule.types';
 
 export { Intent } from '../AppModule.types';
 export type {
-    IconComponent,
-    IntentName,
-    SubNavConfig,
-    SubNavItem,
-    SubNavSection
+  IconComponent,
+  IntentName,
+  SubNavConfig,
+  SubNavItem,
+  SubNavSection,
 } from '../AppModule.types';
 
 export type NavAction = { kind: 'navigate'; path: string };
@@ -97,8 +102,7 @@ export const buildSubNavs = (
   Object.fromEntries(
     modules
       .filter(
-        (m): m is AppModule & { subNav: SubNavConfig } =>
-          m.subNav !== undefined
+        (m): m is AppModule & { subNav: SubNavConfig } => m.subNav !== undefined
       )
       .map((m) => [m.subNav.key, m.subNav])
   );

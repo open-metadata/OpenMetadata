@@ -20,13 +20,11 @@ import { ROUTES } from '../../../constants/constants';
 import HeaderBreadcrumb from '../HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../HeaderShell/HeaderShell.component';
 import {
-    ListPageHeaderConfig,
-    ListPageHeaderRenderProps
+  ListPageHeaderConfig,
+  ListPageHeaderRenderProps,
 } from './ListPageHeader.interface';
 
-const ListPageHeader: FC<
-  ListPageHeaderConfig & ListPageHeaderRenderProps
-> = ({
+const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
   titleKey,
   subtitleKey,
   addLabelKey,

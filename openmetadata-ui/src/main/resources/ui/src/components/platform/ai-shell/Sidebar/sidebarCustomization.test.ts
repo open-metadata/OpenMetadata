@@ -13,9 +13,9 @@
 import { NavigationItem } from '../../../../generated/system/ui/uiCustomization';
 import { IconComponent, MainNavItem, MORE_NAV_KEY } from './navConfig';
 import {
-    applySidebarCustomization,
-    getDefaultSidebarNavigation,
-    MainNavNode
+  applySidebarCustomization,
+  getDefaultSidebarNavigation,
+  MainNavNode,
 } from './sidebarCustomization';
 
 const Icon = (() => null) as unknown as IconComponent;
@@ -33,16 +33,12 @@ const items = makeItems(KEYS);
 const VISIBLE = 10;
 
 const itemKeys = (nodes: MainNavNode[]): string[] =>
-  nodes.flatMap((node) =>
-    node.type === 'item' ? [node.item.key] : ['more']
-  );
+  nodes.flatMap((node) => (node.type === 'item' ? [node.item.key] : ['more']));
 
 const moreChildren = (nodes: MainNavNode[]): string[] => {
   const more = nodes.find((n) => n.type === 'more');
 
-  return more && more.type === 'more'
-    ? more.children.map((c) => c.key)
-    : [];
+  return more && more.type === 'more' ? more.children.map((c) => c.key) : [];
 };
 
 describe('getDefaultSidebarNavigation', () => {
@@ -127,9 +123,7 @@ describe('applySidebarCustomization', () => {
         pageId: MORE_NAV_KEY,
         title: 'label.more',
         isHidden: true,
-        children: [
-          { id: 'b', pageId: 'b', title: 'label.b', isHidden: false },
-        ],
+        children: [{ id: 'b', pageId: 'b', title: 'label.b', isHidden: false }],
       },
     ];
 

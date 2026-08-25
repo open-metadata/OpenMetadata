@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Tabs,
-    Tooltip,
-    Typography
+  Box,
+  Button,
+  Tabs,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -35,8 +35,8 @@ import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
-    getEntityDetailsPath,
-    getServiceDetailsPath
+  getEntityDetailsPath,
+  getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';

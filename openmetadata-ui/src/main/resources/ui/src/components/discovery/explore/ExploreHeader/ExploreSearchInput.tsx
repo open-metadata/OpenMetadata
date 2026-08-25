@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    ButtonUtility,
-    Divider,
-    Input,
-    SelectPopover
+  Box,
+  ButtonUtility,
+  Divider,
+  Input,
+  SelectPopover,
 } from '@openmetadata/ui-core-components';
 import { isAppleDevice } from '@react-aria/utils';
 import { SearchMd } from '@untitledui/icons';

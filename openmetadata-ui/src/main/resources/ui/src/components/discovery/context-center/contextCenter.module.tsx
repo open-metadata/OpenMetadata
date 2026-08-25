@@ -32,8 +32,7 @@ import { RoutePosition } from '../../Settings/Applications/plugins/AppPlugin';
 
 const ContextCenterLayout = withSuspenseFallback(
   React.lazy(
-    () =>
-      import('../../ContextCenter/ContextCenterLayout/ContextCenterLayout')
+    () => import('../../ContextCenter/ContextCenterLayout/ContextCenterLayout')
   )
 );
 

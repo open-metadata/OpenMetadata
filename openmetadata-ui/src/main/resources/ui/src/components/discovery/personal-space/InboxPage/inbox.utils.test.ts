@@ -15,15 +15,15 @@ import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import {
-    ActivityEvent,
-    ActivityEventType
+  ActivityEvent,
+  ActivityEventType,
 } from '../../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
 import {
-    addActivityReaction,
-    removeActivityReaction,
-    updateThread
+  addActivityReaction,
+  removeActivityReaction,
+  updateThread,
 } from '../../../../rest/feedsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
@@ -48,16 +48,16 @@ jest.mock('../../../../rest/feedsAPI', () => ({
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
-    formatInboxDateTime,
-    getActivityActionLabel,
-    getActivityBuckets,
-    getActivityEventLabel,
-    getChatConversationTitle,
-    groupByRelativeDay,
-    isChatCollaboratorThread,
-    isTaskOpen,
-    toggleActivityReaction,
-    toggleThreadReaction
+  formatInboxDateTime,
+  getActivityActionLabel,
+  getActivityBuckets,
+  getActivityEventLabel,
+  getChatConversationTitle,
+  groupByRelativeDay,
+  isChatCollaboratorThread,
+  isTaskOpen,
+  toggleActivityReaction,
+  toggleThreadReaction,
 } from './inbox.utils';
 
 const mockAddReaction = addActivityReaction as jest.Mock;

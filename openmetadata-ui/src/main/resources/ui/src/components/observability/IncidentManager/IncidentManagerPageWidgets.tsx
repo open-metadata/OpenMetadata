@@ -15,10 +15,10 @@ import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import {
-    getCurrentMillis,
-    getEndOfDayInMillis,
-    getEpochMillisForPastDays,
-    getStartOfDayInMillis
+  getCurrentMillis,
+  getEndOfDayInMillis,
+  getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
 import IncidentTimeChartWidget from '../../DataQuality/ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
 import IncidentTypeAreaChartWidget from '../../DataQuality/ChartWidgets/IncidentTypeAreaChartWidget/IncidentTypeAreaChartWidget.component';

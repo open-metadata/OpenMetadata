@@ -13,10 +13,7 @@
 import { DateRangePicker } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import type { DateValue } from 'react-aria-components';
-import {
-    dateValueToMillis,
-    millisToDateValue
-} from './calendarDate.utils';
+import { dateValueToMillis, millisToDateValue } from './calendarDate.utils';
 
 type PickerRange = { start: DateValue; end: DateValue } | null;
 

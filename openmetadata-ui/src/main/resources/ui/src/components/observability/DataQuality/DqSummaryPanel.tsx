@@ -14,8 +14,8 @@ import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { SummaryDonut } from '../../DataQuality/SummaryPannel/SummaryDonut.component';
 import {
-    SummaryPanelProps,
-    TestSummaryCardKey
+  SummaryPanelProps,
+  TestSummaryCardKey,
 } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 import { useTestSummaryCards } from '../../DataQuality/SummaryPannel/useTestSummaryCards';
 import { SEGMENT_COLORS } from './DqSummaryPanel.constants';

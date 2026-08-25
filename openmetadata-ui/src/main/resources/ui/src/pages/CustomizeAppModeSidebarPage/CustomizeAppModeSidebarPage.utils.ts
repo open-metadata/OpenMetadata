@@ -14,10 +14,10 @@
 import { TreeDataNode } from 'antd';
 import { isEmpty } from 'lodash';
 import {
-    IconComponent,
-    MainNavItem,
-    MORE_NAV_KEY,
-    MORE_NAV_LABEL_KEY
+  IconComponent,
+  MainNavItem,
+  MORE_NAV_KEY,
+  MORE_NAV_LABEL_KEY,
 } from '../../components/platform/ai-shell/Sidebar/navConfig';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import i18n from '../../utils/i18next/LocalUtil';
