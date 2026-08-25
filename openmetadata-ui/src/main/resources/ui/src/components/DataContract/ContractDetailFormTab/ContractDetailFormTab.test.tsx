@@ -20,8 +20,15 @@ jest.mock('../../../utils/formUtils', () => ({
   generateFormFields: jest.fn((fields) =>
     fields.map((field: any) => (
       <div data-testid={field.props?.['data-testid']} key={field.name}>
-        <label>{field.label}</label>
-        <input data-testid={field.props?.['data-testid']} name={field.name} />
+        <label htmlFor={field.props?.['data-testid']}>
+          {field.label}
+          <input
+            aria-label={field.name}
+            data-testid={field.props?.['data-testid']}
+            id={field.props?.['data-testid']}
+            name={field.name}
+          />
+        </label>
       </div>
     ))
   ),

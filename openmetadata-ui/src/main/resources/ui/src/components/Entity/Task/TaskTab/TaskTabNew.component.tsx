@@ -620,6 +620,7 @@ export const TaskTabNew = ({
       label: (
         <span
           data-testid={`task-action-menu-item-${item.key}`}
+          role="presentation"
           onClick={
             onItemClick
               ? (event) => {

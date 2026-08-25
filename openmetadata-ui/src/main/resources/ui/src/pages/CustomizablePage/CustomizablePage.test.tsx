@@ -49,7 +49,7 @@ jest.mock(
             {initialPageData.data.page.layout.map((widget: WidgetConfig) => (
               <div key={widget.i}>{widget.i}</div>
             ))}
-            <div onClick={handleSaveCurrentPageLayout}>
+            <div role="presentation" onClick={handleSaveCurrentPageLayout}>
               handleSaveCurrentPageLayout
             </div>
           </div>

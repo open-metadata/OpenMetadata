@@ -356,6 +356,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           {!hideSearchBar && (
             <div className="p-t-sm p-x-sm">
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search box when the dropdown opens
                 autoFocus
                 data-testid="search-input"
                 placeholder={`${t('label.search-entity', {

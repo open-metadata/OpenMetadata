@@ -63,9 +63,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     label: React.ReactNode;
     'data-testid'?: string;
   }) => (
-    <label data-testid={testId}>
+    <label data-testid={testId} htmlFor={testId}>
+      {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- labeled via wrapping label */}
       <input
         checked={Boolean(isSelected)}
+        id={testId}
         type="checkbox"
         onChange={(event) => onChange(event.target.checked)}
       />
@@ -82,6 +84,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     placeholder?: string;
   }) => (
     <input
+      aria-label="search"
       data-testid="search-input"
       placeholder={placeholder}
       value={value}
