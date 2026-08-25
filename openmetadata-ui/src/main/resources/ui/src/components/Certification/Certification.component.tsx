@@ -161,7 +161,7 @@ const Certification = ({
 
             const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
             const renderedIcon = iconURL ? (
-              <Icon alt={title} iconValue={iconURL} size={28} />
+              <Icon alt={title} fallback={<CertificationIcon height={28} width={28} />} iconValue={iconURL}  size={28} />
             ) : null;
 
             return (
