@@ -377,13 +377,13 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         way the server rejects the whole table with "Column name <name> is repeated", so the
         table would be dropped entirely rather than losing a single column.
         """
+        table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
         seen_column_names = set()
         for column in self._iter_columns(column_data):
             column_name = model_str(column.name)
             if column_name in seen_column_names:
                 logger.warning(
-                    f"Table [{self.context.get().table_data.Name}]: dropping duplicate column "
-                    f"[{column_name}], keeping the first definition"
+                    f"Table [{table_name}]: dropping duplicate column [{column_name}], keeping the first definition"
                 )
                 continue
             seen_column_names.add(column_name)
