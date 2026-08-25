@@ -4814,6 +4814,7 @@ export enum AirflowConnectionScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
