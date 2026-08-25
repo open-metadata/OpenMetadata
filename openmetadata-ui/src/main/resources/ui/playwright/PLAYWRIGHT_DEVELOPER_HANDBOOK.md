@@ -810,11 +810,16 @@ script and its tests ship so that wiring is a one-step follow-up rather than a r
 
 ### Rule Levels
 
-Every rule below runs at `error` — there is no warn tier. Existing violations at the time each rule
-was promoted are snapshotted in `eslint-suppressions.json`; that file may shrink as violations are
-fixed, never grow. This table is generated from `eslint.config.mjs` by
-`scripts/generate-playwright-rule-table.ts` — do not hand-edit it, run
-`yarn generate:playwright-rules` instead.
+Every guardrail rule — `playwright/*` and `om-playwright/*` — runs at `error`. Existing violations at
+the time each rule was promoted are snapshotted in `eslint-suppressions.json`; that file may shrink
+as violations are fixed, never grow, so nothing new gets in without failing CI.
+
+The severity column is authoritative, not decorative: read it rather than assuming. A rule may
+legitimately sit at `warn` while its call sites are migrated — `openmetadata-playwright/*` rules come
+from the repo-wide plugin in `eslint-rules/` and set their own severity on that basis.
+
+This table is generated from `eslint.config.mjs` by `scripts/generate-playwright-rule-table.ts` — do
+not hand-edit it, run `yarn generate:playwright-rules` instead.
 
 <!-- BEGIN GENERATED RULE TABLE -->
 
@@ -825,6 +830,7 @@ fixed, never grow. This table is generated from `eslint.config.mjs` by
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
 | `om-playwright/require-response-listener-before-action` | error | Require waitForResponse listeners to be registered before the action that triggers them |
+| `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |
 | `playwright/no-eval` | error | The use of `page.$eval` and `page.$$eval` are discouraged, use `locator.evaluate` or `locator.evaluateAll` instead |

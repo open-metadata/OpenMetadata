@@ -37,18 +37,29 @@ const buildTable = async () => {
   // the rest of scripts/*.js.
   const { default: config } = await import('../eslint.config.mjs');
 
-  // Rule descriptions live in two different plugins depending on the prefix:
+  // Rule descriptions live in three plugins depending on the prefix:
   // `playwright/*` ships from the upstream eslint-plugin-playwright package,
-  // `om-playwright/*` is this repo's local plugin.
+  // `om-playwright/*` is the guardrail plugin under playwright/eslint-rules,
+  // and `openmetadata-playwright/*` is the repo-wide plugin in eslint-rules/.
+  // All three must be collected, or a rule can exist in the linter while the
+  // generated table silently omits it — the drift this generator exists to
+  // prevent, in the other direction.
   const { default: upstream } = await import('eslint-plugin-playwright');
   const { default: local } = await import(
     '../playwright/eslint-rules/index.ts'
+  );
+  const { default: shared } = await import(
+    '../eslint-rules/openmetadata-playwright.mjs'
   );
 
   const severities = {};
   for (const block of config) {
     for (const [id, level] of Object.entries(block.rules ?? {})) {
-      if (id.startsWith('playwright/') || id.startsWith('om-playwright/')) {
+      if (
+        id.startsWith('playwright/') ||
+        id.startsWith('om-playwright/') ||
+        id.startsWith('openmetadata-playwright/')
+      ) {
         // A rule can appear in more than one config block (e.g. the e2e-only
         // block layers on top of the main playwright block); last write wins,
         // which matches how ESLint itself resolves overlapping config blocks.
@@ -60,9 +71,15 @@ const buildTable = async () => {
   const rows = Object.entries(severities)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([id, level]) => {
-      const isLocal = id.startsWith('om-playwright/');
-      const short = id.replace(/^(om-playwright|playwright)\//, '');
-      const source = isLocal ? local : upstream;
+      const short = id.replace(
+        /^(openmetadata-playwright|om-playwright|playwright)\//,
+        ''
+      );
+      const source = id.startsWith('om-playwright/')
+        ? local
+        : id.startsWith('openmetadata-playwright/')
+        ? shared
+        : upstream;
       const description = source.rules[short]?.meta?.docs?.description ?? '';
 
       return `| \`${id}\` | ${level} | ${description} |`;
