@@ -47,6 +47,7 @@ import { EntityDetailTab } from '../../components/common/EntityDetailHeader/Enti
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import { Icon } from '../../components/common/Icon/Icon';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -111,7 +112,6 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -746,10 +746,11 @@ const TagPage = () => {
     if (tagItem?.style?.iconURL) {
       return (
         <div className="align-middle" data-testid="icon">
-          {renderIcon(tagItem.style.iconURL, {
-            size: 36,
-            className: 'object-contain',
-          })}
+          <Icon
+            className="object-contain"
+            iconValue={tagItem.style.iconURL}
+            size={36}
+          />
         </div>
       );
     }
