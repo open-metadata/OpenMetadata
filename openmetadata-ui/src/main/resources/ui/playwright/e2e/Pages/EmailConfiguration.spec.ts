@@ -14,7 +14,6 @@ import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  getApiContext,
   getAuthContext,
   getSavedAdminToken,
   redirectToHomePage,
