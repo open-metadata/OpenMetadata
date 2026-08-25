@@ -30,6 +30,7 @@ import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { isImageUrl, renderIcon } from '../../utils/IconUtils';
+import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
@@ -169,6 +170,7 @@ const Certification = ({
               <div
                 className="certification-card-item cursor-pointer"
                 key={id}
+                role="presentation"
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
                   setSelectedCertification(fullyQualifiedName ?? '');
@@ -271,12 +273,7 @@ const Certification = ({
                   data-testid="clear-certification"
                   tabIndex={0}
                   onClick={() => updateCertificationData()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      updateCertificationData();
-                    }
-                  }}>
+                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
                   {t('label.clear')}
                 </Typography.Text>
               </Space>

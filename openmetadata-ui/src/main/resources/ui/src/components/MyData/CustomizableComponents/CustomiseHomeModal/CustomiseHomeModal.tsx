@@ -27,6 +27,7 @@ import {
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
@@ -226,7 +227,10 @@ const CustomiseHomeModal = ({
               key={item.key}
               role="button"
               tabIndex={0}
-              onClick={() => handleSidebarClick(item.key)}>
+              onClick={() => handleSidebarClick(item.key)}
+              onKeyDown={handleKeyboardActivation(() =>
+                handleSidebarClick(item.key)
+              )}>
               <span>{startCase(item.label)}</span>
               {isAllWidgetsTab && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
