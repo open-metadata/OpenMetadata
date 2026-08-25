@@ -187,6 +187,25 @@ describe('useTestSuiteDetailsPage', () => {
     expect(getIngestionPipelines).not.toHaveBeenCalled();
   });
 
+  it('should preserve search input whitespace while normalizing the request', async () => {
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9 ');
+    });
+
+    expect(result.current.testCaseSearchQuery).toBe('tc_9 ');
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'tc_9' })
+    );
+  });
+
   it('should preserve the search query when changing pages', async () => {
     const { result } = renderHook(() => useTestSuiteDetailsPage());
 
@@ -195,7 +214,7 @@ describe('useTestSuiteDetailsPage', () => {
     });
 
     await act(async () => {
-      await result.current.handleTestCaseSearch('tc_9');
+      await result.current.handleTestCaseSearch('tc_9 ');
     });
     (getListTestCaseBySearch as jest.Mock).mockClear();
 

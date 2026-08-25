@@ -350,7 +350,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const fetchTestCases = useCallback(
     async (param?: ListTestCaseParamsBySearch) => {
       const visibleRequest = {
-        q: testCaseSearchQuery || undefined,
+        q: testCaseSearchQuery.trim() || undefined,
         ...param,
       };
       visibleTestCaseRequestGeneration.current += 1;
@@ -368,7 +368,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         offset: 0,
         q: normalizedQuery || undefined,
       };
-      setTestCaseSearchQuery(normalizedQuery);
+      setTestCaseSearchQuery(query);
       handlePageChange(INITIAL_PAGING_VALUE);
       await fetchTestCasesWithTotal(
         visibleTestCaseRequest.current,
