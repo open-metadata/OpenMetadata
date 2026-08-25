@@ -72,7 +72,9 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
 
         # skip empty strings
         converted_value = [el.strip() for el in converted_value if el.strip()]
-        # Add the converted value as is, without any further processing
+        # Normalise ALL-CAPS tokens so spaCy NER (trained on mixed-case text)
+        # can recognise names like "SERGE" or "THÉODORE" as PERSON entities.
+        converted_value = [el.title() if el.isupper() else el for el in converted_value]
         result.extend(converted_value)
 
     return result
