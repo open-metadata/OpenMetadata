@@ -36,6 +36,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 public final class IngestionPipelineMigrationUtil {
   private static final int BATCH_SIZE = 1_000;
   private static final String SOURCE_CONFIG_TYPE = "type";
+  private static final String PIPELINE_TYPE = "pipelineType";
   private static final String REVERSE_INGESTION_OPERATIONS = "operations";
   private static final String REVERSE_INGESTION_CONFIG_TYPE = "ReverseIngestion";
   private static final String MISSING_SERVICE_RELATIONSHIP =
@@ -76,7 +77,8 @@ public final class IngestionPipelineMigrationUtil {
           Map.entry(Entity.API_SERVICE, Map.of(PipelineType.METADATA, "ApiMetadata")),
           Map.entry(Entity.MCP_SERVICE, Map.of(PipelineType.METADATA, "McpMetadata")),
           Map.entry(Entity.SECURITY_SERVICE, Map.of(PipelineType.METADATA, "SecurityMetadata")),
-          Map.entry(Entity.METADATA_SERVICE, Map.of(PipelineType.METADATA, "DatabaseMetadata")));
+          Map.entry(Entity.METADATA_SERVICE, Map.of(PipelineType.METADATA, "DatabaseMetadata")),
+          Map.entry(Entity.TEST_SUITE, Map.of(PipelineType.TEST_SUITE, "TestSuite")));
 
   private static final Map<PipelineType, String> SOURCE_CONFIG_TYPES_BY_PIPELINE =
       Map.of(
@@ -204,11 +206,12 @@ public final class IngestionPipelineMigrationUtil {
   }
 
   private static Cursor getNextCursor(List<ObjectNode> pipelines, Cursor currentCursor) {
-    if (pipelines.isEmpty()) {
-      return currentCursor;
+    Cursor nextCursor = currentCursor;
+    if (!pipelines.isEmpty()) {
+      ObjectNode lastPipeline = pipelines.getLast();
+      nextCursor = new Cursor(lastPipeline.path("name").asText(), pipelineId(lastPipeline));
     }
-    ObjectNode lastPipeline = pipelines.getLast();
-    return new Cursor(lastPipeline.path("name").asText(), pipelineId(lastPipeline));
+    return nextCursor;
   }
 
   private static void repairBatch(
@@ -286,10 +289,11 @@ public final class IngestionPipelineMigrationUtil {
   }
 
   private static ServiceTypeResolution resolveServiceTypes(Set<String> serviceTypes) {
+    ServiceTypeResolution resolution = ServiceTypeResolution.ambiguous(serviceTypes);
     if (serviceTypes.size() == 1) {
-      return ServiceTypeResolution.resolved(serviceTypes.iterator().next());
+      resolution = ServiceTypeResolution.resolved(serviceTypes.iterator().next());
     }
-    return ServiceTypeResolution.ambiguous(serviceTypes);
+    return resolution;
   }
 
   static RepairResult repairSourceConfigType(ObjectNode pipeline, String serviceType) {
@@ -299,31 +303,51 @@ public final class IngestionPipelineMigrationUtil {
   private static RepairResult repairSourceConfigType(
       ObjectNode pipeline, ServiceTypeResolution serviceType) {
     ObjectNode config = getSourceConfig(pipeline);
-    if (config == null) {
-      return RepairResult.unresolved(INVALID_SOURCE_CONFIG);
-    }
+    RepairResult result =
+        config == null
+            ? RepairResult.unresolved(INVALID_SOURCE_CONFIG)
+            : repairConfigType(pipeline, config, serviceType);
+    return result;
+  }
+
+  private static RepairResult repairConfigType(
+      ObjectNode pipeline, ObjectNode config, ServiceTypeResolution serviceType) {
     JsonNode existingType = config.get(SOURCE_CONFIG_TYPE);
+    RepairResult result;
     if (hasExplicitType(existingType)) {
-      return RepairResult.notNeeded();
+      result = RepairResult.notNeeded();
+    } else if (!isMissingOrBlank(existingType)) {
+      result = RepairResult.unresolved(INVALID_SOURCE_CONFIG_TYPE);
+    } else {
+      result = repairMissingSourceConfigType(pipeline, config, serviceType);
     }
-    if (!isMissingOrBlank(existingType)) {
-      return RepairResult.unresolved(INVALID_SOURCE_CONFIG_TYPE);
-    }
-    String sourceConfigType = getSourceConfigType(pipeline, config, serviceType.serviceType());
+    return result;
+  }
+
+  private static RepairResult repairMissingSourceConfigType(
+      ObjectNode pipeline, ObjectNode config, ServiceTypeResolution serviceType) {
+    String sourceConfigType =
+        serviceType.isResolved()
+            ? getSourceConfigType(pipeline, config, serviceType.serviceType())
+            : null;
+    RepairResult result;
     if (sourceConfigType == null) {
-      return RepairResult.unresolved(getUnresolvedReason(pipeline, serviceType));
+      result = RepairResult.unresolved(getUnresolvedReason(pipeline, serviceType));
+    } else {
+      config.put(SOURCE_CONFIG_TYPE, sourceConfigType);
+      result = RepairResult.repaired();
     }
-    config.put(SOURCE_CONFIG_TYPE, sourceConfigType);
-    return RepairResult.repaired();
+    return result;
   }
 
   private static ObjectNode getSourceConfig(ObjectNode pipeline) {
+    ObjectNode config = null;
     JsonNode sourceConfig = pipeline.get("sourceConfig");
     if (sourceConfig instanceof ObjectNode sourceConfigObject
         && sourceConfigObject.get("config") instanceof ObjectNode configObject) {
-      return configObject;
+      config = configObject;
     }
-    return null;
+    return config;
   }
 
   private static boolean hasExplicitType(JsonNode type) {
@@ -336,44 +360,56 @@ public final class IngestionPipelineMigrationUtil {
 
   private static String getSourceConfigType(
       ObjectNode pipeline, ObjectNode config, String serviceType) {
+    String sourceConfigType;
     if (config.has(REVERSE_INGESTION_OPERATIONS)) {
-      return REVERSE_INGESTION_CONFIG_TYPE;
+      sourceConfigType = REVERSE_INGESTION_CONFIG_TYPE;
+    } else {
+      sourceConfigType = getKnownSourceConfigType(getPipelineType(pipeline), serviceType);
     }
-    PipelineType pipelineType = getPipelineType(pipeline);
-    if (pipelineType == null) {
-      return null;
-    }
+    return sourceConfigType;
+  }
+
+  private static String getKnownSourceConfigType(PipelineType pipelineType, String serviceType) {
     Map<PipelineType, String> serviceConfigTypes =
         serviceType == null ? null : SOURCE_CONFIG_TYPES.get(serviceType);
     String sourceConfigType =
-        serviceConfigTypes == null ? null : serviceConfigTypes.get(pipelineType);
-    return sourceConfigType == null
-        ? SOURCE_CONFIG_TYPES_BY_PIPELINE.get(pipelineType)
-        : sourceConfigType;
+        pipelineType == null || serviceConfigTypes == null
+            ? null
+            : serviceConfigTypes.get(pipelineType);
+    String pipelineOnlyConfigType =
+        pipelineType == null ? null : SOURCE_CONFIG_TYPES_BY_PIPELINE.get(pipelineType);
+    return sourceConfigType == null ? pipelineOnlyConfigType : sourceConfigType;
   }
 
   private static String getUnresolvedReason(
       ObjectNode pipeline, ServiceTypeResolution serviceType) {
     PipelineType pipelineType = getPipelineType(pipeline);
+    String reason;
     if (pipelineType == null) {
-      return "invalid pipelineType '" + pipeline.path("pipelineType").asText() + "'";
+      reason = "invalid pipelineType '" + pipeline.path(PIPELINE_TYPE).asText() + "'";
+    } else if (!serviceType.isResolved()) {
+      reason = serviceType.reason();
+    } else {
+      reason =
+          "unsupported pipelineType '"
+              + pipelineType.value()
+              + "' for service type '"
+              + serviceType.serviceType()
+              + "'";
     }
-    if (!serviceType.isResolved()) {
-      return serviceType.reason();
-    }
-    return "unsupported pipelineType '"
-        + pipelineType.value()
-        + "' for service type '"
-        + serviceType.serviceType()
-        + "'";
+    return reason;
   }
 
   private static PipelineType getPipelineType(ObjectNode pipeline) {
-    try {
-      return PipelineType.fromValue(pipeline.path("pipelineType").asText());
-    } catch (IllegalArgumentException ignored) {
-      return null;
+    String pipelineTypeValue = pipeline.path(PIPELINE_TYPE).asText();
+    PipelineType pipelineType = null;
+    for (PipelineType candidate : PipelineType.values()) {
+      if (candidate.value().equals(pipelineTypeValue)) {
+        pipelineType = candidate;
+        break;
+      }
     }
+    return pipelineType;
   }
 
   private static void logMigrationResult(MigrationResult result) {

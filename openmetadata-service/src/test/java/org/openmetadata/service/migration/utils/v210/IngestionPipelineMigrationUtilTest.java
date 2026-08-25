@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -213,6 +214,68 @@ class IngestionPipelineMigrationUtilTest {
     assertEquals(
         "no active supported service relationship",
         result.unresolvedPipelines().getFirst().reason());
+  }
+
+  @Test
+  void backfillLeavesPipelineOnlyTypeWithoutActiveServiceRelationshipUnresolved() {
+    ObjectNode pipeline = pipeline(PipelineType.DBT, JsonUtils.getObjectNode());
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.IngestionPipelineDAO pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), anyString(), anyString()))
+        .thenReturn(List.of(pipeline.toString()), List.of());
+    when(relationshipDAO.findFromBatch(
+            List.of(pipeline.path("id").asText()),
+            Relationship.CONTAINS.ordinal(),
+            Include.NON_DELETED))
+        .thenReturn(List.of());
+
+    IngestionPipelineMigrationUtil.MigrationResult result =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO);
+
+    assertEquals(1, result.scanned());
+    assertEquals(0, result.repaired());
+    assertEquals(1, result.unresolved());
+    assertFalse(config(pipeline).has("type"));
+    assertEquals(
+        "no active supported service relationship",
+        result.unresolvedPipelines().getFirst().reason());
+  }
+
+  @Test
+  void backfillRepairsPipelineOnlyTypeWithActiveServiceRelationship() {
+    ObjectNode pipeline = pipeline(PipelineType.DBT, JsonUtils.getObjectNode());
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.IngestionPipelineDAO pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), anyString(), anyString()))
+        .thenReturn(List.of(pipeline.toString()), List.of());
+    when(relationshipDAO.findFromBatch(
+            List.of(pipeline.path("id").asText()),
+            Relationship.CONTAINS.ordinal(),
+            Include.NON_DELETED))
+        .thenReturn(List.of(relationship(pipeline.path("id").asText(), Entity.DATABASE_SERVICE)));
+
+    IngestionPipelineMigrationUtil.MigrationResult result =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO);
+
+    assertEquals(1, result.scanned());
+    assertEquals(1, result.repaired());
+    assertEquals(0, result.unresolved());
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(pipelineDAO)
+        .update(
+            eq(UUID.fromString(pipeline.path("id").asText())),
+            eq(pipeline.path("fullyQualifiedName").asText()),
+            updatedJson.capture());
+    ObjectNode updatedPipeline = (ObjectNode) JsonUtils.readTree(updatedJson.getValue());
+    assertEquals("DBT", config(updatedPipeline).path("type").asText());
   }
 
   private static Stream<Arguments> sourceConfigTypes() {
