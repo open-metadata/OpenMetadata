@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.mcp.tools.SearchMetadataTool.cleanSearchResponseObject;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
@@ -36,6 +37,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class RootCauseAnalysisTool implements McpTool {
@@ -87,7 +89,8 @@ public class RootCauseAnalysisTool implements McpTool {
             downstreamDepth,
             queryFilter,
             includeDeleted,
-            includeColumns);
+            includeColumns,
+            getSubjectContext(securityContext));
     try {
       return analyze(request);
     } catch (IOException e) {
@@ -102,6 +105,11 @@ public class RootCauseAnalysisTool implements McpTool {
   }
 
   /** Bundles the parsed and validated tool arguments for a single root cause analysis run. */
+  /**
+   * {@code subject} is the caller's identity, carried so every lineage read below applies their
+   * domain restrictions ({@code LineageDomainFilter}). The overloads that omit it prune nothing, so
+   * a domain-restricted caller would see producers and impacted assets they cannot access.
+   */
   private record RcaRequest(
       String fqn,
       String entityType,
@@ -109,7 +117,8 @@ public class RootCauseAnalysisTool implements McpTool {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      boolean includeColumns) {}
+      boolean includeColumns,
+      SubjectContext subject) {}
 
   private Map<String, Object> analyze(RcaRequest request) throws IOException {
     Map<String, Object> result = new HashMap<>();
@@ -123,7 +132,8 @@ public class RootCauseAnalysisTool implements McpTool {
                 request.fqn(),
                 request.upstreamDepth(),
                 request.queryFilter(),
-                request.includeDeleted());
+                request.includeDeleted(),
+                request.subject());
     Map<String, Object> upstreamAnalysis =
         buildUpstreamAnalysis(upstreamResponse.getEntity(), request);
     result.put("upstreamAnalysis", upstreamAnalysis);
@@ -221,7 +231,12 @@ public class RootCauseAnalysisTool implements McpTool {
     try {
       EntityLineage lineage =
           Entity.getLineageRepository()
-              .getByName(request.entityType(), request.fqn(), request.upstreamDepth(), 0);
+              .getByName(
+                  request.entityType(),
+                  request.fqn(),
+                  request.upstreamDepth(),
+                  0,
+                  request.subject());
       List<Map<String, Object>> producers = new ArrayList<>();
       if (lineage != null && !nullOrEmpty(lineage.getNodes())) {
         lineage.getNodes().forEach(node -> producers.add(producerOf(node)));
@@ -259,7 +274,8 @@ public class RootCauseAnalysisTool implements McpTool {
               .withIsConnectedVia(isConnectedVia(request.entityType()))
               .withIncludeDeleted(request.includeDeleted());
       SearchLineageResult downstreamResult =
-          Entity.getSearchRepository().searchLineageWithDirection(downstreamRequest);
+          Entity.getSearchRepository()
+              .searchLineageWithDirection(downstreamRequest, request.subject());
       addDownstreamNodes(downstreamAnalysis, downstreamResult);
       addDownstreamEdges(downstreamAnalysis, downstreamResult, request.includeColumns());
     } catch (Exception e) {
