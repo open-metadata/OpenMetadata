@@ -12,10 +12,10 @@
  */
 
 import justifiedRuleDisable from './justified-rule-disable.ts';
+import noAwaitedWaitForResponse from './no-awaited-wait-for-response.ts';
 import noBlanketTestSlow from './no-blanket-test-slow.ts';
 import noPositionalLocator from './no-positional-locator.ts';
 import requireAssertionPerTest from './require-assertion-per-test.ts';
-import noAwaitedWaitForResponse from './no-awaited-wait-for-response.ts';
 
 export default {
   rules: {
