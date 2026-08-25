@@ -120,21 +120,24 @@ def get_request_conf() -> Optional[dict]:  # noqa: UP045
 
 def get_dagbag():
     """
-    Load the dagbag from Airflow settings
+    Build an empty DagBag for the deploy path.
+
+    The only caller is `DagDeployer.refresh_session_dag`, which immediately calls
+    `process_file` on the DAG file it has just written and then asks for that single
+    `dag_id`. `process_file` bags the DAG itself, so the bag never needs to be
+    populated from anywhere else.
+
+    Collecting the whole folder here re-parsed every DAG in the deployment on every
+    single deploy, which made one deploy cost O(total DAGs) and a bulk deploy
+    O(total DAGs^2). It also defeated `process_file`: `collect_dags` stamps
+    `file_last_changed` for every file it walks, including the one just written, so
+    the subsequent `process_file` call hit its `only_if_updated` early return and the
+    DAG was bagged by the folder walk as a side effect rather than on purpose.
+
+    `collect_dags=False` is accepted by DagBag on both Airflow 2.x and 3.x, so this
+    needs no version branching.
     """
-    airflow_server = version.parse(airflow_version)
-
-    dagbag_kwargs = {"dag_folder": settings.DAGS_FOLDER}
-    if airflow_server < version.parse("3.0.0"):
-        dagbag_kwargs["read_dags_from_db"] = True
-
-    dagbag = DagBag(**dagbag_kwargs)
-    dagbag.collect_dags()
-
-    if airflow_server < version.parse("3.0.0") and hasattr(dagbag, "collect_dags_from_db"):
-        dagbag.collect_dags_from_db()
-
-    return dagbag
+    return DagBag(dag_folder=settings.DAGS_FOLDER, collect_dags=False)
 
 
 class ScanDagsTask(Process):
