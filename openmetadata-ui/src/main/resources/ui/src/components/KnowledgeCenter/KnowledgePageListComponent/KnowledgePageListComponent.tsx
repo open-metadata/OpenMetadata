@@ -558,6 +558,7 @@ const KnowledgePageListComponent = forwardRef<
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
                       <a
+                        aria-label={t('label.documentation')}
                         href={KNOWLEDGE_CENTER_DOC_LINK}
                         rel="noreferrer"
                         style={{ color: theme.primaryColor }}

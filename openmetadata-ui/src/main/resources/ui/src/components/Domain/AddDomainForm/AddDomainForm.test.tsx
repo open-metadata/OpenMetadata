@@ -530,8 +530,9 @@ describe('AddDomainForm', () => {
         },
       },
     ];
-    let resolveCustomProperties: (properties: CustomProperty[]) => void = () =>
-      undefined;
+    let resolveCustomProperties: (properties: CustomProperty[]) => void = (
+      _properties
+    ) => undefined;
     const customPropertiesRequest = new Promise<CustomProperty[]>((resolve) => {
       resolveCustomProperties = resolve;
     });

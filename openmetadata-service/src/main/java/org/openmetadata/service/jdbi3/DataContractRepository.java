@@ -106,6 +106,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public static final String RESULT_SCHEMA = "dataContractResult";
   public static final String RESULT_EXTENSION_KEY = "id";
 
+  // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
+  // before it runs.
+  private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
+
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
   @Getter @Setter private PipelineServiceClientInterface pipelineServiceClient;
@@ -229,16 +233,51 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     postCreateOrUpdate(updated);
   }
 
+  /**
+   * Contract results are destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
   @Override
-  protected void postDelete(DataContract dataContract, boolean hardDelete) {
-    super.postDelete(dataContract, hardDelete);
-    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      deleteTestSuite(dataContract);
-    }
-    // Clean status
+  protected void entitySpecificCleanup(DataContract dataContract) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
+  }
+
+  /**
+   * The logical test suite is linked as {@code testSuite --CONTAINS--> dataContract}, i.e. the
+   * contract is the <i>target</i> of the edge, so the delete cascade — which walks from → to —
+   * never reaches it and the repository has to drive it explicitly. Destroying the suite (and, via
+   * {@code deleteLogicalTestSuite}, its DQ ingestion pipeline) is irreversible, so it belongs on
+   * the hard-delete hook only: a soft-deleted contract keeps a working suite to come back to.
+   *
+   * <p>Deliberately no soft-delete/restore counterpart. That same {@code testSuite CONTAINS
+   * dataContract} edge makes the contract a restore-cascade <i>child</i> of the suite, and
+   * {@code bulkRestoreSubtree} runs {@code restoreAdditionalChildren} unconditionally — so a
+   * contract → suite restore hook and the suite → contract cascade would call each other forever.
+   */
+  @Override
+  protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
+    deleteContractTestSuite(findContractTestSuite(find(id, Include.ALL)), updatedBy);
+  }
+
+  private TestSuite findContractTestSuite(DataContract dataContract) {
+    return Entity.getEntityOrNull(
+        dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+  }
+
+  /**
+   * No-op when the contract never owned a suite — it must never be created on a delete path.
+   * {@code deletedBy} is the operator the delete came in as, so the suite's audit trail credits
+   * them rather than a hard-coded system user.
+   */
+  private void deleteContractTestSuite(TestSuite testSuite, String deletedBy) {
+    if (testSuite != null) {
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      testSuiteRepository.deleteLogicalTestSuite(deletedBy, testSuite, true);
+      testSuiteRepository.deleteFromSearch(testSuite, true);
+    }
   }
 
   private void postCreateOrUpdate(DataContract dataContract) {
@@ -863,7 +902,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // If we had a test suite from older tests, but we removed them, we can delete the suite
       if (nullOrEmpty(dataContract.getQualityExpectations())) {
-        deleteTestSuite(dataContract);
+        deleteContractTestSuite(findContractTestSuite(dataContract), dataContract.getUpdatedBy());
         dataContract.setTestSuite(null);
         return null;
       }
@@ -929,14 +968,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  private void deleteTestSuite(DataContract dataContract) {
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = getOrCreateTestSuite(dataContract);
-    testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
-    testSuiteRepository.deleteFromSearch(testSuite, true);
-  }
-
   private TestSuite getOrCreateTestSuite(DataContract dataContract) {
     String testSuiteName = getTestSuiteName(dataContract);
     TestSuiteRepository testSuiteRepository =
@@ -945,7 +976,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // Check if test suite already exists
     if (contractHasTestSuite(dataContract)) {
       return Entity.getEntityOrNull(
-          dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+          dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
     } else {
       // Create new test suite
       LOG.debug(
@@ -1157,7 +1188,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               dataContract.getFullyQualifiedName()));
     }
     TestSuite testSuite =
-        Entity.getEntity(dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+        Entity.getEntity(
+            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
 
     if (nullOrEmpty(testSuite.getPipelines())) {
       throw DataContractValidationException.byMessage(

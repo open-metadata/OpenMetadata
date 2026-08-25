@@ -37,13 +37,17 @@ jest.mock('../SearchBarComponent/SearchBar.component', () =>
 jest.mock('./DraggableMenu/DraggableMenuItem.component', () =>
   jest.fn().mockImplementation(({ currentItem, selectedOptions, onSelect }) => (
     <div key={currentItem.value}>
-      <input
-        checked={selectedOptions.includes(currentItem.value)}
-        data-testid={`column-checkbox-${currentItem.value}`}
-        type="checkbox"
-        onChange={(e) => onSelect(currentItem.value, e.target.checked)}
-      />
-      <label>{currentItem.label}</label>
+      <label htmlFor={`column-checkbox-${currentItem.value}`}>
+        <input
+          aria-label={currentItem.label}
+          checked={selectedOptions.includes(currentItem.value)}
+          data-testid={`column-checkbox-${currentItem.value}`}
+          id={`column-checkbox-${currentItem.value}`}
+          type="checkbox"
+          onChange={(e) => onSelect(currentItem.value, e.target.checked)}
+        />
+        {currentItem.label}
+      </label>
     </div>
   ))
 );

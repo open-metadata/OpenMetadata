@@ -68,7 +68,17 @@ jest.mock('react-router-dom', () => ({
         to: string;
         onClick?: (e: React.MouseEvent) => void;
       }) => (
-        <span data-testid="link" data-to={to} onClick={onClick}>
+        <span
+          data-testid="link"
+          data-to={to}
+          role="button"
+          tabIndex={0}
+          onClick={onClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onClick?.(e as unknown as React.MouseEvent);
+            }
+          }}>
           {children}
         </span>
       )
