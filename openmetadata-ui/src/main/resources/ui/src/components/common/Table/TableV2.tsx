@@ -309,22 +309,38 @@ const getRowInteractionProps = (
 };
 
 /**
- * Stable, unique React Aria column ids.
+ * React Aria keys rows and columns in one namespace, so a column id is only safe
+ * if nothing else in the table can produce it. Two things break that, and AntD
+ * tolerates both:
  *
- * AntD tolerates two columns sharing a `key` — it renders both. React Aria uses
- * the id as a collection key, so a duplicate collapses the column while the row
- * still renders a cell for it, and the table throws "Cell count must match
- * column count". Suffixing repeats keeps such a table rendering instead.
+ *  - two columns sharing a `key` — AntD renders both; React Aria collapses them
+ *    and the row then has more cells than there are columns;
+ *  - a row whose key equals a column's key — common here, where schema tables
+ *    render an entity's columns as rows with names like `name` or `description`.
+ *    The column disappears and the table throws "Cell count must match column
+ *    count. Found 3 cells and 0 columns."
+ *
+ * Prefixing keeps column ids clear of row ids, and suffixing repeats keeps them
+ * unique among themselves. Both are internal: `columnKeys` carries the original
+ * key for anything reported back to the call site.
  */
-const getColumnIds = <T,>(columns: ColumnsType<T>): string[] => {
+const COLUMN_ID_PREFIX = 'col:';
+
+const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
+  columns.map((col, idx) =>
+    String(col.key ?? (col as ColumnType<T>).dataIndex ?? idx)
+  );
+
+const getColumnIds = (columnKeys: string[]): string[] => {
   const seen = new Map<string, number>();
 
-  return columns.map((col, idx) => {
-    const base = String(col.key ?? (col as ColumnType<T>).dataIndex ?? idx);
-    const count = seen.get(base) ?? 0;
-    seen.set(base, count + 1);
+  return columnKeys.map((key) => {
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
 
-    return count === 0 ? base : `${base}-${count}`;
+    return count === 0
+      ? `${COLUMN_ID_PREFIX}${key}`
+      : `${COLUMN_ID_PREFIX}${key}-${count}`;
   });
 };
 
@@ -454,6 +470,9 @@ const TableV2 = <T extends object>(
     dropdownColumnList,
   ]);
 
+  const columnKeys = useMemo(() => getColumnKeys(propsColumns), [propsColumns]);
+  const columnIds = useMemo(() => getColumnIds(columnKeys), [columnKeys]);
+
   /**
    * A column carrying `sortOrder` drives the sort, exactly as in AntD — the
    * prop is controlled by the parent and outranks whatever the user last
@@ -468,10 +487,10 @@ const TableV2 = <T extends object>(
     const col = propsColumns[idx] as ColumnType<T>;
 
     return {
-      columnKey: String(col.key ?? col.dataIndex ?? idx),
+      columnKey: columnIds[idx],
       direction: toAriaDirection(col.sortOrder === 'descend' ? 'descend' : 'ascend'),
     };
-  }, [propsColumns]);
+  }, [propsColumns, columnIds]);
 
   const effectiveSort = controlledSort ?? sortState;
 
@@ -480,11 +499,9 @@ const TableV2 = <T extends object>(
     if (!effectiveSort.columnKey || !effectiveSort.direction) {
       return data;
     }
-    const col = propsColumns.find((c, idx) => {
-      const key = String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx);
-
-      return key === effectiveSort.columnKey;
-    }) as ColumnType<T> | undefined;
+    const col = propsColumns.find(
+      (_c, idx) => columnIds[idx] === effectiveSort.columnKey
+    ) as ColumnType<T> | undefined;
 
     if (!col?.sorter || typeof col.sorter !== 'function') {
       return data;
@@ -493,7 +510,7 @@ const TableV2 = <T extends object>(
     const sorted = [...data].sort((a, b) => compareFn(a, b));
 
     return effectiveSort.direction === 'descending' ? sorted.reverse() : sorted;
-  }, [rest.dataSource, effectiveSort, propsColumns]);
+  }, [rest.dataSource, effectiveSort, propsColumns, columnIds]);
 
   const filteredDataSource = useMemo((): T[] => {
     const activeFilters = Object.entries(filterState).filter(
@@ -506,8 +523,7 @@ const TableV2 = <T extends object>(
     return sortedDataSource.filter((record) =>
       activeFilters.every(([colKey, selectedKeys]) => {
         const col = propsColumns.find(
-          (c, idx) =>
-            String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
+          (_c, idx) => columnIds[idx] === colKey
         ) as ColumnType<T> | undefined;
 
         return col?.onFilter
@@ -517,7 +533,7 @@ const TableV2 = <T extends object>(
           : true;
       })
     );
-  }, [sortedDataSource, filterState, propsColumns]);
+  }, [sortedDataSource, filterState, propsColumns, columnIds]);
 
   const pagedDataSource = useMemo((): T[] => {
     if (!clientPagination) {
@@ -701,11 +717,11 @@ const TableV2 = <T extends object>(
   const handleSortChange = useCallback(
     (descriptor: AriaSortDescriptor) => {
       const newKey = descriptor.column ? String(descriptor.column) : null;
-      const clickedColumn = propsColumns.find((c, idx) => {
-        const key = String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx);
-
-        return key === newKey;
-      }) as ColumnType<T> | undefined;
+      const clickedIndex = columnIds.findIndex((id) => id === newKey);
+      const clickedColumn = propsColumns[clickedIndex] as
+        | ColumnType<T>
+        | undefined;
+      const reportedKey = columnKeys[clickedIndex] ?? '';
 
       const newDirection = resolveSortDirection(
         clickedColumn,
@@ -717,13 +733,7 @@ const TableV2 = <T extends object>(
       if (!rest.onChange) {
         return;
       }
-      const matchedCol = propsColumns.find((c, colIdx) => {
-        const resolvedKey = String(
-          c.key ?? (c as ColumnType<T>).dataIndex ?? colIdx
-        );
 
-        return resolvedKey === descriptor.column;
-      }) as ColumnType<T> | undefined;
 
       rest.onChange(
         {
@@ -733,9 +743,9 @@ const TableV2 = <T extends object>(
         } as TablePaginationConfig,
         {} as Record<string, FilterValue | null>,
         {
-          column: matchedCol,
-          columnKey: String(descriptor.column ?? ''),
-          field: String(descriptor.column ?? ''),
+          column: clickedColumn,
+          columnKey: reportedKey,
+          field: reportedKey,
           order:
             newDirection === 'ascending'
               ? 'ascend'
@@ -756,6 +766,8 @@ const TableV2 = <T extends object>(
       internalCurrentPage,
       clientPagination,
       sortState.columnKey,
+      columnIds,
+      columnKeys,
     ]
   );
 
@@ -815,7 +827,6 @@ const TableV2 = <T extends object>(
     };
   }, [clientPagination, handlePageSizeChange]);
 
-  const columnIds = useMemo(() => getColumnIds(propsColumns), [propsColumns]);
 
   // ─── Flat rows (tree data flattened with depth tracking) ──────────────────
 

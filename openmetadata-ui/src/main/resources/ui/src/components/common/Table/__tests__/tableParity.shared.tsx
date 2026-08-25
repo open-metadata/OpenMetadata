@@ -449,6 +449,21 @@ export const runTableParitySuite = (
     });
   });
 
+  describe(`${suiteName} — row key colliding with a column key`, () => {
+    // Schema tables render an entity's columns as rows, so a row keyed `name`
+    // alongside a `name` column is routine. React Aria keys rows and columns in
+    // one namespace, and the column used to vanish.
+    it('keeps the column when a row key matches it', () => {
+      renderTable({
+        dataSource: [{ count: 1, name: 'name' }, { count: 2, name: 'other' }],
+      });
+      const cells = screen.getAllByRole('row')[1].querySelectorAll('td, th');
+
+      expect(cells).toHaveLength(2);
+      expect(screen.getByText('Name')).toBeInTheDocument();
+    });
+  });
+
   describe(`${suiteName} — container`, () => {
     it('applies containerClassName to the outer container', () => {
       const { container } = renderTable({ containerClassName: 'outer-marker' });
