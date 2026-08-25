@@ -339,7 +339,7 @@ class GlueUnitTest(TestCase):
 
         assert ["default", "foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
         assert len(source.status.warnings) == 1
-        assert "more than one catalog" in str(source.status.warnings[0])
+        assert "more than one catalog" in source.status.warnings[0][MOCK_CUSTOM_DB_NAME]
 
     def test_schema_without_catalog_id_is_not_counted_as_another_catalog(self):
         """A missing CatalogId is not a second catalog, so it must not warn about merging."""
