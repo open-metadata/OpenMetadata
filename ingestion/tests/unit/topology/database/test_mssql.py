@@ -102,7 +102,9 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="mssql_source_test.sample_database",
     displayName="sample_database",
     description="",
-    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
+    ),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -209,7 +211,9 @@ EXPECTED_TABLE = [
             ),
         ],
         tableConstraints=[],
-        databaseSchema=FullyQualifiedEntityName('mssql_source_test.sample_database."sample.schema"'),
+        databaseSchema=FullyQualifiedEntityName(
+            'mssql_source_test.sample_database."sample.schema"'
+        ),
     )
 ]
 
@@ -220,7 +224,9 @@ class MssqlUnitTest(TestCase):
     Mssql Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def __init__(
         self,
         methodName,  # noqa: N803
@@ -233,24 +239,39 @@ class MssqlUnitTest(TestCase):
             mock_mssql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.mssql.context.get_current_thread_id()
         self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.mssql._inspector_map[self.thread_id].get_columns = lambda table_name, schema_name, table_type, db_name: (
-            MOCK_COLUMN_VALUE
+        self.mssql._inspector_map[self.thread_id].get_columns = (
+            lambda table_name, schema_name, table_type, db_name: (MOCK_COLUMN_VALUE)
         )
-        self.mssql._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
-        self.mssql._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-        self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+        self.mssql._inspector_map[self.thread_id].get_pk_constraint = (
+            lambda table_name, schema_name: []
+        )
+        self.mssql._inspector_map[self.thread_id].get_unique_constraints = (
+            lambda table_name, schema_name: []
+        )
+        self.mssql._inspector_map[self.thread_id].get_foreign_keys = (
+            lambda table_name, schema_name: []
+        )
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
+        assert EXPECTED_DATABASE == [
+            either.right
+            for either in self.mssql.yield_database(MOCK_DATABASE.name.root)
+        ]  # noqa: SIM300
 
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     @mssql_dialet.db_plus_owner
-    def mock_function(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+    def mock_function(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):  # pylint: disable=unused-argument
         # Mock function for testing
         return schema
 
@@ -265,22 +286,34 @@ class MssqlUnitTest(TestCase):
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
-            either.right for either in self.mssql.yield_database_schema(model_str(MOCK_DATABASE_SCHEMA.name))
+            either.right
+            for either in self.mssql.yield_database_schema(
+                model_str(MOCK_DATABASE_SCHEMA.name)
+            )
         ]
 
-        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
-        assert EXPECTED_TABLE == [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))]  # noqa: SIM300
+        assert EXPECTED_TABLE == [
+            either.right
+            for either in self.mssql.yield_table(("sample_table", "Regular"))
+        ]  # noqa: SIM300
 
     def test_get_stored_procedures(self):
         """
         Test that stored procedures are filtered correctly
         """
         self.mssql.source_config.includeStoredProcedures = True
-        self.mssql.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["sp_exclude"])
+        self.mssql.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.mssql.engine = mock_engine
@@ -315,7 +348,9 @@ class MssqlUnitTest(TestCase):
 class TestUpdateMssqlIschemaNames:
     """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
     def setup_method(self, _method, test_connection):
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
@@ -353,7 +388,9 @@ class TestUpdateMssqlIschemaNames:
         target = {}
         update_mssql_ischema_names(target)
         for type_key in self.EXPECTED_MSSQL_TYPES:
-            assert type_key in target, f"'{type_key}' was not added by update_mssql_ischema_names"
+            assert (
+                type_key in target
+            ), f"'{type_key}' was not added by update_mssql_ischema_names"
 
     def test_all_added_types_are_not_none(self):
         target = {}
@@ -369,8 +406,12 @@ class TestUpdateMssqlIschemaNames:
 
     def _setup_stored_procedure_context(self):
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.stored_procedure_desc_map = {}
         self.mssql.encrypted_procedures_cache = {}
 
@@ -426,7 +467,9 @@ class TestUpdateMssqlIschemaNames:
 
         assert len(results) == 1
         assert results[0].description is None
-        assert results[0].storedProcedureCode.code == "CREATE PROC sp_normal AS SELECT 1"
+        assert (
+            results[0].storedProcedureCode.code == "CREATE PROC sp_normal AS SELECT 1"
+        )
 
     def test_get_encrypted_procedures_caches_per_schema(self):
         """_get_encrypted_procedures queries once per schema and caches"""
@@ -473,9 +516,13 @@ class TestUpdateMssqlIschemaNames:
         self.mssql.encrypted_procedures_cache = {("db", "dbo"): {"sp"}}
 
         with (
-            patch.object(MssqlSource, "set_schema_description_map", side_effect=Exception("boom")) as schema_map,
+            patch.object(
+                MssqlSource, "set_schema_description_map", side_effect=Exception("boom")
+            ) as schema_map,
             patch.object(MssqlSource, "set_database_description_map") as database_map,
-            patch.object(MssqlSource, "set_stored_procedure_description_map") as procedure_map,
+            patch.object(
+                MssqlSource, "set_stored_procedure_description_map"
+            ) as procedure_map,
         ):
             # Must not raise even though the first description query failed
             self.mssql._load_description_maps()
@@ -502,13 +549,19 @@ class TestUpdateMssqlIschemaNames:
     def test_failed_database_recorded_in_status(self):
         """A database that fails to connect is recorded in status and not yielded"""
         self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.status = MagicMock()
 
         with (
-            patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["bad_db"])),
+            patch.object(
+                MssqlSource, "get_database_names_raw", return_value=iter(["bad_db"])
+            ),
             patch.object(MssqlSource, "_load_description_maps"),
-            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+            patch.object(
+                MssqlSource, "set_inspector", side_effect=Exception("cannot connect")
+            ),
         ):
             yielded = list(self.mssql.get_database_names())
 
@@ -525,7 +578,9 @@ class MssqlIdentityColumnTest(TestCase):
     """
 
     def test_bigint_identity_returns_int_values(self):
-        result = mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), Decimal("1"))
+        result = mssql_dialet.get_identity_values(
+            BigInteger(), Decimal("1"), Decimal("1")
+        )
 
         assert result == {"start": 1, "increment": 1}
         assert isinstance(result["start"], int)
@@ -578,10 +633,14 @@ class TestMssqlForeignKeyReferredDatabase:
         connection = MagicMock()
         connection.execute.return_value.fetchall.return_value = rows
 
-        return mssql_dialet.get_foreign_keys(MSDialect(), connection, "orders", schema="sales")
+        return mssql_dialet.get_foreign_keys(
+            MSDialect(), connection, "orders", schema="sales"
+        )
 
     def test_referred_database_comes_from_the_query(self):
-        keys = self._foreign_keys([self._fk_row("fk_orders_customer", "customer_id", "id")])
+        keys = self._foreign_keys(
+            [self._fk_row("fk_orders_customer", "customer_id", "id")]
+        )
 
         assert [key["referred_database"] for key in keys] == ["my_catalog"]
 
@@ -635,9 +694,13 @@ class TestMssqlTemporalPeriodColumns:
         from sqlalchemy.dialects.mssql.base import MSDialect
 
         connection = MagicMock()
-        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = (
+            rows
+        )
 
-        return mssql_dialet.get_columns(MSDialect(), connection, "orders", schema="sales")
+        return mssql_dialet.get_columns(
+            MSDialect(), connection, "orders", schema="sales"
+        )
 
     def test_period_columns_are_reflected(self):
         cols = self._get_columns(
@@ -651,7 +714,9 @@ class TestMssqlTemporalPeriodColumns:
         assert [col["name"] for col in cols] == ["id", "SysStartTime", "SysEndTime"]
 
     def test_a_table_without_period_columns_is_unaffected(self):
-        cols = self._get_columns([self._row("id", data_type="int"), self._row("name", data_type="varchar")])
+        cols = self._get_columns(
+            [self._row("id", data_type="int"), self._row("name", data_type="varchar")]
+        )
 
         assert [col["name"] for col in cols] == ["id", "name"]
 
@@ -667,23 +732,43 @@ class TestMssqlQueryStoreSelection:
         if actual_state is None:
             conn.execute.return_value.fetchone.return_value = None
         else:
-            conn.execute.return_value.fetchone.return_value = (actual_state, readonly_reason)
+            conn.execute.return_value.fetchone.return_value = (
+                actual_state,
+                readonly_reason,
+            )
         return engine
 
     def test_query_store_enabled_when_read_write(self):
-        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(2)) is True
+        assert (
+            mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(2))
+            is True
+        )
 
     def test_query_store_enabled_when_read_only(self):
-        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(1)) is True
+        assert (
+            mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(1))
+            is True
+        )
 
     def test_query_store_disabled_when_off(self):
-        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(0)) is False
+        assert (
+            mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(0))
+            is False
+        )
 
     def test_query_store_disabled_when_error_state(self):
-        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(3)) is False
+        assert (
+            mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(3))
+            is False
+        )
 
     def test_query_store_disabled_when_null_state(self):
-        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(None)) is False
+        assert (
+            mssql_dialet.is_query_store_enabled(
+                self._engine_with_query_store_state(None)
+            )
+            is False
+        )
 
     def test_query_store_disabled_when_engine_missing(self):
         assert mssql_dialet.is_query_store_enabled(None) is False
@@ -742,16 +827,24 @@ class TestMssqlQueryStoreSelection:
         probe.assert_called_once()
 
     def test_resolve_query_log_statement_prefers_query_store(self):
-        assert self._lineage_source(True).resolve_query_log_statement() == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+        assert (
+            self._lineage_source(True).resolve_query_log_statement()
+            == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+        )
 
     def test_resolve_query_log_statement_falls_back_to_dmv(self):
-        assert self._lineage_source(False).resolve_query_log_statement() == MSSQL_SQL_STATEMENT
+        assert (
+            self._lineage_source(False).resolve_query_log_statement()
+            == MSSQL_SQL_STATEMENT
+        )
 
     def test_usage_source_shares_query_store_selection(self):
         source = MssqlUsageSource.__new__(MssqlUsageSource)
         source._query_store_enabled = True
 
-        assert source.resolve_query_log_statement() == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+        assert (
+            source.resolve_query_log_statement() == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+        )
 
     def test_stored_procedure_statement_uses_query_store(self):
         source = self._lineage_source(True)
@@ -844,7 +937,10 @@ class TestMssqlPerDatabaseQueryStore:
             "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
             side_effect=lambda engine: engine is engines["QsDb"],
         ):
-            routed = [(engine, source.resolve_query_log_statement()) for engine in source.get_engine()]
+            routed = [
+                (engine, source.resolve_query_log_statement())
+                for engine in source.get_engine()
+            ]
 
         assert routed == [
             (engines["QsDb"], MSSQL_SQL_STATEMENT_FROM_QUERY_STORE),
@@ -870,7 +966,9 @@ class TestMssqlPerDatabaseQueryStore:
 
     def test_databases_to_scan_applies_database_filter(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
-        source.source_config = MagicMock(databaseFilterPattern=FilterPattern(includes=["^SalesDW$", "^Inventory$"]))
+        source.source_config = MagicMock(
+            databaseFilterPattern=FilterPattern(includes=["^SalesDW$", "^Inventory$"])
+        )
         conn = source.engine.connect.return_value.__enter__.return_value
         conn.execute.return_value.fetchall.return_value = [
             ("SalesDW",),
@@ -894,6 +992,8 @@ class TestMssqlPerDatabaseQueryStore:
     def test_mixin_default_stored_procedure_engines_is_single(self):
         fake_source = types.SimpleNamespace(engine=MagicMock())
 
-        engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
+        engines = list(
+            StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source)
+        )
 
         assert engines == [fake_source.engine]
