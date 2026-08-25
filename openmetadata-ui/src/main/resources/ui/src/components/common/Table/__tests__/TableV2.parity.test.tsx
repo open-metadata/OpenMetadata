@@ -241,3 +241,55 @@ describe('TableV2 — cell content is not boxed without an expander', () => {
     expect(firstCellWrapper().className).toContain('tw:flex');
   });
 });
+
+/**
+ * TableV2-only: an `ellipsis` column has to truncate whether or not the row
+ * carries an expander, and the two paths lay the value out differently — the
+ * expander case puts it in a flex row, the plain case leaves it a block child
+ * of the cell. Raised in review: `flex-1` is inert under `display: contents`.
+ */
+describe('TableV2 — ellipsis columns', () => {
+  const longRow = {
+    count: 1,
+    name: 'a-very-long-value-that-should-be-clipped',
+  };
+
+  const valueDiv = () =>
+    screen
+      .getAllByRole('row')[1]
+      .querySelector('td, th')
+      ?.querySelector('div.tw\\:truncate') as HTMLElement;
+
+  it('truncates without an expander, and drops the inert flex classes', () => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', ellipsis: true, key: 'name', title: 'Name' },
+        ]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(valueDiv()).toBeInTheDocument();
+    expect(valueDiv().className).not.toContain('tw:flex-1');
+  });
+
+  it('keeps the flex classes when an expander shares the cell', () => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', ellipsis: true, key: 'name', title: 'Name' },
+        ]}
+        dataSource={[{ ...longRow, children: [{ count: 2, name: 'child' }] }]}
+        expandable={{}}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(valueDiv().className).toContain('tw:flex-1');
+    expect(valueDiv().className).toContain('tw:min-w-0');
+  });
+});

@@ -1351,7 +1351,15 @@ const TableV2 = <T extends object>(
                                 </div>
                               )}
                               {colType.ellipsis ? (
-                                <div className="tw:flex-1 tw:min-w-0 tw:truncate">
+                                // `flex-1 min-w-0` only mean anything inside the
+                                // flex row an expander creates; without one the
+                                // wrapper is `display: contents` and this div is
+                                // a block child of the cell, which already fills
+                                // it. `truncate` is what does the work either way.
+                                <div
+                                  className={classNames('tw:truncate', {
+                                    'tw:flex-1 tw:min-w-0': showExpandInCell,
+                                  })}>
                                   {resolveCellValue(
                                     colType,
                                     record,
