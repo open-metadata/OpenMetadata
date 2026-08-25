@@ -12,9 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -62,6 +65,7 @@ public class MultiDomainHasDomainIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
   void test_searchWithMultipleDomains_hasDomainPolicy(TestNamespace ns) throws Exception {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String p = ns.shortPrefix();
@@ -175,6 +179,7 @@ public class MultiDomainHasDomainIT {
   }
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
   void test_searchWithSingleDomain_hasDomainPolicy(TestNamespace ns) throws Exception {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String p = ns.shortPrefix();
@@ -253,6 +258,7 @@ public class MultiDomainHasDomainIT {
   }
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
   void test_searchWithDomain_canSeeNoDomainAssets(TestNamespace ns) throws Exception {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String p = ns.shortPrefix();

@@ -17,8 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -62,6 +65,7 @@ public class IncidentManagerDomainIsolationIT {
   private static final Column COLUMN = new Column().withName("id").withDataType(ColumnDataType.INT);
 
   @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
   void test_incidentListing_restrictedUserSeesOnlyOwnDomainIncidents(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
