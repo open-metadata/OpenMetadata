@@ -1155,11 +1155,11 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
-    # timeout wrapper (line ~1090) + ~5-8 min for setup (env, node, browser,
-    # bundle verify) and teardown/artifact upload. 30 min was tight enough
-    # that slow shards were being cancelled by the job clock while playwright
-    # itself still had time on the inner wrapper; 35 gives real headroom.
+    # Budget breakdown: up to 30 min playwright hang-protection wrapper on
+    # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
+    # and teardown/artifact upload. The job clock must clear the inner
+    # wrapper plus setup/teardown so a slow-but-finishing shard is never
+    # cancelled here while playwright still has wrapper time left.
     #
     # This ceiling only works when the sub-budgets it composes actually hold.
     # `Install Playwright Browsers` carries its own `timeout 5m` for exactly
@@ -1167,7 +1167,7 @@ jobs:
     # since `PW_ENVIRONMENT_SECONDS` was recorded before that step ran so the
     # 5-min env blocking gate couldn't fire. Keep those inner timeouts in
     # sync when adjusting this outer ceiling.
-    timeout-minutes: 35
+    timeout-minutes: 40
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1456,8 +1456,17 @@ jobs:
           fi
           jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
           started_at=$(date +%s)
+          # HANG PROTECTION ONLY — not a budget. The planner packs shards to
+          # ~19 min predicted; the 1500 s execution BUDGET is evaluated (and
+          # signalled, never enforced) by evaluate_playwright_performance.py.
+          # This wrapper exists solely so a truly wedged playwright process
+          # cannot hold the job until the 40-min job clock. It must stay well
+          # above the budget: at the old 25m it killed chromium-12 five
+          # seconds after its last test PASSED (run 32500973433 — one wedged
+          # retry teardown ate 9 min), destroying the results artifact and
+          # ejecting a green PR.
           set +e
-          timeout --signal=TERM --kill-after=30s 25m \
+          timeout --signal=TERM --kill-after=30s 30m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e

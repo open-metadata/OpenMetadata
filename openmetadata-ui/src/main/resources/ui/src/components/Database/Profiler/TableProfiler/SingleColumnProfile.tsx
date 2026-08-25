@@ -127,6 +127,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         i18nKey="message.no-profiler-card-message-with-link"
         renderElement={
           <a
+            aria-label={t('label.documentation')}
             href={profilerDocsLink}
             rel="noreferrer"
             target="_blank"

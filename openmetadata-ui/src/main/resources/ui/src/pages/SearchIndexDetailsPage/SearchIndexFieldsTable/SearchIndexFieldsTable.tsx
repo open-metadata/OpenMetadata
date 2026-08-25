@@ -222,10 +222,8 @@ const SearchIndexFieldsTable = ({
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
       const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon && !isButton) {
-        if (hasViewPermission) {
-          openColumnDetailPanel(field);
-        }
+      if (!isExpandIcon && !isButton && hasViewPermission) {
+        openColumnDetailPanel(field);
       }
     },
     [openColumnDetailPanel, hasViewPermission]

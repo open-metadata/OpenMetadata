@@ -9,6 +9,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.QueryStringQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.SimpleQueryStringFlag;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.json.JsonData;
 import java.util.ArrayList;
@@ -290,6 +291,39 @@ public class ElasticQueryBuilder {
                     qs.type(type);
                   }
                   return qs;
+                }));
+  }
+
+  /**
+   * Build a {@code simple_query_string} over {@code fields} that treats the whole input as literal
+   * text. Unlike {@code query_string}, this parser never throws on malformed input, so a caller can
+   * paste a URL or a name containing Lucene syntax without producing a {@code
+   * query_shard_exception}. {@code flags(NONE)} disables every operator, which is what makes the
+   * input literal — with operators live, a {@code -} or {@code |} in a name would still change the
+   * meaning of the query even though it could no longer throw.
+   */
+  public static Query simpleQueryStringQuery(
+      String query, Map<String, Float> fields, Operator operator) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, boost) -> {
+          if (boost != null && boost != 1.0f) {
+            fieldList.add(field + "^" + boost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.simpleQueryString(
+                sqs -> {
+                  sqs.query(query);
+                  sqs.fields(fieldList);
+                  sqs.flags(SimpleQueryStringFlag.None);
+                  if (operator != null) {
+                    sqs.defaultOperator(operator);
+                  }
+                  return sqs;
                 }));
   }
 
