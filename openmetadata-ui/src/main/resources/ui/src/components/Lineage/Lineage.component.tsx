@@ -44,14 +44,16 @@ const Lineage = ({
   ) : null;
 
   return (
-    <Card className="lineage-card card-padding-0" data-testid="lineage-details">
+    <Card
+      className="lineage-card card-padding-0 tw:flex tw:flex-col"
+      data-testid="lineage-details">
       {headerContent ? (
-        <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary">
+        <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary tw:shrink-0">
           {headerContent}
         </div>
       ) : null}
       <div
-        className="h-full relative lineage-container"
+        className="lineage-container tw:flex-1 tw:min-h-0 tw:overflow-hidden"
         data-testid="lineage-container"
         id="lineage-container">
         <LineageMap

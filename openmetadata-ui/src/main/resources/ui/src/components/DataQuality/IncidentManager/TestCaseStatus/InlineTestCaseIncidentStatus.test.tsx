@@ -734,10 +734,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {
@@ -964,10 +964,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {
