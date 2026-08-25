@@ -73,6 +73,24 @@ class DataRetentionExtensionRegistryTest {
         DataRetentionExtensionRegistryTest.class.getClassLoader());
   }
 
+  private static ClassLoader linkageFailingClassLoader(
+      Path directory, String failingClass, String... providerNames) throws IOException {
+    Path services = Files.createDirectories(directory.resolve("META-INF").resolve("services"));
+    Files.writeString(
+        services.resolve(DataRetentionExtension.class.getName()), String.join("\n", providerNames));
+    return new URLClassLoader(
+        new URL[] {directory.toUri().toURL()},
+        DataRetentionExtensionRegistryTest.class.getClassLoader()) {
+      @Override
+      public Class<?> loadClass(String name) throws ClassNotFoundException {
+        if (failingClass.equals(name)) {
+          throw new NoClassDefFoundError(name.replace('.', '/'));
+        }
+        return super.loadClass(name);
+      }
+    };
+  }
+
   @Test
   void discoverFindsExtensionsRegisteredViaServiceLoader(@TempDir Path registrations)
       throws IOException {
@@ -111,6 +129,28 @@ class DataRetentionExtensionRegistryTest {
         List.of(INERT_STEP),
         statsKeys(steps),
         "an unreadable registration must not hide the healthy provider behind it");
+  }
+
+  /**
+   * A provider class whose superclass or implemented interface is missing fails during {@code
+   * Class.forName}, inside {@code ServiceLoader}'s own iterator. That surfaces as a bare {@link
+   * NoClassDefFoundError}, not the {@link java.util.ServiceConfigurationError} the loader wraps a
+   * plain missing class in, so it escapes discovery unless the iteration guard covers LinkageError.
+   */
+  @Test
+  void discoverSkipsAProviderThatFailsToLink(@TempDir Path registrations) throws IOException {
+    String unlinkable = "org.openmetadata.service.apps.bundles.dataRetention.UnlinkableExtension";
+    ClassLoader classLoader =
+        linkageFailingClassLoader(
+            registrations, unlinkable, unlinkable, InertTestRetentionExtension.class.getName());
+
+    List<RetentionStep> steps =
+        DataRetentionExtensionRegistry.discover(classLoader).resolveSteps(null, failure -> {});
+
+    assertEquals(
+        List.of(INERT_STEP),
+        statsKeys(steps),
+        "a provider that fails to link must not take DataRetention's constructor down with it");
   }
 
   @Test

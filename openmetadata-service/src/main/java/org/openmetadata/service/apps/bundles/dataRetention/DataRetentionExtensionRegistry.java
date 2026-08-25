@@ -86,7 +86,7 @@ public final class DataRetentionExtensionRegistry {
         if (!exhausted) {
           instantiate(providers.next()).ifPresent(discovered::add);
         }
-      } catch (ServiceConfigurationError error) {
+      } catch (ServiceConfigurationError | LinkageError | RuntimeException error) {
         errors++;
         LOG.error("Skipping a DataRetention extension registration that could not be read.", error);
       }
