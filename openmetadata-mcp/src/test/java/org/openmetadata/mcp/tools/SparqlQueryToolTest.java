@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -40,7 +42,8 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 class SparqlQueryToolTest {
 
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
-  private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
+  private static final CatalogSecurityContext SECURITY_CONTEXT =
+      new CatalogSecurityContext(() -> "mcp-admin", "https", "JWT", Set.of());
 
   @Test
   void rejectsNonAdminBeforeAccessingTheGraph() {
@@ -130,6 +133,25 @@ class SparqlQueryToolTest {
     assertEquals("SELECT", result.queryType());
     assertFalse(result.truncated());
     assertEquals(27, result.byteCount());
+  }
+
+  @Test
+  void executesThroughTheGuardForTheCallerPrincipal() throws IOException {
+    RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn("{\"results\":{\"bindings\":[]}}");
+    AtomicReference<String> guardedPrincipal = new AtomicReference<>();
+    SparqlQueryTool.GuardedQueryExecutor guardedQueryExecutor =
+        (principal, query) -> {
+          guardedPrincipal.set(principal);
+          return query.get();
+        };
+
+    new SparqlQueryTool(() -> repository, guardedQueryExecutor)
+        .execute(
+            AUTHORIZER, SECURITY_CONTEXT, Map.of("query", "SELECT * WHERE { ?s ?p ?o } LIMIT 1"));
+
+    assertEquals("mcp-admin", guardedPrincipal.get());
   }
 
   @Test

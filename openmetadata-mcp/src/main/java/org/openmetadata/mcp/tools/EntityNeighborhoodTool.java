@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the bounded n-hop RDF neighborhood of an entity. */
 @Slf4j
@@ -59,7 +60,9 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
   }
 
   @Override
-  protected Neighborhood executeAuthorized(final Map<String, Object> params) throws IOException {
+  protected Neighborhood executeAuthorized(
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     McpEntityReference entity = McpEntityReference.required(parameters);
     int depth = clamp(parameters.integer("depth", DEFAULT_DEPTH), MIN_DEPTH, MAX_DEPTH);

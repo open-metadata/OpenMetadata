@@ -22,6 +22,7 @@ import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the canonical ontology or a focused description of one ontology resource. */
 public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result> {
@@ -43,7 +44,9 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
   }
 
   @Override
-  protected Result executeAuthorized(final Map<String, Object> params) throws IOException {
+  protected Result executeAuthorized(
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String resource = parameters.optionalString("resource");
     RdfSerializationFormat format =

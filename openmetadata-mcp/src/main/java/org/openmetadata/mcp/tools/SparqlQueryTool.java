@@ -20,7 +20,9 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Executes bounded, read-only SPARQL queries for MCP clients. */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
@@ -28,20 +30,30 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
   private static final int DEFAULT_MAX_BYTES = 1024 * 1024;
   private static final int HARD_MAX_BYTES = 16 * 1024 * 1024;
   private static final int MIN_MAX_BYTES = 1024;
+  private final GuardedQueryExecutor guardedQueryExecutor;
 
   public SparqlQueryTool() {
     super();
+    guardedQueryExecutor = SparqlQueryExecutionGuard.shared()::execute;
   }
 
   SparqlQueryTool(Supplier<RdfRepository> repositorySupplier) {
+    this(repositorySupplier, SparqlQueryExecutionGuard.shared()::execute);
+  }
+
+  SparqlQueryTool(
+      Supplier<RdfRepository> repositorySupplier, GuardedQueryExecutor guardedQueryExecutor) {
     super(repositorySupplier);
+    this.guardedQueryExecutor = Objects.requireNonNull(guardedQueryExecutor);
   }
 
   public record Result(
       String format, String queryType, String body, boolean truncated, int byteCount) {}
 
   @Override
-  protected Result executeAuthorized(final Map<String, Object> params) throws IOException {
+  protected Result executeAuthorized(
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String sparql = parameters.requiredString("query");
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);
@@ -49,9 +61,12 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     String inferenceLevel = parameters.optionalString("inferenceLevel");
     int maxBytes =
         clamp(parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
+    RdfSparqlService sparqlService =
+        new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =
-        new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()))
-            .query(query, parameters.optionalString("format"), inferenceLevel);
+        guardedQueryExecutor.execute(
+            CommonUtils.principal(securityContext),
+            () -> sparqlService.query(query, parameters.optionalString("format"), inferenceLevel));
     BoundedBody body = BoundedBody.from(queryResult.body(), maxBytes);
 
     return new Result(
@@ -64,6 +79,12 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
   private static int clamp(int value, int minimum, int maximum) {
     return Math.min(Math.max(value, minimum), maximum);
+  }
+
+  @FunctionalInterface
+  interface GuardedQueryExecutor {
+    RdfSparqlService.QueryResult execute(
+        String principal, Supplier<RdfSparqlService.QueryResult> query);
   }
 
   private record BoundedBody(String value, boolean truncated, int byteCount) {

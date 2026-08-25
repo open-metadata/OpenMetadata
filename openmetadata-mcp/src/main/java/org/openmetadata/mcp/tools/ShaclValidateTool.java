@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfValidationService;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Runs SHACL validation against an entity subgraph or an explicitly requested full graph. */
 public class ShaclValidateTool extends RdfMcpTool<RdfValidationService.ValidationResult> {
@@ -33,7 +34,8 @@ public class ShaclValidateTool extends RdfMcpTool<RdfValidationService.Validatio
 
   @Override
   protected RdfValidationService.ValidationResult executeAuthorized(
-      final Map<String, Object> params) throws IOException {
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     RdfRepository repository = repository();
     Optional<String> entityUri = resolveEntityUri(parameters, repository.getBaseUri());

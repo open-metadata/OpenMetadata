@@ -49,10 +49,12 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       final Map<String, Object> params)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    return executeAuthorized(params);
+    return executeAuthorized(securityContext, params);
   }
 
-  protected abstract T executeAuthorized(final Map<String, Object> params) throws IOException;
+  protected abstract T executeAuthorized(
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      throws IOException;
 
   @Override
   public final T execute(
