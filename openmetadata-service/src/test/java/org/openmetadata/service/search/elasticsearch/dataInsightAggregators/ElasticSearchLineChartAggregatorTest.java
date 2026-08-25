@@ -176,6 +176,45 @@ class ElasticSearchLineChartAggregatorTest {
     }
   }
 
+  @Test
+  void metricsThatDisagreeAreNotHoistedButStillFilterTheirOwnBuckets() throws Exception {
+    // Two populations, so there is no single one to select from. The request must stay wide while
+    // each metric keeps counting inside its own filter.
+    JsonNode root =
+        OBJECT_MAPPER.readTree(
+            serializeToJson(prepare(filteredChart(TABLE_FILTER, DASHBOARD_FILTER))));
+
+    assertTrue(root.path("query").isMissingNode(), "no hoist: " + root.path("query"));
+    assertTrue(
+        findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
+            .path("aggregations")
+            .has("filter0"),
+        "each metric must still filter its own bucket");
+  }
+
+  @Test
+  void aGroupByDoesNotDisableTheHoist() throws Exception {
+    JsonNode query =
+        OBJECT_MAPPER.readTree(serializeToJson(prepare(groupedFilteredChart()))).path("query");
+
+    assertEquals(TABLE_QUERY, unwrap(query), "a terms axis is hoistable with or without a groupBy");
+  }
+
+  @Test
+  void aTimestampAxisChartIsNeverHoisted() throws Exception {
+    // Narrowing the query here would shorten the window the date histogram plots, moving the
+    // first/last delta the dashboard renders. A groupBy must not widen the gate either.
+    for (String groupBy : new String[] {null, "entityType"}) {
+      JsonNode query =
+          OBJECT_MAPPER
+              .readTree(serializeToJson(prepareHistorical(timestampAxisChart(groupBy))))
+              .path("query");
+
+      assertTrue(
+          query.has("range"), "the request must carry the bare @timestamp range, got: " + query);
+    }
+  }
+
   private SearchRequest prepareHistorical(DataInsightCustomChart chart) {
     return aggregator.prepareSearchRequest(
         chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), false);
