@@ -37,7 +37,7 @@ import {
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 
 export const TableRowActionsDropdown = () => {
@@ -290,10 +290,11 @@ const TableHead = ({
           </div>
 
           {tooltip && (
-            <Tooltip placement="top" title={tooltip}>
-              <TooltipTrigger className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
-                <HelpCircle className="tw:size-4" />
-              </TooltipTrigger>
+            <Tooltip
+              placement="top"
+              title={tooltip}
+              triggerClassName="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
+              <HelpCircle className="tw:size-4" />
             </Tooltip>
           )}
 

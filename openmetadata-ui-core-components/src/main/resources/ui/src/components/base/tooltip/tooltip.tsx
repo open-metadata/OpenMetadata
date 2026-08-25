@@ -1,7 +1,8 @@
 import { cx } from '@/utils/cx';
-import type { ReactNode } from 'react';
+import { isValidElement, type ReactNode } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
+  PressEvent,
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps as AriaTooltipTriggerComponentProps,
 } from 'react-aria-components';
@@ -12,9 +13,39 @@ import {
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 
+// Maps antd camelCase placement strings to react-aria space-separated equivalents.
+// Allows legacy call sites to keep their placement values unchanged when migrating.
+const PLACEMENT_MAP: Record<string, string> = {
+  bottomLeft: 'bottom left',
+  bottomRight: 'bottom right',
+  leftBottom: 'left bottom',
+  leftTop: 'left top',
+  rightBottom: 'right bottom',
+  rightTop: 'right top',
+  topLeft: 'top left',
+  topRight: 'top right',
+};
+
+// HTML elements that are natively focusable and don't need an AriaButton wrapper.
+const NATIVELY_FOCUSABLE_HTML = new Set([
+  'a',
+  'button',
+  'details',
+  'input',
+  'select',
+  'summary',
+  'textarea',
+]);
+
 interface TooltipProps
   extends AriaTooltipTriggerComponentProps,
-    Omit<AriaTooltipProps, 'children'> {
+    Omit<AriaTooltipProps, 'children' | 'placement'> {
+  /**
+   * Placement of the tooltip relative to the trigger. Accepts react-aria
+   * values ("top", "bottom left", …) and antd legacy camelCase aliases
+   * ("bottomRight", "topLeft", …) which are normalised internally.
+   */
+  placement?: string;
   /**
    * The title of the tooltip.
    */
@@ -40,6 +71,24 @@ interface TooltipProps
    * Use this to override the default dark background, e.g. for a white tooltip.
    */
   containerClassName?: string;
+  /**
+   * className forwarded to the auto-generated focusable wrapper that Tooltip
+   * creates when its child is a non-focusable element (e.g. a plain span, an
+   * SVG icon, or a bare div). Providing this prop also forces wrapping even
+   * for React component children that would otherwise be passed through
+   * directly.
+   */
+  triggerClassName?: string;
+  /**
+   * Press handler forwarded to the auto-generated focusable wrapper. Providing
+   * this prop forces wrapping (same as triggerClassName).
+   */
+  onTriggerPress?: (e: PressEvent) => void;
+  /**
+   * Delay in **seconds** before the tooltip shows. Antd legacy alias for
+   * `delay` (which uses milliseconds). When both are provided, `delay` wins.
+   */
+  mouseEnterDelay?: number;
 }
 
 export const Tooltip = ({
@@ -47,7 +96,7 @@ export const Tooltip = ({
   description,
   children,
   arrow = false,
-  delay = 300,
+  delay,
   closeDelay = 0,
   trigger,
   isDisabled,
@@ -58,20 +107,54 @@ export const Tooltip = ({
   placement = 'top',
   onOpenChange,
   containerClassName,
+  triggerClassName,
+  onTriggerPress,
+  mouseEnterDelay,
   ...tooltipProps
 }: TooltipProps) => {
+  // Normalise antd camelCase placement aliases ("bottomRight" → "bottom right").
+  const resolvedPlacement = PLACEMENT_MAP[placement] ?? placement;
+
+  // `delay` (ms) takes precedence; fall back to mouseEnterDelay (seconds → ms);
+  // final fallback is the 300 ms default.
+  const resolvedDelay =
+    delay ?? (mouseEnterDelay !== undefined ? mouseEnterDelay * 1000 : 300);
+
+  // Determine whether the child needs to be wrapped in a focusable AriaButton.
+  // Non-focusable HTML string elements (span, div, svg, …) can't serve as
+  // react-aria tooltip anchors on their own; wrap them automatically.
+  // Providing triggerClassName or onTriggerPress is an explicit signal to wrap
+  // even React component children (e.g. icon components).
+  const shouldWrap = (() => {
+    if (triggerClassName !== undefined || onTriggerPress !== undefined)
+      return true;
+    if (!isValidElement(children)) return false;
+    const type = children.type;
+    return typeof type === 'string' && !NATIVELY_FOCUSABLE_HTML.has(type);
+  })();
+
+  const trigger_ = shouldWrap ? (
+    <AriaButton
+      className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
+      onPress={onTriggerPress}>
+      {children}
+    </AriaButton>
+  ) : (
+    children
+  );
+
   const isTopOrBottomLeft = [
     'top left',
     'top end',
     'bottom left',
     'bottom end',
-  ].includes(placement);
+  ].includes(resolvedPlacement);
   const isTopOrBottomRight = [
     'top right',
     'top start',
     'bottom right',
     'bottom start',
-  ].includes(placement);
+  ].includes(resolvedPlacement);
   // Set negative cross offset for left and right placement to visually balance the tooltip.
   const calculatedCrossOffset = isTopOrBottomLeft
     ? -12
@@ -83,14 +166,14 @@ export const Tooltip = ({
     <AriaTooltipTrigger
       {...{
         trigger,
-        delay,
+        delay: resolvedDelay,
         closeDelay,
         isDisabled,
         isOpen,
         defaultOpen,
         onOpenChange,
       }}>
-      {children}
+      {trigger_}
 
       <AriaTooltip
         {...tooltipProps}
@@ -103,7 +186,7 @@ export const Tooltip = ({
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
         offset={offset}
-        placement={placement}>
+        placement={resolvedPlacement as never}>
         {({ isEntering, isExiting }) => (
           <>
             {arrow && (
@@ -145,6 +228,12 @@ export const Tooltip = ({
 
 type TooltipTriggerProps = AriaButtonProps;
 
+/**
+ * @deprecated Pass your child element directly to `<Tooltip>` instead.
+ * `Tooltip` now auto-wraps non-focusable children and accepts
+ * `triggerClassName` / `onTriggerPress` for the generated wrapper.
+ * `TooltipTrigger` will be removed in a future release.
+ */
 export const TooltipTrigger = ({
   children,
   className,
