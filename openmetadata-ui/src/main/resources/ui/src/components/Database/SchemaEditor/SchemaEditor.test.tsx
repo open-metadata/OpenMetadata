@@ -128,14 +128,14 @@ describe('SchemaEditor component test', () => {
   });
 
   it('should format a JSON value on mount when autoFormat is on', () => {
-    render(<SchemaEditor {...mockProps} value={'{"a":1}'} />);
+    render(<SchemaEditor {...mockProps} value='{"a":1}' />);
 
     expect(getEditorValue()).toBe('{\n  "a": 1\n}');
   });
 
   it('should not format the value on mount when autoFormat is off', () => {
     render(
-      <SchemaEditor {...mockProps} autoFormat={false} value={'{"a":1}'} />
+      <SchemaEditor {...mockProps} autoFormat={false} value='{"a":1}' />
     );
 
     expect(getEditorValue()).toBe('{"a":1}');

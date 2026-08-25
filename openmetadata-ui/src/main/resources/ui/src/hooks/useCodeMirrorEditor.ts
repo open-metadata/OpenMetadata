@@ -17,9 +17,9 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CodeMirrorOptions, Mode } from '../interface/codemirror.interface';
 import {
-  getCodeMirrorBaseExtensions,
-  getCodeMirrorExtensions,
-  getCodeMirrorLanguage,
+    getCodeMirrorBaseExtensions,
+    getCodeMirrorExtensions,
+    getCodeMirrorLanguage
 } from '../utils/CodeMirror.utils';
 import { getSchemaEditorValue } from '../utils/SchemaEditor.utils';
 

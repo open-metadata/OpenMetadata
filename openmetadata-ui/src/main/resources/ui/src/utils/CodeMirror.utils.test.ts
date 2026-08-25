@@ -16,8 +16,8 @@ import { EditorState } from '@codemirror/state';
 import { CSMode } from '../enums/codemirror.enum';
 import { CodeMirrorOptions } from '../interface/codemirror.interface';
 import {
-  getCodeMirrorExtensions,
-  getCodeMirrorLanguage,
+    getCodeMirrorExtensions,
+    getCodeMirrorLanguage
 } from './CodeMirror.utils';
 
 const getLanguageName = (mode?: Parameters<typeof getCodeMirrorLanguage>[0]) =>

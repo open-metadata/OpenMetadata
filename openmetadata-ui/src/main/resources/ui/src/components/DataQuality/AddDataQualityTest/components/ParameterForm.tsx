@@ -14,25 +14,25 @@
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Tooltip,
-  Typography,
+    Button,
+    Form,
+    FormItemProps,
+    Input,
+    InputNumber,
+    Select,
+    Switch,
+    Tooltip,
+    Typography
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
-  lazy,
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    lazy,
+    ReactElement,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
@@ -44,23 +44,23 @@ import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Column } from '../../../../generated/entity/data/table';
 import {
-  Rule,
-  TestCaseParameterDefinition,
-  TestDataType,
+    Rule,
+    TestCaseParameterDefinition,
+    TestDataType
 } from '../../../../generated/tests/testDefinition';
 import {
-  SearchHitBody,
-  TableSearchSource,
+    SearchHitBody,
+    TableSearchSource
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
 import {
-  getSelectedColumnsSet,
-  validateEquals,
-  validateGreaterThanOrEquals,
-  validateLessThanOrEquals,
-  validateNotEquals,
+    getSelectedColumnsSet,
+    validateEquals,
+    validateGreaterThanOrEquals,
+    validateLessThanOrEquals,
+    validateNotEquals
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';

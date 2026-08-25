@@ -14,15 +14,15 @@
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  Switch,
-  TreeSelect,
-  Typography,
+    Button,
+    Drawer,
+    Input,
+    InputNumber,
+    Select,
+    Space,
+    Switch,
+    TreeSelect,
+    Typography
 } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
@@ -31,51 +31,51 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
-  lazy,
-  Reducer,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
+    lazy,
+    Reducer,
+    useCallback,
+    useEffect,
+    useMemo,
+    useReducer,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
-  DEFAULT_INCLUDE_PROFILE,
-  INTERVAL_TYPE_OPTIONS,
-  INTERVAL_UNIT_OPTIONS,
-  PROFILER_MODAL_LABEL_STYLE,
-  PROFILE_SAMPLE_OPTIONS,
-  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
-  TIME_BASED_PARTITION,
+    DEFAULT_INCLUDE_PROFILE,
+    INTERVAL_TYPE_OPTIONS,
+    INTERVAL_UNIT_OPTIONS,
+    PROFILER_MODAL_LABEL_STYLE,
+    PROFILE_SAMPLE_OPTIONS,
+    SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
+    TIME_BASED_PARTITION
 } from '../../../../../constants/profiler.constant';
 import { CSMode } from '../../../../../enums/codemirror.enum';
 import {
-  PartitionIntervalTypes,
-  ProfileSampleType,
-  SampleConfigType,
-  TableProfilerConfig,
+    PartitionIntervalTypes,
+    ProfileSampleType,
+    SampleConfigType,
+    TableProfilerConfig
 } from '../../../../../generated/entity/data/table';
 import {
-  getTableProfilerConfig,
-  putTableProfileConfig,
+    getTableProfilerConfig,
+    putTableProfileConfig
 } from '../../../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
 import profilerMetricsClassBase from '../../../../../utils/ProfilerMetricsClassBase';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
 import '../table-profiler.less';
 import {
-  ProfilerForm,
-  ProfilerSettingModalState,
-  ProfilerSettingsModalProps,
+    ProfilerForm,
+    ProfilerSettingModalState,
+    ProfilerSettingsModalProps
 } from '../TableProfiler.interface';
 
 const SchemaEditor = withSuspenseFallback(
