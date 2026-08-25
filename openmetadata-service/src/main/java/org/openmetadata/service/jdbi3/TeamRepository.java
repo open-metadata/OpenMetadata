@@ -348,7 +348,8 @@ public class TeamRepository extends EntityRepository<Team> {
     List<String> nonOrgTeamIds = new ArrayList<>();
     for (Team team : teams) {
       if (isOrganizationTeam(team)) {
-        team.setChildrenCount(getLiveOrganizationChildIds(team.getId()).size());
+        team.setChildrenCount(
+            daoCollection.teamDAO().countLiveTeamsUnderOrganization(team.getId()));
       } else {
         nonOrgTeamIds.add(team.getId().toString());
       }
@@ -977,9 +978,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<UUID> getLiveOrganizationChildIds(UUID organizationId) {
-    return getOrganizationChildren(organizationId, NON_DELETED).stream()
-        .map(EntityReference::getId)
-        .toList();
+    return EntityUtil.strToIds(
+        daoCollection.teamDAO().listLiveTeamsUnderOrganization(organizationId));
   }
 
   protected List<EntityReference> getChildren(UUID teamId) {

@@ -314,6 +314,40 @@ public interface AccessControlDAOs {
             + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
     List<String> listTeamsUnderOrganization(
         @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
+
+    default List<String> listLiveTeamsUnderOrganization(UUID teamId) {
+      return listLiveTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
+    }
+
+    /**
+     * Parentless teams excluding soft-deleted ones. The organization's children must honour {@code
+     * deleted} like the PARENT_OF path does; filtering in SQL keeps this a single query instead of
+     * resolving an EntityReference per parentless team on every request. {@code deleted} is a
+     * nullable generated column, so NULL must be treated as not-deleted.
+     */
+    @SqlQuery(
+        "SELECT te.id "
+            + "FROM team_entity te "
+            + "WHERE (te.deleted = FALSE OR te.deleted IS NULL) "
+            + "AND te.id NOT IN ((SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
+    List<String> listLiveTeamsUnderOrganization(
+        @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
+
+    default int countLiveTeamsUnderOrganization(UUID teamId) {
+      return countLiveTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(te.id) "
+            + "FROM team_entity te "
+            + "WHERE (te.deleted = FALSE OR te.deleted IS NULL) "
+            + "AND te.id NOT IN ((SELECT :teamId) UNION "
+            + "(SELECT toId FROM entity_relationship "
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
+    int countLiveTeamsUnderOrganization(
+        @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
