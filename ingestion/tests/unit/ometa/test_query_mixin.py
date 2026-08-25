@@ -25,11 +25,11 @@ SERVICE = "test_service"
 SQL = "select 1"
 
 
-def _mixin() -> OMetaQueryMixin:
-    mixin = OMetaQueryMixin.__new__(OMetaQueryMixin)
+def _make_mixin() -> OMetaQueryMixin:
+    mixin = OMetaQueryMixin()
     mixin.client = MagicMock()
     mixin.get_by_name = MagicMock()
-    mixin.get_suffix = MagicMock(return_value="queries")
+    mixin.get_suffix = MagicMock(return_value="/api/v1/queries")
     return mixin
 
 
@@ -53,7 +53,7 @@ def _api_error(status_code: int, message: str) -> APIError:
 
 
 def test_get_or_create_looks_up_service_qualified_fqn():
-    mixin = _mixin()
+    mixin = _make_mixin()
     existing = _query_entity()
     mixin.get_by_name.return_value = existing
 
@@ -65,7 +65,7 @@ def test_get_or_create_looks_up_service_qualified_fqn():
 
 
 def test_get_or_create_creates_when_missing():
-    mixin = _mixin()
+    mixin = _make_mixin()
     mixin.get_by_name.return_value = None
     query_id = str(uuid4())
     mixin.client.put.return_value = {
@@ -79,11 +79,11 @@ def test_get_or_create_creates_when_missing():
 
     assert str(result.id.root) == query_id
     mixin.client.put.assert_called_once()
-    assert mixin.client.put.call_args.args[0] == "queries"
+    assert mixin.client.put.call_args.args[0] == "/api/v1/queries"
 
 
 def test_get_or_create_retries_lookup_after_create_409():
-    mixin = _mixin()
+    mixin = _make_mixin()
     existing = _query_entity()
     expected_fqn = f"{SERVICE}.{mixin._get_query_hash(SQL)}"
     mixin.get_by_name.side_effect = [None, existing]
@@ -99,7 +99,7 @@ def test_get_or_create_retries_lookup_after_create_409():
 
 
 def test_get_or_create_reraises_non_409_create_errors():
-    mixin = _mixin()
+    mixin = _make_mixin()
     mixin.get_by_name.return_value = None
     mixin.client.put.side_effect = _api_error(500, "boom")
 
@@ -110,7 +110,7 @@ def test_get_or_create_reraises_non_409_create_errors():
 
 @patch("metadata.ingestion.ometa.mixins.query_mixin.mask_query", side_effect=lambda q, _d=None: q)
 def test_ingest_writes_usage_when_query_already_exists(_mask):
-    mixin = _mixin()
+    mixin = _make_mixin()
     mixin.get_by_name.return_value = _query_entity()
     table = MagicMock()
     table.id.root = uuid4()
@@ -119,4 +119,4 @@ def test_ingest_writes_usage_when_query_already_exists(_mask):
 
     paths = [call.args[0] for call in mixin.client.put.call_args_list]
     assert any(path.endswith("/usage") for path in paths)
-    assert "queries" not in paths
+    assert "/api/v1/queries" not in paths
