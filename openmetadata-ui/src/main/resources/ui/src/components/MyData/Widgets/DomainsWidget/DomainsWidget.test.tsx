@@ -70,6 +70,8 @@ const mockDomains: Domain[] = [
   },
 ];
 
+type SearchQueryResponse = Awaited<ReturnType<typeof searchQuery>>;
+
 const mockSearchResponse = {
   hits: {
     hits: mockDomains.map((domain) => ({
@@ -80,8 +82,7 @@ const mockSearchResponse = {
     total: { value: mockDomains.length },
   },
   aggregations: {},
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-} as any;
+} as unknown as SearchQueryResponse;
 
 // Mock API functions
 jest.mock('../../../../rest/searchAPI', () => ({
@@ -341,7 +342,7 @@ describe('DomainsWidget', () => {
         total: { value: manyDomains.length },
       },
       aggregations: {},
-    });
+    } as unknown as SearchQueryResponse);
 
     renderDomainsWidget();
 
@@ -397,7 +398,7 @@ describe('DomainsWidget', () => {
         total: { value: 1 },
       },
       aggregations: {},
-    });
+    } as unknown as SearchQueryResponse);
     mockGetAllDomainsWithAssetsCount.mockResolvedValue({
       clients: 0,
     });

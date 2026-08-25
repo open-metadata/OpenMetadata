@@ -38,8 +38,11 @@ export interface ChartFilter {
   endTs: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- recharts TooltipProps payload is untyped
-export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
+export interface DataInsightChartTooltipProps
+  extends TooltipProps<
+    number | string | Array<number | string>,
+    number | string
+  > {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
   displayDateInHeader?: boolean;

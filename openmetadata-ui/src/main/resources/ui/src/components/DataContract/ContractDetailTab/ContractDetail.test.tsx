@@ -24,6 +24,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
   ContractExecutionStatus,
+  ContractSecurity,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
@@ -261,15 +262,19 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 jest.mock('../../AlertBar/AlertBar', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockAlertBar({ message }: any) {
+  return function MockAlertBar({ message }: { message?: React.ReactNode }) {
     return <div data-testid="alert-bar">{message}</div>;
   };
 });
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockErrorPlaceHolder({ type, children }: any) {
+  return function MockErrorPlaceHolder({
+    type,
+    children,
+  }: {
+    type?: string;
+    children?: React.ReactNode;
+  }) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
         {children}
@@ -279,8 +284,11 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockContractExecutionChart({ contract }: any) {
+  return function MockContractExecutionChart({
+    contract,
+  }: {
+    contract?: DataContract;
+  }) {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
@@ -294,8 +302,11 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockContractSecurityCard({ security }: any) {
+  return function MockContractSecurityCard({
+    security,
+  }: {
+    security?: ContractSecurity;
+  }) {
     return (
       <div data-testid="contract-security-card">
         ContractSecurityCard - {security?.dataClassification}
@@ -305,8 +316,11 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockContractViewSwitchTab({ handleModeChange }: any) {
+  return function MockContractViewSwitchTab({
+    handleModeChange,
+  }: {
+    handleModeChange: (e: { target: { value: DataContractMode } }) => void;
+  }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
@@ -355,8 +369,7 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockContractYaml({ contract }: any) {
+  return function MockContractYaml({ contract }: { contract?: DataContract }) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
 });
@@ -388,14 +401,18 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../common/Table/Table', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-  return function MockTable({ dataSource, loading }: any) {
+  return function MockTable({
+    dataSource,
+    loading,
+  }: {
+    dataSource?: Array<{ id: string; name: string }>;
+    loading?: boolean;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Data Length: {dataSource?.length || 0}</div>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock */}
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={item.id}>
             {item.name}
           </div>

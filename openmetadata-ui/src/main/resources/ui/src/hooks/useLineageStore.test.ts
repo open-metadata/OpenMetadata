@@ -336,8 +336,11 @@ describe('useLineageStore', () => {
     };
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-      result.current.setSelectedNode(selectedNode as any);
+      result.current.setSelectedNode(
+        selectedNode as unknown as Parameters<
+          typeof result.current.setSelectedNode
+        >[0]
+      );
     });
 
     expect(result.current.selectedNode).toEqual(selectedNode);

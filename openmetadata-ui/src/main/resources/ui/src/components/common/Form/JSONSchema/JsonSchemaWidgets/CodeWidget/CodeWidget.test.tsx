@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  FieldErrorProps,
-  RJSFSchema,
-  TemplatesType,
-  WidgetProps,
-} from '@rjsf/utils';
+import { FieldErrorProps, TemplatesType, WidgetProps } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import CodeWidget from './CodeWidget';
 
@@ -32,10 +27,7 @@ describe('CodeWidget', () => {
     schema: { mode: 'sql' },
     disabled: false,
     name: '',
-    options: {} as Partial<
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-      Omit<TemplatesType<any, RJSFSchema, any>, 'ButtonTemplates'>
-    >,
+    options: {} as Partial<Omit<TemplatesType, 'ButtonTemplates'>>,
     onBlur: jest.fn(),
     label: '',
     registry: {} as FieldErrorProps['registry'],

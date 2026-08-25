@@ -17,6 +17,7 @@ import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
+import { ServicesType } from '../../../interface/service.interface';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -48,8 +49,9 @@ jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
   };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
+const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
+  typeof useRequiredParams
+>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
   typeof getTitleByChartType
@@ -64,8 +66,7 @@ describe('PlatformInsightsWidget', () => {
     name: 'test-service',
     serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-  } as any;
+  } as unknown as ServicesType;
 
   const mockChartsData = [
     {

@@ -19,7 +19,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { PagingResponse } from 'Models';
 import { MemoryRouter } from 'react-router-dom';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import {
@@ -193,8 +195,13 @@ describe('DomainTreeView', () => {
 
     // Wire up Tree mock to capture callbacks on each render
     const { Tree } = jest.requireMock('@openmetadata/ui-core-components');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock exposes attached sub-components
-    const TreeMock = Tree as jest.MockedFunction<any>;
+    const TreeMock = Tree as jest.Mock & {
+      ExpandButton: jest.Mock;
+      Header: jest.Mock;
+      Item: jest.Mock;
+      ItemContent: jest.Mock;
+      Section: jest.Mock;
+    };
 
     TreeMock.mockImplementation(
       ({
@@ -231,13 +238,10 @@ describe('DomainTreeView', () => {
 
     // Default API responses
     mockGetDomainChildrenPaginated.mockResolvedValue(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      PAGINATED_ROOT_RESPONSE as any
+      PAGINATED_ROOT_RESPONSE as unknown as PagingResponse<Domain[]>
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0] as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-    mockSearchDomains.mockResolvedValue(DOMAINS_LIST as any);
+    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0]);
+    mockSearchDomains.mockResolvedValue(DOMAINS_LIST);
   });
 
   // -------------------------------------------------------------------------
@@ -284,8 +288,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValue({
         data: [],
         paging: { total: 0 },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       renderComponent();
 
       expect(
@@ -297,8 +300,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValue({
         data: [],
         paging: { total: 0 },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       const openAddDomainDrawer = jest.fn();
       renderComponent({ openAddDomainDrawer });
       fireEvent.click(await screen.findByTestId('error-placeholder'));
@@ -378,8 +380,7 @@ describe('DomainTreeView', () => {
       mockGetDomainChildrenPaginated.mockResolvedValueOnce({
         data: [DOMAIN_WITH_MANY_CHILDREN],
         paging: { total: 1 },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      } as any);
+      } as unknown as PagingResponse<Domain[]>);
       renderComponent();
       await waitFor(() =>
         expect(mockGetDomainChildrenPaginated).toHaveBeenCalled()
@@ -433,11 +434,11 @@ describe('DomainTreeView', () => {
         .mockResolvedValueOnce({
           data: [DOMAIN_WITH_MANY_CHILDREN],
           paging: { total: 1 },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-        } as any)
+        } as unknown as PagingResponse<Domain[]>)
         // Children response: 1 child, total 20 → hasMoreChildren = true
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-        .mockResolvedValue(CHILD_RESPONSE_WITH_MORE as any);
+        .mockResolvedValue(
+          CHILD_RESPONSE_WITH_MORE as unknown as PagingResponse<Domain[]>
+        );
 
       renderComponent();
       await waitFor(() =>

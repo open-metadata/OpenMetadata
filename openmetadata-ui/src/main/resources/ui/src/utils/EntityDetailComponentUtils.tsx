@@ -16,8 +16,10 @@ import Loader from '../components/common/Loader/Loader';
 import { EntityType } from '../enums/entity.enum';
 
 const lazyComponentMap: Partial<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- heterogeneous page-component registry
-  Record<EntityType, LazyExoticComponent<ComponentType<any>>>
+  Record<
+    EntityType,
+    LazyExoticComponent<ComponentType<Record<string, unknown>>>
+  >
 > = {
   [EntityType.DATABASE]: lazy(
     () => import('../pages/DatabaseDetailsPage/DatabaseDetailsPage')

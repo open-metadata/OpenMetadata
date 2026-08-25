@@ -16,6 +16,7 @@ import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
@@ -83,8 +84,7 @@ jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
     React.useEffect(() => {
       if (props.queryFilter === 'my-data') {
         searchQuery({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-          searchIndex: ['all'] as any,
+          searchIndex: ['all'] as unknown as SearchIndex[],
           query: '*',
           filters: props.queryFilter,
         });

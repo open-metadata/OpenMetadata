@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
@@ -106,8 +107,12 @@ jest.mock('@react-awesome-query-builder/antd', () => {
       sanitizeTree: jest.fn(() => ({ fixedTree: {} })),
       jsonLogicFormat: jest.fn(() => ({ logic: { test: 'logic' } })),
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-    Builder: ({ onChange, ...props }: any) => (
+    Builder: ({
+      onChange,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+    } & Record<string, unknown>) => (
       <div data-testid="query-builder" {...props}>
         <button
           data-testid="mock-query-change"
@@ -116,8 +121,14 @@ jest.mock('@react-awesome-query-builder/antd', () => {
         </button>
       </div>
     ),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock
-    Query: ({ onChange, renderBuilder, ...props }: any) => {
+    Query: ({
+      onChange,
+      renderBuilder,
+      ...props
+    }: {
+      onChange?: (tree: unknown, config: unknown) => void;
+      renderBuilder: (props: Record<string, unknown>) => ReactNode;
+    } & Record<string, unknown>) => {
       const mockActions = { test: 'actions' };
 
       return (

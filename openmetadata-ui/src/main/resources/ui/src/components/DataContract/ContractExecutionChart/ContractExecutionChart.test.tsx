@@ -59,8 +59,18 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     )
   ),
   createContractExecutionCustomScale: jest.fn(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock d3 scale
-    const scale: any = (value: any) => value;
+    interface MockScale {
+      (value: unknown): unknown;
+      domain: jest.Mock;
+      range: jest.Mock;
+      ticks: jest.Mock;
+      tickFormat: jest.Mock;
+      bandwidth: jest.Mock;
+      copy: jest.Mock;
+      nice: jest.Mock;
+      type: string;
+    }
+    const scale = ((value: unknown) => value) as MockScale;
     scale.domain = jest.fn(() => scale);
     scale.range = jest.fn(() => scale);
     scale.ticks = jest.fn(() => []);

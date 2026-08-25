@@ -157,6 +157,13 @@ const mockPatchSecurityConfiguration =
     typeof securityConfigAPI.patchSecurityConfiguration
   >;
 
+type GetSecurityConfigResponse = Awaited<
+  ReturnType<typeof securityConfigAPI.getSecurityConfiguration>
+>;
+type PatchSecurityConfigResponse = Awaited<
+  ReturnType<typeof securityConfigAPI.patchSecurityConfiguration>
+>;
+
 const renderComponent = (searchParams = '') => {
   const initialEntries = searchParams ? [`/?${searchParams}`] : ['/'];
 
@@ -172,8 +179,7 @@ describe('SettingsSso', () => {
     jest.clearAllMocks();
     mockGetSecurityConfiguration.mockResolvedValue({
       data: mockSecurityConfig,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-    } as any);
+    } as unknown as GetSecurityConfigResponse);
   });
 
   describe('Initial Loading', () => {
@@ -225,8 +231,7 @@ describe('SettingsSso', () => {
     it('should handle SSO toggle', async () => {
       mockPatchSecurityConfiguration.mockResolvedValue({
         data: mockSecurityConfig,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      } as any);
+      } as unknown as PatchSecurityConfigResponse);
       renderComponent();
 
       await waitFor(() => {
@@ -259,8 +264,9 @@ describe('SettingsSso', () => {
 
   describe('Provider Configuration', () => {
     it('should show provider selector when no configuration exists', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as GetSecurityConfigResponse);
       renderComponent();
 
       await waitFor(() => {
@@ -353,8 +359,9 @@ describe('SettingsSso', () => {
 
   describe('Provider Selection', () => {
     it('should handle provider selection', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as GetSecurityConfigResponse);
       renderComponent();
 
       await waitFor(() => {
@@ -415,8 +422,9 @@ describe('SettingsSso', () => {
 
   describe('Configuration Persistence', () => {
     it('should handle provider selection', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as GetSecurityConfigResponse);
       renderComponent();
 
       await waitFor(() => {
@@ -434,8 +442,9 @@ describe('SettingsSso', () => {
     });
 
     it('should show configuration form when provider is in URL', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as GetSecurityConfigResponse);
       renderComponent(`provider=${AuthProvider.Okta}`);
 
       await waitFor(() => {
@@ -513,8 +522,7 @@ describe('SettingsSso', () => {
             provider: AuthProvider.Azure,
           },
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic test fixture
-      } as any);
+      } as unknown as GetSecurityConfigResponse);
 
       renderComponent();
 
