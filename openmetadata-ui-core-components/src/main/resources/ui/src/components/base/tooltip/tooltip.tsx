@@ -8,7 +8,6 @@ import type {
 } from 'react-aria-components';
 import {
   Button as AriaButton,
-  Focusable as AriaFocusable,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
@@ -158,7 +157,6 @@ export const TooltipTrigger = forwardRef<
   TooltipTriggerProps
 >(function TooltipTrigger({ children, className, ...buttonProps }, ref) {
   return (
-    <AriaFocusable>
       <AriaButton
         ref={ref}
         {...buttonProps}
@@ -170,6 +168,5 @@ export const TooltipTrigger = forwardRef<
         }>
         {children}
       </AriaButton>
-    </AriaFocusable>
   );
 });
