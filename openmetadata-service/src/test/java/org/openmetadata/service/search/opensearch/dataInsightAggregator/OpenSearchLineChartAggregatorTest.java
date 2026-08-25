@@ -3,7 +3,6 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
@@ -156,11 +155,17 @@ class OpenSearchLineChartAggregatorTest {
     for (String bad : new String[] {"{", "{\"bool\":{}}", "{}"}) {
       JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(filteredChart(bad, bad))));
       assertTrue(root.path("query").isMissingNode(), "no hoist for filter " + bad);
-      assertNull(
-          findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
-              .path("aggregations")
-              .get("filter"),
-          "no filter sub-aggregation for " + bad);
+      // Naming the surviving aggregation rather than looking for an absent "filter" key: the
+      // formula path keys its wrapper "filter<index>", so a probe for the bare name can never fail.
+      Set<String> subAggregations = new HashSet<>();
+      findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD)
+          .path("aggregations")
+          .fieldNames()
+          .forEachRemaining(subAggregations::add);
+      assertEquals(
+          Set.of("id.keyword0"),
+          subAggregations,
+          "the metric must fall back to one unfiltered leaf aggregation for " + bad);
     }
   }
 
