@@ -243,4 +243,34 @@ class McpResponseTrimTest {
         McpResponseTrim.slimCertification("not-a-map", 1L),
         "an unrecognised shape passes through rather than being emptied");
   }
+
+  @Test
+  void slimRefMarksAnInheritedOwnerSoItIsNotMistakenForASteward() {
+    Map<String, Object> inherited = new LinkedHashMap<>();
+    inherited.put("name", "admin");
+    inherited.put("type", "user");
+    inherited.put("inherited", true);
+
+    assertEquals(
+        "admin (inherited)",
+        McpResponseTrim.slimRef(inherited),
+        "an owner cascaded from the parent database is not who you talk to - collapsing it to a "
+            + "bare name made it indistinguishable from a real steward");
+  }
+
+  @Test
+  void slimRefLeavesADirectOwnerUnmarked() {
+    Map<String, Object> direct = new LinkedHashMap<>();
+    direct.put("name", "vishnu.jain");
+    direct.put("type", "user");
+
+    assertEquals(
+        "vishnu.jain",
+        McpResponseTrim.slimRef(direct),
+        "a deliberately-assigned owner carries no qualifier");
+    assertEquals(
+        "sample_data.ecommerce_db",
+        McpResponseTrim.slimRef(Map.of("fullyQualifiedName", "sample_data.ecommerce_db")),
+        "a non-owner reference is unaffected");
+  }
 }

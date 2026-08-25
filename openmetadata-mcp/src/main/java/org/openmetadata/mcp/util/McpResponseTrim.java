@@ -99,10 +99,23 @@ public final class McpResponseTrim {
       Object fqn = ref.get("fullyQualifiedName");
       Object name = fqn != null ? fqn : ref.get("name");
       if (name != null) {
-        result = unquoteSegment(name.toString());
+        result = unquoteSegment(name.toString()) + inheritedSuffix(ref);
       }
     }
     return result;
+  }
+
+  /**
+   * Keeps the one flag that survives collapsing a reference to its name.
+   *
+   * <p>Slimming owners to bare strings made an owner inherited from the parent database look
+   * identical to a deliberately-assigned steward. That distinction is the entire answer to "who
+   * should I talk to" — a caller reported search saying {@code ["admin"]} and the entity read saying
+   * {@code {"name":"admin","inherited":true}}, calling them "same words, opposite meanings" — and
+   * recovering it cost a call. Six characters buy it back.
+   */
+  private static String inheritedSuffix(Map<?, ?> ref) {
+    return Boolean.TRUE.equals(ref.get("inherited")) ? " (inherited)" : "";
   }
 
   /**
