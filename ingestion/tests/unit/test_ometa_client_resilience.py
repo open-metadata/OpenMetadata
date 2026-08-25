@@ -68,7 +68,9 @@ class FlakyServer:
                 conn, _ = self._sock.accept()
             except OSError:
                 return
-            threading.Thread(target=self._handle, args=(conn, self._next_behavior()), daemon=True).start()
+            threading.Thread(
+                target=self._handle, args=(conn, self._next_behavior()), daemon=True
+            ).start()
 
     def _handle(self, conn: socket.socket, behavior: str) -> None:
         with conn:
@@ -89,7 +91,12 @@ class FlakyServer:
 
     @staticmethod
     def _send(conn: socket.socket, status: int, payload: dict) -> None:
-        reason = {200: "OK", 401: "Unauthorized", 503: "Service Unavailable", 504: "Gateway Timeout"}.get(status, "Status")
+        reason = {
+            200: "OK",
+            401: "Unauthorized",
+            503: "Service Unavailable",
+            504: "Gateway Timeout",
+        }.get(status, "Status")
         body = json.dumps(payload).encode()
         conn.sendall(
             f"HTTP/1.1 {status} {reason}\r\n".encode()
@@ -103,7 +110,9 @@ class FlakyServer:
 
 
 def _rest(port: int) -> REST:
-    return REST(ClientConfig(base_url=f"http://127.0.0.1:{port}", timeout=_CLIENT_TIMEOUT))
+    return REST(
+        ClientConfig(base_url=f"http://127.0.0.1:{port}", timeout=_CLIENT_TIMEOUT)
+    )
 
 
 def test_rest_and_tracked_rest_carry_keepalive_retry_adapter():
@@ -153,7 +162,13 @@ def test_get_retries_service_unavailable_503():
     # 503 Service Unavailable is a transient error (Kubernetes pod transitions,
     # rolling deploys) that should be retried, not treated as a hard failure.
     with FlakyServer(["503", "ok"]) as srv:
-        client = REST(ClientConfig(base_url=f"http://127.0.0.1:{srv.port}", timeout=_CLIENT_TIMEOUT, retry_wait=0))
+        client = REST(
+            ClientConfig(
+                base_url=f"http://127.0.0.1:{srv.port}",
+                timeout=_CLIENT_TIMEOUT,
+                retry_wait=0,
+            )
+        )
         out = client.get("/x")
     assert out == {"ok": True}
     assert srv.attempts >= 2
