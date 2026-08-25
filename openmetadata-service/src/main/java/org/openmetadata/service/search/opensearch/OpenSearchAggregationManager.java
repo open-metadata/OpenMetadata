@@ -64,6 +64,33 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     mapper = new ObjectMapper();
   }
 
+  /**
+   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
+   * indexes, so without this a caller can read documents they are denied on the corresponding
+   * listing. A {@code null} or exempt subject (admin, bot, access control disabled) is left
+   * unfiltered.
+   */
+  private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
+    Query result = query;
+    if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQueryBuilder == null) {
+        // Fail closed: policies had to be applied for this caller (access control on, not
+        // admin/bot) but produced no query. Returning the unfiltered query would leak; match
+        // nothing instead.
+        result = Query.of(qb -> qb.matchNone(m -> m));
+      } else {
+        Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+        final Query existingQuery = query;
+        result =
+            existingQuery == null
+                ? rbacQuery
+                : Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+      }
+    }
+    return result;
+  }
+
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -381,6 +408,22 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
+    return aggregate(query, index, searchAggregation, filter, null);
+  }
+
+  /**
+   * Same as {@link #aggregate(String, String, SearchAggregation, String)} but evaluates the
+   * caller's policies against the aggregation query, so an aggregation cannot surface documents
+   * the caller may not read. A {@code null} or exempt subject leaves the query unfiltered.
+   */
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
       throw new IOException("OpenSearch client is not available");
@@ -410,6 +453,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
           parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
       }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
       Query filterQuery = null;
       if (filter != null && !filter.isEmpty() && !filter.equals("{}")) {
