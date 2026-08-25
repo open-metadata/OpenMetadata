@@ -372,18 +372,19 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         """
         Get columns from Glue, yielding each column name at most once.
 
-        Glue does not guarantee that PartitionKeys are absent from StorageDescriptor.Columns,
-        and distinct names longer than the 256 character limit collide once truncated. Either
-        way the server rejects the whole table with "Column name <name> is repeated", so the
-        table would be dropped entirely rather than losing a single column.
+        A name can reach us twice for two reasons: Glue lists a partition key in
+        StorageDescriptor.Columns as well as in PartitionKeys, and Glue lower cases column names
+        on write, so a column DT declared alongside a partition key dt arrives as dt twice.
+        Either way the server rejects the whole table with "Column name <name> is repeated".
         """
         table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
         seen_column_names = set()
         for column in self._iter_columns(column_data):
             column_name = model_str(column.name)
             if column_name in seen_column_names:
-                logger.warning(
-                    f"Table [{table_name}]: dropping duplicate column [{column_name}], keeping the first definition"
+                logger.debug(
+                    f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
+                    f"partition key is also in StorageDescriptor.Columns, or when lower casing merges two names."
                 )
                 continue
             seen_column_names.add(column_name)

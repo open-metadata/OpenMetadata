@@ -14,6 +14,7 @@ Test Glue using the topology
 """
 
 import json
+import logging
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
@@ -398,3 +399,13 @@ class TestGlueColumnDeduplication:
         table = self._glue_table([f"{prefix}_first", f"{prefix}_second"], [])
 
         assert self._column_names(source, table) == [prefix]
+
+    def test_repeated_partition_key_is_not_reported_as_a_warning(self, source, caplog):
+        """Glue repeating a partition key is routine and needs no operator action. Warnings from
+        the source are counted into the workflow summary, so this must stay at debug."""
+        table = self._glue_table(["event_id", "load_date"], ["load_date"])
+
+        with caplog.at_level(logging.WARNING):
+            assert self._column_names(source, table) == ["event_id", "load_date"]
+
+        assert caplog.records == []
