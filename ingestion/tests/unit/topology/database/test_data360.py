@@ -222,6 +222,16 @@ class TestData360Source:
         assert "local_data360.customer_360.Data Lake Objects" in source.failed_schema_fqns
         assert len(source.status.failures) == 1
 
+    def test_should_skip_schema_deletion_for_failed_schemas_only(self):
+        source = _build_source()
+        source.failed_schema_fqns = {"local_data360.customer_360.Data Lake Objects"}
+        assert source._should_skip_schema_deletion(
+            "local_data360.customer_360.Data Lake Objects"
+        )
+        assert not source._should_skip_schema_deletion(
+            "local_data360.customer_360.Data Model Objects"
+        )
+
     def test_mark_tables_as_deleted_skips_schemas_with_failed_discovery(self):
         source = _build_source()
         source.failed_schema_fqns = {"local_data360.customer_360.Data Lake Objects"}
@@ -233,7 +243,7 @@ class TestData360Source:
                 "local_data360.customer_360.Data Model Objects",
             ],
         ), patch(
-            "metadata.ingestion.source.database.data360.metadata.delete_entity_from_source"
+            "metadata.ingestion.source.database.database_service.delete_entity_from_source"
         ) as mock_delete:
             mock_delete.return_value = []
             list(source.mark_tables_as_deleted())

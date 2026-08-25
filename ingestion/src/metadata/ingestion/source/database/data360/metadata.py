@@ -41,7 +41,6 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
 )
-from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -433,35 +432,14 @@ class Data360Source(DatabaseServiceSource):
         logger.warning(msg)
         self.status.warning(msg, reason=msg)
 
-    def mark_tables_as_deleted(self) -> Iterable[Either]:
-        """Marks tables as deleted, skipping any schema whose table discovery
+    def _should_skip_schema_deletion(self, schema_fqn: str) -> bool:
+        """Skip deletion reconciliation for any schema whose table discovery
         failed this run (tracked in `failed_schema_fqns`). Without this, a
         transient Data 360 API failure would look like "no tables in this
         schema" and cause every previously ingested table there to be
         soft-deleted.
         """
-        if not self.context.get().__dict__.get("database"):
-            raise ValueError("No Database found in the context. We cannot run the table deletion.")
-
-        if not self.source_config.markDeletedTables:
-            return
-
-        logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
-        schema_fqn_list = self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
-
-        for schema_fqn in schema_fqn_list:
-            if schema_fqn in self.failed_schema_fqns:
-                logger.warning(
-                    f"Skipping deletion for schema [{schema_fqn}]: table discovery failed this run."
-                )
-                continue
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=Table,
-                entity_source_state=self.database_source_state,
-                recursive=self.source_config.markDeletedTables,
-                params={"databaseSchema": schema_fqn},
-            )
+        return schema_fqn in self.failed_schema_fqns
 
     def get_stored_procedures(self):
         """Not implemented for Data Cloud."""
