@@ -26,12 +26,33 @@
  */
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
 import { ComponentType, ReactNode } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersistentStorage } from '../../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+
+/**
+ * Structural, so the suite adds no AntD import of its own — the wrapper under
+ * test is what owns that dependency. Only the fields these specs exercise.
+ */
+type ParityColumn = {
+  title?: unknown;
+  dataIndex?: string;
+  key?: string;
+  render?: (value: never, record: never, index: number) => unknown;
+  sorter?: unknown;
+  sortOrder?: 'ascend' | 'descend';
+  sortDirections?: ('ascend' | 'descend')[];
+  fixed?: 'left' | 'right';
+  width?: number;
+  ellipsis?: boolean;
+  onCell?: (record: never, index: number) => unknown;
+  filters?: unknown;
+  filterIcon?: unknown;
+  filterDropdown?: unknown;
+  onFilter?: unknown;
+};
 
 export interface ParityRow {
   name: string;
@@ -78,19 +99,19 @@ export const TREE_ROWS: ParityRow[] = [
   { count: 2, name: 'parent-two' },
 ];
 
-const nameColumn: ColumnsType<ParityRow>[number] = {
+const nameColumn: ParityColumn = {
   dataIndex: 'name',
   key: 'name',
   title: 'Name',
 };
 
-const countColumn: ColumnsType<ParityRow>[number] = {
+const countColumn: ParityColumn = {
   dataIndex: 'count',
   key: 'count',
   title: 'Count',
 };
 
-export const BASE_COLUMNS: ColumnsType<ParityRow> = [nameColumn, countColumn];
+export const BASE_COLUMNS: ParityColumn[] = [nameColumn, countColumn];
 
 /**
  * First data cell of a row. antd renders `<td role="cell">`; react-aria renders
@@ -174,7 +195,9 @@ export const runTableParitySuite = (
 
     it('passes value, record and row index to render()', () => {
       const render_ = jest.fn().mockReturnValue('cell');
-      renderTable({ columns: [{ ...nameColumn, render: render_ }, countColumn] });
+      renderTable({
+        columns: [{ ...nameColumn, render: render_ }, countColumn],
+      });
 
       expect(render_).toHaveBeenCalledWith('charlie', PARITY_ROWS[0], 0);
       expect(render_).toHaveBeenCalledWith('bravo', PARITY_ROWS[2], 2);
@@ -200,7 +223,7 @@ export const runTableParitySuite = (
   });
 
   describe(`${suiteName} — sorting`, () => {
-    const sortedColumns: ColumnsType<ParityRow> = [
+    const sortedColumns: ParityColumn[] = [
       { ...nameColumn, sorter: (a, b) => a.name.localeCompare(b.name) },
       countColumn,
     ];
@@ -340,7 +363,9 @@ export const runTableParitySuite = (
         .getAllByRole('row')
         .find((row) => within(row).queryByText('alpha'));
 
-      expect(within(alphaRow as HTMLElement).getByRole('checkbox')).toBeDisabled();
+      expect(
+        within(alphaRow as HTMLElement).getByRole('checkbox')
+      ).toBeDisabled();
     });
 
     it('selects every row on the current page from the select-all control', () => {
@@ -349,11 +374,7 @@ export const runTableParitySuite = (
       const selectAll = adapter.getSelectAllControl();
       fireEvent.click(selectAll as HTMLElement);
 
-      expect(onChange.mock.calls[0][0]).toEqual([
-        'charlie',
-        'alpha',
-        'bravo',
-      ]);
+      expect(onChange.mock.calls[0][0]).toEqual(['charlie', 'alpha', 'bravo']);
     });
   });
 
@@ -438,10 +459,7 @@ export const runTableParitySuite = (
     // a duplicate used to collapse the column and throw on the cell count.
     it('renders every column even when two share a key', () => {
       renderTable({
-        columns: [
-          nameColumn,
-          { ...countColumn, key: 'name' },
-        ],
+        columns: [nameColumn, { ...countColumn, key: 'name' }],
       });
       const cells = screen.getAllByRole('row')[1].querySelectorAll('td, th');
 
@@ -455,7 +473,10 @@ export const runTableParitySuite = (
     // one namespace, and the column used to vanish.
     it('keeps the column when a row key matches it', () => {
       renderTable({
-        dataSource: [{ count: 1, name: 'name' }, { count: 2, name: 'other' }],
+        dataSource: [
+          { count: 1, name: 'name' },
+          { count: 2, name: 'other' },
+        ],
       });
       const cells = screen.getAllByRole('row')[1].querySelectorAll('td, th');
 
@@ -478,6 +499,41 @@ export const runTableParitySuite = (
       });
 
       expect(screen.getAllByRole('row')).toHaveLength(4);
+    });
+  });
+
+  describe(`${suiteName} — key collisions the reviewer flagged`, () => {
+    it('does not let a fabricated id collide with a real key', () => {
+      // ['dup', 'dup', 'dup-1'] — a naive counter turns the second row into
+      // 'dup-1' and it collides with the third.
+      renderTable({
+        dataSource: [
+          { count: 1, name: 'dup' },
+          { count: 2, name: 'dup' },
+          { count: 3, name: 'dup-1' },
+        ],
+      });
+
+      expect(screen.getAllByRole('row')).toHaveLength(4);
+    });
+
+    it('reports only the row that was selected when keys collide', () => {
+      const onChange = jest.fn();
+      renderTable({
+        dataSource: [
+          { count: 1, name: 'dup' },
+          { count: 2, name: 'dup' },
+        ],
+        rowSelection: { onChange },
+      });
+      const secondRow = screen.getAllByRole('row')[2];
+      fireEvent.click(secondRow.querySelector('input') as HTMLElement);
+
+      expect(onChange.mock.calls.at(-1)?.[1]).toHaveLength(1);
+      expect(onChange.mock.calls.at(-1)?.[1][0]).toEqual({
+        count: 2,
+        name: 'dup',
+      });
     });
   });
 
@@ -636,7 +692,8 @@ export const runTableParitySuite = (
           {
             ...nameColumn,
             sortDirections: ['descend', 'ascend'],
-            sorter: (a: ParityRow, b: ParityRow) => a.name.localeCompare(b.name),
+            sorter: (a: ParityRow, b: ParityRow) =>
+              a.name.localeCompare(b.name),
           },
           countColumn,
         ],

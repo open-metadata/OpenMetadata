@@ -237,7 +237,12 @@ const buildExpandedDetailRow = <T extends object>(
       <UntitledTable.Cell
         className="tw:py-2 tw:pl-4 tw:pr-2"
         colSpan={columnCount}>
-        {renderDetail(flatRow.record, flatRow.actualIndex, flatRow.depth, isExpanded)}
+        {renderDetail(
+          flatRow.record,
+          flatRow.actualIndex,
+          flatRow.depth,
+          isExpanded
+        )}
       </UntitledTable.Cell>
     </UntitledTable.Row>
   );
@@ -335,38 +340,35 @@ const COLUMN_ID_PREFIX = 'col:';
  * key and keeps only the first, silently dropping rows. Suffixing repeats keeps
  * every row while `data-row-key` still carries the original.
  */
-const getRowIds = (rowKeys: string[]) => {
-  const seen = new Map<string, number>();
-  const ids = rowKeys.map((key) => {
-    const count = seen.get(key) ?? 0;
-    seen.set(key, count + 1);
+const disambiguate = (keys: string[]): string[] => {
+  // Checked against every id already emitted, not just against repeats of the
+  // same base: for ['dup', 'dup', 'dup-1'] a naive counter produces
+  // ['dup', 'dup-1', 'dup-1'] and the fabricated id collides with the real
+  // one — reintroducing exactly the silent row drop this is here to prevent.
+  const used = new Set<string>();
 
-    return count === 0 ? key : `${key}-${count}`;
+  return keys.map((key) => {
+    let candidate = key;
+    let count = 1;
+    while (used.has(candidate)) {
+      candidate = `${key}-${count}`;
+      count += 1;
+    }
+    used.add(candidate);
+
+    return candidate;
   });
-
-  return {
-    ids,
-    keyById: new Map(ids.map((id, idx) => [id, rowKeys[idx]])),
-  };
 };
+
+const getRowIds = (rowKeys: string[]) => disambiguate(rowKeys);
 
 const getColumnKeys = <T,>(columns: ColumnsType<T>): string[] =>
   columns.map((col, idx) =>
     String(col.key ?? (col as ColumnType<T>).dataIndex ?? idx)
   );
 
-const getColumnIds = (columnKeys: string[]): string[] => {
-  const seen = new Map<string, number>();
-
-  return columnKeys.map((key) => {
-    const count = seen.get(key) ?? 0;
-    seen.set(key, count + 1);
-
-    return count === 0
-      ? `${COLUMN_ID_PREFIX}${key}`
-      : `${COLUMN_ID_PREFIX}${key}-${count}`;
-  });
-};
+const getColumnIds = (columnKeys: string[]): string[] =>
+  disambiguate(columnKeys.map((key) => `${COLUMN_ID_PREFIX}${key}`));
 
 const TableV2 = <T extends object>(
   {
@@ -512,7 +514,9 @@ const TableV2 = <T extends object>(
 
     return {
       columnKey: columnIds[idx],
-      direction: toAriaDirection(col.sortOrder === 'descend' ? 'descend' : 'ascend'),
+      direction: toAriaDirection(
+        col.sortOrder === 'descend' ? 'descend' : 'ascend'
+      ),
     };
   }, [propsColumns, columnIds]);
 
@@ -717,9 +721,27 @@ const TableV2 = <T extends object>(
     clientPagination,
   ]);
 
-  const { ids: rowIds, keyById: rowKeyById } = useMemo(
-    () => getRowIds(flatRows.map((row) => row.rowKey)),
-    [flatRows]
+  /**
+   * One identity per rendered row: the React Aria id, the key the call site
+   * asked for, and the record itself. Deriving disabled rows and selection from
+   * this — rather than re-deriving keys against a different array — keeps them
+   * in step with what is actually on screen.
+   */
+  const rowEntries = useMemo(() => {
+    const ids = getRowIds(flatRows.map((row) => row.rowKey));
+
+    return flatRows.map((row, idx) => ({
+      id: ids[idx],
+      key: row.rowKey,
+      record: row.record,
+    }));
+  }, [flatRows]);
+
+  const rowIds = useMemo(() => rowEntries.map((e) => e.id), [rowEntries]);
+
+  const rowEntryById = useMemo(
+    () => new Map(rowEntries.map((entry) => [entry.id, entry])),
+    [rowEntries]
   );
 
   // ─── Row selection ────────────────────────────────────────────────────────
@@ -745,33 +767,42 @@ const TableV2 = <T extends object>(
       return undefined;
     }
 
+    // Keyed by React Aria id off the rendered rows. Deriving these from
+    // `filteredDataSource` instead meant that whenever `rowKey` was absent and
+    // fell back to the array index, the disabled set used whole-dataset
+    // positions while the rows used page-relative ones — disabling the wrong
+    // rows on every page after the first.
     return new Set(
-      filteredDataSource
-        .map((record, index) => ({ key: getRowKey(record, index), record }))
+      rowEntries
         .filter(({ record }) => getCheckboxProps(record).disabled)
-        .map(({ key }) => key)
+        .map(({ id }) => id)
     );
-  }, [rest.rowSelection, filteredDataSource, getRowKey]);
+  }, [rest.rowSelection, rowEntries]);
 
   const handleSelectionChange = useCallback(
     (keys: AriaSelection) => {
       if (!rest.rowSelection?.onChange) {
         return;
       }
-      const dataSource = filteredDataSource;
-      const selectedKeys =
+      // Resolved through the row's own id. Filtering the data by key instead
+      // reported every record sharing that key, so selecting one of a pair of
+      // duplicate-keyed rows handed the call site both.
+      const selected =
         keys === 'all'
-          ? dataSource.map((r, i) => getRowKey(r, i))
-          : [...keys].map((key) => rowKeyById.get(String(key)) ?? String(key));
-      const selectedRows = dataSource.filter((r, i) =>
-        selectedKeys.includes(getRowKey(r, i))
-      );
+          ? rowEntries
+          : [...keys]
+              .map((key) => rowEntryById.get(String(key)))
+              .filter((entry): entry is (typeof rowEntries)[number] =>
+                Boolean(entry)
+              );
 
-      rest.rowSelection.onChange(selectedKeys, selectedRows, {
-        type: selectionMode === 'single' ? 'single' : 'multiple',
-      });
+      rest.rowSelection.onChange(
+        selected.map(({ key }) => key),
+        selected.map(({ record }) => record),
+        { type: selectionMode === 'single' ? 'single' : 'multiple' }
+      );
     },
-    [rest.rowSelection, filteredDataSource, getRowKey, selectionMode, rowKeyById]
+    [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
   );
 
   // ─── Column resize (via React Aria ColumnResizer) ──────────────────────────
@@ -811,7 +842,6 @@ const TableV2 = <T extends object>(
       if (!rest.onChange) {
         return;
       }
-
 
       rest.onChange(
         {
@@ -904,7 +934,6 @@ const TableV2 = <T extends object>(
       ...(pageSizeOptions.length ? { pageSizeOptions } : {}),
     };
   }, [clientPagination, handlePageSizeChange]);
-
 
   // ─── Render ───────────────────────────────────────────────────────────────
 

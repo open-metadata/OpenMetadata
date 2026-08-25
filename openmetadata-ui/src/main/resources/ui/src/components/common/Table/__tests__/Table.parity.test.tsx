@@ -48,9 +48,7 @@ const antdAdapter: ParityAdapter = {
     const row = screen
       .getAllByRole('row')
       .find((candidate) => within(candidate).queryByText(label));
-    fireEvent.click(
-      within(row as HTMLElement).getByTestId('expand-icon')
-    );
+    fireEvent.click(within(row as HTMLElement).getByTestId('expand-icon'));
   },
 };
 

@@ -21,8 +21,16 @@ import { ParityAdapter, runTableParitySuite } from './tableParity.shared';
  * `fireEvent.click` never activates a core Button/MenuItem in jsdom.
  */
 const press = (element: HTMLElement) => {
-  fireEvent.pointerDown(element, { button: 0, pointerId: 1, pointerType: 'mouse' });
-  fireEvent.pointerUp(element, { button: 0, pointerId: 1, pointerType: 'mouse' });
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
   fireEvent.click(element);
 };
 
@@ -117,5 +125,46 @@ describe('TableV2 — parent-owned pagination', () => {
     );
 
     expect(screen.getAllByRole('row')).toHaveLength(rows.length + 1);
+  });
+});
+
+/**
+ * TableV2-only: legacy AntD has the same weakness here, so requiring both to
+ * pass would be asking legacy to be better than it is. `getCheckboxProps` was
+ * evaluated against the whole filtered dataset while rows were keyed by their
+ * position within the page, so with no `rowKey` the disabled set pointed at the
+ * wrong rows on every page after the first.
+ */
+describe('TableV2 — disabled rows on a later page', () => {
+  it('disables the row the call site asked for, not its page-relative twin', () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      count: i,
+      name: `row-${i}`,
+    }));
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', key: 'name', title: 'Name' },
+          { dataIndex: 'count', key: 'count', title: 'Count' },
+        ]}
+        dataSource={rows}
+        pagination={{ pageSize: 3 }}
+        rowSelection={{
+          getCheckboxProps: (record: { name: string }) => ({
+            disabled: record.name === 'row-4',
+          }),
+          onChange: jest.fn(),
+        }}
+      />
+    );
+    fireEvent.click(screen.getByTestId('next'));
+
+    const disabled = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).queryByRole('checkbox'))
+      .map((box) => Boolean(box && (box as HTMLInputElement).disabled));
+
+    expect(disabled).toEqual([false, true, false]);
   });
 });
