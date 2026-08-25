@@ -145,6 +145,18 @@ public class ServicesOverviewResourceIT {
     return names;
   }
 
+  /** The single {@code data} entry with this exact name; fails if the response does not carry it. */
+  private JsonNode serviceNamed(JsonNode response, String name) {
+    JsonNode match = null;
+    for (JsonNode service : response.get("data")) {
+      if (name.equals(service.get("name").asText())) {
+        match = service;
+      }
+    }
+    assertNotNull(match, "response must contain the service named " + name);
+    return match;
+  }
+
   private int countFor(JsonNode response, String entityType) {
     return response.get("counts").get(entityType).asInt();
   }
@@ -439,11 +451,18 @@ public class ServicesOverviewResourceIT {
             null,
             RequestOptions.builder().build());
 
-    assertEquals(0, overview("limit=1000&q=softDeleted").get("data").size());
+    assertTrue(
+        namespacedNames(overview("limit=1000&q=softDeleted"), ns).isEmpty(),
+        "a soft-deleted service must be absent without include=all");
 
     JsonNode withDeleted = overview("limit=1000&q=softDeleted&include=all");
-    assertEquals(1, withDeleted.get("data").size());
-    assertTrue(withDeleted.get("data").get(0).get("deleted").asBoolean());
+    assertEquals(
+        List.of(service.getName()),
+        namespacedNames(withDeleted, ns),
+        "include=all must return this namespace's soft-deleted service");
+    assertTrue(
+        serviceNamed(withDeleted, service.getName()).get("deleted").asBoolean(),
+        "the service returned under include=all must be flagged deleted");
   }
 
   @Test

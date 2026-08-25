@@ -294,33 +294,39 @@ export default [
       'jsx-a11y/no-distracting-elements': 'error',
       'jsx-a11y/scope': 'error',
 
+      // --- blocking (error): brought to zero by the ESLint-cleanup stack and
+      // locked so they cannot regress. jsx-a11y + safe-mechanical sonarjs were
+      // cleared in the a11y/safe-mechanical PR; promoting to error keeps CI red
+      // on any new violation instead of letting the backlog silently grow back.
+      'jsx-a11y/control-has-associated-label': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/label-has-for': 'error',
+      'jsx-a11y/no-autofocus': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/no-noninteractive-element-interactions': 'error',
+      'jsx-a11y/interactive-supports-focus': 'error',
+      'jsx-a11y/anchor-is-valid': 'error',
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/no-redundant-roles': 'error',
+      'jsx-a11y/mouse-events-have-key-events': 'error',
+      'jsx-a11y/media-has-caption': 'error',
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
+      'jsx-a11y/anchor-ambiguous-text': 'error',
+      'sonarjs/no-collapsible-if': 'error',
+      'sonarjs/no-extra-arguments': 'error',
+      'sonarjs/no-redundant-jump': 'error',
+      'sonarjs/no-duplicated-branches': 'error',
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/prefer-object-literal': 'error',
+      'sonarjs/no-redundant-boolean': 'error',
+
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
-      // backlog at the time of writing; they only go down.
+      // backlog at the time of writing; they only go down. Each is promoted to
+      // error by its own cleanup PR once its violations reach zero.
       'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
-      'jsx-a11y/control-has-associated-label': 'warn', // 146
-      'jsx-a11y/click-events-have-key-events': 'warn', // 89
-      'jsx-a11y/no-static-element-interactions': 'warn', // 87
-      'jsx-a11y/label-has-for': 'warn', // 61
-      'jsx-a11y/no-autofocus': 'warn', // 45
-      'jsx-a11y/anchor-has-content': 'warn', // 12
-      'jsx-a11y/no-noninteractive-element-interactions': 'warn', // 8
-      'jsx-a11y/interactive-supports-focus': 'warn', // 7
-      'jsx-a11y/anchor-is-valid': 'warn', // 5
-      'jsx-a11y/alt-text': 'warn', // 3
-      'jsx-a11y/no-redundant-roles': 'warn', // 2
-      'jsx-a11y/mouse-events-have-key-events': 'warn', // 2
-      'jsx-a11y/media-has-caption': 'warn', // 2
-      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn', // 2
-      'jsx-a11y/anchor-ambiguous-text': 'warn', // 1
       'sonarjs/no-duplicate-string': 'warn', // 640
       'sonarjs/cognitive-complexity': ['warn', 15], // 85
-      'sonarjs/no-collapsible-if': 'warn', // 21
-      'sonarjs/no-extra-arguments': 'warn', // 20
-      'sonarjs/no-redundant-jump': 'warn', // 14
-      'sonarjs/no-duplicated-branches': 'warn', // 9
-      'sonarjs/no-identical-functions': 'warn', // 6
-      'sonarjs/prefer-object-literal': 'warn', // 1
-      'sonarjs/no-redundant-boolean': 'warn', // 1
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.

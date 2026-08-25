@@ -182,20 +182,19 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     const { currentTarget } = e;
     if (
       currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
+        currentTarget.scrollHeight &&
+      options.length < paging.total
     ) {
-      if (options.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
+      try {
+        setHasContentLoading(true);
+        const res = await fetchOptions(searchValue, currentPage + 1);
+        setOptions((prev) => [...prev, ...res.data]);
+        setPaging(res.paging);
+        setCurrentPage((prev) => prev + 1);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setHasContentLoading(false);
       }
     }
   };
@@ -250,6 +249,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     <Select
       allowClear
       showSearch
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
       autoFocus={autoFocus}
       data-testid="asset-select-list"
       dropdownRender={dropdownRender}

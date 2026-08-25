@@ -44,7 +44,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )),
     Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-      <div role="menuitem" onClick={onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick?.(e);
+          }
+        }}
+        {...props}>
         {children}
       </div>
     )),
