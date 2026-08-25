@@ -206,6 +206,14 @@ describe('moveSidebarNode', () => {
     expect(moveSidebarNode(tree, 'a', 'b', 'on')).toBe(tree);
   });
 
+  it('reverts (without losing the item) an "on" drop onto a nested More child', () => {
+    const tree = [leaf('a'), more([leaf('b')])];
+
+    // Dropping 'a' "on" the nested leaf 'b' is invalid — the source must be
+    // preserved, not silently detached.
+    expect(moveSidebarNode(tree, 'a', 'b', 'on')).toBe(tree);
+  });
+
   it('is a no-op when source and target are the same', () => {
     const tree = [leaf('a'), more([])];
 

@@ -319,6 +319,14 @@ export const moveSidebarNode = (
     return nodes;
   }
 
+  // Only the "More" node accepts a nested ("on") drop. Nesting onto any other
+  // target — a top-level leaf, or a leaf already inside "More" — is invalid;
+  // reject up front so the source is never detached-and-lost (insertNode's
+  // "on" branch searches only the top level and would otherwise drop it).
+  if (position === 'on' && targetKey !== MORE_NAV_KEY) {
+    return nodes;
+  }
+
   const { node, rest } = detachNode(nodes, sourceKey);
   if (!node) {
     return nodes;
