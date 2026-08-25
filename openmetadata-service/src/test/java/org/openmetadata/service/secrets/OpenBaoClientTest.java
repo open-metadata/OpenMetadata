@@ -74,6 +74,7 @@ class OpenBaoClientTest {
   private final Map<String, String> lastHeaders = new ConcurrentHashMap<>();
   private final AtomicInteger loginCount = new AtomicInteger();
   private final Map<String, String> lastBody = new ConcurrentHashMap<>();
+  private final List<String> tokensSeen = new java.util.concurrent.CopyOnWriteArrayList<>();
 
   private record StubResponse(int status, String body) {}
 
@@ -91,6 +92,7 @@ class OpenBaoClientTest {
     routes.clear();
     lastHeaders.clear();
     lastBody.clear();
+    tokensSeen.clear();
     loginCount.set(0);
   }
 
@@ -102,7 +104,20 @@ class OpenBaoClientTest {
         .getRequestHeaders()
         .forEach((key, values) -> lastHeaders.put(key, String.join(",", values)));
     if (path.endsWith("/login")) {
-      loginCount.incrementAndGet();
+      int n = loginCount.incrementAndGet();
+      byte[] minted =
+          String.format("{\"auth\":{\"client_token\":\"token-%d\",\"lease_duration\":1200}}", n)
+              .getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().add("Content-Type", "application/json");
+      exchange.sendResponseHeaders(200, minted.length);
+      try (OutputStream out = exchange.getResponseBody()) {
+        out.write(minted);
+      }
+      return;
+    }
+    String token = exchange.getRequestHeaders().getFirst("X-Vault-Token");
+    if (token != null) {
+      tokensSeen.add(token);
     }
     StubResponse stub = routes.getOrDefault(path, new StubResponse(404, "{\"errors\":[]}"));
     byte[] payload = stub.body().getBytes(StandardCharsets.UTF_8);
@@ -215,10 +230,6 @@ class OpenBaoClientTest {
 
   @Test
   void appRoleReAuthenticatesOnceWhenTheTokenIsRejected() {
-    stub(
-        "/v1/auth/approle/login",
-        200,
-        "{\"auth\":{\"client_token\":\"fresh\",\"lease_duration\":1200}}");
     stub("/v1/openmetadata/data/svc/denied", 403, "{\"errors\":[\"permission denied\"]}");
     OpenBaoClient client =
         new OpenBaoClient(
@@ -238,6 +249,67 @@ class OpenBaoClientTest {
     assertThrows(OpenBaoClient.OpenBaoRequestException.class, () -> client.read("svc/denied"));
     assertEquals(
         2, loginCount.get(), "One login at construction plus exactly one retry, never a loop");
+  }
+
+  /** A proxy in front of OpenBao can turn a rejected token into a 401, so it must retry too. */
+  @Test
+  void appRoleReAuthenticatesOnUnauthorizedAsWellAsForbidden() {
+    stub("/v1/openmetadata/data/svc/p401", 401, "{\"errors\":[\"missing client token\"]}");
+    OpenBaoClient client =
+        new OpenBaoClient(
+            new OpenBaoClient.OpenBaoConfig(
+                address,
+                "openmetadata",
+                "",
+                "approle",
+                "",
+                "role",
+                "secret",
+                "",
+                "",
+                false,
+                2000,
+                2000));
+    assertThrows(OpenBaoClient.OpenBaoRequestException.class, () -> client.read("svc/p401"));
+    assertEquals(2, loginCount.get(), "a 401 must trigger the same single re-auth as a 403");
+  }
+
+  @Test
+  void tokenAuthDoesNotRetryOnUnauthorized() {
+    stub("/v1/openmetadata/data/svc/p401", 401, "{\"errors\":[\"missing client token\"]}");
+    assertThrows(OpenBaoClient.OpenBaoRequestException.class, () -> tokenClient().read("svc/p401"));
+    assertEquals(0, loginCount.get(), "token auth has no login to repeat");
+  }
+
+  /**
+   * The retry must go out under the refreshed token. Reading the field inside the call instead of
+   * passing it in would let the two diverge, and the re-auth would be skipped.
+   */
+  @Test
+  void theRetryIsSentWithTheRefreshedToken() {
+    stub("/v1/openmetadata/data/svc/denied", 403, "{\"errors\":[\"permission denied\"]}");
+    OpenBaoClient client =
+        new OpenBaoClient(
+            new OpenBaoClient.OpenBaoConfig(
+                address,
+                "openmetadata",
+                "",
+                "approle",
+                "",
+                "role",
+                "secret",
+                "",
+                "",
+                false,
+                2000,
+                2000));
+    assertThrows(OpenBaoClient.OpenBaoRequestException.class, () -> client.read("svc/denied"));
+    // Construction logs in as token-1; the rejected read forces a second login minting token-2.
+    // Replaying the captured token instead of the refreshed one would resend token-1.
+    assertEquals(
+        "token-2",
+        tokensSeen.get(tokensSeen.size() - 1),
+        "the retry must carry the token from the re-authentication, not the rejected one");
   }
 
   @Test

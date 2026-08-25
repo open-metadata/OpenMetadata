@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
@@ -251,7 +251,7 @@ public class OpenBaoClient implements AutoCloseable {
    */
   public void verifyMount() {
     final int status;
-    try (Response response = request(mountUrl(CONFIG_SEGMENT)).get()) {
+    try (Response response = request(mountUrl(CONFIG_SEGMENT), currentToken).get()) {
       status = response.getStatus();
     } catch (ProcessingException e) {
       throw new OpenBaoConfigurationException(
@@ -287,7 +287,8 @@ public class OpenBaoClient implements AutoCloseable {
    */
   public Optional<String> read(final String path) {
     final Optional<String> result;
-    try (Response response = send("read", () -> request(secretUrl(DATA_SEGMENT, path)).get())) {
+    try (Response response =
+        send("read", token -> request(secretUrl(DATA_SEGMENT, path), token).get())) {
       final int status = response.getStatus();
       if (status == Response.Status.OK.getStatusCode()) {
         result = valueOf(readBody(response));
@@ -325,8 +326,8 @@ public class OpenBaoClient implements AutoCloseable {
     try (Response response =
         send(
             "write",
-            () ->
-                request(secretUrl(DATA_SEGMENT, path))
+            token ->
+                request(secretUrl(DATA_SEGMENT, path), token)
                     .post(Entity.entity(payload, MediaType.APPLICATION_JSON)))) {
       final int status = response.getStatus();
       if (status != Response.Status.OK.getStatusCode()
@@ -349,7 +350,7 @@ public class OpenBaoClient implements AutoCloseable {
    */
   public void deleteAllVersions(final String path) {
     try (Response response =
-        send("delete", () -> request(secretUrl(METADATA_SEGMENT, path)).delete())) {
+        send("delete", token -> request(secretUrl(METADATA_SEGMENT, path), token).delete())) {
       final int status = response.getStatus();
       if (status == Response.Status.NOT_FOUND.getStatusCode()) {
         // Same discrimination as read(): an empty errors array means the secret is already gone
@@ -370,7 +371,7 @@ public class OpenBaoClient implements AutoCloseable {
    * naming neither the address nor the mount - and on the resolution path it would reach the REST
    * layer untranslated, unlike every other failure mode here.
    */
-  private Response send(final String operation, final Supplier<Response> call) {
+  private Response send(final String operation, final Function<String, Response> call) {
     try {
       return withRetry(call);
     } catch (ProcessingException e) {
@@ -386,19 +387,35 @@ public class OpenBaoClient implements AutoCloseable {
    * Runs a call, re-authenticating once if the token was rejected.
    *
    * <p>Bounded to a single retry, and only for AppRole - under token auth there is no login to
-   * repeat, so a 403 is final. No background renewal thread: this client lives in a process-global
-   * singleton, where a daemon thread would outlive any request able to report its failure.
+   * repeat, so a rejection is final. No background renewal thread: this client lives in a
+   * process-global singleton, where a daemon thread would outlive any request able to report its
+   * failure.
+   *
+   * <p>The token is passed into the call rather than read from the field inside it. Reading the
+   * field twice would let another thread rotate it between the capture and the request, so the
+   * token compared below would not be the one the server actually rejected - and a re-authentication
+   * that was genuinely needed would be skipped.
    */
-  private Response withRetry(final Supplier<Response> call) {
+  private Response withRetry(final Function<String, Response> call) {
     final String tokenUsed = currentToken;
-    Response response = call.get();
-    if (response.getStatus() == Response.Status.FORBIDDEN.getStatusCode()
-        && authMethod == AuthMethod.APPROLE) {
+    Response response = call.apply(tokenUsed);
+    if (isTokenRejected(response.getStatus()) && authMethod == AuthMethod.APPROLE) {
       response.close();
       reauthenticateOnce(tokenUsed);
-      response = call.get();
+      response = call.apply(currentToken);
     }
     return response;
+  }
+
+  /**
+   * A rejected token, as opposed to a rejected request.
+   *
+   * <p>OpenBao answers an expired or invalid token with 403, but a fronting proxy or gateway can
+   * turn that into a 401, so both count. The Python ingestion client treats them the same way.
+   */
+  private static boolean isTokenRejected(final int status) {
+    return status == Response.Status.FORBIDDEN.getStatusCode()
+        || status == Response.Status.UNAUTHORIZED.getStatusCode();
   }
 
   /**
@@ -476,9 +493,9 @@ public class OpenBaoClient implements AutoCloseable {
     return token;
   }
 
-  private Invocation.Builder request(final String url) {
+  private Invocation.Builder request(final String url, final String token) {
     return namespaced(
-        client.target(url).request(MediaType.APPLICATION_JSON).header(TOKEN_HEADER, currentToken));
+        client.target(url).request(MediaType.APPLICATION_JSON).header(TOKEN_HEADER, token));
   }
 
   private Invocation.Builder namespaced(final Invocation.Builder builder) {
