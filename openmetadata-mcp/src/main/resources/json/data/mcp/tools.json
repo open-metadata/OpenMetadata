@@ -317,7 +317,7 @@
                 "quality"
               ]
             },
-            "description": "Extra sections to fold into this response instead of making another call. 'lineage' adds the immediate upstream and downstream FQNs (what feeds this asset, what breaks if it changes). 'quality' adds its test suite's pass/fail summary. Each section degrades independently: if one cannot be read you get a note for that section, not a failed call. Use get_entity_lineage instead when you need lineage depth or transformation SQL."
+            "description": "Extra sections to fold into this response instead of making another call. 'lineage' adds the immediate upstream and downstream FQNs (what feeds this asset, what breaks if it changes). 'quality' adds its test suite's pass/fail summary, including a 'neverRun' count so a suite whose tests have never executed is not mistaken for a clean one. Each section degrades independently: if one cannot be read you get a note for that section, not a failed call. Use get_entity_lineage instead when you need lineage depth or transformation SQL."
           },
           "entities": {
             "type": "array",
@@ -615,11 +615,11 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Glossary Term name."
+            "description": "Name of the glossary. Must be unique."
           },
           "description": {
             "type": "string",
-            "description": "Glossary Term description."
+            "description": "Description of the glossary in Markdown format."
           },
           "owners": {
             "type": "array",

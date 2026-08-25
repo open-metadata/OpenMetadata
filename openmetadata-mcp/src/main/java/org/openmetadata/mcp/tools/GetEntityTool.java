@@ -342,10 +342,47 @@ public class GetEntityTool implements McpTool {
                   Include.NON_DELETED));
       Map<String, Object> health = new LinkedHashMap<>();
       health.put("testSuite", ref.get("fullyQualifiedName"));
-      health.put("summary", suite.get("summary"));
+      health.put("summary", withNeverRun(suite.get("summary")));
       result = health;
     }
     return result;
+  }
+
+  /**
+   * Adds the bucket the test-suite summary cannot express: tests that exist but have never run.
+   *
+   * <p>The raw summary reports success/failed/aborted/queued against a total. For a suite whose
+   * tests have never executed, every bucket is zero while total is 13 — which reads as "13 tests,
+   * no failures, healthy" and is the exact opposite of the truth. Two callers independently named
+   * this the worst defect they hit, one calling it "the difference the user\'s question turns on".
+   * The search index already models the state as {@code testCaseStatus: NeverRun}; this closes the
+   * gap so the folded summary cannot say less than the tool it is meant to replace.
+   */
+  private static Object withNeverRun(Object rawSummary) {
+    Object result = rawSummary;
+    if (rawSummary instanceof Map<?, ?> summary) {
+      Map<String, Object> annotated = new LinkedHashMap<>();
+      summary.forEach((key, value) -> annotated.put(String.valueOf(key), value));
+      int executed =
+          intOf(annotated.get("success"))
+              + intOf(annotated.get("failed"))
+              + intOf(annotated.get("aborted"))
+              + intOf(annotated.get("queued"));
+      int neverRun = Math.max(0, intOf(annotated.get("total")) - executed);
+      annotated.put("neverRun", neverRun);
+      if (neverRun > 0 && executed == 0) {
+        annotated.put(
+            McpResponseTrim.MESSAGE_KEY,
+            "No test has ever executed on this suite. Zero failures here means unverified, not"
+                + " healthy.");
+      }
+      result = annotated;
+    }
+    return result;
+  }
+
+  private static int intOf(Object value) {
+    return value instanceof Number number ? number.intValue() : 0;
   }
 
   /**
