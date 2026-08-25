@@ -67,6 +67,7 @@ jest.mock('@uiw/react-codemirror', () => {
               {extensions.length}
             </span>
             <input
+              aria-label="code editor"
               data-testid="code-mirror-editor-input"
               value={value}
               onBlur={() => {
@@ -134,9 +135,7 @@ describe('SchemaEditor component test', () => {
   });
 
   it('should not format the value on mount when autoFormat is off', () => {
-    render(
-      <SchemaEditor {...mockProps} autoFormat={false} value='{"a":1}' />
-    );
+    render(<SchemaEditor {...mockProps} autoFormat={false} value='{"a":1}' />);
 
     expect(getEditorValue()).toBe('{"a":1}');
   });
