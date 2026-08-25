@@ -87,9 +87,21 @@ describe('getCodeMirrorExtensions', () => {
     expect(getCodeMirrorExtensions({ [option]: false })).toHaveLength(0);
   });
 
-  it('should make the state read-only and non-editable for readOnly', () => {
+  it('should make the state read-only for readOnly', () => {
     expect(createState({ readOnly: true }).readOnly).toBe(true);
     expect(createState({ readOnly: false }).readOnly).toBe(false);
+  });
+
+  it('should keep a read-only editor focusable', () => {
+    expect(getCodeMirrorExtensions({ readOnly: true })).toHaveLength(1);
+  });
+
+  it("should also drop focus for CodeMirror 5's nocursor", () => {
+    const extensions = getCodeMirrorExtensions({ readOnly: 'nocursor' });
+
+    expect(createState({ readOnly: 'nocursor' }).readOnly).toBe(true);
+    // The readOnly facet plus EditorView.editable.
+    expect(extensions).toHaveLength(2);
   });
 
   it('should apply tabSize', () => {

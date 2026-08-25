@@ -83,8 +83,9 @@ type BooleanCodeMirrorOption =
  * CodeMirror 5 boolean option -> the CodeMirror 6 extensions that replace it.
  *
  * `readOnly` rejects edits but keeps the editor focusable, the way CodeMirror 5
- * behaved: keyboard users can still move through the text and copy it.
- * `EditorView.editable.of(false)` would take it out of the tab order.
+ * behaved: keyboard users can still move through the text and copy it. Only
+ * v5's `'nocursor'` spelling also takes it out of the tab order, and it is
+ * handled separately below.
  */
 const BOOLEAN_OPTION_EXTENSIONS: Array<
   [BooleanCodeMirrorOption, () => Extension[]]
@@ -101,6 +102,9 @@ const BOOLEAN_OPTION_EXTENSIONS: Array<
   ['readOnly', () => [EditorState.readOnly.of(true)]],
 ];
 
+/** CodeMirror 5's `readOnly: 'nocursor'`: read-only and not focusable. */
+const NO_CURSOR = 'nocursor';
+
 /**
  * Translate the CodeMirror 5 option bag call sites already pass into the
  * equivalent CodeMirror 6 extensions.
@@ -115,6 +119,10 @@ export const getCodeMirrorExtensions = (
   const extensions = BOOLEAN_OPTION_EXTENSIONS.filter(
     ([option]) => options[option]
   ).flatMap(([, buildExtensions]) => buildExtensions());
+
+  if (options.readOnly === NO_CURSOR) {
+    extensions.push(EditorView.editable.of(false));
+  }
 
   if (options.placeholder) {
     extensions.push(placeholderExtension(options.placeholder));

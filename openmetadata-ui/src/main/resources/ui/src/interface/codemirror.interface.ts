@@ -38,7 +38,11 @@ export interface CodeMirrorOptions {
   autoCloseBrackets?: boolean;
   foldGutter?: boolean;
   placeholder?: string;
-  readOnly?: boolean;
+  /**
+   * `'nocursor'` is the CodeMirror 5 spelling for read-only *and* not
+   * focusable, which several read-only viewers pass.
+   */
+  readOnly?: boolean | 'nocursor';
   tabSize?: number;
   indentUnit?: number;
   indentWithTabs?: boolean;
