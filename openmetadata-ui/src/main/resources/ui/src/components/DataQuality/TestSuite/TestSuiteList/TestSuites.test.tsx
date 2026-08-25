@@ -489,7 +489,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
