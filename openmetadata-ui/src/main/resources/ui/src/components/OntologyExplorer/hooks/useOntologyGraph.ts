@@ -520,6 +520,7 @@ export function useOntologyGraph({
       if (!nodesByCombo.has(comboId)) {
         nodesByCombo.set(comboId, []);
       }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
       nodesByCombo.get(comboId)!.push(node);
     });
 
@@ -667,6 +668,7 @@ export function useOntologyGraph({
       if (!nodesByCombo.has(comboId)) {
         nodesByCombo.set(comboId, []);
       }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
       nodesByCombo.get(comboId)!.push(node);
     });
 

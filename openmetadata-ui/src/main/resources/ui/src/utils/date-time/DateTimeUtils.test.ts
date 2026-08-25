@@ -655,6 +655,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
       const nov27 = formattedResults.find((r) => r.days === 362.6);
       const nov19 = formattedResults.find((r) => r.days === 366.6);
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect(Math.abs(nov27!.seconds)).toBeLessThan(Math.abs(nov19!.seconds));
 
       // Verify we have 16 consecutive days
@@ -725,7 +726,9 @@ describe('convertSecondsToHumanReadableFormat', () => {
       // Verify 361 days shows as 1Y 1d (not wrapping incorrectly)
       const day361 = results.find((r) => r.description.includes('361 days'));
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect(day361!.formatted).toContain('1Y');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect(day361!.formatted).toContain('1d');
     });
   });

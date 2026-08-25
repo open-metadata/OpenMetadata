@@ -68,6 +68,7 @@ describe('GatewayNode', () => {
     );
 
     fireEvent.click(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       screen.getByText('Test Gateway').parentElement!.parentElement!
     );
 

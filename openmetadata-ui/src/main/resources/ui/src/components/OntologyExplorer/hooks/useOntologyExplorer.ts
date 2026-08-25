@@ -683,6 +683,7 @@ export function useOntologyExplorer({
         accumulated.length < ONTOLOGY_TERMS_PAGE_SIZE &&
         pendingGlossariesRef.current.length > 0
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queue is non-empty in loop
         const glossary = pendingGlossariesRef.current.shift()!;
         const { terms, nextCursor } = await fetchTermsForGlossary(
           glossary,
@@ -985,6 +986,7 @@ export function useOntologyExplorer({
       const loadedGlossaryIds = new Set(
         (graphDataRef.current?.nodes ?? [])
           .filter((n) => n.glossaryId)
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filtered for glossaryId above
           .map((n) => n.glossaryId!)
       );
       const unloaded = filtered.filter(
@@ -1267,6 +1269,7 @@ export function useOntologyExplorer({
   const getNodePath = useCallback((node: OntologyNode) => {
     if (node.entityRef?.type && node.entityRef?.fullyQualifiedName) {
       const entityType = Object.values(EntityType).find(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by entityRef?.type above
         (v) => v === node.entityRef!.type
       );
       if (entityType) {

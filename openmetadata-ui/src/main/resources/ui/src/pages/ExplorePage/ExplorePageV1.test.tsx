@@ -143,6 +143,7 @@ describe('ExplorePageV1', () => {
     };
 
     act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       capturedCallback!(testFilter);
     });
 
@@ -185,6 +186,7 @@ describe('ExplorePageV1', () => {
     await screen.findByText('ExploreV1');
 
     act(() => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       capturedCallback!({ query: { bool: { must: [] } } });
     });
 

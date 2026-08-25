@@ -420,6 +420,7 @@ const extractTempLineageNodes = (
   const existingByFqn = new Map(
     existingNodes
       .filter((n) => n.fullyQualifiedName)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filtered for fullyQualifiedName above
       .map((n) => [n.fullyQualifiedName!, n])
   );
 

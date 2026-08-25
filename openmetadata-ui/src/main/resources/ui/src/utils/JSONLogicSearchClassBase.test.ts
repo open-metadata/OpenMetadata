@@ -135,6 +135,7 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       const result = (dateWidget as ExtendedWidget).jsonLogic!.call(
         mockContext,
         mockDate
@@ -156,6 +157,7 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       const result2 = (dateWidget as ExtendedWidget).jsonLogicImport!.call(
         mockContext2,
         timestamp

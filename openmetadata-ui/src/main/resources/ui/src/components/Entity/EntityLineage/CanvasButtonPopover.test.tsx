@@ -196,6 +196,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
     fireEvent.mouseEnter(popover!);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
@@ -216,6 +217,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
     fireEvent.mouseLeave(popover!);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);

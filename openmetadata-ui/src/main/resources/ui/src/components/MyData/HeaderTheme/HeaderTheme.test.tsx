@@ -85,6 +85,7 @@ describe('HeaderTheme Component', () => {
       render(<HeaderTheme {...defaultProps} />);
 
       const firstColorOption = document.querySelector('.option-color');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.click(firstColorOption!);
 
       expect(mockSetSelectedColor).toHaveBeenCalledTimes(1);

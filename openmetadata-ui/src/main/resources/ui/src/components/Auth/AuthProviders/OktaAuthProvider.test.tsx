@@ -132,6 +132,7 @@ describe('OktaAuthProvider', () => {
 
       expect(mockOktaAuth.tokenManager.start).not.toHaveBeenCalled();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
       resolveWaitForInit!();
 
       await waitFor(() => {
@@ -242,6 +243,7 @@ describe('OktaAuthProvider', () => {
         expiresAt: Math.floor(Date.now() / 1000) + 3600,
       } as IDToken;
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
       await renewedHandler!('idToken', renewedToken);
 
       await waitFor(() => {
@@ -275,6 +277,7 @@ describe('OktaAuthProvider', () => {
         expiresAt: Math.floor(Date.now() / 1000) + 3600,
       } as unknown as IDToken;
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
       await renewedHandler!('accessToken', renewedToken);
 
       await waitFor(() => {
@@ -307,6 +310,7 @@ describe('OktaAuthProvider', () => {
         claims: { sub: 'user123' },
       } as IDToken;
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
       await renewedHandler!('idToken', renewedToken);
 
       await waitFor(() => {

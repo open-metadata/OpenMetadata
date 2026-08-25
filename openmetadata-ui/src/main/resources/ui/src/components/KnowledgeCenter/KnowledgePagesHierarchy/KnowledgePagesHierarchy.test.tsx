@@ -332,6 +332,7 @@ describe('KnowledgePagesHierarchy', () => {
     expect(expandBtn).not.toBeNull();
 
     await act(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.click(expandBtn!);
     });
 
@@ -363,6 +364,7 @@ describe('KnowledgePagesHierarchy', () => {
     expect(chevron).not.toBeNull();
 
     await act(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.click(chevron!);
     });
 
@@ -371,6 +373,7 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.click(chevron!);
     });
 
@@ -477,6 +480,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(expandBtn!);
       });
 
@@ -562,6 +566,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(expandBtn!);
       });
 
@@ -643,6 +648,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(expandBtn!);
       });
 
@@ -667,6 +673,7 @@ describe('KnowledgePagesHierarchy', () => {
       );
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(expandBtnAfterRefresh!);
       });
 

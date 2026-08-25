@@ -244,6 +244,7 @@ describe('adaptRdfGraph', () => {
   it('should classify each link kind from the RDF label and node types', () => {
     const { links } = adaptRdfGraph(SAMPLE);
     const findLink = (source: string, target: string): (typeof links)[number] =>
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       links.find((l) => l.source === source && l.target === target)!;
 
     expect(findLink('T1', 'CON1').kind).toBe('ontology');

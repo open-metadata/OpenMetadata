@@ -157,6 +157,7 @@ describe('ProviderSelector', () => {
 
       expect(googleCard).toBeInTheDocument();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(googleCard!);
 
       expect(googleCard).toHaveClass('selected');
@@ -183,6 +184,7 @@ describe('ProviderSelector', () => {
 
       expect(customOidcCard).toBeInTheDocument();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(customOidcCard!);
 
       const configureButton = screen.getByRole('button', {
@@ -202,6 +204,7 @@ describe('ProviderSelector', () => {
 
       expect(samlCard).toBeInTheDocument();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(samlCard!);
 
       const configureButton = screen.getByRole('button', {
@@ -218,6 +221,7 @@ describe('ProviderSelector', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(googleCard!);
 
       const configureButton = screen.getByRole('button', {
@@ -236,6 +240,7 @@ describe('ProviderSelector', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(googleCard!);
 
       expect(googleCard).toHaveClass('selected');
@@ -247,10 +252,12 @@ describe('ProviderSelector', () => {
       const googleCard = screen.getByText('Google').closest('.provider-item');
       const oktaCard = screen.getByText('Okta').closest('.provider-item');
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(googleCard!);
 
       expect(googleCard).toHaveClass('selected');
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queried card always present
       fireEvent.click(oktaCard!);
 
       expect(oktaCard).toHaveClass('selected');

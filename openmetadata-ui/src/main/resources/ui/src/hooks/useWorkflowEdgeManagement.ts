@@ -182,7 +182,9 @@ export const useWorkflowEdgeManagement = ({
       const edgeId = `reactflow__edge-${connection.source}-${connection.target}`;
       const newEdge = {
         id: edgeId,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- onConnect always provides source
         source: connection.source!,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- onConnect always provides target
         target: connection.target!,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,

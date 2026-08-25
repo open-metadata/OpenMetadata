@@ -79,8 +79,9 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         if (data[i].key === key) {
           return callback(data[i], i, data);
         }
-        if (data[i].children) {
-          loop(data[i].children!, key, callback);
+        const children = data[i].children;
+        if (children) {
+          loop(children, key, callback);
         }
       }
     };
@@ -109,9 +110,11 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
       });
       if (dropPosition === -1) {
         // Drop on the top of the drop node
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned by loop callback above
         ar.splice(i!, 0, dragObj!);
       } else {
         // Drop on the bottom of the drop node
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned by loop callback above
         ar.splice(i! + 1, 0, dragObj!);
       }
     }

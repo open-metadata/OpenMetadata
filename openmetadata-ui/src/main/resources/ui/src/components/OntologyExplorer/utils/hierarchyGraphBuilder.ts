@@ -133,10 +133,12 @@ export function buildHierarchyGraphs({
     if (!parentToChildren.has(parent)) {
       parentToChildren.set(parent, new Set());
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
     parentToChildren.get(parent)!.add(child);
     if (!childToParents.has(child)) {
       childToParents.set(child, new Set());
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
     childToParents.get(child)!.add(parent);
   });
 

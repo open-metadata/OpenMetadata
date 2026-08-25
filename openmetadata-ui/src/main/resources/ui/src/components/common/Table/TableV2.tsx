@@ -200,6 +200,7 @@ const TableV2 = <T extends object>(
 
         return col?.onFilter
           ? selectedKeys.some((key) =>
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by col?.onFilter above
               col.onFilter!(key as React.Key | boolean, record)
             )
           : true;

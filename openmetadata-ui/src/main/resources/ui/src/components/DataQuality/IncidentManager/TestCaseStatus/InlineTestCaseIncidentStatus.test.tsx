@@ -737,6 +737,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         .closest('button');
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(backButton!);
       });
 
@@ -967,6 +968,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         .closest('button');
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(backButton!);
       });
 

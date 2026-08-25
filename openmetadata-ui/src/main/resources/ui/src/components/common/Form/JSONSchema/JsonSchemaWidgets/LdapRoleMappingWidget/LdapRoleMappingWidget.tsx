@@ -71,6 +71,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         stableIdMapRef.current.set(key, stableId);
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
       return stableIdMapRef.current.get(key)!;
     },
     []
@@ -145,6 +146,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
       newMappings.forEach((mapping) => {
         if (mapping.ldapGroup.trim()) {
           const normalizedGroup = mapping.ldapGroup.trim().toLowerCase();
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- counted in prior loop above
           if (ldapGroupCounts.get(normalizedGroup)! > 1) {
             newErrors[mapping.id] = t('message.ldap-group-duplicate-error');
           }

@@ -58,8 +58,11 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(3);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[0] as ItemType)!.key).toBe('import-button');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[1] as ItemType)!.key).toBe('export-button');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[2] as ItemType)!.key).toBe('bulk-edit-button');
     });
 
@@ -74,6 +77,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[0] as ItemType)!.key).toBe('export-button');
     });
 
@@ -294,7 +298,9 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(2);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[0] as ItemType)!.key).toBe('import-button');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       expect((result[1] as ItemType)!.key).toBe('bulk-edit-button');
     });
 

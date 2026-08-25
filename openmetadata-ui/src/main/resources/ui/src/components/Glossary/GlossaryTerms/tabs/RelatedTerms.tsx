@@ -229,6 +229,7 @@ const RelatedTerms = () => {
           terms: relations
             .filter((r) => r.term?.fullyQualifiedName)
             .map((r) => ({
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filtered for fullyQualifiedName
               value: r.term!.fullyQualifiedName!,
               label: getEntityName(r.term as EntityReference),
               entity: r.term as EntityReference,

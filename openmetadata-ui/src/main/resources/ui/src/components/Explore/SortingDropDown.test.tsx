@@ -99,6 +99,7 @@ describe('Test Sorting DropDown Component', () => {
     expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
     expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
     fireEvent.click(dropdownButton!);
 
     const dropdownMenu = await findByRole('menu');
@@ -125,6 +126,7 @@ describe('Test Sorting DropDown Component', () => {
 
     expect(dropdownButton).toBeInTheDocument();
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
     fireEvent.click(dropdownButton!);
 
     const dropdownMenu = await findByRole('menu');

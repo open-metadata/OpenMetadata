@@ -227,6 +227,7 @@ export const getAllTracedNodes = (
   const queue: Node[] = [node];
 
   while (queue.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queue is non-empty in loop
     const currentNode = queue.shift()!;
 
     if (currentNode !== node) {

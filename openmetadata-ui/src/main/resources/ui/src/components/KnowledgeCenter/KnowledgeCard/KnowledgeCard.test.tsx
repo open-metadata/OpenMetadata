@@ -170,6 +170,7 @@ describe('Knowledge Card', () => {
 
     // component passes getEntityName(owners[0]) which returns displayName ?? name
     expect(screen.getByTestId('owner-name')).toHaveTextContent(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       KNOWLEDGE_PAGE_MOCK_DATA.owners![0].name!
     );
   });

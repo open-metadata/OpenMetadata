@@ -557,7 +557,9 @@ describe('buildExploreUrlParams', () => {
   it('should return valid JSON strings', () => {
     const result = buildExploreUrlParams(mockTree, mockQFilter);
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
     expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
     expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
   });
 
@@ -575,7 +577,9 @@ describe('buildExploreUrlParams', () => {
     const decoded = new URLSearchParams(queryString);
 
     expect(decoded.get('mode')).toBe('edit');
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
     expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
     expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
   });
 

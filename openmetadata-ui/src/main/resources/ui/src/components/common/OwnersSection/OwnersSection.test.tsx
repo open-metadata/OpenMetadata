@@ -225,6 +225,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       expect(screen.getByTestId('user-selectable-list')).toBeInTheDocument();
@@ -248,6 +249,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Trigger selection which immediately saves
@@ -271,6 +273,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Trigger selection which immediately saves
@@ -305,6 +308,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -349,6 +353,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -372,6 +377,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -387,6 +393,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -410,6 +417,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -468,6 +476,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -513,6 +522,7 @@ describe('OwnersSection', () => {
       expect(screen.getByTestId('owner-label')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Verify mixed owners display in edit mode
@@ -540,6 +550,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       expect(
@@ -556,6 +567,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       expect(userTeamSelectableListMock).toHaveBeenCalledWith(
@@ -594,6 +606,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -638,6 +651,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -653,6 +667,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -668,6 +683,7 @@ describe('OwnersSection', () => {
       );
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -710,6 +726,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       expect(userTeamSelectableListMock).toHaveBeenCalledWith(
@@ -740,6 +757,7 @@ describe('OwnersSection', () => {
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Verify UserTeamSelectableList is rendered with the rules
@@ -767,6 +785,7 @@ describe('OwnersSection', () => {
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Verify UserTeamSelectableList is rendered
@@ -792,6 +811,7 @@ describe('OwnersSection', () => {
       expect(screen.getByTestId('typography-text')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Verify UserTeamSelectableList is rendered
@@ -843,6 +863,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       const editIcon = container.querySelector('.edit-icon');
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- edit icon always present
       fireEvent.click(editIcon!);
 
       // Should use default rules (multiple users and teams allowed)

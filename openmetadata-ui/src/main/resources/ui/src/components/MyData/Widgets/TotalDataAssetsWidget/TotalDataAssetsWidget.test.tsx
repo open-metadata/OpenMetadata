@@ -532,6 +532,7 @@ describe('TotalDataAssetsWidget', () => {
       expect(firstDateBox).toBeInTheDocument();
 
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(firstDateBox!);
       });
 
@@ -657,6 +658,7 @@ describe('TotalDataAssetsWidget', () => {
       // Verify that data is processed correctly for different dates
       const firstDateBox = screen.getByText('01').closest('.date-box');
       await act(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
         fireEvent.click(firstDateBox!);
       });
 

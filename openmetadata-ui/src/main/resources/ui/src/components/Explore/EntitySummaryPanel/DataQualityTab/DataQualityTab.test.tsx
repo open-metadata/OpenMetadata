@@ -661,6 +661,7 @@ describe('DataQualityTab', () => {
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
       );
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.click(failedButtonWithZeroCount!);
 
       // Wait for the component to re-render with the filtered results

@@ -621,6 +621,7 @@ describe('IncidentManagerPage', () => {
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
       fireEvent.mouseDown(selectBox!);
     });
 
