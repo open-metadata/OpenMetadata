@@ -244,6 +244,7 @@ describe('DataProductsSection', () => {
         requireDomainForDataProduct: false,
       },
       rules: [],
+      isRulesLoaded: true,
       isLoading: false,
     });
   });
@@ -540,6 +541,7 @@ describe('DataProductsSection', () => {
           requireDomainForDataProduct: true,
         },
         rules: [],
+        isRulesLoaded: true,
         isLoading: false,
       });
       const { fetchDataProductsElasticSearch } = jest.requireMock(
@@ -577,7 +579,43 @@ describe('DataProductsSection', () => {
       fireEvent.click(screen.getByTestId('dps-fetch'));
 
       await waitFor(() => {
-        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith('term', [], 2);
+        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
+          'term',
+          [],
+          2
+        );
+      });
+    });
+
+    it('stays domain-scoped while entity rules are still loading', async () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+      const { fetchDataProductsElasticSearch } = jest.requireMock(
+        '../../../rest/dataProductAPI'
+      );
+
+      render(<DataProductsSection {...defaultProps} />);
+
+      const editIcon = screen.getByTestId('edit-data-products');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
+      fireEvent.click(screen.getByTestId('dps-fetch'));
+
+      await waitFor(() => {
+        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
+          'term',
+          ['domain'],
+          2
+        );
       });
     });
   });
@@ -591,6 +629,7 @@ describe('DataProductsSection', () => {
           requireDomainForDataProduct: true,
         },
         rules: [],
+        isRulesLoaded: true,
         isLoading: false,
       });
 

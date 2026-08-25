@@ -71,14 +71,12 @@ jest.mock('../../common/WidgetActionButton/WidgetActionButton', () => ({
 
 jest.mock('../../common/WidgetCard/WidgetCard', () => ({
   __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ children, headerExtra }) => (
-      <div data-testid="widget-card">
-        {headerExtra}
-        {children}
-      </div>
-    )),
+  default: jest.fn().mockImplementation(({ children, headerExtra }) => (
+    <div data-testid="widget-card">
+      {headerExtra}
+      {children}
+    </div>
+  )),
 }));
 
 jest.mock('../../Tag/TagsV1/TagsV1.component', () => ({
@@ -138,7 +136,11 @@ describe('DataProductsContainer', () => {
     fireEvent.click(screen.getByTestId('dps-fetch'));
 
     await waitFor(() => {
-      expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith('term', [], 2);
+      expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
+        'term',
+        [],
+        2
+      );
     });
   });
 

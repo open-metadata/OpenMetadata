@@ -46,7 +46,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
-  const { entityRules } = useEntityRules(entityType);
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
+
+  // Hold the strict domain-scoped behavior until the rules have actually loaded
+  // (an empty rule set from the backend is indistinguishable from "not fetched
+  // yet"), otherwise a cross-domain product could be selected before an enabled
+  // rule resolves and then rejected by the backend on save.
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
 
   const {
     isEditing,
@@ -97,7 +104,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       const searchText = searchValue ?? '';
       // When the "Data Product Domain Validation" rule is disabled, list Data
       // Products across all domains instead of scoping to the asset's domains.
-      const domainFQNs = entityRules.requireDomainForDataProduct
+      const domainFQNs = requireDomainForDataProduct
         ? displayActiveDomains?.map(
             (domain) => domain.fullyQualifiedName ?? ''
           ) ?? []
@@ -105,7 +112,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
       return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [displayActiveDomains, entityRules.requireDomainForDataProduct]
+    [displayActiveDomains, requireDomainForDataProduct]
   );
 
   const handleSaveWithDataProducts = useCallback(
@@ -208,7 +215,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     }
 
     if (
-      entityRules.requireDomainForDataProduct &&
+      requireDomainForDataProduct &&
       (!displayActiveDomains || displayActiveDomains.length === 0)
     ) {
       return (
@@ -230,7 +237,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     isEditing,
     editingState,
     displayActiveDomains,
-    entityRules.requireDomainForDataProduct,
+    requireDomainForDataProduct,
     t,
   ]);
 
@@ -286,8 +293,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   }, [isLoading, isEditing, editingState, dataProductsDisplay]);
 
   const canAssignDataProduct =
-    displayActiveDomains?.length > 0 ||
-    !entityRules.requireDomainForDataProduct;
+    displayActiveDomains?.length > 0 || !requireDomainForDataProduct;
 
   const canShowEditButton =
     showEditButton && hasPermission && !isLoading && canAssignDataProduct;

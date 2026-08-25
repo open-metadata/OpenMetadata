@@ -370,9 +370,9 @@ test.describe(
           await selectorInput.clear();
           await selectorInput.fill(sameDomainDataProduct.data.displayName);
           await searchResponse;
-          await expect(
-            page.getByTestId(`tag-${sameDomainFqn}`)
-          ).toBeVisible({ timeout: 2_000 });
+          await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
+            timeout: 2_000,
+          });
         }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
         // Scoped to the asset's domain, so a Data Product from another domain is
