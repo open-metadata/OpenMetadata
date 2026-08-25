@@ -12,9 +12,11 @@
  */
 
 import {
+  clearOidcToken,
   getOidcToken,
   getRefreshToken,
   isServiceWorkerAvailable,
+  resetSwTokenStorageState,
   setOidcToken,
   setRefreshToken,
 } from './SwTokenStorageUtils';
@@ -22,11 +24,13 @@ import {
 // Mock SwTokenStorage
 const mockSetItem = jest.fn();
 const mockGetItem = jest.fn();
+const mockRemoveItem = jest.fn();
 
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
     setItem: (key: string, value: string) => mockSetItem(key, value),
     getItem: (key: string) => mockGetItem(key),
+    removeItem: (key: string) => mockRemoveItem(key),
   },
 }));
 
@@ -46,6 +50,7 @@ const mockNavigator: MockNavigator = {
 const mockLocalStorage = {
   getItem: jest.fn(),
   setItem: jest.fn(),
+  removeItem: jest.fn(),
 };
 
 Object.defineProperty(global, 'navigator', {
@@ -68,6 +73,7 @@ Object.defineProperty(global, 'window', {
 describe('SwTokenStorageUtils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetSwTokenStorageState();
   });
 
   describe('isServiceWorkerAvailable', () => {
@@ -378,6 +384,108 @@ describe('SwTokenStorageUtils', () => {
       // Should fallback to localStorage
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith('app_state');
       expect(result).toBe('');
+    });
+  });
+
+  describe('service worker registration failure fallback', () => {
+    // #32063: the SW API being present does not mean a worker can actually be
+    // registered (proxy 404s /app-worker.js, CSP, insecure origin, disabled
+    // service workers). In that case swTokenStorage calls reject and tokens
+    // must survive in memory instead of being silently dropped.
+    const swFailure = new Error(
+      'Timed out waiting for service worker to take control'
+    );
+
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+      mockGetItem.mockRejectedValue(swFailure);
+      mockSetItem.mockRejectedValue(swFailure);
+    });
+
+    it('should keep the oidc token readable when the service worker cannot be reached', async () => {
+      await setOidcToken('in-memory-oidc-token');
+
+      const result = await getOidcToken();
+
+      expect(result).toBe('in-memory-oidc-token');
+      // SECURITY: broken-SW fallback must not spill tokens into localStorage
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should keep the refresh token readable when the service worker cannot be reached', async () => {
+      await setRefreshToken('in-memory-refresh-token');
+
+      const result = await getRefreshToken();
+
+      expect(result).toBe('in-memory-refresh-token');
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should stop calling the service worker after the first failure', async () => {
+      await setOidcToken('in-memory-oidc-token');
+      mockGetItem.mockClear();
+      mockSetItem.mockClear();
+
+      await getOidcToken();
+      await setRefreshToken('in-memory-refresh-token');
+
+      expect(mockGetItem).not.toHaveBeenCalled();
+      expect(mockSetItem).not.toHaveBeenCalled();
+    });
+
+    it('should clear the in-memory tokens on clearOidcToken', async () => {
+      await setOidcToken('in-memory-oidc-token');
+
+      await clearOidcToken();
+
+      expect(await getOidcToken()).toBe('');
+    });
+
+    it('should surface a single console.error when falling back', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+
+      await setOidcToken('in-memory-oidc-token');
+      await setRefreshToken('in-memory-refresh-token');
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should keep the token in memory when only the write fails', async () => {
+      mockGetItem.mockResolvedValue(null);
+
+      await setOidcToken('in-memory-oidc-token');
+
+      expect(await getOidcToken()).toBe('in-memory-oidc-token');
+    });
+  });
+
+  describe('clearOidcToken', () => {
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+    });
+
+    it('should remove state via service worker when available', async () => {
+      mockRemoveItem.mockResolvedValue(null);
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockLocalStorage.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('should remove state from localStorage when service worker is not available', async () => {
+      delete mockNavigator.serviceWorker;
+
+      await clearOidcToken();
+
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('app_state');
+      expect(mockRemoveItem).not.toHaveBeenCalled();
     });
   });
 });
