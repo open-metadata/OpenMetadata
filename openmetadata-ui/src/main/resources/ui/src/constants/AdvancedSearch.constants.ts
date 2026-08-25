@@ -23,11 +23,6 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.data-product-plural',
-    key: EntityFields.DATA_PRODUCT,
-    sourceFields: 'dataProducts.displayName',
-  },
-  {
     label: 'label.owner-plural',
     key: EntityFields.OWNERS,
   },
@@ -57,11 +52,6 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: 'label.domain-plural',
     key: EntityFields.DOMAINS,
-  },
-  {
-    label: 'label.data-product-plural',
-    key: EntityFields.DATA_PRODUCT,
-    sourceFields: 'dataProducts.displayName',
   },
   {
     label: 'label.owner-plural',
