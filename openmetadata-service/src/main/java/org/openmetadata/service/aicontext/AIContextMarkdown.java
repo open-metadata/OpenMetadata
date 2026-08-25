@@ -159,6 +159,34 @@ public final class AIContextMarkdown {
     }
   }
 
+  /**
+   * Names which of three states an all-zero test line means, since they are byte-identical in the
+   * counts above and are opposite trust verdicts.
+   *
+   * <p>{@code total} is the discriminator and was previously ignored: gating only on
+   * passed+failed+aborted meant an asset with a test suite but no test cases in it - a normal state,
+   * since a suite is created before its tests - was told "no test has ever executed … treat quality
+   * here as unverified", asserting a state that did not exist and instructing the reader to distrust
+   * an asset with nothing wrong with it. This markdown is served over REST and read by an LLM, so
+   * the wrong verdict propagates into answers.
+   */
+  private static void appendCoverageVerdict(
+      StringBuilder markdown, DataQuality dataQuality, int executed) {
+    int total = orZero(dataQuality.getTotal());
+    if (total == 0) {
+      markdown.append(
+          "\n> No data-quality test is defined on this asset. Quality here is unmeasured - which is"
+              + " neither good nor bad, and is not the same as tests passing.\n");
+    } else if (executed == 0) {
+      markdown
+          .append("\n> None of the ")
+          .append(total)
+          .append(
+              " data-quality tests defined on this asset has ever executed. This is NOT the same as"
+                  + " passing: treat quality here as unverified.\n");
+    }
+  }
+
   private static void appendDataQuality(
       StringBuilder markdown, DataQuality dataQuality, String headingPrefix) {
     if (dataQuality != null) {
@@ -176,13 +204,7 @@ public final class AIContextMarkdown {
           .append(", aborted: ")
           .append(orZero(dataQuality.getAborted()))
           .append('\n');
-      // An all-zero line is byte-identical whether the asset has no tests or has tests that have
-      // never run — and those are opposite trust verdicts. Say which one it is.
-      if (executed == 0) {
-        markdown.append(
-            "\n> No data-quality test has ever executed on this asset. This is NOT the same as"
-                + " passing: tests may be defined but never run. Treat quality here as unverified.\n");
-      }
+      appendCoverageVerdict(markdown, dataQuality, executed);
       if (dataQuality.getFailed() != null && dataQuality.getFailed() > 0) {
         markdown
             .append("\n> ")
