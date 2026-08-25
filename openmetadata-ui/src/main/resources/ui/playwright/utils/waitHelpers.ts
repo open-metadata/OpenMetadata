@@ -17,6 +17,13 @@ import { Locator, Page, Response } from '@playwright/test';
  * Registers the response listener *before* triggering the click, which is the
  * only ordering that cannot race: a response fired between the click and a
  * later `waitForResponse` is unobservable and the wait hangs until timeout.
+ *
+ * Resolves on the **first** response matching `urlPattern` and throws if that
+ * one's status is not `expectedStatus`. Where a single click produces several
+ * matching responses — a list refresh plus a count query on the same path, say
+ * — the first to arrive is the one judged, so a later, healthy response will
+ * not rescue an earlier failure. Narrow `urlPattern` until it identifies one
+ * response, or await `page.waitForResponse` directly with a predicate.
  */
 export const clickAndWaitFor = async (
   page: Page,
