@@ -184,8 +184,7 @@ const TableRoot = ({
   const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
   return (
-    <TableContext.Provider
-      value={{ size: resolvedSize, stickyHeader }}>
+    <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
       <div
         className={cx('tw:overflow-x-auto', containerClassName)}
         style={containerStyle}>
@@ -389,6 +388,14 @@ const TableRow = <T extends object>({
               // clears the previous pick. React Aria still wires the control
               // through the `selection` slot, so the visual is swapped rather
               // than the behaviour.
+              //
+              // Known limitation: the slot only accepts a checkbox, so this
+              // announces as "checkbox" while looking like a radio. React Aria
+              // has no radio-based table selection — a radiogroup here would
+              // mean re-implementing selection, focus and keyboard handling
+              // outside the table's own state. `aria-label` names the row so
+              // the announcement is at least specific about what is being
+              // picked.
               <AriaCheckbox
                 className="tw:flex tw:items-center tw:outline-hidden"
                 slot="selection">

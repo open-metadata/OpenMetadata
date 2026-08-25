@@ -64,9 +64,7 @@ describe('Table selection', () => {
   it('renders no select-all control for single selection', () => {
     renderTable({ selectionBehavior: 'toggle', selectionMode: 'single' });
 
-    expect(
-      document.querySelector('thead input[type="checkbox"]')
-    ).toBeNull();
+    expect(document.querySelector('thead input[type="checkbox"]')).toBeNull();
   });
 
   it('selects one row at a time in single-selection mode', async () => {
