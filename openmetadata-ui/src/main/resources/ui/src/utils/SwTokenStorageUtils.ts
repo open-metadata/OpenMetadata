@@ -52,8 +52,19 @@ export const resetSwTokenStorageState = (): void => {
 const SW_DB_NAME = 'AppDataStore';
 const SW_STORE_NAME = 'keyValueStore';
 
-const deleteFromIndexedDb = (key: string): Promise<void> =>
-  new Promise((resolve, reject) => {
+const deleteFromIndexedDb = async (key: string): Promise<void> => {
+  // indexedDB.open without a version implicitly creates an empty database
+  // when the worker never persisted one; skip when we can prove it does not
+  // exist. indexedDB.databases() is not supported everywhere, hence the
+  // feature-detect — where unsupported, the empty phantom DB is harmless.
+  if (typeof window.indexedDB.databases === 'function') {
+    const databases = await window.indexedDB.databases();
+    if (!databases.some((database) => database.name === SW_DB_NAME)) {
+      return;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
     const request = window.indexedDB.open(SW_DB_NAME);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
@@ -76,6 +87,7 @@ const deleteFromIndexedDb = (key: string): Promise<void> =>
       };
     };
   });
+};
 
 const markSwStorageBroken = (error: unknown): void => {
   if (!swStorageBroken) {
@@ -146,17 +158,21 @@ const clearAppState = async (): Promise<void> => {
   inMemoryState = {};
   try {
     if (isServiceWorkerAvailable()) {
-      try {
-        // Always attempt to clear persisted state on logout, even when the
-        // service worker was marked broken: tokens written before a transient
-        // failure must not survive logout, or a reload (which resets the
-        // verdict) could restore the logged-out session from IndexedDB.
-        await swTokenStorage.removeItem(APP_STATE_KEY);
-      } catch (error) {
-        markSwStorageBroken(error);
-        // The worker is unreachable — delete its persisted state directly
-        // from IndexedDB so the tokens cannot be read back after a reload.
+      // Persisted state must always be cleared on logout, even when the
+      // service worker was marked broken: tokens written before a transient
+      // failure must not survive logout, or a reload (which resets the
+      // verdict) could restore the logged-out session from IndexedDB. When
+      // the verdict is already broken, skip the doomed SW call (it would
+      // block logout on the controller-wait timeout) and delete directly.
+      if (swStorageBroken) {
         await deleteFromIndexedDb(APP_STATE_KEY);
+      } else {
+        try {
+          await swTokenStorage.removeItem(APP_STATE_KEY);
+        } catch (error) {
+          markSwStorageBroken(error);
+          await deleteFromIndexedDb(APP_STATE_KEY);
+        }
       }
     } else {
       // Fallback for browsers that don't support SW/IndexedDB

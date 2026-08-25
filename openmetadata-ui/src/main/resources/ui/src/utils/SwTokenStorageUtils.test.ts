@@ -488,19 +488,60 @@ describe('SwTokenStorageUtils', () => {
       expect(mockRemoveItem).not.toHaveBeenCalled();
     });
 
-    it('should still attempt to clear persisted tokens after the service worker was marked broken', async () => {
-      // #32063 review finding: tokens persisted before a transient SW failure
-      // must not survive logout — a reload resets the broken verdict and a
-      // recovered SW would restore the logged-out session from IndexedDB.
+    it('should skip the doomed service worker call and clear IndexedDB directly once marked broken', async () => {
+      // #32063 review findings: tokens persisted before a transient SW failure
+      // must not survive logout (a reload resets the broken verdict and a
+      // recovered SW would restore the logged-out session) — but retrying the
+      // SW when it is already known broken would block logout on the 15s
+      // controller wait, so the deletion must go straight to IndexedDB.
       mockGetItem.mockRejectedValue(new Error('SW timeout'));
       mockSetItem.mockRejectedValue(new Error('SW timeout'));
       await setOidcToken('in-memory-oidc-token'); // marks the SW broken
-      mockRemoveItem.mockResolvedValue(null);
+      const mockIdbDelete = jest.fn();
+      const store = { delete: mockIdbDelete };
+      const tx: { objectStore: () => typeof store; oncomplete?: () => void } = {
+        objectStore: () => store,
+      };
+      const db = {
+        objectStoreNames: { contains: () => true },
+        transaction: () => {
+          Promise.resolve().then(() => tx.oncomplete?.());
+
+          return tx;
+        },
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockClear();
 
       await clearOidcToken();
 
-      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockRemoveItem).not.toHaveBeenCalled();
+      expect(mockIdbDelete).toHaveBeenCalledWith('app_state');
       expect(await getOidcToken()).toBe('');
+    });
+
+    it('should not create a phantom database when the worker never persisted one', async () => {
+      const mockOpen = jest.fn();
+      (global.window as unknown as MockWindow).indexedDB = {
+        databases: jest.fn().mockResolvedValue([]),
+        open: mockOpen,
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
+
+      expect(mockOpen).not.toHaveBeenCalled();
     });
 
     it('should delete persisted state directly from IndexedDB when the service worker removal fails', async () => {
