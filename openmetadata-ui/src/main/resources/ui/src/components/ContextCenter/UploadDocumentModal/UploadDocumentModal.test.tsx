@@ -31,8 +31,10 @@ jest.mock('utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-let mockOnDropFiles: ((files: FileList) => void) | undefined;
-let mockOnSizeLimitExceed: ((files: FileList) => void) | undefined;
+let mockOnDropFiles: (files: FileList) => void = (_files: FileList) =>
+  undefined;
+let mockOnSizeLimitExceed: (files: FileList) => void = (_files: FileList) =>
+  undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn(
@@ -176,8 +178,8 @@ describe('UploadDocumentModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockOnDropFiles = undefined;
-    mockOnSizeLimitExceed = undefined;
+    mockOnDropFiles = (_files: FileList) => undefined;
+    mockOnSizeLimitExceed = (_files: FileList) => undefined;
     uuidCounter = 0;
     Object.defineProperty(globalThis, 'crypto', {
       value: { randomUUID: () => `test-uuid-${++uuidCounter}` },
@@ -223,8 +225,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
@@ -234,8 +235,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     const attachBtn = screen.getByText(/attach-file-plural/i);
@@ -247,8 +247,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'remove-me.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'remove-me.pdf')));
     });
 
     expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
@@ -281,8 +280,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -297,8 +295,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnSizeLimitExceed!(
+      mockOnSizeLimitExceed(
         makeFileList(new File(['x'.repeat(6 * 1024 * 1024)], 'huge.pdf'))
       );
     });
@@ -317,8 +314,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -340,8 +336,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -362,8 +357,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -385,8 +379,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test mock always defined
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));

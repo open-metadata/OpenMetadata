@@ -557,10 +557,8 @@ describe('buildExploreUrlParams', () => {
   it('should return valid JSON strings', () => {
     const result = buildExploreUrlParams(mockTree, mockQFilter);
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
-    expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
-    expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
+    expect(() => JSON.parse(result.queryFilter as string)).not.toThrow();
+    expect(() => JSON.parse(result.quickFilter as string)).not.toThrow();
   });
 
   it('should produce params that can be URL encoded with proper separators', () => {
@@ -577,10 +575,10 @@ describe('buildExploreUrlParams', () => {
     const decoded = new URLSearchParams(queryString);
 
     expect(decoded.get('mode')).toBe('edit');
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
-    expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test param always present
-    expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
+    expect(JSON.parse(decoded.get('queryFilter') as string)).toEqual(mockTree);
+    expect(JSON.parse(decoded.get('quickFilter') as string)).toEqual(
+      mockQFilter
+    );
   });
 
   it('should work correctly when only queryFilter is present with other params', () => {

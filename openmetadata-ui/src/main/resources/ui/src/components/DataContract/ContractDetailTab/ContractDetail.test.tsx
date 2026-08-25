@@ -1366,8 +1366,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Failed,
             },
           }}
@@ -1397,8 +1398,9 @@ describe('ContractDetail', () => {
           contract={{
             ...mockContract,
             latestResult: {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-              ...mockContract.latestResult!,
+              ...(mockContract.latestResult as NonNullable<
+                typeof mockContract.latestResult
+              >),
               status: ContractExecutionStatus.Aborted,
             },
           }}

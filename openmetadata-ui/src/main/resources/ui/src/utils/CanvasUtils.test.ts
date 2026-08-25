@@ -481,15 +481,14 @@ describe('CanvasUtils', () => {
       const result = getEdgeBounds(edge, sourceNode, targetNode);
 
       expect(result).not.toBeNull();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted non-null above
-      expect(result!.minX).toBeLessThan(351);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted non-null above
-      expect(result!.maxX).toBeGreaterThan(500);
+
+      const bounds = result as NonNullable<typeof result>;
+
+      expect(bounds.minX).toBeLessThan(351);
+      expect(bounds.maxX).toBeGreaterThan(500);
       // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted non-null above
-      expect(result!.minY).toBeLessThan(0);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted non-null above
-      expect(result!.maxY).toBeGreaterThan(100);
+      expect(bounds.minY).toBeLessThan(0);
+      expect(bounds.maxY).toBeGreaterThan(100);
     });
   });
 
@@ -690,8 +689,7 @@ describe('CanvasUtils', () => {
   describe('drawArrowMarker', () => {
     it('draws arrow with correct transformations', () => {
       const canvas = createMockCanvas();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
       drawArrowMarker(ctx, 100, 100, Math.PI / 4, '#000000');
 
@@ -705,8 +703,7 @@ describe('CanvasUtils', () => {
 
     it('uses correct color', () => {
       const canvas = createMockCanvas();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
       drawArrowMarker(ctx, 100, 100, 0, '#ff0000');
 

@@ -321,8 +321,9 @@ describe('ContainerDataModel', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect.stringContaining(props.dataModel.columns[0].fullyQualifiedName!)
+      expect.stringContaining(
+        props.dataModel.columns[0].fullyQualifiedName as string
+      )
     );
   });
 });

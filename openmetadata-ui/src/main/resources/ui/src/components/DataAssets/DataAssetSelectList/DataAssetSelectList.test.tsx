@@ -144,8 +144,9 @@ describe('DataAssetSelectList', () => {
       expect(screen.getByText('Orders')).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+    );
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(
@@ -191,9 +192,9 @@ describe('DataAssetSelectList', () => {
       expect(screen.getByText('Orders')).toBeInTheDocument();
     });
 
-    // Click to deselect
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+    );
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -294,8 +295,9 @@ describe('DataAssetSelectList', () => {
       expect(screen.getByText('Orders')).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+    );
 
     // Popover should still be open after selection in multi mode
     expect(screen.getByText('Products')).toBeInTheDocument();

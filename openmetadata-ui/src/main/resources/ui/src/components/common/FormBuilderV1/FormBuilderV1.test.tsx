@@ -109,8 +109,7 @@ describe('FormBuilderV1', () => {
 
     expect(mockFormatFormDataForRender).toHaveBeenCalledWith({ name: 'value' });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-    const lastFormProps = mockForm.mock.calls.at(-1)![0];
+    const lastFormProps = mockForm.mock.calls.at(-1)?.[0];
 
     expect(lastFormProps.formData).toEqual({
       name: 'value',
@@ -132,8 +131,7 @@ describe('FormBuilderV1', () => {
     );
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-      mockForm.mock.calls.at(-1)![0].onChange({
+      mockForm.mock.calls.at(-1)?.[0].onChange({
         formData: {
           name: 'changed',
         },
@@ -141,8 +139,7 @@ describe('FormBuilderV1', () => {
     });
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'changed',
       });
     });
@@ -152,8 +149,7 @@ describe('FormBuilderV1', () => {
     expect(onCancel).toHaveBeenCalled();
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'initial',
         formatted: true,
       });
@@ -180,14 +176,12 @@ describe('FormBuilderV1', () => {
     };
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-      mockForm.mock.calls.at(-1)![0].onChange(changeEvent);
+      mockForm.mock.calls.at(-1)?.[0].onChange(changeEvent);
     });
 
     expect(onChange).toHaveBeenCalledWith(changeEvent);
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-    const submittedFormData = mockForm.mock.calls.at(-1)![0].formData;
+    const submittedFormData = mockForm.mock.calls.at(-1)?.[0].formData;
 
     fireEvent.submit(screen.getByTestId('rjsf-form'));
 
@@ -236,8 +230,7 @@ describe('FormBuilderV1', () => {
       <FormBuilderV1 formData={{ name: 'initial' }} schema={schema} />
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-    expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+    expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
       name: 'initial',
       formatted: true,
     });
@@ -245,8 +238,7 @@ describe('FormBuilderV1', () => {
     rerender(<FormBuilderV1 formData={{ name: 'updated' }} schema={schema} />);
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock call always present
-      expect(mockForm.mock.calls.at(-1)![0].formData).toEqual({
+      expect(mockForm.mock.calls.at(-1)?.[0].formData).toEqual({
         name: 'updated',
         formatted: true,
       });

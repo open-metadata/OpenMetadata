@@ -143,8 +143,7 @@ describe('ExplorePageV1', () => {
     };
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      capturedCallback!(testFilter);
+      capturedCallback?.(testFilter);
     });
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
@@ -186,8 +185,7 @@ describe('ExplorePageV1', () => {
     await screen.findByText('ExploreV1');
 
     act(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      capturedCallback!({ query: { bool: { must: [] } } });
+      capturedCallback?.({ query: { bool: { must: [] } } });
     });
 
     expect(mockNavigate.mock.calls[0][0].pathname).toEqual(

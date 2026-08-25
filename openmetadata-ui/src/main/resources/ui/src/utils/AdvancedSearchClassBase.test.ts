@@ -230,8 +230,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted defined above
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       ['test.*pattern'],
@@ -252,8 +251,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted defined above
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       [],
@@ -274,8 +272,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted defined above
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       [],
@@ -1198,8 +1195,7 @@ describe('buildEnumAsyncFetch', () => {
   it('should return first 100 values when search is empty (offset 0)', async () => {
     const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- fetch fn always defined
-    const result = await fetchFn!('');
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('');
 
     expect(result.values).toHaveLength(100);
     expect(result.values[0]).toEqual({ value: 'VAL_0', title: 'VAL_0' });
@@ -1209,8 +1205,7 @@ describe('buildEnumAsyncFetch', () => {
   it('should return next page when offset is provided', async () => {
     const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- fetch fn always defined
-    const result = await fetchFn!('', 100);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('', 100);
 
     expect(result.values).toHaveLength(50);
     expect(result.values[0]).toEqual({ value: 'VAL_100', title: 'VAL_100' });
@@ -1220,8 +1215,7 @@ describe('buildEnumAsyncFetch', () => {
   it('should return all matching values when search filters below page size', async () => {
     const values = ['ALPHA', 'BETA', 'GAMMA', 'ALPHABET'];
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- fetch fn always defined
-    const result = await fetchFn!('alpha');
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('alpha');
 
     expect(result.values).toEqual([
       { value: 'ALPHA', title: 'ALPHA' },
@@ -1233,8 +1227,7 @@ describe('buildEnumAsyncFetch', () => {
   it('should return all values when list is smaller than page size', async () => {
     const values = ['A', 'B', 'C'];
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- fetch fn always defined
-    const result = await fetchFn!('');
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('');
 
     expect(result.values).toEqual([
       { value: 'A', title: 'A' },
@@ -1247,8 +1240,7 @@ describe('buildEnumAsyncFetch', () => {
   it('should be case-insensitive when filtering', async () => {
     const values = ['Active', 'ACTIVE', 'Pending'];
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- fetch fn always defined
-    const result = await fetchFn!('active');
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('active');
 
     expect(result.values).toHaveLength(2);
     expect(result.values.map((v) => v.value)).toEqual(['Active', 'ACTIVE']);

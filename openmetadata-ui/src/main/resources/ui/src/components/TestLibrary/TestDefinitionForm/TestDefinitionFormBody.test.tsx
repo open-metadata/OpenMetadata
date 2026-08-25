@@ -166,20 +166,18 @@ describe('TestDefinitionFormBody', () => {
   it('allows selecting multiple supported data types without an initial value', async () => {
     render(<Harness />);
 
-    const input = document.querySelector('input[id="root/supportedDataTypes"]');
+    const input = document.querySelector(
+      'input[id="root/supportedDataTypes"]'
+    ) as HTMLElement;
 
     expect(input).toBeInTheDocument();
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.mouseDown(input!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.focus(input!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.change(input!, { target: { value: 'NUMBER' } });
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'NUMBER' } });
     fireEvent.click(await screen.findByRole('option', { name: 'NUMBER' }));
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.change(input!, { target: { value: 'VARCHAR' } });
+    fireEvent.change(input, { target: { value: 'VARCHAR' } });
     fireEvent.click(await screen.findByRole('option', { name: 'VARCHAR' }));
 
     await waitFor(() => {
@@ -203,8 +201,9 @@ describe('TestDefinitionFormBody', () => {
 
       let isValid = true;
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        isValid = await formRef!.trigger('supportedDataTypes');
+        isValid = await (
+          formRef as UseFormReturn<TestDefinitionFormValues>
+        ).trigger('supportedDataTypes');
       });
 
       expect(isValid).toBe(false);
@@ -228,8 +227,9 @@ describe('TestDefinitionFormBody', () => {
 
       let isValid = false;
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        isValid = await formRef!.trigger('supportedDataTypes');
+        isValid = await (
+          formRef as UseFormReturn<TestDefinitionFormValues>
+        ).trigger('supportedDataTypes');
       });
 
       expect(isValid).toBe(true);

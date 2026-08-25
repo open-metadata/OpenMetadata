@@ -171,7 +171,9 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} onEdgeClick={onEdgeClick} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
 
     await waitFor(() => {
       expect(currentPane).toBeInTheDocument();
@@ -200,8 +202,7 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent(currentPane!, clickEvent);
+    fireEvent(currentPane, clickEvent);
 
     await waitFor(() => {
       expect(mockGetEdgeAtPoint).toHaveBeenCalled();
@@ -244,8 +245,9 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+    (document.querySelector('.react-flow__pane') as HTMLElement).dispatchEvent(
+      clickEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeClick).toHaveBeenCalledWith(
@@ -286,8 +288,10 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent(document.querySelector('.react-flow__pane')!, moveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      moveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalled();
@@ -303,8 +307,10 @@ describe('CanvasEdgeRenderer', () => {
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent(document.querySelector('.react-flow__pane')!, leaveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      leaveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalledWith(null);
@@ -326,8 +332,9 @@ describe('CanvasEdgeRenderer', () => {
     });
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+      (
+        document.querySelector('.react-flow__pane') as HTMLElement
+      ).dispatchEvent(clickEvent);
     });
 
     expect(onEdgeClick).not.toHaveBeenCalled();
@@ -390,10 +397,11 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
     const removeEventListenerSpy = jest.spyOn(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      currentPane!,
+      currentPane,
       'removeEventListener'
     );
 

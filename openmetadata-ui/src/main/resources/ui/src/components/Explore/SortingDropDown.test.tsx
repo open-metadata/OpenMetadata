@@ -92,15 +92,16 @@ describe('Test Sorting DropDown Component', () => {
 
     expect(dropdown).toBeInTheDocument();
 
-    const dropdownButton = dropdown.querySelector('button');
+    const dropdownButton = dropdown.querySelector(
+      'button'
+    ) as HTMLButtonElement;
 
     expect(dropdownButton).toBeInTheDocument();
     expect(dropdownButton).toHaveAttribute('data-size', 'xs');
     expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
     expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.click(dropdownButton!);
+    fireEvent.click(dropdownButton);
 
     const dropdownMenu = await findByRole('menu');
 
@@ -122,12 +123,13 @@ describe('Test Sorting DropDown Component', () => {
 
     expect(dropdown).toBeInTheDocument();
 
-    const dropdownButton = dropdown.querySelector('button');
+    const dropdownButton = dropdown.querySelector(
+      'button'
+    ) as HTMLButtonElement;
 
     expect(dropdownButton).toBeInTheDocument();
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-    fireEvent.click(dropdownButton!);
+    fireEvent.click(dropdownButton);
 
     const dropdownMenu = await findByRole('menu');
 

@@ -27,8 +27,7 @@ jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
     onEdgeHover?: (edge: Edge | null) => void;
   }) => {
     const handleEdgeClick = () =>
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      onEdgeClick?.(hoverEdge!, new MouseEvent('click'));
+      onEdgeClick?.(hoverEdge as Edge, new MouseEvent('click'));
 
     return (
       <div

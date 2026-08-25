@@ -527,13 +527,14 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Find and click on the first date
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
 
       expect(firstDateBox).toBeInTheDocument();
 
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // Should now show data for the first date (150 + 75 = 225)
@@ -656,10 +657,11 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Verify that data is processed correctly for different dates
-      const firstDateBox = screen.getByText('01').closest('.date-box');
+      const firstDateBox = screen
+        .getByText('01')
+        .closest('.date-box') as HTMLElement;
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        fireEvent.click(firstDateBox!);
+        fireEvent.click(firstDateBox);
       });
 
       // First date should show 150 + 75 = 225

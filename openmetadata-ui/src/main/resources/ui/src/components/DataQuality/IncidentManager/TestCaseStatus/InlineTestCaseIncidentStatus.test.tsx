@@ -734,11 +734,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {
@@ -965,11 +964,10 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       const backButton = screen
         .getByTestId('icon-arrow-left')
-        .closest('button');
+        .closest('button') as HTMLButtonElement;
 
       await act(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton);
       });
 
       await waitFor(() => {

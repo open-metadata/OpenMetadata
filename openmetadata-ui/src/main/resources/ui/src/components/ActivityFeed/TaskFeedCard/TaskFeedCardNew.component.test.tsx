@@ -386,8 +386,7 @@ describe('TaskFeedCardNew Component', () => {
     const feedWithEmptySuggestion = {
       ...TASK_FEED,
       task: {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-        ...TASK_FEED.task!,
+        ...(TASK_FEED.task as NonNullable<typeof TASK_FEED.task>),
         suggestion: '[]',
       },
     };

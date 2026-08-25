@@ -325,8 +325,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockNestedColumn.children![0]
+        mockNestedColumn?.children?.[0]
       );
     });
 
@@ -342,8 +341,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockDeeplyNestedColumn.children![0].children![0].children![0]
+        mockDeeplyNestedColumn?.children?.[0]?.children?.[0]?.children?.[0]
       );
     });
 
@@ -519,8 +517,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockComplexNestedColumn.children![1].children![1].children![0]
+        mockComplexNestedColumn?.children?.[1]?.children?.[1]?.children?.[0]
       );
     });
 
@@ -572,8 +569,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockComplexNestedColumn.children![1]
+        mockComplexNestedColumn?.children?.[1]
       );
 
       jest.clearAllMocks();
@@ -583,8 +579,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockComplexNestedColumn.children![1].children![1]
+        mockComplexNestedColumn?.children?.[1]?.children?.[1]
       );
     });
 
@@ -601,8 +596,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- mock children always defined
-        mockArrayOfStructs.children![0].children![1].children![0]
+        mockArrayOfStructs?.children?.[0]?.children?.[1]?.children?.[0]
       );
     });
   });

@@ -112,7 +112,7 @@ describe('OktaAuthProvider', () => {
 
   describe('initialization', () => {
     it('should wait for custom storage init before starting token manager', async () => {
-      let resolveWaitForInit: () => void;
+      let resolveWaitForInit: () => void = () => undefined;
       const waitPromise = new Promise<void>((resolve) => {
         resolveWaitForInit = resolve;
       });
@@ -132,8 +132,7 @@ describe('OktaAuthProvider', () => {
 
       expect(mockOktaAuth.tokenManager.start).not.toHaveBeenCalled();
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
-      resolveWaitForInit!();
+      resolveWaitForInit();
 
       await waitFor(() => {
         expect(mockOktaAuth.tokenManager.start).toHaveBeenCalled();
@@ -214,7 +213,10 @@ describe('OktaAuthProvider', () => {
     });
 
     it('should call setOidcToken when idToken is renewed', async () => {
-      let renewedHandler: (key: string, token: IDToken) => void;
+      let renewedHandler: (key: string, token: IDToken) => void = (
+        _key: string,
+        _token: IDToken
+      ) => undefined;
 
       mockOktaAuth.tokenManager.on.mockImplementation((event, handler) => {
         if (event === 'renewed') {
@@ -243,8 +245,7 @@ describe('OktaAuthProvider', () => {
         expiresAt: Math.floor(Date.now() / 1000) + 3600,
       } as IDToken;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
-      await renewedHandler!('idToken', renewedToken);
+      await renewedHandler('idToken', renewedToken);
 
       await waitFor(() => {
         expect(mockSetOidcToken).toHaveBeenCalledWith('new-renewed-token');
@@ -252,7 +253,10 @@ describe('OktaAuthProvider', () => {
     });
 
     it('should not call setOidcToken when accessToken is renewed', async () => {
-      let renewedHandler: (key: string, token: IDToken) => void;
+      let renewedHandler: (key: string, token: IDToken) => void = (
+        _key: string,
+        _token: IDToken
+      ) => undefined;
 
       mockOktaAuth.tokenManager.on.mockImplementation((event, handler) => {
         if (event === 'renewed') {
@@ -277,8 +281,7 @@ describe('OktaAuthProvider', () => {
         expiresAt: Math.floor(Date.now() / 1000) + 3600,
       } as unknown as IDToken;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
-      await renewedHandler!('accessToken', renewedToken);
+      await renewedHandler('accessToken', renewedToken);
 
       await waitFor(() => {
         expect(mockSetOidcToken).not.toHaveBeenCalled();
@@ -286,7 +289,10 @@ describe('OktaAuthProvider', () => {
     });
 
     it('should handle missing idToken in renewed event', async () => {
-      let renewedHandler: (key: string, token: IDToken) => void;
+      let renewedHandler: (key: string, token: IDToken) => void = (
+        _key: string,
+        _token: IDToken
+      ) => undefined;
 
       mockOktaAuth.tokenManager.on.mockImplementation((event, handler) => {
         if (event === 'renewed') {
@@ -310,8 +316,7 @@ describe('OktaAuthProvider', () => {
         claims: { sub: 'user123' },
       } as IDToken;
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- assigned before use
-      await renewedHandler!('idToken', renewedToken);
+      await renewedHandler('idToken', renewedToken);
 
       await waitFor(() => {
         expect(mockSetOidcToken).not.toHaveBeenCalled();

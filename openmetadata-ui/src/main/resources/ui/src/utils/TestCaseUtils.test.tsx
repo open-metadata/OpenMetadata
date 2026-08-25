@@ -58,12 +58,9 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(3);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[1] as ItemType)!.key).toBe('export-button');
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[2] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('export-button');
+      expect((result[2] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should return only export option when ViewAll is true but EditAll is false', () => {
@@ -77,8 +74,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(1);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[0] as ItemType)!.key).toBe('export-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('export-button');
     });
 
     it('should return empty array when both permissions are false', () => {
@@ -298,10 +294,8 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(2);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test fixture always present
-      expect((result[1] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should handle empty FQN', () => {
