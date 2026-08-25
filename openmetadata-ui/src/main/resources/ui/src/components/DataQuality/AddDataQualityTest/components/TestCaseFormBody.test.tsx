@@ -417,36 +417,6 @@ describe('TestCaseFormBody', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows static parameters when persisted dynamic state has no visible control', async () => {
-    mockGetListTestDefinitions.mockResolvedValue({
-      data: [DYNAMIC_DEFINITION],
-      paging: { total: 1 },
-    } as never);
-
-    await act(async () => {
-      renderBody(
-        {
-          editDefinition: DYNAMIC_DEFINITION,
-          isEditMode: true,
-          table: SELECTED_TABLE,
-        },
-        {
-          testLevel: TestLevel.TABLE,
-          testTypeId: {
-            id: TEST_DEFINITION_FQN,
-            label: 'Column Values To Be Between',
-          },
-          useDynamicAssertion: true,
-        }
-      );
-    });
-
-    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('use-dynamic-assertion')
-    ).not.toBeInTheDocument();
-  });
-
   it('renders distribution-specific fields supplied by the class base', async () => {
     jest
       .spyOn(testCaseClassBase, 'createFormAdditionalFields')
@@ -486,11 +456,9 @@ describe('TestCaseFormBody', () => {
       await screen.findByTestId('use-dynamic-assertion')
     ).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(testCaseClassBase.createFormAdditionalFields).toHaveBeenCalledWith(
-        true
-      );
-    });
+    expect(testCaseClassBase.createFormAdditionalFields).toHaveBeenCalledWith(
+      true
+    );
 
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
 

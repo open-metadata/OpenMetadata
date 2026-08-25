@@ -675,6 +675,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const isComputeRowCountFieldVisible =
     selectedTestDefinition?.supportsRowLevelPassedFailed ?? false;
+  const showParameterFields =
+    Boolean(selectedTestDefinition?.parameterDefinition) &&
+    useDynamicAssertionValue !== true;
 
   useEffect(() => {
     fetchExistingTestCases();
@@ -895,15 +898,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const additionalFields = testCaseClassBase.createFormAdditionalFields(
     selectedTestDefinition?.supportsDynamicAssertion ?? false
   );
-  const hasDynamicAssertionControl = additionalFields.some(
-    (field) => field.name === 'useDynamicAssertion'
-  );
-  // Persisted compatibility data may retain a dynamic flag even when this
-  // distribution provides no control for it. Only a visible control can make
-  // that value authoritative for the form's parameter visibility.
-  const showParameterFields =
-    Boolean(selectedTestDefinition?.parameterDefinition) &&
-    (!hasDynamicAssertionControl || useDynamicAssertionValue !== true);
 
   const testNameField: FieldProp = {
     name: 'testName',
