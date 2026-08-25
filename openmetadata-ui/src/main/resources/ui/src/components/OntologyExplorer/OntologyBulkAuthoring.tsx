@@ -22,7 +22,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FieldPath, FieldPathValue, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { OntologyBulkJob } from '../../generated/api/data/ontologyBulkJob';
@@ -57,7 +57,6 @@ const OntologyBulkAuthoring = ({
   relationshipTypes,
 }: OntologyBulkAuthoringProps) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const hookForm = useForm<OntologyBulkFormState>({
     defaultValues: EMPTY_BULK_FORM,
   });
@@ -105,12 +104,11 @@ const OntologyBulkAuthoring = ({
     setResultJobId(undefined);
   };
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = async (files: FileList | null) => {
+    const file = files?.[0];
 
     if (file) {
       updateForm('csv', await file.text());
-      event.target.value = '';
     }
   };
 
@@ -219,12 +217,11 @@ const OntologyBulkAuthoring = ({
           onSubmit={hookForm.handleSubmit(handleSubmit)}>
           <Card className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5">
             <OntologyBulkOperationFields
-              fileInputRef={fileInputRef}
               form={form}
               isDownloadingTemplate={isDownloadingTemplate}
               relationshipTypes={relationshipTypes}
               onDownloadTemplate={() => void handleDownloadTemplate()}
-              onFileChange={(event) => void handleFileChange(event)}
+              onFileSelect={(files) => void handleFileSelect(files)}
               onUpdate={updateForm}
             />
 

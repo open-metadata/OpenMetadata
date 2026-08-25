@@ -15,6 +15,7 @@ import {
   Button,
   Checkbox,
   Dialog,
+  FileTrigger,
   Modal,
   ModalOverlay,
   Select,
@@ -29,13 +30,11 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-  ChangeEvent,
   Fragment,
   ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -108,12 +107,12 @@ const FORMAT_MEDIA_TYPE: Record<OntologyExportFormat, string> = {
   turtle: 'text/turtle',
 };
 
-const PREVIEW_BG = '#0A0D12';
+const PREVIEW_BG = 'var(--color-bg-primary-solid)';
 const SYNTAX_COLOR = {
-  default: '#D5D7DA',
-  keyword: '#8AB4F8',
-  string: '#7DD3A8',
-  term: '#E8A87C',
+  default: 'var(--color-text-secondary_on-brand)',
+  keyword: 'var(--color-utility-blue-400)',
+  string: 'var(--color-utility-success-400)',
+  term: 'var(--color-utility-orange-400)',
 };
 const SYNTAX_TOKEN =
   /("(?:[^"\\]|\\.)*"(?:@[\w-]+)?)|(<[^>\s]*>)|(\b[A-Za-z][\w-]*:[\w/#.-]*)|(\ba\b)/g;
@@ -209,8 +208,6 @@ const OntologyImportExportModal = ({
   const [importTargetId, setImportTargetId] = useState(
     glossary?.id ?? glossaries[0]?.id ?? ''
   );
-  const importInputRef = useRef<HTMLInputElement>(null);
-
   const activeGlossary = useMemo(
     () => glossaries.find((item) => item.id === activeGlossaryId),
     [activeGlossaryId, glossaries]
@@ -392,10 +389,9 @@ const OntologyImportExportModal = ({
     [t]
   );
 
-  const handleImportInputChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = '';
+  const handleImportFileSelect = useCallback(
+    (files: FileList | null) => {
+      const file = files?.[0];
       if (file) {
         readImportFile(file);
       }
@@ -459,7 +455,11 @@ const OntologyImportExportModal = ({
         }
       }}>
       <Modal>
-        <Dialog showCloseButton width={820} onClose={onClose}>
+        <Dialog
+          showCloseButton
+          aria-label={t('label.import-export-ontology')}
+          width={820}
+          onClose={onClose}>
           <div
             className="tw:flex tw:max-h-[85vh] tw:flex-col tw:overflow-hidden tw:font-body"
             data-testid="ontology-import-export-modal">
@@ -494,7 +494,8 @@ const OntologyImportExportModal = ({
               <span className="tw:flex-1" />
               <div className="tw:flex tw:gap-0.5 tw:rounded-[9px] tw:border tw:border-secondary tw:bg-tertiary tw:p-[3px]">
                 {(['export', 'import'] as const).map((tab) => (
-                  <button
+                  <Button
+                    noTextPadding
                     aria-pressed={activeTab === tab}
                     className={classNames(
                       'tw:rounded-md tw:px-4 tw:py-1.5 tw:text-[13px] tw:font-semibold tw:capitalize',
@@ -502,12 +503,12 @@ const OntologyImportExportModal = ({
                         ? 'tw:bg-primary tw:text-brand-secondary tw:shadow-xs'
                         : 'tw:bg-transparent tw:text-quaternary'
                     )}
+                    color="tertiary"
                     data-testid={`ontology-transfer-tab-${tab}`}
                     key={tab}
-                    type="button"
                     onClick={() => setActiveTab(tab)}>
                     {t(`label.${tab}`)}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -520,18 +521,20 @@ const OntologyImportExportModal = ({
                   </div>
                   <div className="tw:mb-[18px] tw:flex tw:flex-col tw:gap-2">
                     {FORMAT_OPTIONS.map((option) => (
-                      <button
+                      <Button
+                        noTextPadding
                         aria-checked={format === option.key}
                         className={classNames(
-                          'tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:text-left',
+                          'tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:px-4 tw:py-3 tw:text-left tw:whitespace-normal',
+                          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
                           format === option.key
                             ? 'tw:border-brand tw:bg-brand-primary'
                             : 'tw:border-secondary tw:bg-primary hover:tw:bg-secondary'
                         )}
+                        color="tertiary"
                         data-testid={`ontology-format-${option.key}`}
                         key={option.key}
                         role="radio"
-                        type="button"
                         onClick={() => setFormat(option.key)}>
                         <span
                           className={classNames(
@@ -555,7 +558,7 @@ const OntologyImportExportModal = ({
                         <span className="tw:shrink-0 tw:font-mono tw:text-[11px] tw:font-medium tw:text-quaternary">
                           {option.extension}
                         </span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <div className="tw:flex tw:flex-col tw:gap-2.5">
@@ -630,16 +633,6 @@ const OntologyImportExportModal = ({
               <div
                 className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-4 tw:overflow-y-auto tw:p-5"
                 data-testid="ontology-import-panel">
-                <input
-                  accept=".ttl,.rdf,.owl,.nt,.xml"
-                  aria-label={t('label.choose-file')}
-                  className="tw:hidden"
-                  data-testid="ontology-import-input"
-                  ref={importInputRef}
-                  type="file"
-                  onChange={handleImportInputChange}
-                />
-
                 {!activeGlossary ? (
                   <div
                     className="tw:flex tw:items-center tw:gap-3"
@@ -692,13 +685,17 @@ const OntologyImportExportModal = ({
                       )}
                     </span>
                   </span>
-                  <Button
-                    color="secondary"
-                    data-testid="ontology-choose-file"
-                    size="sm"
-                    onPress={() => importInputRef.current?.click()}>
-                    {t('label.choose-file')}
-                  </Button>
+                  <FileTrigger
+                    acceptedFileTypes={['.ttl', '.rdf', '.owl', '.nt', '.xml']}
+                    data-testid="ontology-import-input"
+                    onSelect={handleImportFileSelect}>
+                    <Button
+                      color="secondary"
+                      data-testid="ontology-choose-file"
+                      size="sm">
+                      {t('label.choose-file')}
+                    </Button>
+                  </FileTrigger>
                 </div>
 
                 <p className="tw:text-[13px] tw:leading-relaxed tw:text-quaternary">

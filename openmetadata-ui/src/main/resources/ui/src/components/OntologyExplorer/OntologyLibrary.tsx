@@ -222,7 +222,10 @@ const OntologyLibrary = ({
       className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-10000 tw:flex tw:min-h-0 tw:flex-col tw:bg-tertiary tw:font-body tw:antialiased"
       data-testid="ontology-library"
       role="dialog"
-      style={{ ...ONTOLOGY_STUDIO_STYLE, top: 'var(--ant-navbar-height)' }}>
+      style={{
+        ...ONTOLOGY_STUDIO_STYLE,
+        top: 'calc(100vh - var(--om-page-height))',
+      }}>
       <header className="tw:flex tw:h-16 tw:shrink-0 tw:items-center tw:gap-[13px] tw:border-b tw:border-secondary tw:bg-primary tw:px-6">
         <span className={LIBRARY_ICON_CLASS}>
           <BookOpen01 aria-hidden="true" className="tw:size-[18px]" />

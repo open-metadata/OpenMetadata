@@ -14,12 +14,12 @@
 import {
   Button,
   Checkbox,
+  FileTrigger,
   Input,
   Select,
   TextArea,
 } from '@openmetadata/ui-core-components';
 import { Download01, UploadCloud01 } from '@untitledui/icons';
-import { ChangeEvent, RefObject } from 'react';
 import { FieldPath, FieldPathValue } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -31,12 +31,11 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { OntologyBulkFormState } from './OntologyBulkAuthoring.utils';
 
 interface OntologyBulkOperationFieldsProps {
-  fileInputRef: RefObject<HTMLInputElement>;
   form: OntologyBulkFormState;
   isDownloadingTemplate: boolean;
   relationshipTypes: RelationshipType[];
   onDownloadTemplate: () => void;
-  onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onFileSelect: (files: FileList | null) => void;
   onUpdate: <Field extends FieldPath<OntologyBulkFormState>>(
     field: Field,
     value: FieldPathValue<OntologyBulkFormState, Field>
@@ -49,12 +48,11 @@ interface SelectOption {
 }
 
 const OntologyBulkOperationFields = ({
-  fileInputRef,
   form,
   isDownloadingTemplate,
   relationshipTypes,
   onDownloadTemplate,
-  onFileChange,
+  onFileSelect,
   onUpdate,
 }: OntologyBulkOperationFieldsProps) => {
   const { t } = useTranslation();
@@ -93,22 +91,14 @@ const OntologyBulkOperationFields = ({
       {form.operation === Operation.CSVUpsert ? (
         <div className="tw:flex tw:flex-col tw:gap-3">
           <div className="tw:flex tw:flex-wrap tw:gap-2">
-            <input
-              accept=".csv,text/csv"
-              aria-label={t('label.csv')}
-              className="tw:hidden"
+            <FileTrigger
+              acceptedFileTypes={['.csv', 'text/csv']}
               data-testid="ontology-bulk-file-input"
-              ref={fileInputRef}
-              type="file"
-              onChange={onFileChange}
-            />
-            <Button
-              color="secondary"
-              iconLeading={UploadCloud01}
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}>
-              {t('label.upload')} {t('label.csv')}
-            </Button>
+              onSelect={onFileSelect}>
+              <Button color="secondary" iconLeading={UploadCloud01} size="sm">
+                {t('label.upload')} {t('label.csv')}
+              </Button>
+            </FileTrigger>
             <Button
               color="secondary"
               data-testid="ontology-bulk-download-template"

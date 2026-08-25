@@ -64,7 +64,8 @@ const OntologyLibraryCatalogue = ({
   return (
     <div data-testid="ontology-pack-catalogue">
       <div className="tw:mb-[18px] tw:flex tw:flex-wrap tw:gap-[7px]">
-        <button
+        <Button
+          noTextPadding
           aria-pressed={!selectedFilterId}
           className={classNames(
             'tw:rounded-full tw:border tw:px-[13px] tw:py-1.5 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold',
@@ -73,16 +74,17 @@ const OntologyLibraryCatalogue = ({
               ? 'tw:border-secondary tw:bg-primary tw:text-secondary'
               : 'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-brand-secondary'
           )}
+          color="tertiary"
           data-testid="ontology-library-filter-all"
-          type="button"
           onClick={() => setSelectedFilterId(undefined)}>
           {t('label.all')}
-        </button>
+        </Button>
         {packs.map((pack) => {
           const isSelected = selectedFilterId === pack.id;
 
           return (
-            <button
+            <Button
+              noTextPadding
               aria-pressed={isSelected}
               className={classNames(
                 'tw:rounded-full tw:border tw:px-[13px] tw:py-1.5 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold',
@@ -91,12 +93,12 @@ const OntologyLibraryCatalogue = ({
                   ? 'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-brand-secondary'
                   : 'tw:border-secondary tw:bg-primary tw:text-secondary'
               )}
+              color="tertiary"
               data-testid={`ontology-library-filter-${pack.id}`}
               key={pack.id}
-              type="button"
               onClick={() => setSelectedFilterId(pack.id)}>
               {pack.name}
-            </button>
+            </Button>
           );
         })}
       </div>

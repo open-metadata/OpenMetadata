@@ -684,9 +684,13 @@ const OntologyDataGraph = ({
               onPointerDown={(event) => handleCardPointerDown(event, term)}
               onPointerMove={handleCardPointerMove}
               onPointerUp={handleCardPointerUp}>
-              <button
-                className="tw:mb-[9px] tw:flex tw:w-full tw:items-center tw:gap-[7px] tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
-                type="button"
+              <Button
+                noTextPadding
+                className={classNames(
+                  'tw:mb-[9px] tw:flex tw:w-full tw:items-center tw:gap-[7px] tw:border-0 tw:bg-transparent tw:p-0 tw:text-left',
+                  'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-[7px]'
+                )}
+                color="tertiary"
                 onClick={() => onSelectNode(term)}>
                 <span
                   aria-hidden="true"
@@ -701,7 +705,7 @@ const OntologyDataGraph = ({
                 <span className="tw:shrink-0 tw:font-body tw:text-[10px] tw:leading-normal tw:font-medium tw:text-quaternary">
                   {totalAssetCount} {t('label.asset-plural-lowercase')}
                 </span>
-              </button>
+              </Button>
 
               <div className="tw:-mx-0.5 tw:max-h-[172px] tw:overflow-y-auto tw:px-0.5">
                 {assets.map((asset) => {
@@ -714,17 +718,24 @@ const OntologyDataGraph = ({
                   const columnCount = getAssetColumnCount(asset);
 
                   return (
-                    <button
-                      className="tw:mb-1.5 tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-[7px] tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1.5 tw:text-left"
+                    <Button
+                      noTextPadding
+                      className={classNames(
+                        'tw:mb-1.5 tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-[7px] tw:border tw:border-secondary',
+                        'tw:bg-primary tw:px-2 tw:py-1.5 tw:text-left tw:whitespace-normal',
+                        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
+                      )}
+                      color="tertiary"
                       data-testid={`ontology-data-asset-${asset.id}`}
                       key={asset.id}
-                      type="button"
                       onClick={() => onSelectNode(asset)}>
                       {iconUrl ? (
                         <img
                           alt=""
                           className="tw:size-3.5 tw:shrink-0 tw:object-contain"
+                          height={14}
                           src={iconUrl}
+                          width={14}
                         />
                       ) : (
                         <span className="tw:size-3.5 tw:shrink-0 tw:rounded tw:bg-quaternary" />
@@ -746,23 +757,24 @@ const OntologyDataGraph = ({
                           ) : null}
                         </span>
                       </span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
 
               {remainingAssetCount > 0 || term.isLoadingAssets ? (
-                <button
+                <Button
+                  noTextPadding
                   className={classNames(
                     'tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent',
                     'tw:px-0.5 tw:pt-1.5 tw:pb-0.5 tw:font-body tw:text-[10px] tw:leading-normal',
-                    'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled'
+                    'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled tw:*:data-icon:size-3'
                   )}
+                  color="tertiary"
                   data-testid={`ontology-load-more-assets-${term.id}`}
-                  disabled={term.isLoadingAssets}
-                  type="button"
+                  iconLeading={ChevronDown}
+                  isDisabled={term.isLoadingAssets}
                   onClick={() => onLoadMore(term)}>
-                  <ChevronDown aria-hidden="true" className="tw:size-3" />
                   {term.isLoadingAssets ? (
                     t('label.loading')
                   ) : (
@@ -771,7 +783,7 @@ const OntologyDataGraph = ({
                       {t('label.more-lowercase')})
                     </>
                   )}
-                </button>
+                </Button>
               ) : null}
             </div>
           );

@@ -14,6 +14,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Card,
   Checkbox,
   Input,
@@ -286,17 +287,17 @@ export const OntologyConceptAttributes: React.FC<
             {attribute.dataType.toLowerCase()}
           </span>
           {onAttributesChange ? (
-            <button
-              aria-label={`${t('label.remove')} ${attribute.name}`}
+            <ButtonUtility
               className={classNames(
-                'tw:flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:border-0',
+                'tw:size-5 tw:shrink-0 tw:rounded-md tw:border-0 tw:p-0',
                 'tw:bg-transparent tw:text-quaternary hover:tw:bg-primary_hover hover:tw:text-secondary'
               )}
               data-testid={`remove-attribute-${attribute.name}`}
-              type="button"
-              onClick={() => handleRemoveAttribute(attribute.id)}>
-              <XClose aria-hidden="true" className="tw:size-3.5" />
-            </button>
+              icon={XClose}
+              size="xs"
+              tooltip={`${t('label.remove')} ${attribute.name}`}
+              onClick={() => handleRemoveAttribute(attribute.id)}
+            />
           ) : null}
         </div>
       );
@@ -330,16 +331,14 @@ export const OntologyConceptAttributes: React.FC<
           {attribute.dataType.toLowerCase()}
         </Badge>
         {isEditMode ? (
-          <Button
-            aria-label={t('label.remove')}
-            color="tertiary"
+          <ButtonUtility
             data-testid={`remove-attribute-${attribute.name}`}
+            icon={XClose}
             isDisabled={isSaving}
-            size="sm"
-            type="button"
-            onClick={() => handleRemoveAttribute(attribute.id)}>
-            <XClose aria-hidden="true" className="tw:size-4" />
-          </Button>
+            size="xs"
+            tooltip={t('label.remove')}
+            onClick={() => handleRemoveAttribute(attribute.id)}
+          />
         ) : null}
       </Card>
     );
@@ -467,21 +466,22 @@ export const OntologyConceptAttributes: React.FC<
     }
 
     return (
-      <button
+      <Button
+        noTextPadding
         className={classNames(
-          'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:border tw:border-dashed tw:bg-primary tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
+          'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:border tw:border-dashed tw:bg-primary tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:*:data-icon:size-3',
           isInspector
             ? 'tw:mt-0.5 tw:rounded-[9px] tw:border-primary tw:px-2.5 tw:py-[9px] tw:text-secondary'
             : 'tw:rounded-lg tw:border-primary tw:px-3 tw:py-2 tw:text-secondary',
           !isEditMode && 'tw:cursor-not-allowed tw:opacity-50'
         )}
+        color="tertiary"
         data-testid="add-attribute"
-        disabled={!isEditMode}
-        type="button"
+        iconLeading={Plus}
+        isDisabled={!isEditMode}
         onClick={() => setIsAdding(true)}>
-        <Plus aria-hidden="true" className="tw:size-3" />
         {t('label.add-entity', { entity: t('label.property') })}
-      </button>
+      </Button>
     );
   };
 

@@ -419,7 +419,8 @@ const OntologyExplorerPage: React.FC = () => {
           />
 
           <div className="tw:relative tw:shrink-0" ref={glossaryMenuRef}>
-            <button
+            <Button
+              noTextPadding
               aria-expanded={isGlossaryMenuOpen}
               aria-haspopup="menu"
               className={classNames(
@@ -428,9 +429,21 @@ const OntologyExplorerPage: React.FC = () => {
                 'tw:font-medium tw:text-secondary tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1',
                 'tw:focus-visible:outline-brand-600'
               )}
+              color="tertiary"
               data-selected-glossary-id={selectedGlossaryId ?? ''}
               data-testid="ontology-glossary-menu-trigger"
-              type="button"
+              iconLeading={
+                <Globe01
+                  aria-hidden="true"
+                  className="tw:size-3.5 tw:text-fg-tertiary"
+                />
+              }
+              iconTrailing={
+                <ChevronDown
+                  aria-hidden="true"
+                  className="tw:size-[13px] tw:text-fg-quaternary"
+                />
+              }
               onClick={() =>
                 setIsGlossaryMenuOpen((open) => {
                   const next = !open;
@@ -446,18 +459,10 @@ const OntologyExplorerPage: React.FC = () => {
                   return next;
                 })
               }>
-              <Globe01
-                aria-hidden="true"
-                className="tw:size-3.5 tw:text-fg-tertiary"
-              />
               <span className="tw:max-w-52 tw:truncate tw:font-semibold">
                 {selectedGlossaryLabel}
               </span>
-              <ChevronDown
-                aria-hidden="true"
-                className="tw:size-[13px] tw:text-fg-quaternary"
-              />
-            </button>
+            </Button>
 
             {isGlossaryMenuOpen && glossaryMenuAnchor
               ? createPortal(
@@ -473,21 +478,26 @@ const OntologyExplorerPage: React.FC = () => {
                       left: glossaryMenuAnchor.left,
                       top: glossaryMenuAnchor.top,
                     }}>
-                    <button
+                    <Button
+                      noTextPadding
                       aria-checked={!selectedGlossaryId}
                       className={classNames(
-                        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left',
+                        'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:flex tw:*:data-text:min-w-0',
+                        'tw:*:data-text:flex-1 tw:*:data-text:items-center tw:*:data-text:gap-2',
                         selectedGlossaryId
                           ? 'tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
                           : 'tw:bg-brand-primary tw:text-brand-secondary'
                       )}
+                      color="tertiary"
+                      iconLeading={
+                        <Globe01 aria-hidden="true" className="tw:size-3.5" />
+                      }
                       role="menuitemradio"
-                      type="button"
                       onClick={() => {
                         setSelectedGlossaryId(undefined);
                         setIsGlossaryMenuOpen(false);
                       }}>
-                      <Globe01 aria-hidden="true" className="tw:size-3.5" />
                       <span className="tw:min-w-0 tw:flex-1 tw:truncate">
                         {allGlossariesLabel}
                       </span>
@@ -495,28 +505,36 @@ const OntologyExplorerPage: React.FC = () => {
                         {glossaries.length}{' '}
                         {t('label.glossary-plural').toLocaleLowerCase()}
                       </span>
-                    </button>
+                    </Button>
                     {glossaries.map((glossary) => {
                       const isSelected = glossary.id === selectedGlossaryId;
 
                       return (
-                        <button
+                        <Button
+                          noTextPadding
                           aria-checked={isSelected}
                           className={classNames(
-                            'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                            'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:px-2.5 tw:py-2 tw:text-left',
+                            'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:flex tw:*:data-text:min-w-0',
+                            'tw:*:data-text:flex-1 tw:*:data-text:items-center tw:*:data-text:gap-2',
                             isSelected
                               ? 'tw:bg-brand-primary tw:text-brand-secondary'
                               : 'tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
                           )}
+                          color="tertiary"
                           data-testid={glossary.id}
+                          iconLeading={
+                            <Globe01
+                              aria-hidden="true"
+                              className="tw:size-3.5"
+                            />
+                          }
                           key={glossary.id}
                           role="menuitemradio"
-                          type="button"
                           onClick={() => {
                             setSelectedGlossaryId(glossary.id);
                             setIsGlossaryMenuOpen(false);
                           }}>
-                          <Globe01 aria-hidden="true" className="tw:size-3.5" />
                           <span className="tw:min-w-0 tw:flex-1 tw:truncate">
                             {glossary.displayName ?? glossary.name}
                           </span>
@@ -524,7 +542,7 @@ const OntologyExplorerPage: React.FC = () => {
                             {glossary.termCount ?? 0}{' '}
                             {t('label.term-plural').toLocaleLowerCase()}
                           </span>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>,
@@ -536,7 +554,8 @@ const OntologyExplorerPage: React.FC = () => {
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:justify-center">
             <div className="tw:flex tw:gap-[3px] tw:rounded-[10px] tw:border tw:border-secondary tw:bg-tertiary tw:p-[3px]">
               {modeTabs.map((tab) => (
-                <button
+                <Button
+                  noTextPadding
                   aria-pressed={mode === tab.id}
                   className={classNames(
                     MODE_TAB_CLASS,
@@ -544,9 +563,9 @@ const OntologyExplorerPage: React.FC = () => {
                       ? 'tw:bg-primary tw:text-brand-secondary tw:shadow-xs'
                       : 'tw:bg-transparent tw:text-quaternary'
                   )}
+                  color="tertiary"
                   data-testid={`mode-tab-${tab.id}`}
                   key={tab.id}
-                  type="button"
                   onClick={() => {
                     if (tab.id !== 'edit') {
                       setConceptDraft(undefined);
@@ -554,7 +573,7 @@ const OntologyExplorerPage: React.FC = () => {
                     setMode(tab.id);
                   }}>
                   {tab.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -610,7 +629,8 @@ const OntologyExplorerPage: React.FC = () => {
             </span>
             <div className="tw:flex tw:gap-0.5">
               {subModeConfiguration.items.map((item) => (
-                <button
+                <Button
+                  noTextPadding
                   aria-pressed={subModeConfiguration.id === item.id}
                   className={classNames(
                     SUBMODE_TAB_CLASS,
@@ -618,12 +638,12 @@ const OntologyExplorerPage: React.FC = () => {
                       ? 'tw:bg-primary tw:text-brand-secondary tw:shadow-xs'
                       : 'tw:bg-transparent tw:text-quaternary'
                   )}
+                  color="tertiary"
                   data-testid={`submode-tab-${item.id}`}
                   key={item.id}
-                  type="button"
                   onClick={() => handleSubModeChange(item.id)}>
                   {item.label}
-                </button>
+                </Button>
               ))}
             </div>
             <span className="tw:flex-1" />

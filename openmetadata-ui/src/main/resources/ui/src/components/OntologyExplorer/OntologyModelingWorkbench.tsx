@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Alert } from '@openmetadata/ui-core-components';
+import { Alert, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,7 +116,8 @@ const OntologyModelingWorkbench = ({
           aria-label={t('label.model')}
           className="tw:flex tw:flex-wrap tw:gap-2">
           {tabs.map((tab) => (
-            <button
+            <Button
+              noTextPadding
               aria-pressed={surface === tab.id}
               className={classNames(
                 'tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-semibold',
@@ -125,12 +126,12 @@ const OntologyModelingWorkbench = ({
                   ? 'tw:border-brand tw:bg-brand-primary tw:text-brand-secondary'
                   : 'tw:border-secondary tw:bg-primary tw:text-secondary'
               )}
+              color="tertiary"
               data-testid={`ontology-modeling-tab-${tab.id}`}
               key={tab.id}
-              type="button"
               onClick={() => setSurface(tab.id)}>
               {tab.label}
-            </button>
+            </Button>
           ))}
         </nav>
         {renderModelingSurface({

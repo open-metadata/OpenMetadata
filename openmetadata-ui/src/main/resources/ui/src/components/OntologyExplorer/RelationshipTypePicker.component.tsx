@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import { ArrowRight, SearchMd, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -38,6 +39,10 @@ const PALETTE_CLASSES: Record<PaletteKey, string> = {
   [PaletteKey.Violet]: 'tw:bg-utility-purple-500',
 };
 
+const SearchInputIcon = ({ className }: { className?: string }) => (
+  <SearchMd aria-hidden="true" className={className} />
+);
+
 const renderGroup = (
   title: string,
   testId: string,
@@ -51,11 +56,15 @@ const renderGroup = (
         {title}
       </span>
       {types.map((type) => (
-        <button
-          className="tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover"
+        <Button
+          noTextPadding
+          className={classNames(
+            'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
+            'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
+          )}
+          color="tertiary"
           data-testid={`relation-type-${type.name}`}
           key={type.name}
-          type="button"
           onClick={() => onSelect(type.name)}>
           <span
             className={classNames(
@@ -71,7 +80,7 @@ const renderGroup = (
               {inverseLabel}: {type.inverse.name}
             </span>
           ) : null}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -149,32 +158,27 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         </span>
         <span className="tw:flex-1" />
         {onCancel ? (
-          <button
-            aria-label={t('label.close')}
-            className="tw:grid tw:size-5 tw:shrink-0 tw:place-items-center tw:border-0 tw:bg-transparent tw:text-fg-quaternary hover:tw:text-fg-secondary"
+          <ButtonUtility
+            className="tw:size-5 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-fg-quaternary hover:tw:text-fg-secondary"
             data-testid="relation-type-cancel"
-            type="button"
-            onClick={onCancel}>
-            <XClose aria-hidden="true" className="tw:size-4" />
-          </button>
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.close')}
+            onClick={onCancel}
+          />
         ) : null}
       </div>
 
-      <div className="tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:px-3 tw:py-2">
-        <SearchMd
-          aria-hidden="true"
-          className="tw:size-3.5 tw:shrink-0 tw:text-fg-tertiary"
-        />
-        <input
+      <div className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
+        <Input
           aria-label={t('label.filter-relationships')}
-          className={classNames(
-            'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
-            'tw:text-xs tw:font-normal tw:text-primary tw:outline-none tw:placeholder:text-placeholder'
-          )}
-          data-testid="relation-type-search"
+          icon={SearchInputIcon}
+          inputClassName="tw:text-xs"
+          inputDataTestId="relation-type-search"
           placeholder={t('label.filter-relationships')}
+          size="sm"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={setSearch}
         />
       </div>
 

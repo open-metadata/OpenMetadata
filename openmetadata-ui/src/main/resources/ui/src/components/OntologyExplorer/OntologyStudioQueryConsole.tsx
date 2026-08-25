@@ -14,6 +14,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Dialog,
   Input,
   Modal,
@@ -314,19 +315,18 @@ const OntologyStudioQueryConsole = ({
             <h2 className="tw:m-0 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
               {t('label.query-plural')}
             </h2>
-            <button
+            <Button
+              noTextPadding
               className={classNames(
                 'tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:border-0 tw:bg-transparent tw:px-1.5 tw:py-1',
-                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary hover:tw:bg-brand-primary'
+                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary hover:tw:bg-brand-primary tw:*:data-icon:size-3'
               )}
+              color="tertiary"
               data-testid="ontology-query-new"
-              type="button"
+              iconLeading={Plus}
               onClick={handleNewQuery}>
-              <Plus aria-hidden="true" className="tw:size-3" />
-              <span>
-                {t('label.new')} {t('label.query-lowercase')}
-              </span>
-            </button>
+              {t('label.new')} {t('label.query-lowercase')}
+            </Button>
           </div>
 
           <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
@@ -337,25 +337,26 @@ const OntologyStudioQueryConsole = ({
               const isActive = suggestion.id === activeQueryId;
 
               return (
-                <button
+                <Button
+                  noTextPadding
                   aria-pressed={isActive}
                   className={classNames(
-                    'tw:w-full tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-left tw:font-body',
+                    'tw:w-full tw:justify-start tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-left tw:font-body tw:*:data-text:min-w-0 tw:*:data-text:w-full',
                     'tw:text-xs tw:leading-normal tw:font-medium tw:transition-colors',
                     'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
                     isActive
                       ? 'tw:border-brand tw:bg-brand-primary tw:text-brand-secondary'
                       : 'tw:border-secondary tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
                   )}
+                  color="tertiary"
                   data-testid={`ontology-query-suggestion-${suggestion.id}`}
                   key={suggestion.id}
                   title={suggestion.label}
-                  type="button"
                   onClick={() => handleSuggestionRun(suggestion)}>
                   <span className="tw:block tw:truncate">
                     {suggestion.label}
                   </span>
-                </button>
+                </Button>
               );
             })}
             {querySuggestions.length === 0 ? (
@@ -395,49 +396,47 @@ const OntologyStudioQueryConsole = ({
                         : 'tw:border-secondary hover:tw:bg-secondary'
                     )}
                     key={queryTemplate.id}>
-                    <button
+                    <Button
+                      noTextPadding
                       aria-pressed={isActive}
                       className={classNames(
-                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                        'tw:min-w-0 tw:flex-1 tw:justify-start tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left',
+                        'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:min-w-0 tw:*:data-text:w-full',
                         isActive
                           ? 'tw:text-brand-secondary'
                           : 'tw:text-secondary'
                       )}
+                      color="tertiary"
                       data-testid={`ontology-query-template-${queryTemplate.id}`}
                       title={queryTemplate.name}
-                      type="button"
                       onClick={() => handleTemplateRun(queryTemplate)}>
                       <span className="tw:block tw:truncate">
                         {queryTemplate.name}
                       </span>
-                    </button>
+                    </Button>
                     {isAdminUser ? (
                       <>
-                        <button
-                          aria-label={`${t('label.edit')} ${
-                            queryTemplate.name
-                          }`}
-                          className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-quaternary hover:tw:bg-tertiary hover:tw:text-secondary"
+                        <ButtonUtility
+                          className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary hover:tw:bg-tertiary hover:tw:text-secondary"
                           data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
-                          type="button"
-                          onClick={() => handleTemplateEdit(queryTemplate)}>
-                          <Edit03 aria-hidden="true" className="tw:size-3.5" />
-                        </button>
-                        <button
-                          aria-label={`${t('label.delete')} ${
-                            queryTemplate.name
-                          }`}
+                          icon={Edit03}
+                          size="xs"
+                          tooltip={`${t('label.edit')} ${queryTemplate.name}`}
+                          onClick={() => handleTemplateEdit(queryTemplate)}
+                        />
+                        <ButtonUtility
                           className={classNames(
-                            'tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0',
+                            'tw:size-7 tw:shrink-0 tw:border-0 tw:p-0',
                             'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
                           )}
                           data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
-                          type="button"
+                          icon={Trash01}
+                          size="xs"
+                          tooltip={`${t('label.delete')} ${queryTemplate.name}`}
                           onClick={() =>
                             void handleDeleteTemplate(queryTemplate.id)
-                          }>
-                          <Trash01 aria-hidden="true" className="tw:size-3.5" />
-                        </button>
+                          }
+                        />
                       </>
                     ) : null}
                   </div>
@@ -474,35 +473,35 @@ const OntologyStudioQueryConsole = ({
                         : 'tw:border-secondary hover:tw:bg-secondary'
                     )}
                     key={savedQuery.id}>
-                    <button
+                    <Button
+                      noTextPadding
                       aria-pressed={isActive}
                       className={classNames(
-                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                        'tw:min-w-0 tw:flex-1 tw:justify-start tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left',
+                        'tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:*:data-text:min-w-0 tw:*:data-text:w-full',
                         isActive
                           ? 'tw:text-brand-secondary'
                           : 'tw:text-secondary'
                       )}
+                      color="tertiary"
                       data-testid={`ontology-query-saved-${savedQuery.id}`}
                       title={savedQuery.name}
-                      type="button"
                       onClick={() => handleSavedQueryRun(savedQuery)}>
                       <span className="tw:block tw:truncate">
                         {savedQuery.name}
                       </span>
-                    </button>
-                    <button
-                      aria-label={`${t('label.delete')} ${savedQuery.name}`}
+                    </Button>
+                    <ButtonUtility
                       className={classNames(
-                        'tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0',
+                        'tw:size-7 tw:shrink-0 tw:border-0 tw:p-0',
                         'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
                       )}
                       data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
-                      type="button"
-                      onClick={() =>
-                        void handleDeleteSavedQuery(savedQuery.id)
-                      }>
-                      <Trash01 aria-hidden="true" className="tw:size-3.5" />
-                    </button>
+                      icon={Trash01}
+                      size="xs"
+                      tooltip={`${t('label.delete')} ${savedQuery.name}`}
+                      onClick={() => void handleDeleteSavedQuery(savedQuery.id)}
+                    />
                   </div>
                 );
               })}
@@ -527,42 +526,32 @@ const OntologyStudioQueryConsole = ({
               {t('label.read-only')}
             </Badge>
             <span className="tw:flex-1" />
-            <button
-              className={classNames(
-                'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2',
-                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic'
-              )}
+            <Button
+              color="secondary"
               data-testid="ontology-query-save"
-              type="button"
+              size="sm"
               onClick={handleSaveCurrent}>
               {t('label.save-query')}
-            </button>
+            </Button>
             {isAdminUser ? (
-              <button
-                className={classNames(
-                  'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2',
-                  'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic'
-                )}
+              <Button
+                color="secondary"
                 data-testid="ontology-query-save-template"
-                type="button"
+                size="sm"
                 onClick={handleSaveTemplate}>
                 {activeQueryId?.startsWith('template-')
                   ? t('label.update-sample-query')
                   : t('label.save-as-sample-query')}
-              </button>
+              </Button>
             ) : null}
-            <button
-              className={classNames(
-                'tw:rounded-lg tw:border-0 tw:bg-brand-solid tw:px-4 tw:py-2',
-                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
-                'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
-              )}
+            <Button
+              color="primary"
               data-testid="ontology-sparql-run"
-              disabled={running}
-              type="button"
+              isDisabled={running}
+              size="sm"
               onClick={() => void executeQuery(query)}>
               {running ? t('label.running') : t('label.run-query')}
-            </button>
+            </Button>
           </div>
 
           <div

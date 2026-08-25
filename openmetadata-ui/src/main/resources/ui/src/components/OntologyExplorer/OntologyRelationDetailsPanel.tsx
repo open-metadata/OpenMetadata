@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Divider,
   Select,
   SelectItemType,
@@ -295,13 +296,13 @@ export const OntologyRelationDetailsPanel = ({
         <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
           {t('label.relationship')}
         </span>
-        <button
-          aria-label={t('label.close')}
+        <ButtonUtility
           className="tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-fg-quaternary hover:tw:text-fg-secondary"
-          type="button"
-          onClick={onClose}>
-          <XClose aria-hidden="true" className="tw:size-4" />
-        </button>
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.close')}
+          onClick={onClose}
+        />
       </div>
       <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-4">
         <RelationField label={t('label.source')} value={source} />

@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Input,
@@ -543,26 +544,24 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                   </Button>
                   {isAdminUser ? (
                     <>
-                      <button
-                        aria-label={`${t('label.edit')} ${queryTemplate.name}`}
-                        className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-tertiary hover:tw:bg-secondary"
+                      <ButtonUtility
+                        className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-secondary"
                         data-testid={`sparql-template-edit-${queryTemplate.id}`}
-                        type="button"
-                        onClick={() => handleLoadTemplate(queryTemplate)}>
-                        <Edit03 aria-hidden="true" className="tw:size-3.5" />
-                      </button>
-                      <button
-                        aria-label={`${t('label.delete')} ${
-                          queryTemplate.name
-                        }`}
-                        className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-tertiary hover:tw:bg-error-50 hover:tw:text-error-600"
+                        icon={Edit03}
+                        size="xs"
+                        tooltip={`${t('label.edit')} ${queryTemplate.name}`}
+                        onClick={() => handleLoadTemplate(queryTemplate)}
+                      />
+                      <ButtonUtility
+                        className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-error-50 hover:tw:text-error-600"
                         data-testid={`sparql-template-delete-${queryTemplate.id}`}
-                        type="button"
+                        icon={Trash01}
+                        size="xs"
+                        tooltip={`${t('label.delete')} ${queryTemplate.name}`}
                         onClick={() =>
                           void handleDeleteTemplate(queryTemplate.id)
-                        }>
-                        <Trash01 aria-hidden="true" className="tw:size-3.5" />
-                      </button>
+                        }
+                      />
                     </>
                   ) : null}
                 </li>

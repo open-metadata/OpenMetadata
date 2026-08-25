@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { OntologyEditLock } from '../../generated/type/ontologyEditLock';
@@ -90,12 +91,13 @@ const OntologyEditLeaseStatus = ({
       />
       <span>{statusLabel(state, hasResource, holder, t)}</span>
       {canRetry ? (
-        <button
+        <Button
+          noTextPadding
           className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-semibold tw:text-brand-secondary"
-          type="button"
+          color="tertiary"
           onClick={onRetry}>
           {t('label.retry')}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

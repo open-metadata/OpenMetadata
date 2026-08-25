@@ -14,10 +14,11 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -210,15 +211,14 @@ export const OntologyConceptRealization: React.FC<
           {t(ROLE_LABEL_KEYS[role])}
         </Badge>
         {canAuthor ? (
-          <Button
-            aria-label={t('label.remove')}
-            color="tertiary"
+          <ButtonUtility
             data-testid={`remove-realization-${realization.asset.name}`}
+            icon={XClose}
             isDisabled={isSaving}
-            size="sm"
-            onClick={() => handleRemove(realization.asset.id)}>
-            ✕
-          </Button>
+            size="xs"
+            tooltip={t('label.remove')}
+            onClick={() => handleRemove(realization.asset.id)}
+          />
         ) : null}
       </div>
     );
@@ -238,19 +238,21 @@ export const OntologyConceptRealization: React.FC<
       {candidates.length > 0 ? (
         <div className="tw:flex tw:flex-col tw:gap-1">
           {candidates.map((candidate) => (
-            <button
+            <Button
+              ellipsis
+              noTextPadding
               className={classNames(
-                'tw:truncate tw:rounded tw:px-2 tw:py-1 tw:text-left tw:font-mono tw:text-[11px]',
+                'tw:justify-start tw:rounded tw:px-2 tw:py-1 tw:text-left tw:font-mono tw:text-[11px]',
                 selectedAsset?.id === candidate.id
                   ? 'tw:bg-brand-solid tw:text-white'
                   : 'tw:bg-primary tw:text-secondary'
               )}
+              color="tertiary"
               data-testid={`realization-candidate-${candidate.name}`}
               key={candidate.id}
-              type="button"
               onClick={() => setSelectedAsset(candidate)}>
               {candidate.fullyQualifiedName ?? candidate.name}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}
@@ -308,17 +310,18 @@ export const OntologyConceptRealization: React.FC<
         isAdding ? (
           renderAddForm()
         ) : (
-          <button
+          <Button
+            noTextPadding
             className={classNames(
               'tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-lg tw:border tw:border-dashed',
-              'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary'
+              'tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary tw:*:data-icon:size-3'
             )}
+            color="tertiary"
             data-testid="add-realization"
-            type="button"
+            iconLeading={Plus}
             onClick={() => setIsAdding(true)}>
-            <Plus aria-hidden="true" className="tw:size-3" />
             {t('label.add-entity', { entity: t('label.realized-in') })}
-          </button>
+          </Button>
         )
       ) : null}
     </div>

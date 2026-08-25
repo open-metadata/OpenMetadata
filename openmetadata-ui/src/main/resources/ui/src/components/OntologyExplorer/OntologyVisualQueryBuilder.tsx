@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Select, SelectItemType } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Select,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -428,32 +432,24 @@ const OntologyVisualQueryBuilder = ({
         </pre>
 
         <div className="tw:flex tw:items-center tw:gap-2.5">
-          <button
-            className={classNames(
-              'tw:rounded-lg tw:border-0 tw:bg-brand-solid tw:px-4 tw:py-2.5',
-              'tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
-              'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
-            )}
+          <Button
+            color="primary"
             data-testid="ontology-builder-run"
-            disabled={isLoading || isRunning || !selectedTarget}
-            type="button"
+            isDisabled={isLoading || isRunning || !selectedTarget}
+            size="sm"
             onClick={() => void handleRun()}>
             {isRunning ? t('label.running') : t('label.run-query')}
-          </button>
+          </Button>
 
           {onEditAsSparql ? (
-            <button
-              className={classNames(
-                'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2.5',
-                'tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic',
-                'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
-              )}
+            <Button
+              color="secondary"
               data-testid="ontology-builder-edit-as-sparql"
-              disabled={!selectedTarget}
-              type="button"
+              isDisabled={!selectedTarget}
+              size="sm"
               onClick={() => onEditAsSparql(queryPreview)}>
               {t('label.edit-as-sparql')}
-            </button>
+            </Button>
           ) : null}
 
           {matchCount !== undefined ? (

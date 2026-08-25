@@ -81,6 +81,9 @@ import {
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
 
+const SearchInputIcon = ({ className }: { className?: string }) => (
+  <SearchMd aria-hidden="true" className={className} />
+);
 const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 const STUDIO_GRAPH_BACKDROP_CLASS =
@@ -942,30 +945,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   {scope === 'global' ? (
                     <>
                       {explorationMode === 'model' ? (
-                        <div
-                          className={classNames(
-                            'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:flex tw:w-[216px] tw:items-center tw:gap-2',
-                            'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2 tw:shadow-sm'
-                          )}>
-                          <SearchMd
-                            aria-hidden="true"
-                            className="tw:size-3.5 tw:shrink-0 tw:text-tertiary"
-                          />
-                          <input
-                            aria-label={t('label.find-concept')}
-                            className={classNames(
-                              'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
-                              'tw:text-xs tw:leading-normal tw:font-normal tw:text-primary tw:outline-none',
-                              'tw:placeholder:text-placeholder'
-                            )}
-                            data-testid="ontology-graph-search"
-                            placeholder={`${t('label.find-concept')}\u2026`}
-                            value={searchInput}
-                            onChange={(event) =>
-                              setSearchInput(event.target.value)
-                            }
-                          />
-                        </div>
+                        <Input
+                          aria-label={t('label.find-concept')}
+                          icon={SearchInputIcon}
+                          inputClassName="tw:text-xs"
+                          inputDataTestId="ontology-graph-search"
+                          placeholder={`${t('label.find-concept')}\u2026`}
+                          size="sm"
+                          value={searchInput}
+                          wrapperClassName="tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:w-[216px]"
+                          onChange={setSearchInput}
+                        />
                       ) : null}
                       <Tabs
                         className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"

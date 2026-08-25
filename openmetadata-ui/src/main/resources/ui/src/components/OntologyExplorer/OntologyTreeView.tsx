@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { AlertTriangle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -66,18 +67,20 @@ const OntologyTreeView = ({
                 const isSelected = selectedNodeId === row.node.id;
 
                 return (
-                  <button
+                  <Button
+                    noTextPadding
                     className={classNames(
                       'tw:mb-0.5 tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border',
                       'tw:px-[11px] tw:py-[9px] tw:text-left tw:focus-visible:outline-2',
-                      'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
+                      'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600 tw:*:data-text:flex',
+                      'tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2.5',
                       isSelected
                         ? 'tw:border-brand tw:bg-brand-primary'
                         : 'tw:border-transparent tw:bg-primary hover:tw:bg-secondary'
                     )}
+                    color="tertiary"
                     data-testid={`ontology-tree-term-${row.node.id}`}
                     key={row.node.id}
-                    type="button"
                     onClick={() => onSelect(row.node)}>
                     <span
                       className="tw:shrink-0"
@@ -127,7 +130,7 @@ const OntologyTreeView = ({
                         })}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 );
               })}
             </section>

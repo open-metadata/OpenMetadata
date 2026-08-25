@@ -17,8 +17,8 @@
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-regular);
   line-height: 1.6;
 }
 
@@ -32,7 +32,7 @@
 }
 
 .ontology-studio-query-editor .CodeMirror-lines {
-  padding: 12px 16px;
+  padding: var(--om-space-12) var(--om-space-16);
 }
 
 .ontology-studio-query-editor pre.CodeMirror-line,

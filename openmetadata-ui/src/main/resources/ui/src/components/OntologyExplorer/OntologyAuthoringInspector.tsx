@@ -62,6 +62,9 @@ interface InspectorRelation {
 
 const ASSET_PREVIEW_LIMIT = 3;
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
+const SearchInputIcon = ({ className }: { className?: string }) => (
+  <SearchMd aria-hidden="true" className={className} />
+);
 
 function toConceptSlug(label: string): string {
   return label.replace(/[^a-zA-Z0-9]/g, '');
@@ -109,22 +112,23 @@ const AddButton = ({
   testId,
   onClick,
 }: AddButtonProps) => (
-  <button
+  <Button
+    noTextPadding
     className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px]',
+      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
       'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
       isPrimary
         ? 'tw:border-brand tw:text-brand-tertiary'
         : 'tw:border-primary tw:text-secondary',
       isDisabled && 'tw:cursor-not-allowed tw:opacity-50'
     )}
+    color="tertiary"
     data-testid={testId}
-    disabled={isDisabled}
-    type="button"
+    iconLeading={Plus}
+    isDisabled={isDisabled}
     onClick={onClick}>
-    <Plus aria-hidden="true" className="tw:size-3" />
     {label}
-  </button>
+  </Button>
 );
 
 const OntologyAuthoringInspector = ({
@@ -376,28 +380,29 @@ const OntologyAuthoringInspector = ({
       </span>
       {selectedRelationType ? (
         <>
-          <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-2.5 tw:py-2">
-            <SearchMd
-              aria-hidden="true"
-              className="tw:size-3.5 tw:text-fg-quaternary"
-            />
-            <input
-              aria-label={t('label.search')}
-              className="tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-xs tw:leading-normal tw:text-primary tw:outline-none tw:placeholder:text-placeholder"
-              data-testid="authoring-target-search"
-              placeholder={`${t('label.search')} ${t('label.term-lowercase')}…`}
-              value={targetSearch}
-              onChange={(event) => setTargetSearch(event.target.value)}
-            />
-          </div>
+          <Input
+            aria-label={t('label.search')}
+            icon={SearchInputIcon}
+            inputClassName="tw:text-xs"
+            inputDataTestId="authoring-target-search"
+            placeholder={`${t('label.search')} ${t('label.term-lowercase')}…`}
+            size="sm"
+            value={targetSearch}
+            onChange={setTargetSearch}
+          />
           <div className="tw:flex tw:max-h-48 tw:flex-col tw:gap-1 tw:overflow-auto">
             {targetNodes.map((targetNode) => (
-              <button
-                className="tw:flex tw:w-full tw:flex-col tw:rounded-lg tw:border-0 tw:bg-primary tw:px-2.5 tw:py-2 tw:text-left hover:tw:bg-primary_hover disabled:tw:cursor-wait"
+              <Button
+                noTextPadding
+                className={classNames(
+                  'tw:flex tw:w-full tw:rounded-lg tw:border-0 tw:bg-primary tw:px-2.5 tw:py-2',
+                  'tw:text-left tw:whitespace-normal hover:tw:bg-primary_hover disabled:tw:cursor-wait',
+                  'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:flex-col'
+                )}
+                color="tertiary"
                 data-testid={`authoring-target-${targetNode.id}`}
-                disabled={isSavingRelationship}
+                isDisabled={isSavingRelationship}
                 key={targetNode.id}
-                type="button"
                 onClick={() => handleCreateRelationship(targetNode.id)}>
                 <span className="tw:truncate tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
                   {targetNode.originalLabel ?? targetNode.label}
@@ -405,7 +410,7 @@ const OntologyAuthoringInspector = ({
                 <span className="tw:truncate tw:font-mono tw:text-[10px] tw:leading-normal tw:text-quaternary">
                   {targetNode.fullyQualifiedName}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </>
@@ -476,7 +481,8 @@ const OntologyAuthoringInspector = ({
         </span>
         <div className="tw:flex tw:flex-wrap tw:gap-1.5">
           {Object.values(ConceptMappingType).map((type) => (
-            <button
+            <Button
+              noTextPadding
               aria-pressed={mappingType === type}
               className={classNames(
                 'tw:rounded-full tw:border tw:px-2.5 tw:py-1 tw:font-mono tw:text-[11px] tw:leading-normal tw:font-medium',
@@ -484,12 +490,12 @@ const OntologyAuthoringInspector = ({
                   ? 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-success-primary'
                   : 'tw:border-secondary tw:bg-primary tw:text-tertiary hover:tw:bg-secondary'
               )}
+              color="tertiary"
               data-testid={`authoring-mapping-type-${type}`}
               key={type}
-              type="button"
               onClick={() => setMappingType(type)}>
               {type}
-            </button>
+            </Button>
           ))}
         </div>
         <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
@@ -507,17 +513,18 @@ const OntologyAuthoringInspector = ({
             const suggestion = `${scheme}:${conceptSlug}`;
 
             return (
-              <button
+              <Button
+                noTextPadding
                 className={classNames(
                   'tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
                   'tw:font-mono tw:text-[11px] tw:leading-normal tw:font-medium tw:text-brand-secondary hover:tw:bg-secondary'
                 )}
+                color="tertiary"
                 data-testid={`authoring-mapping-scheme-${scheme}`}
                 key={scheme}
-                type="button"
                 onClick={() => setMappingIri(suggestion)}>
                 {suggestion}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -554,26 +561,28 @@ const OntologyAuthoringInspector = ({
         </span>
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
           {onShowFullDetails ? (
-            <button
+            <Button
+              noTextPadding
               className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
+              color="tertiary"
               data-testid="ontology-concept-full-details"
-              type="button"
               onClick={onShowFullDetails}>
               {t('label.view-detail-plural')}
-            </button>
+            </Button>
           ) : null}
           {!isEditable && onRequestEdit ? (
-            <button
+            <Button
+              noTextPadding
               className={classNames(
                 'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
                 'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
               )}
+              color="tertiary"
               data-testid="ontology-concept-edit"
-              type="button"
+              iconLeading={Edit03}
               onClick={onRequestEdit}>
-              <Edit03 aria-hidden="true" className="tw:size-3" />
               {t('label.edit')}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -691,10 +700,12 @@ const OntologyAuthoringInspector = ({
                 <img
                   alt={serviceName ?? t('label.service')}
                   className="tw:size-3.5 tw:shrink-0 tw:object-contain"
+                  height={14}
                   src={serviceUtilClassBase.getServiceTypeLogo({
                     entityType: asset.entity.type,
                     serviceType: asset.serviceType,
                   })}
+                  width={14}
                 />
                 <div className="tw:min-w-0 tw:flex-1">
                   <div className="tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
@@ -715,17 +726,18 @@ const OntologyAuthoringInspector = ({
           })}
         </div>
         {assetTotal > assets.length ? (
-          <button
+          <Button
+            noTextPadding
             className={classNames(
               'tw:mt-2 tw:w-full tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2',
               'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-tertiary'
             )}
+            color="tertiary"
             data-testid="authoring-more-assets"
-            type="button"
             onClick={onShowDataAssets}>
             +{assetTotal - assets.length} {t('label.more-lowercase')}{' '}
             {t('label.data-asset-lowercase-plural')}
-          </button>
+          </Button>
         ) : null}
       </section>
     </aside>

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { ArrowRight, Check } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';
@@ -49,7 +50,7 @@ const OntologyHealthPanel = ({
         <div className="tw:mt-3 tw:flex tw:items-center tw:gap-2">
           <div className="tw:h-1.5 tw:flex-1 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
             <div
-              className="tw:h-full tw:bg-success-primary0 tw:transition-all"
+              className="tw:h-full tw:bg-success-primary0 tw:transition-[width]"
               style={{ width: `${health.connectedPercent}%` }}
             />
           </div>
@@ -78,15 +79,17 @@ const OntologyHealthPanel = ({
           </div>
         ) : (
           health.isolatedTerms.map((term) => (
-            <button
+            <Button
+              noTextPadding
               className={
                 'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 ' +
                 'tw:bg-warning-primary tw:px-2.5 tw:py-2 tw:text-left tw:focus-visible:outline-2 ' +
-                'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-warning-500'
+                'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-warning-500 tw:*:data-text:flex ' +
+                'tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
               }
+              color="tertiary"
               data-testid={`ontology-connect-${term.id}`}
               key={term.id}
-              type="button"
               onClick={() => onConnect(term)}>
               <span
                 aria-hidden="true"
@@ -99,7 +102,7 @@ const OntologyHealthPanel = ({
                 {t('label.connect')}
                 <ArrowRight aria-hidden="true" className="tw:size-3" />
               </span>
-            </button>
+            </Button>
           ))
         )}
       </div>
