@@ -41,6 +41,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.db2.utils import (
     check_clidriver_version,
     install_clidriver,
+    patch_ibmi_dialect,
 )
 from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -136,6 +137,7 @@ def get_connection(connection: Db2Connection) -> Engine:
             connection = ssl_manager.setup_ssl(connection)
 
     if is_ibmi:
+        patch_ibmi_dialect()
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=_get_ibmi_connection_url,
