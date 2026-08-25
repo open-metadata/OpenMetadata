@@ -12,8 +12,8 @@
  */
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  createNewPage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -23,9 +23,11 @@ import {
   dragAndDropElement,
   openDragDropDropdown,
 } from '../../utils/dragDrop';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy } from '../../utils/team';
+import {
+  addTeamHierarchy,
+  hardDeleteTeamsByName,
+  visitTeamsPage,
+} from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -91,26 +93,26 @@ test.describe(
   () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
+      await visitTeamsPage(page);
+    });
 
-      const getOrganizationResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/teams/name/') &&
-          response.status() === 200
-      );
-      const permissionResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/permissions/team/name/') &&
-          response.status() === 200
-      );
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
 
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-      await permissionResponse;
-      await getOrganizationResponse;
-      await waitForAllLoadersToDisappear(page);
+      try {
+        await hardDeleteTeamsByName(apiContext, [
+          teamNameBusiness,
+          teamNameDivision,
+          teamNameDepartment,
+          teamNameGroup,
+        ]);
+      } finally {
+        await afterAction();
+      }
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
-      test.slow();
+      test.slow(true);
       for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
         await addTeamHierarchy(page, teamDetails);
 
@@ -158,7 +160,7 @@ test.describe(
       test(`Should drag and drop on ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, async ({
         page,
       }) => {
-        test.slow();
+        test.slow(true);
         // Nested team will be shown once anything is moved under it
         if (index !== 0) {
           await openDragDropDropdown(page, teams[index - 1]);
@@ -182,7 +184,7 @@ test.describe(
     }
 
     test(`Should drag and drop team on table level`, async ({ page }) => {
-      test.slow();
+      test.slow(true);
       // Open department team dropdown as it is moved under it from last test
       await openDragDropDropdown(page, teamNameDepartment);
 
