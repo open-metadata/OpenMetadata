@@ -72,6 +72,10 @@
         "$ref": "#/definitions/testCaseParameterValue"
       }
     },
+    "dataQualityDimension": {
+      "description": "Data quality dimension this test case belongs to. When not set at creation time, it defaults to the dimension of the test definition. Any custom dimension can be used, on top of the ones shipped with OpenMetadata.",
+      "type": "string"
+    },
     "testCaseResult": {
       "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"

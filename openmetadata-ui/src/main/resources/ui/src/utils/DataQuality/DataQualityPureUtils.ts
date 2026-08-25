@@ -160,6 +160,10 @@ export const createUpdatedTestCasePatch = ({
     topDimensions: isUndefined(value.topDimensions)
       ? testCase.topDimensions
       : value.topDimensions ?? undefined,
+    dataQualityDimension:
+      showOnlyParameter || isUndefined(value.dataQualityDimension)
+        ? testCase.dataQualityDimension
+        : value.dataQualityDimension || undefined,
   };
 
   return compare(testCase, updatedTestCase);

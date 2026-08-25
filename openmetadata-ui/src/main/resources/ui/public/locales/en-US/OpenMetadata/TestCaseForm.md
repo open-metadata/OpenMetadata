@@ -92,6 +92,14 @@ Common test types include:
 $$
 
 $$section
+### Data Quality Dimension $(id="dataQualityDimension")
+
+The data quality dimension this test case is categorized under. Test cases are grouped and reported by dimension in the data quality dashboard.
+
+It defaults to the dimension of the selected test type, and you can either pick another one from the list or type in your own custom dimension — for example `Timeliness`, `Traceability` or `Availability`.
+$$
+
+$$section
 ### Name $(id="name")
 
 Provide a unique name for your test case. The name should be descriptive and follow these guidelines:
@@ -217,6 +225,8 @@ Tests are categorized into seven data quality dimensions:
 - **Uniqueness**: Tests for duplicate detection and uniqueness constraints
 - **Integrity**: Tests for referential integrity and structural consistency
 - **SQL**: Custom SQL-based validation tests
+
+Each test case inherits the dimension of its test definition and can override it with any other dimension, including custom ones you define yourself.
 
 ## Test Platforms
 

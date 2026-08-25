@@ -19,6 +19,12 @@ export interface CreateTestCase {
      */
     computePassedFailedRowCount?: boolean;
     /**
+     * Data quality dimension this test case belongs to. When not set, it defaults to the
+     * dimension of the test definition. Any custom dimension can be used, on top of the ones
+     * shipped with OpenMetadata.
+     */
+    dataQualityDimension?: string;
+    /**
      * Description of the testcase.
      */
     description?: string;

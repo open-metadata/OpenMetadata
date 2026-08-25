@@ -25,6 +25,7 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -89,6 +90,50 @@ class TestCaseIndexTest {
         .withFullyQualifiedName("svc.db.schema.table.columnValuesToBeBetween")
         .withEntityLink("<#E::table::svc.db.schema.table>")
         .withTestDefinition(testDefRef);
+  }
+
+  private TestCase createTestCaseWithDimensions(
+      DataQualityDimensions definitionDimension, String testCaseDimension) {
+    UUID testDefId = UUID.randomUUID();
+    EntityReference testDefRef =
+        new EntityReference().withId(testDefId).withType(Entity.TEST_DEFINITION);
+
+    TestDefinition testDef =
+        new TestDefinition()
+            .withId(testDefId)
+            .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
+            .withEntityType(TestDefinitionEntityType.COLUMN)
+            .withDataQualityDimension(definitionDimension);
+
+    entityStaticMock
+        .when(() -> Entity.getEntity(eq(Entity.TEST_DEFINITION), eq(testDefId), anyString(), any()))
+        .thenReturn(testDef);
+
+    return new TestCase()
+        .withId(UUID.randomUUID())
+        .withName("columnValuesToBeBetween")
+        .withFullyQualifiedName("svc.db.schema.table.columnValuesToBeBetween")
+        .withEntityLink("<#E::table::svc.db.schema.table>")
+        .withTestDefinition(testDefRef)
+        .withDataQualityDimension(testCaseDimension);
+  }
+
+  @Test
+  void testDataQualityDimensionFallsBackToTestDefinition() {
+    TestCase tc = createTestCaseWithDimensions(DataQualityDimensions.ACCURACY, null);
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
+
+    assertEquals(DataQualityDimensions.ACCURACY, result.get("dataQualityDimension"));
+  }
+
+  @Test
+  void testCustomDataQualityDimensionOverridesTestDefinition() {
+    TestCase tc = createTestCaseWithDimensions(DataQualityDimensions.ACCURACY, "Timeliness");
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
+
+    assertEquals("Timeliness", result.get("dataQualityDimension"));
   }
 
   @Test

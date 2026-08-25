@@ -92,7 +92,13 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
-      esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+      Map<String, Object> testDefinitionMap = JsonUtils.getMap(testDefinition);
+      // Dimension filters and aggregations read the denormalized test definition, so the dimension
+      // set on the test case — a custom one or an override of the definition default — wins here.
+      if (!nullOrEmpty(testCase.getDataQualityDimension())) {
+        testDefinitionMap.put("dataQualityDimension", testCase.getDataQualityDimension());
+      }
+      esDoc.put("testDefinition", testDefinitionMap);
     }
     if (!nullOrEmpty(testCase.getDomains())) {
       esDoc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));

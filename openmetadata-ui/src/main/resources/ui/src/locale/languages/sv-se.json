@@ -3279,6 +3279,7 @@
     "discover-data-products-subtitle": "Upptäck betrodda dataprodukter och begär dataåtkomst",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Det blev enklare med datakvalitet utan kod. Enkla steg för att testa, driftsätta och samla in resultat, med omedelbara notiser vid testfel. Håll dig uppdaterad med tillförlitliga data som du kan lita på.",
     "distinct-profile-metric-description": "Procentandel distinkta värden i kolumnen",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "Välj eventuellt en eller flera kolumner att gruppera testresultaten efter. Resultaten beräknas separat för varje kombination av dimensionsvärden; den testade kolumnen kan inte själv vara en dimension.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

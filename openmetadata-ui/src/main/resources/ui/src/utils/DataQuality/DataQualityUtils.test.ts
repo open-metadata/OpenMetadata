@@ -1370,6 +1370,35 @@ describe('DataQualityUtils', () => {
       expect(hasTagsOp(patch)).toBe(false);
     });
 
+    it('should emit a dataQualityDimension op when a custom dimension is set', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch).toContainEqual({
+        op: 'replace',
+        path: '/dataQualityDimension',
+        value: 'Timeliness',
+      });
+    });
+
+    it('should keep the existing dataQualityDimension when only parameters are edited', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: { ...baseTestCase, dataQualityDimension: 'Accuracy' },
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
+        false
+      );
+    });
+
     it('should include fields returned by createTestCaseObject (e.g. Collate useDynamicAssertion)', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: baseTestCase,

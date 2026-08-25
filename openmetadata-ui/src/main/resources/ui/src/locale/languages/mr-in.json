@@ -3279,6 +3279,7 @@
     "discover-data-products-subtitle": "विश्वासार्ह डेटा उत्पादने शोधा आणि डेटा प्रवेशासाठी विनंती करा",
     "discover-your-data-and-unlock-the-value-of-data-assets": "कोडलेस डेटा गुणवत्ता सोप्या पायऱ्यांसह सोपी झाली. चाचणी, उपयोजन आणि निकाल गोळा करा, त्वरित चाचणी अयशस्वी सूचना मिळवा. विश्वासार्ह डेटासह अद्ययावत रहा.",
     "distinct-profile-metric-description": "स्तंभातील विशिष्ट मूल्यांची टक्केवारी",
+    "doc-field-data-quality-dimension": "The data quality dimension this test case is categorized under. It defaults to the dimension of the test type, and you can pick another one or type in your own custom dimension.",
     "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-dimension-columns": "चाचणी निकाल गटबद्ध करण्यासाठी एक किंवा अधिक स्तंभ पर्यायाने निवडा. प्रत्येक मिती मूल्यांच्या संयोजनासाठी निकाल स्वतंत्रपणे मोजले जातात; चाचणी केलेला स्तंभ स्वतः मिती असू शकत नाही.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",

@@ -448,7 +448,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (DataQualityDimensions.NO_DIMENSION.value().equals(dataQualityDimension)) {
       return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
     }
-    return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
+    // Dimensions are free-form on a test case (custom dimensions), so the value must be escaped.
+    return String.format(
+        "{\"term\": {\"%s\": \"%s\"}}", field, escapeDoubleQuotes(dataQualityDimension));
   }
 
   private String getTestCaseResolutionStatusCondition() {
