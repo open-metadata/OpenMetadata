@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import test from 'node:test';
 
 const SUPPRESSIONS = path.join(
   import.meta.dirname,

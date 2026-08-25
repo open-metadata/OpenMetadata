@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import requireResponseListenerBeforeAction from './require-response-listener-before-action.ts';
-import noBlanketTestSlow from './no-blanket-test-slow.ts';
-import requireAssertionPerTest from './require-assertion-per-test.ts';
-import noPositionalLocator from './no-positional-locator.ts';
 import justifiedRuleDisable from './justified-rule-disable.ts';
+import noBlanketTestSlow from './no-blanket-test-slow.ts';
+import noPositionalLocator from './no-positional-locator.ts';
+import requireAssertionPerTest from './require-assertion-per-test.ts';
+import requireResponseListenerBeforeAction from './require-response-listener-before-action.ts';
 
 export default {
   rules: {

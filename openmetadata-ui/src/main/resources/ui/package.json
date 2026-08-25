@@ -244,7 +244,7 @@
     "babel-eslint": "^10.1.0",
     "babel-jest": "^29.7.0",
     "dotenv": "^16.0.0",
-    "eslint": "^9.18.0",
+    "eslint": "^9.39.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-i18next": "^6.0.0-2",
     "eslint-plugin-jest": "^28.9.0",

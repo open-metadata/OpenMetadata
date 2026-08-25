@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Linter, RuleTester } from 'eslint';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Linter, RuleTester } from 'eslint';
 import rule from '../justified-rule-disable.ts';
 
 // ESLint 9's own linter validates that every rule id referenced in an

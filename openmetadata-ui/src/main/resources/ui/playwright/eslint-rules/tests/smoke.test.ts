@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import test from 'node:test';
 import assert from 'node:assert';
+import test from 'node:test';
 import plugin from '../index.ts';
 
 test('plugin exports a rules object', () => {
