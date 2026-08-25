@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-'use strict';
+import type { Rule } from 'eslint';
+import type { CallExpression } from 'estree';
 
 const POSITIONAL = new Set(['first', 'last', 'nth']);
 const ZERO_ARG_METHODS = new Set(['first', 'last']);
@@ -34,28 +34,30 @@ const LOCATOR_RECEIVER_TYPES = new Set([
  * `_.first(arr)`, which always passes the collection explicitly. Playwright's
  * `.first()` / `.last()` take zero arguments; `.nth(index)` takes exactly one.
  */
-const hasPositionalArity = (node, methodName) =>
+const hasPositionalArity = (node: CallExpression, methodName: string) =>
   ZERO_ARG_METHODS.has(methodName)
     ? node.arguments.length === 0
     : node.arguments.length === 1;
 
-const isPositionalLocatorCall = (node) => {
+const isPositionalLocatorCall = (node: CallExpression): boolean => {
   const { callee } = node;
 
   if (callee?.type !== 'MemberExpression') {
     return false;
   }
 
-  const methodName = callee.property?.name;
+  const methodName =
+    callee.property.type === 'Identifier' ? callee.property.name : null;
 
   return (
+    methodName !== null &&
     POSITIONAL.has(methodName) &&
-    LOCATOR_RECEIVER_TYPES.has(callee.object?.type) &&
+    LOCATOR_RECEIVER_TYPES.has(callee.object.type) &&
     hasPositionalArity(node, methodName)
   );
 };
 
-module.exports = {
+const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -78,3 +80,5 @@ module.exports = {
     };
   },
 };
+
+export default rule;

@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-'use strict';
+import requireResponseListenerBeforeAction from './require-response-listener-before-action.ts';
+import noBlanketTestSlow from './no-blanket-test-slow.ts';
+import requireAssertionPerTest from './require-assertion-per-test.ts';
+import noPositionalLocator from './no-positional-locator.ts';
+import justifiedRuleDisable from './justified-rule-disable.ts';
 
-const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
-const noBlanketTestSlow = require('./no-blanket-test-slow.js');
-const requireAssertionPerTest = require('./require-assertion-per-test.js');
-const noPositionalLocator = require('./no-positional-locator.js');
-const justifiedRuleDisable = require('./justified-rule-disable.js');
-
-module.exports = {
+export default {
   rules: {
     'require-response-listener-before-action':
       requireResponseListenerBeforeAction,

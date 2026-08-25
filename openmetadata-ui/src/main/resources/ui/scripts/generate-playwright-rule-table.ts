@@ -16,32 +16,34 @@
  * eslint.config.mjs, so the docs cannot list a rule the linter doesn't enforce
  * (or omit one it does) — the two sources of truth used to drift silently.
  *
- *   node scripts/generate-playwright-rule-table.js            # write the table
- *   node scripts/generate-playwright-rule-table.js --check    # CI: fail if stale
+ *   node scripts/generate-playwright-rule-table.ts            # write the table
+ *   node scripts/generate-playwright-rule-table.ts --check    # CI: fail if stale
  */
 
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const HANDBOOK = path.join(
-  __dirname,
+  import.meta.dirname,
   '../playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md'
 );
 const START = '<!-- BEGIN GENERATED RULE TABLE -->';
 const END = '<!-- END GENERATED RULE TABLE -->';
 
 const buildTable = async () => {
-  // eslint.config.mjs is ESM; everything else here is plain CommonJS, matching
+  // eslint.config.mjs and the local plugin are both ESM, so they load via
   // the rest of scripts/*.js.
   const { default: config } = await import('../eslint.config.mjs');
 
   // Rule descriptions live in two different plugins depending on the prefix:
   // `playwright/*` ships from the upstream eslint-plugin-playwright package,
   // `om-playwright/*` is this repo's local plugin.
-  const upstream = require('eslint-plugin-playwright');
-  const local = require('../playwright/eslint-rules/index.js');
+  const { default: upstream } = await import('eslint-plugin-playwright');
+  const { default: local } = await import(
+    '../playwright/eslint-rules/index.ts'
+  );
 
   const severities = {};
   for (const block of config) {

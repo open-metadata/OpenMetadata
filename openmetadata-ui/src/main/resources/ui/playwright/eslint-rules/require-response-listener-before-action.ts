@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { Rule } from 'eslint';
 
-'use strict';
-
-module.exports = {
+const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -35,7 +34,8 @@ module.exports = {
         if (
           call?.type !== 'CallExpression' ||
           call.callee?.type !== 'MemberExpression' ||
-          call.callee.property?.name !== 'waitForResponse'
+          call.callee.property.type !== 'Identifier' ||
+          call.callee.property.name !== 'waitForResponse'
         ) {
           return;
         }
@@ -45,3 +45,5 @@ module.exports = {
     };
   },
 };
+
+export default rule;

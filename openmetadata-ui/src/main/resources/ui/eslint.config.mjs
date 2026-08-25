@@ -26,7 +26,7 @@ import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
-import omPlaywright from './playwright/eslint-rules/index.js';
+import omPlaywright from './playwright/eslint-rules/index.ts';
 
 export default [
   // Base recommended configs
@@ -434,6 +434,11 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{ts,tsx}'],
+    // The local plugin lives under playwright/ but is a linter, not a test:
+    // applying rules like no-positional-locator to its own source is
+    // meaningless, and its RuleTester fixtures deliberately contain the exact
+    // anti-patterns those rules look for.
+    ignores: ['**/playwright/eslint-rules/**'],
     plugins: {
       playwright,
       'om-playwright': omPlaywright,
@@ -532,19 +537,16 @@ export default [
     },
   },
 
-  // Local ESLint plugin (playwright/eslint-rules/**): plain CommonJS, not part
-  // of the TypeScript/ESM playwright test sources above — needs `require`/
-  // `module` as known globals and the ESM-oriented `no-require-imports` rule off.
+  // Local ESLint plugin (playwright/eslint-rules/**): TypeScript ESM run
+  // directly by Node's type stripping, and excluded from the Playwright test
+  // rules above. It needs the Node globals its RuleTester and node:test usage
+  // rely on.
   {
-    files: ['playwright/eslint-rules/**/*.js'],
+    files: ['playwright/eslint-rules/**/*.ts'],
     languageOptions: {
-      sourceType: 'commonjs',
       globals: {
         ...globals.node,
       },
-    },
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 

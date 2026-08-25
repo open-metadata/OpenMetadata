@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-'use strict';
-
-const { RuleTester } = require('eslint');
-const rule = require('../require-assertion-per-test.js');
+import { RuleTester } from 'eslint';
+import rule from '../require-assertion-per-test.ts';
 
 const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2022, sourceType: 'module' },

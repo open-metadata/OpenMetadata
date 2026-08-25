@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-const { RuleTester } = require('eslint');
-const rule = require('../no-positional-locator.js');
+import { RuleTester } from 'eslint';
+import rule from '../no-positional-locator.ts';
 
 const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2022, sourceType: 'module' },

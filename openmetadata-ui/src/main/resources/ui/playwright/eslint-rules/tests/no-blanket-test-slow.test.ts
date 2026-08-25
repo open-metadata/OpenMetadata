@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-const { RuleTester } = require('eslint');
-const rule = require('../no-blanket-test-slow.js');
+import { RuleTester } from 'eslint';
+import rule from '../no-blanket-test-slow.ts';
 
 const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2022, sourceType: 'module' },

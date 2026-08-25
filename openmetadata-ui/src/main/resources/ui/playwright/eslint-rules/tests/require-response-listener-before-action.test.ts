@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-const { RuleTester } = require('eslint');
-const rule = require('../require-response-listener-before-action.js');
+import { RuleTester } from 'eslint';
+import rule from '../require-response-listener-before-action.ts';
 
 const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2022, sourceType: 'module' },

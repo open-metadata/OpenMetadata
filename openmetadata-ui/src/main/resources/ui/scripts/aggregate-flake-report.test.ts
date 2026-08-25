@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const { aggregate } = require('./aggregate-flake-report.js');
+import test from 'node:test';
+import assert from 'node:assert';
+import { aggregate } from './aggregate-flake-report.ts';
 
 const fixture = {
   suites: [

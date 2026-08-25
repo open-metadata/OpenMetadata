@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const plugin = require('../index.js');
+import test from 'node:test';
+import assert from 'node:assert';
+import plugin from '../index.ts';
 
 test('plugin exports a rules object', () => {
   assert.ok(plugin.rules, 'plugin must export `rules`');

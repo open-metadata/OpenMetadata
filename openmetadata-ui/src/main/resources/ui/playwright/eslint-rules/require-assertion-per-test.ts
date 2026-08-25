@@ -10,20 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { Rule } from 'eslint';
+import type {
+  ArrowFunctionExpression,
+  CallExpression,
+  FunctionExpression,
+  Node,
+} from 'estree';
 
-'use strict';
+type TestBody = ArrowFunctionExpression | FunctionExpression;
 
-const isTestCall = (node) =>
+const isTestCall = (node: CallExpression): boolean =>
   (node.callee?.type === 'Identifier' && node.callee.name === 'test') ||
   (node.callee?.type === 'MemberExpression' &&
-    node.callee.object?.name === 'test' &&
-    ['only', 'fixme'].includes(node.callee.property?.name));
+    node.callee.object.type === 'Identifier' &&
+    node.callee.object.name === 'test' &&
+    node.callee.property.type === 'Identifier' &&
+    ['only', 'fixme'].includes(node.callee.property.name));
 
 // Unwinds a (possibly chained) call/member expression back to its root node
 // — e.g. `page.getByTestId('x').click()` -> the `page` Identifier — by
 // alternating between "step out of a member access" and "step out of a
 // call" until neither applies.
-const unwindToRoot = (node) => {
+const unwindToRoot = (
+  node: Node | null | undefined
+): Node | null | undefined => {
   let current = node;
 
   while (current) {
@@ -43,7 +54,7 @@ const unwindToRoot = (node) => {
 // "provably does nothing but interact" status: the Playwright fixtures it
 // destructures (`page`, `adminPage`, `context`, ...), plus the conventional
 // `page` name as a safety net for callbacks that don't destructure at all.
-const getFixtureNames = (body) => {
+const getFixtureNames = (body: TestBody): Set<string> => {
   const names = new Set(['page']);
   const [param] = body.params;
 
@@ -58,7 +69,7 @@ const getFixtureNames = (body) => {
   return names;
 };
 
-module.exports = {
+const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
@@ -77,8 +88,8 @@ module.exports = {
     // Every CallExpression in the file, collected during the single
     // traversal below, so `Program:exit` can ask "which calls fall inside
     // this test's body?" by range instead of re-walking each body by hand.
-    const allCalls = [];
-    const testCalls = [];
+    const allCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
+    const testCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
 
     return {
       CallExpression(node) {
@@ -92,7 +103,7 @@ module.exports = {
       'Program:exit'() {
         for (const node of testCalls) {
           const body = node.arguments.find(
-            (arg) =>
+            (arg): arg is TestBody =>
               arg.type === 'ArrowFunctionExpression' ||
               arg.type === 'FunctionExpression'
           );
@@ -127,12 +138,14 @@ module.exports = {
           // inattention, while a wrongly flagged delegating test costs a
           // developer's time proving a false alarm.
           const fixtureNames = getFixtureNames(body);
-          const nestedCalls = allCalls.filter(
-            (call) =>
-              call !== node &&
-              call.range[0] >= body.range[0] &&
-              call.range[1] <= body.range[1]
-          );
+          const [bodyStart, bodyEnd] = body.range as [number, number];
+          const nestedCalls = allCalls.filter((call) => {
+            const [callStart, callEnd] = call.range as [number, number];
+
+            return (
+              call !== node && callStart >= bodyStart && callEnd <= bodyEnd
+            );
+          });
           // `test.slow()`, `test.setTimeout()`, `test.step()`, and their
           // siblings are transparent, not exempting: they can't assert, so
           // they don't count toward "does something other than interact
@@ -142,7 +155,7 @@ module.exports = {
           // collected above and checked on their own merits; treating the
           // `test.step(...)` call itself as transparent doesn't lose that
           // coverage.
-          const isTestNamespaceCall = (call) => {
+          const isTestNamespaceCall = (call: CallExpression): boolean => {
             const root = unwindToRoot(call.callee);
 
             return root?.type === 'Identifier' && root.name === 'test';
@@ -163,3 +176,5 @@ module.exports = {
     };
   },
 };
+
+export default rule;

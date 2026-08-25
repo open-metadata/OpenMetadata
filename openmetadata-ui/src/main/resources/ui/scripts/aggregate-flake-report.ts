@@ -18,12 +18,13 @@
  * passes, so this is a pure aggregation over data CI already has — no extra
  * test runtime.
  *
- *   node scripts/aggregate-flake-report.js <results.json> <flake-report.json>
+ *   node scripts/aggregate-flake-report.ts <results.json> <flake-report.json>
  */
 
 'use strict';
 
-const fs = require('node:fs');
+import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 /**
  * @param {object} json Playwright JSON reporter output.
@@ -74,7 +75,7 @@ const main = () => {
 
   if (!input || !output) {
     console.error(
-      'usage: node scripts/aggregate-flake-report.js <results.json> <flake-report.json>'
+      'usage: node scripts/aggregate-flake-report.ts <results.json> <flake-report.json>'
     );
     process.exit(1);
   }
@@ -91,8 +92,10 @@ const main = () => {
   );
 };
 
-if (require.main === module) {
+// ESM has no `require.main`; comparing this module's URL with the entry point
+// is the equivalent "am I being run directly, not imported?" check.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
 
-module.exports = { aggregate };
+export { aggregate };

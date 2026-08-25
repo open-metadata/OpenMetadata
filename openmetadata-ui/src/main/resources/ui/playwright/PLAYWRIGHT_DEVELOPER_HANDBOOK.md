@@ -798,7 +798,7 @@ yarn lint:playwright:suppressions
 Every rule below runs at `error` — there is no warn tier. Existing violations at the time each rule
 was promoted are snapshotted in `eslint-suppressions.json`; that file may shrink as violations are
 fixed, never grow. This table is generated from `eslint.config.mjs` by
-`scripts/generate-playwright-rule-table.js` — do not hand-edit it, run
+`scripts/generate-playwright-rule-table.ts` — do not hand-edit it, run
 `yarn generate:playwright-rules` instead.
 
 <!-- BEGIN GENERATED RULE TABLE -->

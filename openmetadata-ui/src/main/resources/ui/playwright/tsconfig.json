@@ -12,6 +12,7 @@
     "composite": false,
     "removeComments": false,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "importHelpers": true,
     "downlevelIteration": true,
     "isolatedModules": true,
@@ -29,5 +30,6 @@
     "skipLibCheck": true,
     "noImplicitAny": true,
     "types": ["node"]
-  }
+  },
+  "exclude": ["eslint-rules/tests"]
 }

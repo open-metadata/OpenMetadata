@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
+import test from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const SUPPRESSIONS = path.join(__dirname, '../../../eslint-suppressions.json');
+const SUPPRESSIONS = path.join(
+  import.meta.dirname,
+  '../../../eslint-suppressions.json'
+);
 
 test('suppressions baseline only ever shrinks', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
@@ -55,7 +58,7 @@ test('suppressions baseline only ever shrinks', () => {
 // `*.spec.js`, so a JavaScript spec would run with none of the rules applied.
 // This test makes the TypeScript-only invariant explicit rather than assumed.
 test('the playwright corpus stays TypeScript-only', () => {
-  const ROOT = path.join(__dirname, '../..');
+  const ROOT = path.join(import.meta.dirname, '../..');
   // eslint-rules/ is the CommonJS plugin itself; doc-generator/ is lint-ignored
   // tooling. Neither is a test, and neither is collected by Playwright.
   const EXEMPT = new Set([
