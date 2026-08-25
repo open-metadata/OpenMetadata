@@ -408,8 +408,12 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 schema_name = self.context.get().database_schema
                 table_name = table.Name
 
-                # Get full table metadata from Glue API
-                response = self.glue.get_table(DatabaseName=schema_name, Name=table_name)
+                # Get full table metadata from Glue API, from the schema's own catalog
+                get_table_args = {"DatabaseName": schema_name, "Name": table_name}
+                catalog_id = self.schema_catalog_id_map.get(schema_name)
+                if catalog_id:
+                    get_table_args["CatalogId"] = catalog_id
+                response = self.glue.get_table(**get_table_args)
 
                 table_info = response["Table"]
 

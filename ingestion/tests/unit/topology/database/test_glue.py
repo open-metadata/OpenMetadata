@@ -379,3 +379,38 @@ class GlueUnitTest(TestCase):
         list(source._get_glue_tables())
 
         paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")
+
+    def test_iceberg_columns_are_read_from_the_schema_own_catalog(self):
+        """The Iceberg detail lookup must name the same catalog the schema came from.
+
+        Reading it from the caller's catalog raises, and the broad fallback then serves
+        the unfiltered storage-descriptor columns, so dropped columns come back as live.
+        """
+        source = self._custom_db_name_source(
+            [
+                DatabasePage(
+                    DatabaseList=[
+                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                    ]
+                )
+            ]
+        )
+        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+
+        iceberg_table = Mock()
+        iceberg_table.Name = "iceberg_table"
+        iceberg_table.Parameters.table_type = "ICEBERG"
+        source.context.get().__dict__["database_schema"] = "foreign_schema"
+        # The topology context is shared, so a stray table_data leaks into later tests.
+        source.context.get().__dict__["table_data"] = iceberg_table
+        self.addCleanup(source.context.get().__dict__.pop, "table_data", None)
+        source.glue = Mock()
+        source.glue.get_table.return_value = {"Table": {"StorageDescriptor": {"Columns": []}}}
+
+        list(source.get_columns(Mock()))
+
+        source.glue.get_table.assert_called_once_with(
+            DatabaseName="foreign_schema",
+            Name="iceberg_table",
+            CatalogId="different-catalog",
+        )
