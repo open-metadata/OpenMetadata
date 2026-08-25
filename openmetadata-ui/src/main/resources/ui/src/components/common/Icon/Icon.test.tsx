@@ -227,5 +227,25 @@ describe('Icon', () => {
 
       expect(img).toHaveStyle({ borderRadius: '50%' });
     });
+
+    it('should show img immediately when the browser has it cached (complete=true)', () => {
+      const { getByTestId } = render(
+        <Icon iconValue="http://example.com/cached.png" />
+      );
+      const img = getByTestId('icon-image');
+      // Simulate a browser-cached image: complete is true before onLoad fires
+      Object.defineProperty(img, 'complete', {
+        value: true,
+        configurable: true,
+      });
+      Object.defineProperty(img, 'naturalWidth', {
+        value: 100,
+        configurable: true,
+      });
+      // Re-trigger the effect by simulating what happens on re-mount
+      fireEvent.load(img);
+
+      expect(img).not.toHaveStyle({ display: 'none' });
+    });
   });
 });

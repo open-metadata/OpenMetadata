@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton } from '@openmetadata/ui-core-components';
-import { FC, ReactNode, useEffect, useState } from 'react';
+import { FC, ReactNode, useEffect, useRef, useState } from 'react';
 import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
 
 export interface IconProps {
@@ -48,10 +48,23 @@ export const Icon: FC<IconProps> = ({
   alt = 'icon',
 }) => {
   const [loadState, setLoadState] = useState<IconLoadState>('loading');
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setLoadState('loading');
   }, [iconValue]);
+
+  // For already-cached images the browser fires the load event synchronously
+  // while creating the <img> element — before React has attached its onLoad
+  // listener. Check img.complete after every transition into 'loading' so
+  // cached icons are revealed immediately on re-mount.
+  useEffect(() => {
+    if (loadState !== 'loading') return;
+    const img = imgRef.current;
+    if (img?.complete) {
+      setLoadState(img.naturalWidth > 0 ? 'loaded' : 'error');
+    }
+  }, [loadState]);
 
   if (!iconValue) {
     return <>{fallback}</>;
@@ -79,6 +92,7 @@ export const Icon: FC<IconProps> = ({
       )}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
+        ref={imgRef}
         alt={alt}
         data-testid="icon-image"
         src={getTagImageSrc(iconValue)}
