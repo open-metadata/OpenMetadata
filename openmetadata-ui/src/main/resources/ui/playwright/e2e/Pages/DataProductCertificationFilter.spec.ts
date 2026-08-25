@@ -19,6 +19,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -78,11 +79,10 @@ const resolveCertificationOptionKey = async (
       await menu.waitFor({ state: 'visible' });
     }
 
-    const aggregateResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/aggregate') &&
-        response.url().includes(CERTIFICATION_FIELD)
-    );
+    const aggregateResponse = waitForAggregation(page, {
+      field: CERTIFICATION_FIELD,
+      value: searchText,
+    });
     await menu.getByTestId('search-input').fill(searchText);
     const body = await (await aggregateResponse).json();
     const buckets: Array<{ key: string }> =

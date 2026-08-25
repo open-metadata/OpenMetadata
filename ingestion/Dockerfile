@@ -66,7 +66,8 @@ RUN apt-get -qq update \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
-RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
+RUN arch="$(uname -m)"; \
+    if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; \
   then \
   wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
   unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
@@ -117,11 +118,7 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
-# Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
-# cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
-# Pre-install cx-Oracle without build isolation to use the pinned setuptools
-RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
@@ -166,13 +163,3 @@ RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arc
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
-
-# Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
-# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
-# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
-# on disk is what keeps scanners reporting CVE-2026-59890.
-# This must remain the final layer in the file -- after `airflow db migrate` as well as after
-# the last pip install. Anything that compiles a package needing pkg_resources, or that runs
-# an import chain still using it, would fail once it is gone, and the error would not look
-# like a setuptools problem.
-RUN pip install --upgrade "setuptools>=83"
