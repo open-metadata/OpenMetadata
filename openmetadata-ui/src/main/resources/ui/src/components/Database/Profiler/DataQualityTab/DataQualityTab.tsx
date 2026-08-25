@@ -649,18 +649,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             data-testid={record.name}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
-            <Link
-              className="tw:block tw:min-w-0 tw:truncate"
-              state={{ breadcrumbData }}
-              title={getEntityName(record)}
-              to={{
-                pathname:
-                  observabilityRouterClassBase.getTestCaseDetailPagePath(
-                    record.fullyQualifiedName ?? ''
-                  ),
-              }}>
-              {getEntityName(record)}
-            </Link>
+            <Tooltip placement="top" title={getEntityName(record)}>
+              <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+                <Link
+                  className="tw:block tw:min-w-0 tw:truncate"
+                  state={{ breadcrumbData }}
+                  to={{
+                    pathname:
+                      observabilityRouterClassBase.getTestCaseDetailPagePath(
+                        record.fullyQualifiedName ?? ''
+                      ),
+                  }}>
+                  {getEntityName(record)}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
           </Box>
         </Table.Cell>
         {showTableColumn && (
