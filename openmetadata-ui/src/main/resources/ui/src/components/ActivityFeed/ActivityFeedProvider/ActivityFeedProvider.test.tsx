@@ -19,32 +19,37 @@ import {
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../generated/type/reaction';
-import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import {
-  addActivityReaction,
-  deletePostById,
-  deleteThread,
-  getAllFeeds,
-  getEntityActivityByFqn,
-  getMyActivityFeed,
-  postFeedById,
-  postThread,
-  removeActivityReaction,
-} from '../../../rest/feedsAPI';
-import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
-import ActivityFeedProvider from './ActivityFeedProvider';
-import {
-  DummyActivityCommentComponent,
   DummyActivityFeedComponent,
+  DummyActivityFilterSwitchComponent,
   DummyActivityReactionComponent,
+  DummyActivityReactionSyncComponent,
   DummyChildrenComponent,
   DummyChildrenDeletePostComponent,
   DummyChildrenEntityComponent,
   DummyChildrenMentionsComponent,
   DummyChildrenTaskCloseComponent,
   DummyEntityActivityFeedComponent,
+  DummyFollowingActivityComponent,
   DummySetActiveActivityComponent,
-} from './DummyTestComponent';
+  DummyTaskListStateComponent,
+} from '../../../mocks/ActivityFeedProvider.mock';
+import { mockUserData } from '../../../mocks/MyDataPage.mock';
+import {
+  addActivityReaction,
+  deletePostById,
+  deleteThread,
+  getActivityEvents,
+  getAllFeeds,
+  getEntityActivityByFqn,
+  getFollowingActivityFeed,
+  getMyActivityFeed,
+  postFeedById,
+  removeActivityReaction,
+} from '../../../rest/feedsAPI';
+import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ActivityFeedProvider from './ActivityFeedProvider';
 
 const mockUseApplicationStore = jest.fn(() => ({
   currentUser: mockUserData,
@@ -85,10 +90,13 @@ jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getFeedById: jest.fn(),
   postFeedById: jest.fn().mockResolvedValue({ id: 'thread-123', posts: [] }),
-  postThread: jest.fn().mockResolvedValue({ id: 'new-thread-123', posts: [] }),
   updatePost: jest.fn(),
   updateThread: jest.fn(),
+  getActivityEvents: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getMyActivityFeed: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getFollowingActivityFeed: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: {} }),
   getEntityActivityByFqn: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   addActivityReaction: jest.fn().mockResolvedValue({
     id: 'activity-123',
@@ -105,6 +113,11 @@ jest.mock('../../../rest/tasksAPI', () => ({
   addTaskComment: jest.fn(),
   getTaskById: jest.fn(),
   tasksToThreads: jest.fn().mockReturnValue([]),
+  TaskStatusGroup: {
+    Open: 'open',
+    Active: 'active',
+    Closed: 'closed',
+  },
   TaskEntityStatus: {
     Open: 'Open',
     Completed: 'Completed',
@@ -319,6 +332,103 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
+  describe('a first-page task fetch replaces the previous result set', () => {
+    const renderTaskListState = () =>
+      render(
+        <ActivityFeedProvider>
+          <DummyTaskListStateComponent />
+        </ActivityFeedProvider>
+      );
+
+    it('clears the rows and the paging cursor before the new response lands', async () => {
+      (listTasks as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'task-open', createdAt: 1 }],
+        paging: { after: 'cursor-1' },
+      });
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+
+      expect(screen.getByTestId('task-ids')).toHaveTextContent('task-open');
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-1');
+
+      let resolveClosed!: (value: unknown) => void;
+      (listTasks as jest.Mock).mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveClosed = resolve;
+        })
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      // Leaving the open rows and `cursor-1` in place is what kept the previous
+      // list on screen and let infinite scroll append the new query's next page
+      // onto it using the old cursor.
+      expect(screen.getByTestId('task-ids')).toBeEmptyDOMElement();
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('none');
+
+      await act(async () => {
+        resolveClosed({
+          data: [{ id: 'task-closed', createdAt: 2 }],
+          paging: { after: 'cursor-2' },
+        });
+      });
+
+      expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed');
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
+
+    it('ignores a response that resolves after a newer request started', async () => {
+      let resolveFirst!: (value: unknown) => void;
+      let resolveSecond!: (value: unknown) => void;
+
+      (listTasks as jest.Mock)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+        )
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+        );
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      await act(async () => {
+        resolveSecond({
+          data: [{ id: 'task-closed', createdAt: 2 }],
+          paging: { after: 'cursor-2' },
+        });
+      });
+      await act(async () => {
+        resolveFirst({
+          data: [{ id: 'task-open', createdAt: 1 }],
+          paging: { after: 'cursor-1' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed')
+      );
+
+      expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
+  });
+
   it('should call postFeed with button click', async () => {
     render(
       <ActivityFeedProvider>
@@ -407,6 +517,147 @@ describe('ActivityFeedProvider', () => {
 
       expect(screen.getByTestId('activity-loading')).toBeInTheDocument();
     });
+
+    it('should fetch the following activity feed and display its events', async () => {
+      (getFollowingActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
+        paging: {},
+      });
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyFollowingActivityComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(getFollowingActivityFeed).toHaveBeenCalledWith({
+          days: 7,
+          limit: 20,
+        });
+      });
+
+      expect(screen.getByTestId('following-activity-count')).toHaveTextContent(
+        '1'
+      );
+      expect(
+        screen.getByTestId('following-activity-summary')
+      ).toHaveTextContent('Updated tags');
+    });
+
+    // Domain scoping belongs to the withDomainFilter interceptor, which appends
+    // `domain` to every GET (see hoc/withDomainFilter.test.tsx). These two guard
+    // against anyone reinstating the duplicate resolution in the provider.
+    it('should not hand-roll the domain on the following activity request', async () => {
+      mockUseDomainStore.mockImplementation((selector) =>
+        selector({ activeDomain: 'finance' })
+      );
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyFollowingActivityComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(getFollowingActivityFeed).toHaveBeenCalledWith({
+          days: 7,
+          limit: 20,
+        });
+      });
+
+      expect(getFollowingActivityFeed).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
+    });
+
+    it('should not hand-roll the domain on the all activity request', async () => {
+      mockUseDomainStore.mockImplementation((selector) =>
+        selector({ activeDomain: 'finance' })
+      );
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyActivityFilterSwitchComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('fetch-all'));
+
+      await waitFor(() => {
+        expect(getActivityEvents).toHaveBeenCalledWith({ limit: 20 });
+      });
+
+      expect(getActivityEvents).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
+    });
+
+    it('should show an error toast when an activity request fails', async () => {
+      const error = new Error('activity request failed');
+      (getFollowingActivityFeed as jest.Mock).mockRejectedValueOnce(error);
+
+      await act(async () => {
+        render(
+          <ActivityFeedProvider>
+            <DummyFollowingActivityComponent />
+          </ActivityFeedProvider>
+        );
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(error);
+      });
+    });
+
+    it('should ignore a superseded activity response when the filter changes', async () => {
+      let resolveSlowRequest!: (value: unknown) => void;
+      (getMyActivityFeed as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlowRequest = resolve;
+          })
+      );
+      (getFollowingActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
+        paging: {},
+      });
+
+      render(
+        <ActivityFeedProvider>
+          <DummyActivityFilterSwitchComponent />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-owner'));
+      fireEvent.click(screen.getByTestId('fetch-following'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-summaries')).toHaveTextContent(
+          'Updated tags'
+        );
+      });
+
+      await act(async () => {
+        resolveSlowRequest({
+          data: [{ ...mockActivityEvents[0], summary: 'Stale result' }],
+          paging: {},
+        });
+      });
+
+      expect(screen.getByTestId('activity-summaries')).toHaveTextContent(
+        'Updated tags'
+      );
+      expect(screen.getByTestId('activity-summaries')).not.toHaveTextContent(
+        'Stale result'
+      );
+    });
   });
 
   describe('Activity Reactions', () => {
@@ -457,72 +708,40 @@ describe('ActivityFeedProvider', () => {
         );
       });
     });
-  });
 
-  describe('Activity Comments', () => {
-    const mockActivity: ActivityEvent = {
-      id: 'activity-456',
-      timestamp: 1234567890,
-      eventType: 'entityUpdated' as ActivityEvent['eventType'],
-      actor: { id: 'user-1', type: 'user', name: 'testuser' },
-      entity: { id: 'entity-1', type: 'table', name: 'testTable' },
-      about: '<#E::table::test>',
-      summary: 'Updated description',
-    };
-
-    it('should create a new thread when posting first comment on activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValueOnce({
-        data: [],
+    it('syncs the selected activity so the right panel reflects the reaction', async () => {
+      (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
         paging: {},
       });
 
       await act(async () => {
         render(
           <ActivityFeedProvider>
-            <DummyActivityCommentComponent activity={mockActivity} />
+            <DummyActivityReactionSyncComponent />
           </ActivityFeedProvider>
         );
       });
 
-      fireEvent.click(screen.getByTestId('post-comment'));
-
+      // Select the activity into the right panel — it starts with no reactions.
+      fireEvent.click(screen.getByTestId('select-activity'));
       await waitFor(() => {
-        expect(postThread).toHaveBeenCalledWith(
-          expect.objectContaining({
-            message: 'Test comment',
-            about: '<#E::table::test>',
-          })
-        );
-      });
-    });
-
-    it('should add to existing thread when posting comment on activity with thread', async () => {
-      const existingThread = {
-        id: 'existing-thread-123',
-        posts: [],
-      };
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [existingThread],
-        paging: {},
+        expect(
+          screen.getByTestId('selected-activity-reactions')
+        ).toHaveTextContent('0');
       });
 
-      await act(async () => {
-        render(
-          <ActivityFeedProvider>
-            <DummySetActiveActivityComponent activity={mockActivity} />
-          </ActivityFeedProvider>
-        );
-      });
-
-      fireEvent.click(screen.getByTestId('set-active'));
-
+      // Toggling a reaction must update the SELECTED copy, not just the list.
+      fireEvent.click(screen.getByTestId('react'));
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalled();
+        expect(
+          screen.getByTestId('selected-activity-reactions')
+        ).toHaveTextContent('1');
       });
     });
   });
 
-  describe('Set Active Activity', () => {
+  describe('Set Active Activity (read-only activities)', () => {
     const mockActivity: ActivityEvent = {
       id: 'activity-789',
       timestamp: 1234567890,
@@ -533,12 +752,7 @@ describe('ActivityFeedProvider', () => {
       summary: 'Updated tags',
     };
 
-    it('should fetch associated threads when setting active activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [{ id: 'thread-for-activity', posts: [] }],
-        paging: {},
-      });
-
+    it('selects the activity WITHOUT adopting any conversation thread', async () => {
       await act(async () => {
         render(
           <ActivityFeedProvider>
@@ -550,38 +764,21 @@ describe('ActivityFeedProvider', () => {
       fireEvent.click(screen.getByTestId('set-active'));
 
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalledWith(
-          '<#E::table::test>',
-          undefined,
-          'Conversation'
+        expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+          'activity-789'
         );
       });
+
+      // Activities are read-only: no conversation thread is fetched/adopted,
+      // so replies can never leak across activities sharing an entityLink.
+      expect(getAllFeeds).not.toHaveBeenCalledWith(
+        '<#E::table::test>',
+        undefined,
+        'Conversation'
+      );
     });
 
-    it('should handle no existing thread for activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [],
-        paging: {},
-      });
-
-      await act(async () => {
-        render(
-          <ActivityFeedProvider>
-            <DummySetActiveActivityComponent activity={mockActivity} />
-          </ActivityFeedProvider>
-        );
-      });
-
-      fireEvent.click(screen.getByTestId('set-active'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
-          'no-thread'
-        );
-      });
-    });
-
-    it('should clear activity thread when setting active to undefined', async () => {
+    it('clears the selected activity when set to undefined', async () => {
       await act(async () => {
         render(
           <ActivityFeedProvider>

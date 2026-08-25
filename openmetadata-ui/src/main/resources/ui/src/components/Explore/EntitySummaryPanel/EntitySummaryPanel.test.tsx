@@ -1305,4 +1305,70 @@ describe('EntitySummaryPanel component tests', () => {
       });
     });
   });
+
+  describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
+    it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        tags: [],
+      };
+
+      const CapturingSummaryPanel = jest
+        .fn()
+        .mockImplementation((props) => (
+          <div data-testid="captured-tags-count">
+            {props.dataAsset?.tags?.length ?? 0}
+          </div>
+        ));
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE]: CapturingSummaryPanel,
+      });
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      const newTag = {
+        tagFQN: 'Tier.Tier1',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      };
+      const latestProps =
+        CapturingSummaryPanel.mock.calls[
+          CapturingSummaryPanel.mock.calls.length - 1
+        ][0];
+
+      act(() => {
+        latestProps.onTierUpdate(newTag);
+      });
+
+      // The parent (Lineage graph) still gets notified.
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ tags: [newTag] });
+
+      // The panel's own render must reflect the update right away, without
+      // waiting for a refetch (e.g. panel close/reopen).
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+  });
 });

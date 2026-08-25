@@ -19,42 +19,24 @@ checkpoints actions.
 import logging
 import traceback
 from datetime import datetime
-from typing import Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Dict, List, Literal, Optional, Union, cast  # noqa: UP035
 
-from great_expectations.checkpoint.actions import ValidationAction
-from great_expectations.core import ExpectationConfiguration  # type: ignore
-from great_expectations.core.batch import Batch
-from great_expectations.core.batch_spec import (
-    RuntimeDataBatchSpec,
-    RuntimeQueryBatchSpec,
-    SqlAlchemyDatasourceBatchSpec,
+# Imported from the defining submodules rather than the `great_expectations.checkpoint`
+# package. The package-level re-exports only appeared in 1.3, so importing through them
+# turns any future drop of a re-export into an ImportError at module load.
+from great_expectations.checkpoint.actions import (  # type: ignore
+    ActionContext,
+    ValidationAction,
 )
+from great_expectations.checkpoint.checkpoint import CheckpointResult  # type: ignore
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResult,
+    ExpectationSuiteValidationResultMeta,
 )
-from great_expectations.data_asset.data_asset import DataAsset  # type: ignore
-from great_expectations.data_context.data_context import DataContext  # type: ignore
-
-from metadata.generated.schema.type.basic import Timestamp
-
-try:
-    from great_expectations.data_context.types.resource_identifiers import (  # noqa: I001
-        GeCloudIdentifier,  # type: ignore
-    )
-    from great_expectations.data_context.types.resource_identifiers import (
-        ExpectationSuiteIdentifier,
-        ValidationResultIdentifier,
-    )
-except ImportError:
-    from great_expectations.data_context.types.resource_identifiers import (  # noqa: I001
-        ExpectationSuiteIdentifier,
-        GXCloudIdentifier as GeCloudIdentifier,
-        ValidationResultIdentifier,
-    )
-
-from great_expectations.validator.validator import Validator
-from sqlalchemy.engine.base import Connection, Engine
-from sqlalchemy.engine.url import URL
+from great_expectations.expectations.expectation_configuration import (  # type: ignore
+    ExpectationConfiguration,
+)
+from sqlalchemy.engine.url import URL, make_url
 
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -70,6 +52,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.great_expectations.table_mapper import (
     TableConfigMap,
     TableMapper,
@@ -86,128 +69,138 @@ from metadata.utils.entity_link import get_entity_link
 
 logger = logging.getLogger("great_expectations.validation_operators.validation_operators.openmetadata")
 
+# GX carries these in the expectation kwargs but neither is a test parameter:
+# `column` is already conveyed by the test case entity link and `batch_id` is run-scoped.
+EXCLUDED_KWARGS = {"column", "batch_id"}
+
+# GX 1.x hands the action a plain dict instead of the typed `*BatchSpec` classes that
+# 0.18.x dispatched on, so a SQL batch spec is recognised by its shape: table assets
+# carry `table_name`/`schema_name`, query assets carry `query`/`temp_table_schema_name`.
+SQL_BATCH_SPEC_KEYS = frozenset({"table_name", "schema_name", "query", "temp_table_schema_name"})
+
 
 class OpenMetadataValidationAction(ValidationAction):
-    """Open Metdata validation action. It inherits from
-    great expection validation action class and implements the
-    `_run` method.
+    """Open Metadata validation action for GX 1.x.x. It inherits from
+    great expectation validation action class and implements the
+    `run` method.
 
     Attributes:
-        data_context: great expectation data context
         database_service_name: name of the service for the table
-        api_version: default to v1
         config_file_path: path to the open metadata config path
+        database_name: default database of the tables the expectations run against.
+            Falls back to the database of the execution engine when not set.
+        schema_name: default schema, for databases without a schema concept
+        table_name: default table the validation results are written to
         expectation_suite_table_config_map: optional mapping of expectation suite names
             to table configurations. Used to route validation results to specific tables
             in multi-table checkpoints.
             Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
     """
 
-    def __init__(
-        self,
-        data_context: DataContext,  # type: ignore
-        name: str = "OpenMetadataValidationAction",
-        *,
-        config_file_path: Optional[str] = None,  # noqa: UP045
-        database_service_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = "default",  # noqa: UP045
-        database_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,  # noqa: UP006, UP045
-    ):
-        super().__init__(data_context, name=name)  # type: ignore
-        self.database_service_name = database_service_name
-        self.database_name = database_name
-        self.table_name = table_name
-        self.schema_name = schema_name  # for database without schema concept
-        self.config_file_path = config_file_path
-        self.expectation_suite_table_config_map = expectation_suite_table_config_map or {}
-        self.table_mapper = TableMapper(
+    type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"  # type: ignore
+    name: str = "OpenMetadataValidationAction"
+    config_file_path: Optional[str] = None  # noqa: UP045
+    database_service_name: Optional[str] = None  # noqa: UP045
+    schema_name: Optional[str] = "default"  # noqa: UP045
+    database_name: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+    expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None  # noqa: UP006, UP045
+    # Using Optional to make this field not part of the serialized model
+    # This will be initialized in the run method
+    ometa_conn: Optional[OpenMetadata] = None  # noqa: UP045
+
+    @property
+    def table_mapper(self) -> TableMapper:
+        """Mapping used to resolve which OpenMetadata table an expectation suite writes to.
+
+        Exposed as a property rather than a field so that GX can still serialize the
+        action into the checkpoint config.
+        """
+        return TableMapper(
             default_database_name=self.database_name,
             default_schema_name=self.schema_name,
             default_table_name=self.table_name,
-            expectation_suite_table_config_map=TableConfigMap.parse(self.expectation_suite_table_config_map),
+            expectation_suite_table_config_map=TableConfigMap.parse(self.expectation_suite_table_config_map or {}),
         )
-        self.ometa_conn = self._create_ometa_connection()
-        self.expectation_suite = None
 
-    def _run(  # pylint: disable=unused-argument # pyright: ignore[reportIncompatibleMethodOverride]
+    # unused-argument covers action_context, which we do not consume here.
+    # pylint: disable=unused-argument
+    def run(
         self,
-        validation_result_suite: ExpectationSuiteValidationResult,
-        validation_result_suite_identifier: Union[ValidationResultIdentifier, GeCloudIdentifier],  # noqa: UP007
-        data_asset: Union[Validator, DataAsset, Batch],  # noqa: UP007
-        payload=None,
-        expectation_suite_identifier: Optional[ExpectationSuiteIdentifier] = None,  # noqa: UP045
-        checkpoint_identifier=None,
+        checkpoint_result: CheckpointResult,
+        action_context: Union[ActionContext, None],  # noqa: UP007
     ):
         """main function to implement great expectation hook
 
         Args:
-            validation_result_suite: result suite returned when checkpoint is ran
-            validation_result_suite_identifier: type of result suite
-            data_asset:
-            expectation_suite_identifier: type of expectation suite
-            checkpoint_identifier: identifier for the checkpoint
+            checkpoint_result: results of every validation of the checkpoint run
+            action_context: context shared between the actions of the checkpoint
         """
+        self.ometa_conn = self._create_ometa_connection()
 
-        expectation_suite_name = None
+        table_mapper = self.table_mapper
+        execution_engine_urls = self._get_execution_engine_urls(checkpoint_result)
 
-        if expectation_suite_identifier:
-            expectation_suite_name = expectation_suite_identifier.expectation_suite_name  # type: ignore
-            self.expectation_suite = self.data_context.get_expectation_suite(expectation_suite_name)
+        for validation_result in checkpoint_result.run_results.values():
+            meta = validation_result.meta
+            expectation_suite_name = self._get_expectation_suite_name(validation_result)
+            check_point_spec = self._get_checkpoint_batch_spec(meta)
 
-        check_point_spec = self._get_checkpoint_batch_spec(data_asset)
-        table_entity = None
-        if isinstance(check_point_spec, SqlAlchemyDatasourceBatchSpec):
-            execution_engine_url = self._get_execution_engine_url(data_asset)
+            # The batch spec only carries the table it ran against for table assets;
+            # query assets and any part left unset fall back to the configured mapping.
             table_entity = self._get_table_entity(
-                self.table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name)
-                or execution_engine_url.database,
-                check_point_spec.get(
-                    "schema_name",
-                    self.table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
-                ),
-                check_point_spec.get(
-                    "table_name",
-                    self.table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
-                ),
+                table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name)
+                or self._get_execution_engine_database(meta, execution_engine_urls),
+                check_point_spec.get("schema_name")
+                or table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
+                check_point_spec.get("table_name")
+                or table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
             )
 
-        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(check_point_spec, RuntimeQueryBatchSpec):  # noqa: SIM101
-            table_entity = self._get_table_entity(
-                self.table_mapper.get_part_name(TablePart.DATABASE, expectation_suite_name),
-                self.table_mapper.get_part_name(TablePart.SCHEMA, expectation_suite_name),
-                self.table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
-            )
+            if table_entity:
+                for result in validation_result.results:
+                    self._handle_test_case(result, table_entity)  # type: ignore
 
-        if table_entity:
-            for result in validation_result_suite.results:
-                self._handle_test_case(result, table_entity)  # type: ignore
+    @staticmethod
+    def _get_expectation_suite_name(
+        validation_result: ExpectationSuiteValidationResult,
+    ) -> Optional[str]:  # noqa: UP045
+        """Return the name of the expectation suite that produced a validation result
+
+        Args:
+            validation_result: result of a single validation of the checkpoint run
+        Returns:
+            Optional[str]
+        """
+        expectation_suite_name = getattr(validation_result, "suite_name", None)  # works in GE 1.x
+        if expectation_suite_name is None and validation_result.meta:
+            expectation_suite_name = validation_result.meta.get("suite_name")
+        return expectation_suite_name
 
     @staticmethod
     def _get_checkpoint_batch_spec(
-        data_asset: Union[Validator, DataAsset, Batch],  # noqa: UP007
-    ) -> Union[SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec]:  # noqa: UP007
-        """Return run meta and check instance of data_asset
+        meta: Union[ExpectationSuiteValidationResultMeta, dict, None],  # noqa: UP007
+    ) -> dict:
+        """Return the batch spec the expectations ran against
 
         Args:
-            data_asset: data assets of the checkpoint run
+            meta: metadata attached to a validation result
         Returns:
-            SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, or RuntimeQueryBatchSpec
+            dict: the batch spec, empty when the run carries none
         Raises:
-            ValueError: if datasource not a supported batch spec type
+            ValueError: if the batch spec was not produced by a SQL datasource
         """
-        batch_spec = data_asset.active_batch_spec  # pyright: ignore[reportAttributeAccessIssue]
-        if isinstance(batch_spec, SqlAlchemyDatasourceBatchSpec):
-            return batch_spec
-        if isinstance(batch_spec, RuntimeDataBatchSpec):
-            return batch_spec
-        if isinstance(batch_spec, RuntimeQueryBatchSpec):
-            return batch_spec
-        raise ValueError(
-            f"Type `{(type(batch_spec).__name__,)}` is not supported."
-            " Make sure you ran your expectations against a relational database",
-        )
+        batch_spec = meta.get("batch_spec") if meta else None
+        if not batch_spec:
+            return {}
+
+        if not SQL_BATCH_SPEC_KEYS.intersection(batch_spec):
+            raise ValueError(
+                f"Batch spec `{batch_spec}` is not supported."
+                " Make sure you ran your expectations against a relational database",
+            )
+
+        return batch_spec
 
     def _get_table_entity(
         self,
@@ -230,11 +223,27 @@ class OpenMetadataValidationAction(ValidationAction):
            Optional[Table]
 
         Raises:
-             ValueError: if 2 entities with the same
-                         `database`.`schema`.`table` are found
+             ValueError: if any part of the table name is missing, or if 2 entities
+                         with the same `database`.`schema`.`table` are found
         """
-        if not all([schema_name, table_name]):
-            raise ValueError("No Schema or Table name provided. Can't fetch table entity from OpenMetadata.")
+        # Every part has to be resolved before we build an FQN out of them: a missing
+        # one would otherwise be interpolated as the string `None` and looked up as
+        # `service.None.schema.table`, which fails as a confusing "no entity found".
+        missing = [
+            part_name
+            for part_name, part in (
+                ("database_name", database),
+                ("schema_name", schema_name),
+                ("table_name", table_name),
+            )
+            if not part
+        ]
+        if missing:
+            raise ValueError(
+                f"Can't fetch the table entity from OpenMetadata, {', '.join(missing)} could not be resolved."
+                " Set it on the action, or map the expectation suite to a table through"
+                " `expectation_suite_table_config_map`.",
+            )
 
         if self.database_service_name:
             return self.ometa_conn.get_by_name(
@@ -284,21 +293,52 @@ class OpenMetadataValidationAction(ValidationAction):
         return test_suite  # noqa: RET504
 
     @staticmethod
-    def _get_execution_engine_url(data_asset: Union[Validator, DataAsset, Batch]) -> URL:  # noqa: UP007
-        """Get execution engine used to run the expectation
+    def _get_execution_engine_urls(checkpoint_result: CheckpointResult) -> Dict[str, URL]:  # noqa: UP006
+        """Map every datasource of the checkpoint to the URL of its execution engine.
+
+        GX 1.x does not hand the action the data asset it validated, so the connection
+        details are read back from the checkpoint definition instead.
 
         Args:
-            data_asset: data assets of the checkpoint run
+            checkpoint_result: results of the checkpoint run
         Returns:
-            URL
-        Raises:
-            ValueError: if expectation is not ran against DB
+            Dict[str, URL]: execution engine URL per datasource name
         """
-        if isinstance(data_asset.execution_engine.engine, Engine):  # pyright: ignore[reportAttributeAccessIssue]
-            return data_asset.execution_engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
-        if isinstance(data_asset.execution_engine.engine, Connection):  # pyright: ignore[reportAttributeAccessIssue]
-            return data_asset.execution_engine.engine.engine.url  # pyright: ignore[reportAttributeAccessIssue]
-        raise ValueError("Type is not supported. Make sur you ran your expectations against a relational database")
+        execution_engine_urls: Dict[str, URL] = {}  # noqa: UP006
+        checkpoint = getattr(checkpoint_result, "checkpoint_config", None)
+
+        for validation_definition in getattr(checkpoint, "validation_definitions", None) or []:
+            data_asset = getattr(getattr(validation_definition, "data", None), "data_asset", None)
+            datasource = getattr(data_asset, "datasource", None)
+            connection_string = getattr(datasource, "connection_string", None)
+            if datasource is None or not connection_string:
+                continue
+            try:
+                execution_engine_urls[datasource.name] = make_url(str(connection_string))
+            except Exception as exc:
+                logger.debug("Could not parse the connection string of datasource `%s`: %s", datasource.name, exc)
+
+        return execution_engine_urls
+
+    @staticmethod
+    def _get_execution_engine_database(
+        meta: Union[ExpectationSuiteValidationResultMeta, dict, None],  # noqa: UP007
+        execution_engine_urls: Dict[str, URL],  # noqa: UP006
+    ) -> Optional[str]:  # noqa: UP045
+        """Get the database the expectations ran against, used when none is configured
+
+        Args:
+            meta: metadata attached to a validation result
+            execution_engine_urls: execution engine URL per datasource name
+        Returns:
+            Optional[str]
+        """
+        datasource_name = (meta or {}).get("active_batch_definition", {}).get("datasource_name")
+        if not datasource_name:
+            return None
+
+        execution_engine_url = execution_engine_urls.get(datasource_name)
+        return execution_engine_url.database if execution_engine_url else None
 
     def _create_ometa_connection(self) -> OpenMetadata:
         """Create OpenMetadata API connection"""
@@ -323,34 +363,45 @@ class OpenMetadataValidationAction(ValidationAction):
             schema_name=split_table_fqn[2],
             table_name=split_table_fqn[3],
             column_name=result["expectation_config"]["kwargs"].get("column"),
-            test_case_name=result["expectation_config"]["expectation_type"],
+            test_case_name=result["expectation_config"]["type"],
         )
         fqn_ = cast(str, fqn_)  # noqa: TC006
         return fqn_  # noqa: RET504
 
+    @staticmethod
+    def _get_expectation_config(result: dict) -> Optional[ExpectationConfiguration]:  # noqa: UP045
+        """Get expectation config from GE test result.
+
+        Unlike 0.18.x -- which had to look the expectation up in the suite by type, and
+        so returned the first expectation sharing a type -- GX 1.x attaches the exact
+        configuration that produced the result.
+
+        Args:
+            result: GE test result
+        Returns:
+            Optional[ExpectationConfiguration]: expectation configuration
+        """
+        return result.get("expectation_config")
+
     def _get_test_case_description(self, result: dict) -> str:
         """Get test case description from GE test result"""
-        if self.expectation_suite:
-            expectation = self._get_expectation_config(result)
-            if expectation:
-                meta: Optional[Dict] = expectation.get("meta")  # noqa: UP006, UP045  # pyright: ignore[reportAssignmentType]
-                if meta:
-                    return meta.get("description", "")
+        expectation = self._get_expectation_config(result)
+        if expectation and expectation.meta:
+            return expectation.meta.get("description", "")
         return ""
 
     def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:  # noqa: UP006
         """Build test case parameter value from GE test result"""
-        if self.expectation_suite:
-            expectation = self._get_expectation_config(result)
-            if expectation:
-                return [
-                    TestCaseParameterValue(
-                        name=key,
-                        value=str(value),
-                    )  # type: ignore
-                    for key, value in expectation.kwargs.items()  # type: ignore
-                    if key not in {"column", "batch_id"}
-                ]
+        expectation = self._get_expectation_config(result)
+        if expectation:
+            return [
+                TestCaseParameterValue(
+                    name=key,
+                    value=str(value),
+                )  # type: ignore
+                for key, value in expectation.kwargs.items()
+                if key not in EXCLUDED_KWARGS
+            ]
 
         if "observed_value" not in result["result"]:
             return [
@@ -366,21 +417,20 @@ class OpenMetadataValidationAction(ValidationAction):
                 value=str(value),
             )
             for key, value in result["expectation_config"]["kwargs"].items()
-            if key not in {"column", "batch_id"}
+            if key not in EXCLUDED_KWARGS
         ]
 
     def _get_test_case_params_definition(self, result: dict) -> List[TestCaseParameterDefinition]:  # noqa: UP006
         """Build test case parameter definition from GE test result"""
-        if self.expectation_suite:
-            expectation = self._get_expectation_config(result)
-            if expectation:
-                return [
-                    TestCaseParameterDefinition(
-                        name=key,
-                    )  # type: ignore
-                    for key, _ in expectation.kwargs.items()  # type: ignore
-                    if key not in {"column", "batch_id"}
-                ]
+        expectation = self._get_expectation_config(result)
+        if expectation:
+            return [
+                TestCaseParameterDefinition(
+                    name=key,
+                )  # type: ignore
+                for key, _ in expectation.kwargs.items()
+                if key not in EXCLUDED_KWARGS
+            ]
 
         if "observed_value" not in result["result"]:
             return [
@@ -394,7 +444,7 @@ class OpenMetadataValidationAction(ValidationAction):
                 name=key,
             )  # type: ignore
             for key, _ in result["expectation_config"]["kwargs"].items()
-            if key not in {"column", "batch_id"}
+            if key not in EXCLUDED_KWARGS
         ]
 
     def _get_test_result_value(self, result: dict) -> List[TestResultValue]:  # noqa: UP006
@@ -409,15 +459,15 @@ class OpenMetadataValidationAction(ValidationAction):
         test_result_values = []
         result_data = result.get("result", {})
 
+        # Counts only, no percentages. OpenMetadata charts every result value of a test
+        # case on a single axis, so mixing percentages (0-100) with row counts flattens
+        # the percentages into the baseline. Every native OM test emits a single unit for
+        # the same reason, and the percentages GX reports are derivable from these counts.
         numeric_fields = [
-            "unexpected_percent",
-            "unexpected_percent_total",
-            "missing_percent",
             "unexpected_count",
             "missing_count",
             "element_count",
             "observed_value",
-            "success_rate",
         ]
 
         for field in numeric_fields:
@@ -491,28 +541,6 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return []
 
-    def _get_expectation_config(self, result: dict) -> Optional[ExpectationConfiguration]:  # noqa: UP045
-        """Get expectation config from GE test result
-
-        Args:
-            result: GE test result
-        Returns:
-            Optional[ExpectationConfiguration]: expectation configuration
-        """
-        if self.expectation_suite:
-            name = result["expectation_config"]["expectation_type"]
-            expectation = next(
-                (
-                    expectation
-                    for expectation in self.expectation_suite.expectations
-                    if expectation.expectation_type == name
-                ),
-                None,
-            )
-
-            return expectation  # noqa: RET504
-        return None
-
     def _handle_test_case(self, result: Dict, table_entity: Table):  # noqa: UP006
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
@@ -526,8 +554,8 @@ class OpenMetadataValidationAction(ValidationAction):
 
         try:
             test_definition = self.ometa_conn.get_or_create_test_definition(
-                test_definition_fqn=result["expectation_config"]["expectation_type"],
-                test_definition_description=result["expectation_config"]["expectation_type"].replace("_", " "),
+                test_definition_fqn=result["expectation_config"]["type"],
+                test_definition_description=result["expectation_config"]["type"].replace("_", " "),
                 entity_type=EntityType.COLUMN
                 if "column" in result["expectation_config"]["kwargs"]
                 else EntityType.TABLE,

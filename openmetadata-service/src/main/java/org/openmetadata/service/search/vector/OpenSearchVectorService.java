@@ -445,11 +445,27 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * Begins a staged recreate for a full-recreate run: pre-flights the embedding client (a broken
    * client would make the whole run pointless), sweeps generations orphaned by crashed runs, and
-   * creates the next generation bare — no aliases, so reads keep hitting the old chunks. Throws on
-   * any failure; nothing has been destroyed at that point.
+   * creates the next generation bare — no aliases, so reads keep hitting the old chunks.
+   *
+   * <p>Returns {@code null} when the embedding client cannot serve a request, meaning "not staged":
+   * the caller carries on with a normal in-place reindex and the existing chunks stay live, exactly
+   * as they do for a partial recreate. An unreachable embedding provider is a reason not to stage a
+   * generation we could never finish — it is not a reason to fail the entity reindex, which does
+   * not need embeddings at all. Note the provider is only exercised here: client construction makes
+   * no call to it, and live indexing logs and continues on embedding errors, so a deployment with
+   * semantic search enabled but no working provider looks healthy right up until a reindex.
+   *
+   * <p>Still throws on genuine staging failures (indeterminate live-target probe, index create) —
+   * those mean the cluster is in a state where continuing could destroy live chunks.
    */
   public String beginStagedChunkRecreate() {
-    preflightEmbedding();
+    if (!isEmbeddingAvailable()) {
+      LOG.warn(
+          "Embedding pre-flight failed — skipping the staged chunk recreate. The entity reindex "
+              + "continues and existing chunks stay live; orphaned chunks, if any, are swept by the "
+              + "next recreate that runs with a working embedding provider.");
+      return null;
+    }
     synchronized (stagedChunkLock) {
       String base = getChunkIndexName();
       String liveTarget = requireResolvedLiveChunkTarget(base);
@@ -490,12 +506,18 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  private void preflightEmbedding() {
+  /**
+   * Whether the embedding client can actually serve a request. Logged rather than thrown: the only
+   * caller treats an unavailable provider as "do not stage", and the stack trace belongs in the log
+   * next to the provider's own error, not wrapped in a reindex failure.
+   */
+  private boolean isEmbeddingAvailable() {
     try {
       embeddingClient.embedQuery("chunk index recreate pre-flight");
+      return true;
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Refusing to start a staged chunk-index recreate: embedding client pre-flight failed", e);
+      LOG.warn("Embedding client pre-flight failed: {}", e.getMessage(), e);
+      return false;
     }
   }
 

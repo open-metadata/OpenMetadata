@@ -290,6 +290,7 @@ export interface WorkflowControlsProps {
 
 export interface WorkflowHeaderProps {
   breadcrumb?: React.ReactNode;
+  isAiMode?: boolean;
   title: string;
   workflowName?: string;
   children?: React.ReactNode;

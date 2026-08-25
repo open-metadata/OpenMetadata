@@ -39,7 +39,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
@@ -62,6 +61,7 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   followKnowledgePage,
   getListKnowledgePages,
@@ -71,8 +71,10 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {
@@ -197,6 +199,9 @@ const KnowledgePageListComponent = forwardRef<
           ],
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         getResourceLimit('knowledgeCenter', true, true);
         navigate({
           pathname: contextCenterClassBase.getArticlePath(
@@ -240,6 +245,9 @@ const KnowledgePageListComponent = forwardRef<
           relatedEntities: formData?.relatedEntities,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         setKnowledgePages((prevPages) => [response, ...prevPages]);
         setRefreshTagsCategory(true);
       } catch (error) {
@@ -550,6 +558,7 @@ const KnowledgePageListComponent = forwardRef<
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
                       <a
+                        aria-label={t('label.documentation')}
                         href={KNOWLEDGE_CENTER_DOC_LINK}
                         rel="noreferrer"
                         style={{ color: theme.primaryColor }}
@@ -603,7 +612,7 @@ const KnowledgePageListComponent = forwardRef<
             </Col>
           ))}
         </Row>
-        {isLoadingMore ? <Loader /> : null}
+        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
         <div
           className="w-full"
           data-testid="observer-element"

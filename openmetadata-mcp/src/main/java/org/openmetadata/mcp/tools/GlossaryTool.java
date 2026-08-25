@@ -67,6 +67,7 @@ public class GlossaryTool implements McpTool {
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
 
     glossaryRepository.prepareInternal(glossary, false);
+    CommonUtils.authorizeOverwrite(authorizer, securityContext, Entity.GLOSSARY, glossary);
 
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 

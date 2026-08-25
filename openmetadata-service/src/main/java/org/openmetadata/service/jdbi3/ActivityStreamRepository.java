@@ -35,6 +35,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 
 /**
  * Repository for the lightweight activity_stream table.
@@ -152,29 +153,33 @@ public class ActivityStreamRepository {
   }
 
   private CollectionDAO.ActivityStreamRow toRow(ActivityEvent event) {
+    String about = JsonStorageUtils.removeNulCharacters(event.getAbout());
     return CollectionDAO.ActivityStreamRow.builder()
         .id(event.getId().toString())
-        .eventType(event.getEventType().value())
-        .entityType(event.getEntity().getType())
+        .eventType(JsonStorageUtils.removeNulCharacters(event.getEventType().value()))
+        .entityType(JsonStorageUtils.removeNulCharacters(event.getEntity().getType()))
         .entityId(event.getEntity().getId().toString())
         .entityFqnHash(
             event.getEntity().getFullyQualifiedName() != null
                 ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
                 : null)
-        .about(event.getAbout())
-        .aboutFqnHash(buildAboutFqnHash(event.getAbout()))
+        .about(about)
+        .aboutFqnHash(buildAboutFqnHash(about))
         .actorId(
             event.getActor() != null && event.getActor().getId() != null
                 ? event.getActor().getId().toString()
                 : null)
-        .actorName(event.getActor() != null ? event.getActor().getName() : null)
+        .actorName(
+            JsonStorageUtils.removeNulCharacters(
+                event.getActor() != null ? event.getActor().getName() : null))
         .timestamp(event.getTimestamp())
-        .summary(truncateSummaryForStorage(event.getSummary()))
-        .fieldName(event.getFieldName())
-        .oldValue(event.getOldValue())
-        .newValue(event.getNewValue())
-        .domains(buildDomainsJson(event))
-        .json(JsonUtils.pojoToJson(event))
+        .summary(
+            JsonStorageUtils.removeNulCharacters(truncateSummaryForStorage(event.getSummary())))
+        .fieldName(JsonStorageUtils.removeNulCharacters(event.getFieldName()))
+        .oldValue(JsonStorageUtils.removeNulCharacters(event.getOldValue()))
+        .newValue(JsonStorageUtils.removeNulCharacters(event.getNewValue()))
+        .domains(JsonStorageUtils.sanitizeNulCharacters(buildDomainsJson(event)))
+        .json(JsonStorageUtils.sanitizeNulCharacters(JsonUtils.pojoToJson(event)))
         .build();
   }
 
@@ -318,6 +323,30 @@ public class ActivityStreamRepository {
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
+  /**
+   * List activity for entities a user follows. Following is a user-only relationship, so unlike
+   * {@link #listByOwners} there is no team leg.
+   */
+  public List<ActivityEvent> listByFollowers(String userId, long afterTimestamp, int limit) {
+    List<String> jsonList = activityStreamDAO.listByFollowers(userId, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
+  /** List activity for entities a user follows within specific domains. */
+  public List<ActivityEvent> listByFollowers(
+      String userId, List<UUID> domainIds, long afterTimestamp, int limit) {
+    if (nullOrEmpty(domainIds)) {
+      return listByFollowers(userId, afterTimestamp, limit);
+    }
+
+    List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
+    String domainJson = JsonUtils.pojoToJson(domainIdStrings);
+    List<String> jsonList =
+        activityStreamDAO.listByFollowersAndDomains(
+            userId, domainJson, domainIdStrings, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
   /** List activity events by EntityLink (about field). */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
     String aboutFqnHash =
@@ -386,6 +415,15 @@ public class ActivityStreamRepository {
   /** Delete events older than the cutoff timestamp. */
   public int deleteOlderThan(long cutoffTimestamp) {
     return activityStreamDAO.deleteOlderThan(cutoffTimestamp);
+  }
+
+  /**
+   * Delete every activity event of a specific entity. Called when an entity is hard deleted so a
+   * later entity recreated with the same fully qualified name does not inherit its history (#28923).
+   * Keyed by entity id (not FQN) so it can never remove a same-named successor's events.
+   */
+  public int deleteByEntity(String entityType, UUID entityId) {
+    return activityStreamDAO.deleteByEntity(entityType, entityId.toString());
   }
 
   /** Get an activity event by ID. */

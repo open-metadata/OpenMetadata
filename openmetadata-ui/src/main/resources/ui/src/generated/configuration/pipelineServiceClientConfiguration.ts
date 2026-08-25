@@ -61,8 +61,14 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Additional parameters to initialize the PipelineServiceClient.
      */
-    parameters?:           { [key: string]: any };
-    secretsManagerLoader?: SecretsManagerClientLoader;
+    parameters?: { [key: string]: any };
+    /**
+     * How long a `queued` pipeline status recorded when triggering a run stays visible before
+     * it is treated as stale and hidden. Covers runs that the orchestrator accepted but never
+     * started.
+     */
+    queuedStatusTimeoutSeconds?: number;
+    secretsManagerLoader?:       SecretsManagerClientLoader;
     /**
      * OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata
      * server. It will be picked up from the pipelineServiceClient to use/ignore SSL when

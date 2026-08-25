@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openlineage/kinesisBrokerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Kinesis",
+  "description": "AWS Kinesis Data Streams configuration for OpenLineage events.",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "streamName": {
+      "title": "Stream Name",
+      "description": "Kinesis Data Stream name.",
+      "type": "string"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "description": "AWS credentials configuration.",
+      "$ref": "../../../../../security/credentials/awsCredentials.json"
+    },
+    "consumerOffsets": {
+      "title": "Initial Consumer Offsets",
+      "description": "Initial Kinesis shard iterator type.",
+      "default": "TRIM_HORIZON",
+      "type": "string",
+      "enum": [
+        "TRIM_HORIZON",
+        "LATEST"
+      ],
+      "javaEnums": [
+        {
+          "name": "TRIM_HORIZON"
+        },
+        {
+          "name": "LATEST"
+        }
+      ]
+    },
+    "poolTimeout": {
+      "title": "Poll Interval",
+      "description": "Poll interval in seconds.",
+      "type": "number",
+      "default": 1.0
+    },
+    "sessionTimeout": {
+      "title": "Session Timeout",
+      "description": "Max inactivity timeout in seconds.",
+      "type": "integer",
+      "default": 30
+    }
+  },
+  "required": [
+    "streamName",
+    "awsConfig"
+  ]
+}

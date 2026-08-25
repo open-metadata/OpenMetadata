@@ -231,7 +231,7 @@ describe('useTestCaseFilters', () => {
     expect(tagsDescriptor?.label).toBe(TEST_CASE_FILTERS_LABELS.tags);
 
     expect(tableDescriptor?.controlType).toBe('select');
-    expect(statusDescriptor?.controlType).toBe('select');
+    expect(statusDescriptor?.controlType).toBe('multiselect');
     expect(typeDescriptor?.controlType).toBe('select');
     expect(tagsDescriptor?.controlType).toBe('multiselect');
 
@@ -246,6 +246,9 @@ describe('useTestCaseFilters', () => {
     expect(statusDescriptor?.onSearch).toBeUndefined();
 
     expect(statusDescriptor?.options.length).toBeGreaterThan(0);
+    expect(statusDescriptor?.options).not.toContainEqual(
+      expect.objectContaining({ value: '' })
+    );
     expect(typeDescriptor?.options.length).toBeGreaterThan(0);
     expect(tagsDescriptor?.options).toEqual([]);
     expect(tableDescriptor?.options).toEqual([

@@ -184,3 +184,30 @@ export const getTextFromHtmlString = (description?: string): string => {
 
   return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
+
+export const stripPendingUploadNodes = (html: string): string => {
+  if (!html.includes('data-uploading="true"')) {
+    return html;
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  doc
+    .querySelectorAll('div[data-type="file-attachment"][data-uploading="true"]')
+    .forEach((node) => {
+      if (!node.dataset.url) {
+        node.remove();
+      }
+    });
+
+  return doc.body.innerHTML;
+};
+
+export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
+  const eleTop = ele.offsetTop;
+  const eleBottom = eleTop + ele.clientHeight;
+
+  const containerTop = container.scrollTop;
+  const containerBottom = containerTop + container.clientHeight;
+
+  return eleTop >= containerTop && eleBottom <= containerBottom;
+};

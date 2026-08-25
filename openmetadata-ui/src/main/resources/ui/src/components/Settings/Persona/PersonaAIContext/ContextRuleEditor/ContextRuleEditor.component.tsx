@@ -54,12 +54,14 @@ import {
   PersonaContextRulePreview,
   previewPersonaAIContextRule,
 } from '../../../../../rest/PersonaAPI';
+import { EntityIconSize } from '../../../../../utils/EntityIconUtils';
 import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleExplorePath,
   isKnowledgeContextRule,
 } from '../../../../../utils/PersonaAIContextUtils';
+import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useFormDrawerWithHook } from '../../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
@@ -179,6 +181,10 @@ export const ContextRuleEditor = ({
       [...PERSONA_CONTEXT_ASSET_TYPES, ...PERSONA_CONTEXT_KNOWLEDGE_TYPES].map(
         (type) => ({
           id: type,
+          icon: searchClassBase.getEntityIconWithBg(
+            type,
+            EntityIconSize.Size14
+          ),
           label: t(PERSONA_CONTEXT_ENTITY_LABEL_KEYS[type]),
           supportingText: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
             type as EntityType
@@ -402,7 +408,10 @@ export const ContextRuleEditor = ({
                 });
               }}>
               {(item) => (
-                <Select.Item id={item.id} supportingText={item.supportingText}>
+                <Select.Item
+                  icon={item.icon}
+                  id={item.id}
+                  supportingText={item.supportingText}>
                   {item.label}
                 </Select.Item>
               )}

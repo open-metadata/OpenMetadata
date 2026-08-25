@@ -32,6 +32,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FormPanelBody, {
+  getFormFirstPanelProps,
+} from '../../components/common/FormPanelBody/FormPanelBody.component';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
@@ -274,11 +277,31 @@ function EditConnectionFormPage() {
   const footerNextText =
     activeServiceStep === 2 ? t('label.save') : t('label.next');
 
-  // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
-  // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
-      <div className="tw:flex-1">
+    <FormPanelBody
+      footer={
+        <>
+          <Button
+            color="secondary"
+            data-testid="previous-button"
+            isDisabled={isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterBack}>
+            {t('label.back')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="next-button"
+            isDisabled={isSavingService}
+            size="sm"
+            type="button"
+            onPress={handleFooterNext}>
+            {footerNextText}
+          </Button>
+        </>
+      }>
+      <>
         <Breadcrumbs
           items={slashedBreadcrumb}
           onAction={handleBreadcrumbAction}
@@ -342,28 +365,8 @@ function EditConnectionFormPage() {
             </div>
           </Suspense>
         </div>
-      </div>
-      <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
-        <Button
-          color="secondary"
-          data-testid="previous-button"
-          isDisabled={isSavingService}
-          size="sm"
-          type="button"
-          onPress={handleFooterBack}>
-          {t('label.back')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="next-button"
-          isDisabled={isSavingService}
-          size="sm"
-          type="button"
-          onPress={handleFooterNext}>
-          {footerNextText}
-        </Button>
-      </div>
-    </div>
+      </>
+    </FormPanelBody>
   );
 
   return (
@@ -379,14 +382,7 @@ function EditConnectionFormPage() {
       <>
         <ResizablePanels
           className="edit-connection-page content-height-with-resizable-panel tw:bg-transparent"
-          firstPanel={{
-            children: firstPanelChildren,
-            minWidth: 700,
-            flex: 0.7,
-            className: 'content-resizable-panel-container',
-            // Renders our own Card above; built-in AntD card would cause a double card and break the h-full layout.
-            wrapInCard: false,
-          }}
+          firstPanel={getFormFirstPanelProps(firstPanelChildren)}
           hideSecondPanel={!serviceDetails?.serviceType}
           pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
           secondPanel={{

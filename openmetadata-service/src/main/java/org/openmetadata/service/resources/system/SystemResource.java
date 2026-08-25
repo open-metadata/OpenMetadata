@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -46,7 +47,9 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -61,10 +64,14 @@ import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -121,6 +128,17 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+
+  // Settings that hold no secrets and that the UI must read to render entity pages for every
+  // authenticated user — glossary term relation types populate the Related Terms dropdown and the
+  // ontology explorer legend. Creating, updating and deleting them stays admin-only.
+  private static final Set<String> USER_READABLE_SETTINGS =
+      Set.of(
+          LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
+          GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
+          // appConfiguration is read by every user at boot (fallback-chain resolution),
+          // not just admins; PATCH remains admin-only.
+          APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
   private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
       Executors.newFixedThreadPool(
           2,
@@ -136,7 +154,6 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
-  private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -153,10 +170,6 @@ public class SystemResource {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
-    this.isNlqEnabled =
-        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
-            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
-            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -264,7 +277,7 @@ public class SystemResource {
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+    if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
@@ -275,7 +288,9 @@ public class SystemResource {
   @Operation(
       operationId = "listGlossaryTermRelationTypes",
       summary = "List glossary term relation types",
-      description = "Get a paginated list of configured glossary term relation types.")
+      description =
+          "Get a paginated list of configured glossary term relation types. Readable by any "
+              + "authenticated user; only admins can create, update or delete relation types.")
   public ResultList<GlossaryTermRelationType> listGlossaryTermRelationTypes(
       @Context SecurityContext securityContext,
       @Parameter(description = "Limit records. (1 to 100, default = 15)")
@@ -290,7 +305,6 @@ public class SystemResource {
           @Min(0)
           @Max(1000000)
           int offset) {
-    authorizer.authorizeAdmin(securityContext);
     List<GlossaryTermRelationType> relationTypes =
         SettingsCache.getSetting(
                 GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class)
@@ -454,7 +468,19 @@ public class SystemResource {
       })
   public Response checkSearchSettings(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return Response.ok().entity(isNlqEnabled).build();
+    return Response.ok().entity(isNaturalLanguageSearchEnabled()).build();
+  }
+
+  /**
+   * Natural language search is served by a distribution-specific endpoint, not by OpenMetadata, so
+   * this reflects the operator's {@code elasticsearch.naturalLanguageSearch.enabled} setting only.
+   * OpenMetadata does not expose that setting, leaving it disabled.
+   */
+  private boolean isNaturalLanguageSearchEnabled() {
+    ElasticSearchConfiguration searchConfig = applicationConfig.getElasticSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlqConfig =
+        searchConfig != null ? searchConfig.getNaturalLanguageSearch() : null;
+    return nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled());
   }
 
   @GET
@@ -906,6 +932,9 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+      preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
       // Auto-populate publicKeyUrls for OIDC confidential clients before saving
@@ -931,7 +960,7 @@ public class SystemResource {
       // Reload entire security system
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
-      return Response.ok(securityConfig).build();
+      return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
@@ -977,6 +1006,7 @@ public class SystemResource {
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+      preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
@@ -1025,6 +1055,46 @@ public class SystemResource {
       LOG.error("Failed to patch security configuration", e);
       throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
     }
+  }
+
+  static void preserveMaskedSecuritySecrets(
+      SecurityConfiguration updated, SecurityConfiguration original) {
+    if (updated != null && original != null) {
+      AuthenticationConfiguration updatedAuthentication = updated.getAuthenticationConfiguration();
+      AuthenticationConfiguration originalAuthentication =
+          original.getAuthenticationConfiguration();
+      if (updatedAuthentication != null && originalAuthentication != null) {
+        preserveOidcSecret(updatedAuthentication, originalAuthentication);
+        preserveLdapPassword(updatedAuthentication, originalAuthentication);
+      }
+    }
+  }
+
+  private static void preserveOidcSecret(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    OidcClientConfig updatedOidc = updated.getOidcConfiguration();
+    OidcClientConfig originalOidc = original.getOidcConfiguration();
+    if (updatedOidc != null && originalOidc != null) {
+      updatedOidc.setSecret(restoredSecret(updatedOidc.getSecret(), originalOidc.getSecret()));
+    }
+  }
+
+  private static void preserveLdapPassword(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    LdapConfiguration updatedLdap = updated.getLdapConfiguration();
+    LdapConfiguration originalLdap = original.getLdapConfiguration();
+    if (updatedLdap != null && originalLdap != null) {
+      updatedLdap.setDnAdminPassword(
+          restoredSecret(updatedLdap.getDnAdminPassword(), originalLdap.getDnAdminPassword()));
+    }
+  }
+
+  private static String restoredSecret(String replacement, String original) {
+    String restored = replacement;
+    if (restored == null || PasswordEntityMasker.PASSWORD_MASK.equals(restored)) {
+      restored = original;
+    }
+    return restored;
   }
 
   @POST
@@ -1437,6 +1507,10 @@ public class SystemResource {
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+  }
+
+  private boolean isUserReadableSetting(String name) {
+    return USER_READABLE_SETTINGS.contains(name.toLowerCase(Locale.ROOT));
   }
 
   private GlossaryTermRelationSettings getGlossaryTermRelationSettings() {

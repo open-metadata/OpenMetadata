@@ -79,7 +79,7 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct. Data quality types: testCase (individual data quality tests, includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus'), testSuite (collections of test cases). Data quality entities are only searched when explicitly set as entityType."
+            "description": "Filter by entity type (auto-detected if not specified). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus'), testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
           },
           "queryFilter": {
             "type": "string",
@@ -106,7 +106,7 @@
           },
           "fields": {
             "type": "string",
-            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, upstreamLineage, entityRelationship, aiContext (materialized structural context: columns, primaryKey, foreignKeys, frequentJoins, partitionColumns)\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns' for table column details, or 'aiContext' for the structural context (keys, joins, partitions) in the search hit itself. To read SQL that has actually run against an asset, search entityType='query' instead — 'queries' is not retrievable as a field."
           },
           "includeAggregations": {
             "type": "boolean",
@@ -163,8 +163,8 @@
             "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}"
           },
           {
-            "description": "Advanced - Aggregation query for counting",
-            "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
+            "description": "Advanced - Narrow to one service type (for counts, read 'totalFound' from the response, or set includeAggregations=true for facets; a 'size' or 'aggs' key inside queryFilter is ignored)",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}"
           },
           {
             "description": "Data quality - Find test cases by name or description",
@@ -230,6 +230,12 @@
             "type": "number",
             "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
             "default": 0.0
+          },
+          "from": {
+            "type": "integer",
+            "description": "Zero-based offset of the first parent entity to return. Prefer 'cursor' for paging; use 'from' only when you need to jump to a specific offset.",
+            "minimum": 0,
+            "default": 0
           },
           "cursor": {
             "type": "string",
@@ -364,7 +370,7 @@
         "properties": {
           "personaName": {
             "type": "string",
-            "description": "Optional persona fully qualified name. Omit to use the caller's active persona."
+            "description": "Optional persona fully qualified name. Omit to use the caller's active persona. The persona name comes from get_user_context, which returns the caller's active persona under 'persona.name' — that is the only place to obtain it; do not construct it."
           },
           "format": {
             "type": "string",
@@ -533,7 +539,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term.",
+      "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -566,6 +572,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the glossary term, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -583,7 +594,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc.",
+      "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -630,7 +641,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
+      "description": "Patches an existing Entity based on a JSONPatch. NOT for creating entities — use the matching create_* tool for that; NOT for Context Center memories — use create_context_memory. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -662,7 +673,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), with long SQL truncated. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
+      "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), and the transformation SQL in full — response size is controlled by returning fewer edges, never by cutting SQL. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
@@ -705,7 +716,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them.",
+      "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "description": "Required to create lineage between two assets.",
         "type": "object",
@@ -768,7 +779,12 @@
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
+            "description": "Entity Type (case-insensitive). Use 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE.",
+            "default": "TABLE",
+            "examples": [
+              "TABLE",
+              "COLUMN"
+            ]
           },
           "testPlatform": {
             "type": "string",
@@ -784,7 +800,7 @@
           },
           "limit": {
             "type": "integer",
-            "description": "Maximum number of results to return. Default is 10."
+            "description": "Maximum number of results to return. Default is 10, maximum is 50; larger values are clamped."
           }
         },
         "required": [
@@ -800,7 +816,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations.",
+      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "description": "This tool can be used to create a test case for a table or a table's column. It requires the test definition and the entity (table or column) to be tested.",
         "type": "object",
@@ -868,7 +884,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript.",
+      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1001,7 +1017,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist.",
+      "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1057,7 +1073,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist.",
+      "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1121,7 +1137,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist.",
+      "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1170,6 +1186,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the domain, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -1186,7 +1207,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist.",
+      "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1236,6 +1257,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the data product, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -1253,7 +1279,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed. Responses are compact and table-level by default: node and edge details are trimmed and SQL queries truncated to keep the payload within LLM context limits. Set 'includeColumnLineage' to true only when column-level lineage is needed.",
+      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed. Responses are compact and table-level by default: node and edge details are trimmed to keep the payload within LLM context limits, while the transformation SQL on each edge is returned in full. Set 'includeColumnLineage' to true only when column-level lineage is needed.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1304,7 +1330,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
+      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
       "parameters": {
         "type": "object",
         "properties": {

@@ -12,9 +12,11 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -94,10 +96,14 @@ public class TestCaseRelationshipRetentionCleanupIT {
     // Broken test case and its results are gone.
     assertEquals(
         0, testCaseRowCount(broken.getId().toString()), "broken test case must be deleted");
-    assertEquals(
-        0,
-        resultRowCount(broken.getFullyQualifiedName()),
-        "broken test case's results must be cascaded away");
+    await("broken test case results should be deleted asynchronously")
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    0,
+                    resultRowCount(broken.getFullyQualifiedName()),
+                    "broken test case's results must be cascaded away"));
 
     // Healthy test case and its results survive — the cleanup is selective.
     assertEquals(1, testCaseRowCount(healthy.getId().toString()), "healthy test case must survive");

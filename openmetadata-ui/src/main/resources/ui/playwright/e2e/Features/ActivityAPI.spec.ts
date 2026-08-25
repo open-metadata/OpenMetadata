@@ -23,11 +23,14 @@ import {
   toggleThumbsUpReaction,
   visitTableActivityFeed,
 } from '../../utils/activityAPI';
-import { postActivityComment } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { selectActivityFeedFilterAndVerifyEndpoint } from '../../utils/widgetFilters';
 import { test } from '../fixtures/pages';
+
+const ACTIVITY_FEED_WIDGET_KEY = 'KnowledgePanel.ActivityFeed';
 
 test.describe(
   'Activity API - Entity Changes',
@@ -176,30 +179,23 @@ test.describe(
 );
 
 test.describe(
-  'Activity API - Comments',
+  'Activity API - Detail panel',
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
-    let commentsTable: TableClass;
-    let commentFeedText: string;
+    let layoutTable: TableClass;
     let layoutFeedText: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
-      commentsTable = new TableClass();
-      commentFeedText = `Test activity for comments ${uuid()}`;
+      layoutTable = new TableClass();
       layoutFeedText = `Test activity detail layout ${uuid()}`;
 
       try {
-        await commentsTable.create(apiContext);
+        await layoutTable.create(apiContext);
         await insertActivityEventForTest(
           apiContext,
-          commentsTable,
-          commentFeedText
-        );
-        await insertActivityEventForTest(
-          apiContext,
-          commentsTable,
+          layoutTable,
           layoutFeedText
         );
       } finally {
@@ -212,25 +208,9 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('adds a comment to a feed item', async ({ page }) => {
-      const commentText = `Test comment ${uuid()}`;
-
+    test('shows the activity detail layout, read-only', async ({ page }) => {
       await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
-      });
-
-      await test.step('Open the feed detail and post a comment', async () => {
-        const feedItem = await getFeedItemByText(page, commentFeedText);
-
-        await feedItem.click();
-        await waitForAllLoadersToDisappear(page);
-        await postActivityComment(page, commentText);
-      });
-    });
-
-    test('shows the activity detail layout', async ({ page }) => {
-      await test.step('Open the activity feed', async () => {
-        await visitTableActivityFeed(page, commentsTable);
+        await visitTableActivityFeed(page, layoutTable);
       });
 
       await test.step('Open the detail view and verify layout regions', async () => {
@@ -242,9 +222,15 @@ test.describe(
         const activityPanel = page.locator('#activity-panel');
 
         await expect(activityPanel).toBeVisible();
+        await expect(activityPanel).toContainText(layoutFeedText);
+
+        // Change-events are read-only notifications: the panel renders the
+        // event but offers no way to reply to it. Only conversation threads
+        // carry an editor.
         await expect(
           activityPanel.getByTestId('comments-input-field')
-        ).toBeVisible();
+        ).toHaveCount(0);
+        await expect(activityPanel.getByTestId('send-button')).toHaveCount(0);
       });
     });
   }
@@ -255,11 +241,14 @@ test.describe(
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     let homepageTable: TableClass;
+    let followedTable: TableClass;
+    const followedActivitySummary = `Followed table activity ${uuid()}`;
 
     test.beforeAll('Setup: create table and activity', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
       homepageTable = new TableClass();
+      followedTable = new TableClass();
 
       try {
         await homepageTable.create(apiContext);
@@ -268,6 +257,31 @@ test.describe(
           homepageTable,
           `Test conversation for homepage widget ${uuid()}`
         );
+
+        // The Following filter reads the FOLLOWS relationship, so the table has
+        // to be followed by the logged-in user before it can surface any event.
+        await followedTable.create(apiContext);
+
+        const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
+        const adminUser = await userResponse.json();
+
+        await followedTable.followTable(apiContext, adminUser.id);
+        await insertActivityEventForTest(
+          apiContext,
+          followedTable,
+          followedActivitySummary
+        );
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test.afterAll('Cleanup: delete tables', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
+
+      try {
+        await homepageTable.delete(apiContext);
+        await followedTable.delete(apiContext);
       } finally {
         await afterAction();
       }
@@ -281,7 +295,7 @@ test.describe(
     test('displays feed content in the Activity Feed widget', async ({
       page,
     }) => {
-      const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
       const feedItems = feedWidget.getByTestId('message-container');
 
       await expect(feedWidget).toBeVisible();
@@ -291,7 +305,7 @@ test.describe(
     });
 
     test('shows Activity Feed widget filter options', async ({ page }) => {
-      const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
 
       await expect(feedWidget).toBeVisible();
 
@@ -318,6 +332,75 @@ test.describe(
 
       await page.keyboard.press('Escape');
       await expect(filterMenu).not.toBeVisible();
+    });
+
+    // Regression guard: every filter used to call the my-feed endpoint, so the
+    // widget showed the same list whichever option was picked.
+    test('routes each Activity Feed widget filter to its own endpoint', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const allActivityResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/v1/activity'
+      );
+
+      await redirectToHomePage(page);
+
+      expect((await allActivityResponse).status()).toBe(200);
+
+      const feedWidget = await waitForLandingPageWidget(
+        page,
+        ACTIVITY_FEED_WIDGET_KEY
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'My Data',
+        '/api/v1/activity/my-feed'
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'Following',
+        '/api/v1/activity/following'
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'All Activity',
+        '/api/v1/activity'
+      );
+    });
+
+    test('shows the followed entity activity under the Following filter', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const feedWidget = await waitForLandingPageWidget(
+        page,
+        ACTIVITY_FEED_WIDGET_KEY
+      );
+
+      await selectActivityFeedFilterAndVerifyEndpoint(
+        page,
+        feedWidget,
+        'Following',
+        '/api/v1/activity/following'
+      );
+
+      await expect(
+        feedWidget
+          .getByTestId('message-container')
+          .filter({ hasText: followedActivitySummary })
+          .first()
+      ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
     });
   }
 );

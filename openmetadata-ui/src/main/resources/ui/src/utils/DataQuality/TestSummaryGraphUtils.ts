@@ -70,6 +70,28 @@ export const getIncidentDetails = (task?: Task | Thread) => {
   };
 };
 
+/**
+ * Results without an incident must not match a task or thread that is also
+ * missing the identifier, otherwise every dimensional point — none of which
+ * carry an incidentId — adopts the first unrelated thread as its incident.
+ */
+const findIncidentTask = (
+  incidentId: string | undefined,
+  tasks: Task[],
+  entityThread: Thread[]
+): Task | Thread | undefined => {
+  if (!incidentId) {
+    return undefined;
+  }
+
+  return (
+    tasks.find((task) => task.id === incidentId) ??
+    entityThread.find(
+      (thread) => thread.task?.testCaseResolutionStatusId === incidentId
+    )
+  );
+};
+
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
@@ -126,11 +148,7 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task:
-        tasks.find((task) => task.id === result.incidentId) ??
-        entityThread.find(
-          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-        ),
+      task: findIncidentTask(result.incidentId, tasks, entityThread),
     });
   });
 
@@ -180,17 +198,33 @@ export interface TooltipSize {
   width: number;
 }
 
-export interface TooltipBoundary extends TooltipSize {
+export interface TooltipPosition {
   x: number;
   y: number;
 }
 
+export interface TooltipBoundary extends TooltipSize, TooltipPosition {}
+
 interface TooltipPositionOptions {
-  anchor: Pick<TooltipBoundary, 'x' | 'y'>;
+  anchor: TooltipPosition;
   boundary: TooltipBoundary;
   gap: number;
   tooltipSize: TooltipSize;
 }
+
+/**
+ * Browsers report fractional, layout-dependent sizes for the same tooltip, and
+ * the flipped placement derives the position from that size. Comparing exactly
+ * would let sub-pixel noise feed a new position back into state indefinitely.
+ */
+const TOOLTIP_POSITION_EPSILON = 0.5;
+
+export const isSameTooltipPosition = (
+  current: TooltipPosition,
+  next: TooltipPosition
+): boolean =>
+  Math.abs(current.x - next.x) < TOOLTIP_POSITION_EPSILON &&
+  Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
 
 /**
  * Recharts types every view-box coordinate as optional, while overflow-aware
@@ -236,7 +270,7 @@ export const getTestSummaryTooltipPosition = ({
   boundary,
   gap,
   tooltipSize,
-}: TooltipPositionOptions) => ({
+}: TooltipPositionOptions): TooltipPosition => ({
   x: getTooltipAxisPosition(
     anchor.x,
     tooltipSize.width,

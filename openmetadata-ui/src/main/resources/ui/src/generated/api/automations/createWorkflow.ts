@@ -182,7 +182,7 @@ export interface TestServiceConnectionRequest {
  * Drive Connection.
  */
 export interface RequestConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -461,7 +461,7 @@ export interface RequestConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -492,6 +492,8 @@ export interface ConfigObject {
      *
      * CA certificate, client certificate, and private key for SSL validation. Required when
      * verifySSL is 'validate'.
+     *
+     * SSL Configuration for Prefect API connection.
      *
      * SSL Configuration for OpenMetadata Server
      */
@@ -539,7 +541,7 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
@@ -706,6 +708,9 @@ export interface ConfigObject {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
@@ -760,7 +765,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -1165,6 +1170,8 @@ export interface ConfigObject {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
@@ -1293,7 +1300,7 @@ export interface ConfigObject {
      *
      * Choose between mysql and postgres connection for alation database
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1487,6 +1494,10 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
     /**
      * Ingest external and internal stages.
      */
@@ -2003,6 +2014,8 @@ export interface ConfigObject {
     useEmulator?: boolean;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2373,6 +2386,10 @@ export interface ConfigObject {
      */
     containerFilterPattern?: FilterPattern;
     /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
@@ -2673,6 +2690,13 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2821,13 +2845,28 @@ export interface AuthenticationType {
      */
     tokenEndpoint?: string;
     /**
-     * Access Token for the API
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
      */
-    accessToken?: string;
+    accountId?: string;
     /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -3378,6 +3417,8 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * SSL Configuration for Prefect API connection.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * OpenMetadata Client configured to validate SSL certificates.
@@ -3461,7 +3502,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3504,7 +3545,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3690,7 +3731,7 @@ export interface SecurityConfigClass {
  *
  * Choose between mysql and postgres connection for alation database
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
      * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
@@ -4133,6 +4174,8 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
  */
@@ -4804,7 +4847,7 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -4831,6 +4874,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -4931,6 +4975,8 @@ export enum SpaceType {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
  *
@@ -5119,7 +5165,7 @@ export enum TokenType {
  *
  * Custom Drive service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5206,6 +5252,7 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",

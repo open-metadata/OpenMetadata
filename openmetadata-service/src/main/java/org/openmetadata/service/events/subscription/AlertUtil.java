@@ -177,8 +177,8 @@ public final class AlertUtil {
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
-  private static final Set<String> THREAD_TYPE_RESOURCES =
-      Set.of("announcement", "task", "conversation");
+  // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
+  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
 
   private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
@@ -216,6 +216,14 @@ public final class AlertUtil {
     return new TestDestinationStatus()
         .withStatus(status)
         .withStatusCode(statusCode)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, String reason, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
         .withTimestamp(timestamp);
   }
 

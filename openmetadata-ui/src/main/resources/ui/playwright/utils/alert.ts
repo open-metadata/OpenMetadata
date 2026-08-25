@@ -1008,15 +1008,38 @@ export const inputBasicAlertInformation = async ({
   await page.locator(descriptionBox).clear();
   await page.locator(descriptionBox).fill(ALERT_DESCRIPTION);
 
-  // Select all source
-  await page.click('[data-testid="add-source-button"]');
-
-  await page
+  // Select the alert source.
+  //
+  // The antd Dropdown opens with a slide-up motion. Playwright's `stable`
+  // actionability check clears once the bounding box holds for two animation
+  // frames, which the tail of the cubic-bezier ease satisfies while the
+  // transform is still running — so mousedown and mouseup can land on different
+  // nodes and the browser never synthesises a `click`. rc-menu's handler then
+  // never runs, `source-select` is never rendered, and because `locator.click()`
+  // retries actionability but never the *effect*, the assertion below would
+  // spend its whole budget on an element that can no longer appear. Retry the
+  // selection itself instead. The `isVisible()` calls are branch conditions for
+  // that retry, not assertions — the assertion is `toBeVisible` below them.
+  const sourceOption = page
     .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`)
-    .click();
+    .getByTestId(`${sourceName}-option`);
+  const sourceSelect = page.getByTestId('source-select');
 
-  await expect(page.getByTestId('source-select')).toHaveText(sourceDisplayName);
+  await expect(async () => {
+    if (!(await sourceSelect.isVisible())) {
+      // Gate on the option rather than the menu: `drop-down-menu` is also used
+      // by SearchDropdown, so probing it unscoped risks a strict-mode violation.
+      if (!(await sourceOption.isVisible())) {
+        await page.click('[data-testid="add-source-button"]');
+      }
+
+      await sourceOption.click();
+    }
+
+    await expect(sourceSelect).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
 export const saveAlertAndVerifyResponse = async (page: Page) => {

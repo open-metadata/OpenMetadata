@@ -232,6 +232,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         table_name=table_name,
                         schema=table_schema,
                         sqlalchemy_uri=chart_json.sqlalchemy_uri,
+                        datasource_id=chart_json.datasource_id,
                     ),
                     column_mapping,
                 )

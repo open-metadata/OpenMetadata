@@ -12,7 +12,6 @@
  */
 
 import { ServicesUpdateRequest } from 'Models';
-import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -145,7 +144,6 @@ export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   serviceCategory: ServiceCategory;
   workflowData: IngestionWorkflowData;
-  operationType: FormSubmitType;
   cancelText?: string;
   okText?: string;
   className?: string;

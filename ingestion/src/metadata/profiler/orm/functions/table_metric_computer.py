@@ -44,6 +44,13 @@ from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_APPROXIMATE_METRICS,
     TIMESCALE_IS_HYPERTABLE,
 )
+from metadata.profiler.constants import (
+    COLUMN_COUNT,
+    COLUMN_NAMES,
+    CREATE_DATETIME,
+    ROW_COUNT,
+    SIZE_IN_BYTES,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -58,12 +65,6 @@ from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
-
-COLUMN_COUNT = "columnCount"
-COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
-SIZE_IN_BYTES = "sizeInBytes"
-CREATE_DATETIME = "createDateTime"
 
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 

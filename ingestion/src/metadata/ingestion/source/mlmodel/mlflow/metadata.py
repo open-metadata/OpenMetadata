@@ -141,11 +141,12 @@ class MlflowSource(MlModelServiceSource):
         versions: list[ModelVersion] = []
         page_token = None
 
-        # MLflow only bars `/` and `:` from model names, so a name may well contain
-        # a quote. Double quotes are the only delimiter the filter parser round-trips
-        # a single quote through: the SQL-style `''` escape parses, but yields the
-        # doubled quote verbatim and would silently match nothing.
-        filter_string = f'name="{model_name}"'
+        # Single quotes are mandatory. Unity Catalog does not parse this filter
+        # locally -- it forwards the string to the Databricks REST endpoint, whose
+        # parser accepts only `name = 'model_name'` and rejects a double-quoted
+        # name with INVALID_PARAMETER_VALUE. MLflow's own client-side parser is
+        # more permissive, so it cannot be used to validate this.
+        filter_string = f"name='{model_name}'"
 
         try:
             for _ in range(MAX_VERSION_PAGES):

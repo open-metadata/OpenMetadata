@@ -17,6 +17,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isSameTooltipPosition,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -69,6 +70,27 @@ describe('prepareChartData', () => {
     });
 
     expect(result.data[0].task).toEqual(task);
+  });
+
+  it('should not attach an incident to results that have no incidentId', () => {
+    const result = prepareChartData({
+      entityThread: [
+        {
+          id: '1e3b0b1e-0f5a-4c2a-8a6d-2f6a6f7f0a11',
+          task: { id: 244 },
+        },
+      ] as PrepareChartDataType['entityThread'],
+      tasks: [{ id: 'd0a1c3e2-6b64-4f2e-9a1a-3d0a5f8b7c22' } as Task],
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: 1720525804736,
+        },
+      ],
+    });
+
+    expect(result.data[0].task).toBeUndefined();
   });
 
   it('should prepare chart data correctly', () => {
@@ -556,5 +578,28 @@ describe('getTestSummaryTooltipPosition', () => {
         tooltipSize: { height: 400, width: 900 },
       })
     ).toEqual({ x: 80, y: 16 });
+  });
+});
+
+describe('isSameTooltipPosition', () => {
+  it('should treat sub-pixel measurement noise as the same position', () => {
+    expect(
+      isSameTooltipPosition({ x: 516, y: 196 }, { x: 516.25, y: 195.75 })
+    ).toBe(true);
+  });
+
+  it('should treat a visible shift as a new position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 520, y: 196 })).toBe(
+      false
+    );
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 204 })).toBe(
+      false
+    );
+  });
+
+  it('should treat an identical position as the same position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 196 })).toBe(
+      true
+    );
   });
 });

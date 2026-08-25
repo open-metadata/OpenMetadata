@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -111,6 +112,28 @@ class OpenSearchVectorServiceChunkStagingTest {
     assertTrue(
         failure.getMessage().contains("live chunk target"),
         "abort must name the unresolved live target. Got: " + failure.getMessage());
+    verify(client, never()).generic();
+  }
+
+  @Test
+  void beginStagedChunkRecreate_skipsStagingWhenTheEmbeddingProviderIsUnavailable()
+      throws IOException {
+    // An unreachable embedding provider must not fail the reindex. Semantic search ships enabled
+    // with the provider defaulting to bedrock, and the client constructs without ever calling it,
+    // so any deployment that never set Bedrock up reaches this pre-flight — and the entity reindex
+    // it would abort does not need embeddings at all. Skip staging, leave the old chunks live, and
+    // touch nothing in the cluster.
+    OpenSearchClient client = mock(OpenSearchClient.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.embedQuery(any(String.class)))
+        .thenThrow(new RuntimeException("Bedrock embedding generation failed (AWS service error)"));
+
+    OpenSearchVectorService service = new OpenSearchVectorService(client, embeddingClient);
+
+    assertNull(
+        service.beginStagedChunkRecreate(),
+        "an unavailable embedding provider must read as 'not staged', not as a failure");
+    verify(client, never()).indices();
     verify(client, never()).generic();
   }
 }

@@ -38,6 +38,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRe
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -139,6 +140,35 @@ class AbstractEventConsumerTest {
   void testConstructor() {
     assertNotNull(testEventConsumer);
     assertNotNull(testEventConsumer.dependencies);
+  }
+
+  /**
+   * Quartz worker threads are pooled and shared with every other scheduled job, and never pass
+   * through the JAX-RS response filter that clears these ThreadLocals for HTTP requests. Whatever
+   * runs next on the thread inherits anything left behind, so a tick must leave it clean however it
+   * exits — including an early return when the subscription cannot be loaded.
+   *
+   * <p>Scope of this test: it pins the end-to-end invariant and fails if the cleanup is removed
+   * altogether. It does <b>not</b> isolate the exit-side clear from the entry-side one, because the
+   * only paths that previously skipped cleanup run inside the private {@code init}, which offers no
+   * seam for a test to populate the ThreadLocals mid-tick. That the exit clear is unconditional is
+   * enforced structurally, by the try/finally in {@code execute}.
+   */
+  @Test
+  void execute_leavesThreadCleanForTheNextJob() {
+    ImpersonationContext.setImpersonatedBy("someone");
+
+    try {
+      testEventConsumer.execute(jobExecutionContext);
+    } catch (RuntimeException expectedInThisHarness) {
+      // The subscription cannot be resolved here, so the tick either returns early or throws.
+      // Either way the cleanup guarantee below must hold.
+    }
+
+    assertNull(
+        ImpersonationContext.getImpersonatedBy(),
+        "A tick must leave the thread clean, or the next job scheduled onto it reads stale "
+            + "per-request state");
   }
 
   @Test

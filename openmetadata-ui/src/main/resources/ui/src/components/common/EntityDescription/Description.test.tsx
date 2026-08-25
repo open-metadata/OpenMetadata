@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
@@ -84,10 +85,15 @@ jest.mock(
         visible ? (
           <div data-testid="edit-modal">
             <button
+              aria-label="Save"
               data-testid="modal-save"
               onClick={() => onSave('Updated description')}
             />
-            <button data-testid="modal-cancel" onClick={onCancel} />
+            <button
+              aria-label="Cancel"
+              data-testid="modal-cancel"
+              onClick={onCancel}
+            />
           </div>
         ) : null
       ),
@@ -173,6 +179,20 @@ describe('Description', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.getByTestId('edit-description')).toBeInTheDocument();
+  });
+
+  it('should use the shared edit-new svg asset for the edit icon', () => {
+    render(<Description {...defaultProps} />);
+
+    const editButtonProps = (Button as unknown as jest.Mock).mock.calls
+      .map(([props]) => props)
+      .find((props) => props['data-testid'] === 'edit-description');
+
+    // Every *.svg resolves to the string 'svg-mock' under jest (see src/test/unit/mocks/svg.mock),
+    // so an asset import is distinguishable from untitled's `Edit02`, which is a function
+    // component. Guards the regression where this button used a visibly different pencil than the
+    // edit-new.svg one every other edit affordance on an entity page uses.
+    expect(editButtonProps?.iconLeading).toBe('svg-mock');
   });
 
   it('should hide the edit button when edit access is not granted', () => {

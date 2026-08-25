@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -141,7 +142,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   /** Common queries for all entities implemented here. Do not override. */
   @Transaction
@@ -157,7 +158,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
-      @Bind("json") List<String> json);
+      @BindJson("json") List<String> json);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -172,7 +173,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   @Transaction
   @ConnectionAwareSqlBatch(
@@ -189,7 +190,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
       @BindUUID("id") List<UUID> ids,
-      @Bind("json") List<String> json);
+      @BindJson("json") List<String> json);
 
   /**
    * Update entity with optimistic locking using version check.
@@ -210,7 +211,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json,
+      @BindJson("json") String json,
       @Bind("version") String version);
 
   /**
@@ -234,8 +235,8 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumn,
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
-      @Bind("json") String json,
-      @Bind("expectedJson") String expectedJson);
+      @BindJson("json") String json,
+      @BindJson("expectedJson") String expectedJson);
 
   /**
    * List (id, fullyQualifiedName) pairs for all rows whose FQN hash begins with {@code
