@@ -198,10 +198,11 @@ const TableV2 = <T extends object>(
             String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx) === colKey
         ) as ColumnType<T> | undefined;
 
-        return col?.onFilter
+        const onFilter = col?.onFilter;
+
+        return onFilter
           ? selectedKeys.some((key) =>
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by col?.onFilter above
-              col.onFilter!(key as React.Key | boolean, record)
+              onFilter(key as React.Key | boolean, record)
             )
           : true;
       })

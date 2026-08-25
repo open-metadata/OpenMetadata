@@ -33,8 +33,7 @@ const CollapseHeader = ({
   const { t } = useTranslation();
 
   const getPopupContainer = (triggerNode: HTMLElement) =>
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- trigger node parent always present
-    triggerNode.parentElement!;
+    triggerNode.parentElement ?? document.body;
 
   return (
     <div className="d-flex items-center justify-between">

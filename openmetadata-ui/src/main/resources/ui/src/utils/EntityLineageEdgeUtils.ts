@@ -169,8 +169,10 @@ export const getAllTracedEdges = (
   const queue: string[] = [selectedColumn];
 
   while (queue.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- queue is non-empty in loop
-    const currentColumn = queue.shift()!;
+    const currentColumn = queue.shift();
+    if (currentColumn === undefined) {
+      break;
+    }
 
     if (currentColumn !== selectedColumn) {
       result.push(currentColumn);

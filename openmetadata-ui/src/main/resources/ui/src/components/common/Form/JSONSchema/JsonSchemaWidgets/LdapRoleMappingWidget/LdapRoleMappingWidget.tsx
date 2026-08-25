@@ -66,13 +66,13 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const getStableId = useCallback(
     (ldapGroup: string, index: number): string => {
       const key = `${index}-${ldapGroup}`;
-      if (!stableIdMapRef.current.has(key)) {
-        const stableId = `mapping-${++idCounterRef.current}`;
+      let stableId = stableIdMapRef.current.get(key);
+      if (!stableId) {
+        stableId = `mapping-${++idCounterRef.current}`;
         stableIdMapRef.current.set(key, stableId);
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- set above when key missing
-      return stableIdMapRef.current.get(key)!;
+      return stableId;
     },
     []
   );
@@ -146,8 +146,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
       newMappings.forEach((mapping) => {
         if (mapping.ldapGroup.trim()) {
           const normalizedGroup = mapping.ldapGroup.trim().toLowerCase();
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- counted in prior loop above
-          if (ldapGroupCounts.get(normalizedGroup)! > 1) {
+          if ((ldapGroupCounts.get(normalizedGroup) ?? 0) > 1) {
             newErrors[mapping.id] = t('message.ldap-group-duplicate-error');
           }
         }

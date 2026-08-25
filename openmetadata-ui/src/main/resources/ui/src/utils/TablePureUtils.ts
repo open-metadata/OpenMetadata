@@ -620,8 +620,7 @@ export const getParentKeysToExpand = <
         item.fullyQualifiedName ?? item.name ?? '',
       ];
       const result = getParentKeysToExpand(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- children checked above
-        item.children!,
+        item.children ?? [],
         targetFqn,
         newParentKeys
       );

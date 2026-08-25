@@ -419,9 +419,10 @@ const extractTempLineageNodes = (
 
   const existingByFqn = new Map(
     existingNodes
-      .filter((n) => n.fullyQualifiedName)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- filtered for fullyQualifiedName above
-      .map((n) => [n.fullyQualifiedName!, n])
+      .filter((n): n is LineageNodeType & { fullyQualifiedName: string } =>
+        Boolean(n.fullyQualifiedName)
+      )
+      .map((n) => [n.fullyQualifiedName, n])
   );
 
   edges.forEach((edge) => {
