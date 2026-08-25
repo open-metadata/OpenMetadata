@@ -1469,7 +1469,10 @@ const TableV2 = <T extends object>(
       ) : clientPagination &&
         !(
           clientPagination.hideOnSinglePage &&
-          filteredDataSource.length <= clientPagination.pageSize
+          // Server-paged: the rows in hand are one page by definition, so only
+          // the reported total says whether there is anything to page to.
+          (clientPagination.serverTotal ?? filteredDataSource.length) <=
+            clientPagination.pageSize
         ) ? (
         <div>
           <NextPrevious
