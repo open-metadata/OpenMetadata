@@ -17,6 +17,7 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
@@ -190,6 +191,14 @@ public class QueryRepository extends EntityRepository<Query> {
     return queryEntity == null
         ? Collections.emptyList()
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Query entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
