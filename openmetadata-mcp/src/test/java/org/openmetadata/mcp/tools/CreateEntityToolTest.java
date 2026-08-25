@@ -373,6 +373,43 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void anUnsupportedSharedParameterIsRefusedBeforeAnyNameIsResolved() {
+    // Java evaluates arguments first, so resolving owners/reviewers before the support check meant
+    // a domain given a misspelled reviewer reported "no user or team found" - about a field domains
+    // do not have - after spending a directory lookup to get there.
+    Map<String, Object> params = params("domain", "Marketing");
+    params.put("description", "a domain");
+    params.put("reviewers", List.of("nobody.at.all"));
+
+    IllegalArgumentException failure =
+        assertThrows(IllegalArgumentException.class, () -> run(params));
+
+    assertTrue(
+        failure.getMessage().contains("not supported for entityType 'domain'"),
+        "the unsupported field is the real problem, not the name in it. Was: "
+            + failure.getMessage());
+    assertTrue(
+        !failure.getMessage().contains("no user or team"),
+        "no directory lookup should have happened. Was: " + failure.getMessage());
+  }
+
+  @Test
+  void describeAdvertisesOnlyTheSharedParametersTheTypeCanTake() {
+    Map<String, Object> described =
+        new DescribeEntityTypeTool()
+            .execute(null, null, new HashMap<>(Map.of("entityType", "classification")));
+
+    @SuppressWarnings("unchecked")
+    List<String> shared = (List<String>) described.get("sharedParameters");
+    assertTrue(
+        !shared.contains("tags") && !shared.contains("extension"),
+        "create_entity rejects both for a classification, so advertising them sends the caller "
+            + "into a retry the schema itself caused: "
+            + shared);
+    assertTrue(shared.contains("name") && shared.contains("owners"), shared.toString());
+  }
+
+  @Test
   void anUnsupportedSharedParameterNamesTheOnesThatDoWork() {
     Map<String, Object> params = params("classification", "PII");
     params.put("description", "a classification");

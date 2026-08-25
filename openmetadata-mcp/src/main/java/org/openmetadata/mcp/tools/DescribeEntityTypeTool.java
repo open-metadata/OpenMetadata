@@ -56,7 +56,7 @@ public class DescribeEntityTypeTool implements McpTool {
     CreatableType<?, ?> type = CreatableEntityRegistry.require(requested);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("entityType", type.entityType());
-    result.put("sharedParameters", SHARED_FIELDS);
+    result.put("sharedParameters", sharedFor(type));
     // Beyond 'name', which every type requires. Some of these are shared parameters and some are
     // attributes, so the caller is told the set rather than left to infer it from the two lists.
     result.put("alsoRequired", type.required());
@@ -116,6 +116,16 @@ public class DescribeEntityTypeTool implements McpTool {
         .filter(property -> !SHARED.contains(property.getName()))
         .sorted((left, right) -> left.getName().compareTo(right.getName()))
         .toList();
+  }
+
+  /**
+   * The shared parameters this type actually has a field for. Returning the full list for every
+   * type made a caller assemble a request from the advertised schema that {@code create_entity}
+   * then rejected - a classification takes neither {@code tags} nor {@code extension}.
+   */
+  static List<String> sharedFor(CreatableType<?, ?> type) {
+    Set<String> bindable = bindableNames(type);
+    return SHARED_FIELDS.stream().filter(bindable::contains).toList();
   }
 
   /** The names this type can actually be given a value for, shared parameters included. */

@@ -115,48 +115,47 @@ public class CreateEntityTool implements McpTool {
   /** Shared parameters plus the type's own attributes, bound to its generated request class. */
   private static CreateEntity buildRequest(CreatableType<?, ?> type, Map<String, Object> params) {
     Set<String> bindable = DescribeEntityTypeTool.bindableNames(type);
+    // Before resolving anything: owners and reviewers cost a directory lookup, and a name that does
+    // not resolve throws. Doing that first would report "no user or team found" for a field the
+    // type
+    // cannot accept in the first place, and would spend the lookup to say it.
+    rejectUnsupportedShared(type, bindable, params);
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put(NAME, CommonUtils.requireNonBlank(params.get(NAME), NAME));
-    put(payload, type, bindable, DESCRIPTION, CommonUtils.optString(params, DESCRIPTION));
-    put(payload, type, bindable, "displayName", CommonUtils.optString(params, "displayName"));
-    put(payload, type, bindable, "owners", owners(params, "owners"));
-    put(payload, type, bindable, "reviewers", owners(params, "reviewers"));
-    put(payload, type, bindable, "tags", tags(params));
-    put(payload, type, bindable, "domains", domains(params));
-    put(payload, type, bindable, EXTENSION, CommonUtils.extension(params));
+    putIfPresent(payload, DESCRIPTION, CommonUtils.optString(params, DESCRIPTION));
+    putIfPresent(payload, "displayName", CommonUtils.optString(params, "displayName"));
+    putIfPresent(payload, "owners", owners(params, "owners"));
+    putIfPresent(payload, "reviewers", owners(params, "reviewers"));
+    putIfPresent(payload, "tags", tags(params));
+    putIfPresent(payload, "domains", domains(params));
+    putIfPresent(payload, EXTENSION, CommonUtils.extension(params));
     payload.putAll(attributes(type, bindable, params));
     requireFields(type, payload);
     return convert(type, payload);
   }
 
   /**
-   * Adds a shared parameter, refusing it when this type has no such field.
+   * Refuses shared parameters this type has no field for, all of them in one error.
    *
    * <p>Not every type accepts every shared parameter - a classification has no {@code extension},
    * a domain no {@code reviewers}. Passing them through anyway ended one of two ways, both bad:
    * the value vanished into a {@code default} no-op setter on {@code CreateEntity} and the call
    * reported success, or the bind failed with a message naming a Java class.
    */
-  private static void put(
-      Map<String, Object> payload,
-      CreatableType<?, ?> type,
-      Set<String> bindable,
-      String field,
-      Object value) {
-    if (value != null && !bindable.contains(field)) {
+  private static void rejectUnsupportedShared(
+      CreatableType<?, ?> type, Set<String> bindable, Map<String, Object> params) {
+    List<String> unsupported =
+        DescribeEntityTypeTool.SHARED_FIELDS.stream()
+            .filter(field -> params.get(field) != null)
+            .filter(field -> !bindable.contains(field))
+            .toList();
+    if (!unsupported.isEmpty()) {
       throw new IllegalArgumentException(
           String.format(
-              "Parameter '%s' is not supported for entityType '%s'. Nothing was created."
+              "Parameters %s are not supported for entityType '%s'. Nothing was created."
                   + " Supported for this type: %s.",
-              field, type.entityType(), supportedShared(bindable)));
+              unsupported, type.entityType(), DescribeEntityTypeTool.sharedFor(type)));
     }
-    if (value != null) {
-      payload.put(field, value);
-    }
-  }
-
-  private static List<String> supportedShared(Set<String> bindable) {
-    return DescribeEntityTypeTool.SHARED_FIELDS.stream().filter(bindable::contains).toList();
   }
 
   /**
