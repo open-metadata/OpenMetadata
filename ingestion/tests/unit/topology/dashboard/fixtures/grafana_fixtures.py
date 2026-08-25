@@ -476,7 +476,10 @@ DASHBOARD_WITH_COLLAPSED_ROW = {
                         "targets": [
                             {
                                 "refId": "A",
-                                "datasource": {"type": "postgres", "uid": "P44A8B96022E5A01A"},
+                                "datasource": {
+                                    "type": "postgres",
+                                    "uid": "P44A8B96022E5A01A",
+                                },
                                 "rawSql": "SELECT count(*) FROM hidden_table",
                             }
                         ],
@@ -489,7 +492,10 @@ DASHBOARD_WITH_COLLAPSED_ROW = {
                         "targets": [
                             {
                                 "refId": "A",
-                                "datasource": {"type": "postgres", "uid": "P44A8B96022E5A01A"},
+                                "datasource": {
+                                    "type": "postgres",
+                                    "uid": "P44A8B96022E5A01A",
+                                },
                                 "rawSql": "SELECT * FROM another_hidden_table",
                             }
                         ],
