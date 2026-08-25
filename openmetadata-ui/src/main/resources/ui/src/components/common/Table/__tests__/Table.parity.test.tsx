@@ -23,6 +23,11 @@ const antdAdapter: ParityAdapter = {
       document.querySelector('.ant-pagination-next button') as HTMLElement
     );
   },
+  getTableLayout: () =>
+    (document.querySelector('table') as HTMLElement).style.tableLayout ===
+    'fixed'
+      ? 'fixed'
+      : 'auto',
   getIndentPx: (label) => {
     const row = screen
       .getAllByRole('row')

@@ -71,6 +71,11 @@ export interface ParityAdapter {
   queryPager: () => HTMLElement | null;
   /** The built-in pager's page-size control, or null when none is rendered. */
   queryPageSizeControl: () => HTMLElement | null;
+  /**
+   * How the rendered table solves its column widths. AntD sets it inline,
+   * the core table through a utility class — the value is what matters.
+   */
+  getTableLayout: () => 'fixed' | 'auto';
   /** Left indentation, in px, applied to a tree row's first cell. */
   getIndentPx: (label: string) => number;
   /** Open the column filter dropdown for the column titled `columnTitle`. */
@@ -393,6 +398,16 @@ export const runTableParitySuite = (
       // The parent has not refetched in this test, so the same rows stay —
       // what must not happen is an empty page from a second client-side slice.
       expect(renderedNames()).toHaveLength(5);
+    });
+  });
+
+  describe(`${suiteName} — column layout`, () => {
+    it('solves column widths with a fixed layout by default', () => {
+      // The legacy wrapper hardcoded this, so every migrated call site was
+      // laid out this way and expects to stay that way.
+      renderTable({});
+
+      expect(adapter.getTableLayout()).toBe('fixed');
     });
   });
 

@@ -1097,7 +1097,17 @@ const TableV2 = <T extends object>(
               // `z-index: 10` header above anything the page later drew over
               // the table, drawers and modals included.
               className={classNames(rest.className, {
-                'tw:table-fixed': rest.resizableColumns,
+                // The legacy wrapper hardcoded `table-layout: fixed` after its
+                // prop spread, so every call site it served got fixed columns
+                // and none could opt out. Default to the same, but honour an
+                // explicit `tableLayout` — the tables that came straight from
+                // AntD were sized by content and need to stay that way.
+                // Resizing needs fixed regardless: an auto table re-solves its
+                // own widths and swallows the drag.
+                'tw:table-fixed':
+                  rest.resizableColumns || rest.tableLayout !== 'auto',
+                'tw:table-auto':
+                  !rest.resizableColumns && rest.tableLayout === 'auto',
               })}
               containerStyle={
                 scroll?.y
