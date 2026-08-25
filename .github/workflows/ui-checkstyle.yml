@@ -310,7 +310,7 @@ jobs:
           # police a directive that disables the rule. .ts/.tsx only: the
           # rule's own RuleTester fixtures that exercise these exact strings
           # live in a .test.js file, which the --include filters below skip.
-          if MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?\s*(\*/|$)|eslint-disable[^\n]*om-playwright/justified-rule-disable' \
+          if MATCHES=$(grep -rnE 'eslint-disable(-next-line|-line)?\s*(\*/|$)|eslint-disable.*om-playwright/justified-rule-disable' \
                playwright/ --include='*.ts' --include='*.tsx'); then
             echo "$MATCHES"
             echo "::error::Found a blanket 'eslint-disable' (no rule list) or a disable of om-playwright/justified-rule-disable itself. Both bypass the Playwright lint guardrails entirely and are never allowed, justified or not. Disable individual rules instead, each with a justification, e.g. // eslint-disable-next-line om-playwright/no-positional-locator -- <why>."
