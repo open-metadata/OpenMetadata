@@ -790,8 +790,23 @@ Playwright tests are linted with `eslint-plugin-playwright` to automatically cat
 
 ```bash
 cd openmetadata-ui/src/main/resources/ui
-yarn lint:playwright:suppressions
+yarn lint:playwright               # check only — never writes
+yarn lint:playwright:suppressions  # check, then prune entries you have fixed
 ```
+
+Both run the same rules over the whole corpus against `eslint-suppressions.json`. The difference is
+only what happens once you have *fixed* something: `lint:playwright` reports the now-unused entry and
+exits non-zero, while `lint:playwright:suppressions` removes it and rewrites the file for you. Run
+the second after a cleanup and commit the rewritten baseline — that commit is what ratchets the count
+down. Neither will let a *new* violation through; adding to the baseline needs an explicit
+`--suppress-all`.
+
+### Flake Report
+
+`yarn flake:report` aggregates Playwright's JSON reporter output into a per-shard flake summary. It
+is a **local utility only** — the CI upload is not wired up, because the postgres/mysql e2e workflows
+were unified into `playwright-e2e-reusable.yml` and re-siting the step belongs in its own change. The
+script and its tests ship so that wiring is a one-step follow-up rather than a rewrite.
 
 ### Rule Levels
 

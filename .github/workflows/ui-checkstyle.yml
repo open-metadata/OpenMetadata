@@ -322,7 +322,8 @@ jobs:
             exit 1
           fi
 
-          # Full corpus, not changed-files-only, and the non-pruning variant:
+          # Full corpus, not changed-files-only, and the non-pruning variant
+          # (lint:playwright, not lint:playwright:suppressions):
           # --prune-suppressions would silently rewrite eslint-suppressions.json
           # to drop stale entries and exit 0, so a fixed violation would never
           # fail CI. Without pruning, a stale (now-unused) suppression entry
@@ -330,7 +331,7 @@ jobs:
           # pruned eslint-suppressions.json — that's what makes the baseline
           # ratchet down instead of just never growing.
           if { yarn test:eslint-rules && \
-               yarn lint:playwright:full && \
+               yarn lint:playwright && \
                node scripts/generate-playwright-rule-table.ts --check; } > /tmp/pw-guardrails.out 2>&1; then
             RESULT=0
           else
