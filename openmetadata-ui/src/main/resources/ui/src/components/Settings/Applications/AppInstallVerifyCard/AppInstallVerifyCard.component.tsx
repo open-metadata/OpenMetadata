@@ -83,6 +83,7 @@ const AppInstallVerifyCard = ({
                 i18nKey="label.application-by-developer"
                 renderElement={
                   <a
+                    aria-label={t('label.application')}
                     href={appData?.developerUrl}
                     rel="noreferrer"
                     style={{ color: theme.primaryColor }}

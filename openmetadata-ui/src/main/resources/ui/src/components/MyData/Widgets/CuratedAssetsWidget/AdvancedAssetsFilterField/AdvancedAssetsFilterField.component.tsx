@@ -184,6 +184,7 @@ export const AdvancedAssetsFilterField = ({
       <Row className="advanced-filter-form-field" gutter={[8, 8]}>
         <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
           </div>
           <Query

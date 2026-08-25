@@ -34,7 +34,7 @@ def get_top_classes(scores: Mapping[T, float], n: int, threshold: float) -> Sequ
     Get the top n scores from the scores mapping that are above the threshold.
     The classes are sorted in descending order of their scores.
     """
-    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    sorted_scores = sorted(scores.items(), key=lambda item: (-item[1], str(item[0])))
     top_classes = [key for key, score in sorted_scores if score >= threshold]
     return top_classes[:n]
 

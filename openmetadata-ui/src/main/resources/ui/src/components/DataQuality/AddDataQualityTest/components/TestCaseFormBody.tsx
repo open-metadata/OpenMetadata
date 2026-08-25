@@ -675,7 +675,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const isComputeRowCountFieldVisible =
     selectedTestDefinition?.supportsRowLevelPassedFailed ?? false;
-
   const showParameterFields =
     Boolean(selectedTestDefinition?.parameterDefinition) &&
     useDynamicAssertionValue !== true;
@@ -880,18 +879,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   };
 
-  const dynamicAssertionField = {
-    name: 'useDynamicAssertion',
-    label: t('label.dynamic-assertion'),
-    type: FieldTypes.SWITCH,
-    required: false,
-    id: 'root/useDynamicAssertion',
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    props: {
-      'data-testid': 'use-dynamic-assertion',
-    },
-  } as FieldProp;
-
   const computeRowCountField = {
     name: 'computePassedFailedRowCount',
     label: t('label.compute-row-count'),
@@ -906,6 +893,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   } as FieldProp;
 
+  // Schema capabilities are shared for API and import compatibility, so
+  // distribution-only controls must be supplied through the class-base hook.
   const additionalFields = testCaseClassBase.createFormAdditionalFields(
     selectedTestDefinition?.supportsDynamicAssertion ?? false
   );
@@ -1099,12 +1088,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         {!isCustomQuery && getField(testTypeField)}
 
-        {additionalFields.length > 0
-          ? additionalFields.map((field) => (
-              <div key={field.name}>{getField(field)}</div>
-            ))
-          : selectedTestDefinition?.supportsDynamicAssertion &&
-            getField(dynamicAssertionField)}
+        {additionalFields.map((field) => (
+          <div key={field.name}>{getField(field)}</div>
+        ))}
 
         {showParameterFields && selectedTestDefinition && (
           <div

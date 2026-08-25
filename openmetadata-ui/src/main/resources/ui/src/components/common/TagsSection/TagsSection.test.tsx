@@ -140,6 +140,7 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
         return (
           <div data-testid="tag-selectable-list">
             <div className="tag-selector" data-testid="async-select-list">
+              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
               <input
                 data-testid="tag-selector-input"
                 value={inputValue}

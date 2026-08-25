@@ -32,12 +32,13 @@ const APIHits = [
 ];
 const formatDataResponse = jest.fn().mockImplementation((hist) => {
   const formatedData = hist.map((hit) => {
-    const newData = {};
-    newData.id = hit._source.tableId;
-    newData.name = hit._source.tableName;
-    newData.description = hit._source.description;
-    newData.fullyQualifiedName = hit._source.fqdn;
-    newData.tableType = hit._source.tableType;
+    const newData = {
+      id: hit._source.tableId,
+      name: hit._source.tableName,
+      description: hit._source.description,
+      fullyQualifiedName: hit._source.fqdn,
+      tableType: hit._source.tableType,
+    };
 
     return newData;
   });
