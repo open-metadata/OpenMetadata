@@ -9008,7 +9008,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void reactUpdate() {
       // The approval gate may have held all changed fields (making this a no-op write); the pending
       // review workflow must still be triggered, so fire it before the no-op short-circuit below.
-      ApprovalGate.submitPending(updated, updated.getUpdatedBy());
+      ApprovalGate.submitPending(updated);
       // No-op updates should not fan out search/RDF work.
       // Must also check incrementalFieldsChanged() because session consolidation may net
       // to zero change (previous == updated) while intermediate operations already modified

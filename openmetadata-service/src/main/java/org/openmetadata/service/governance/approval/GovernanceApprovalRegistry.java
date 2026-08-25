@@ -154,6 +154,7 @@ public final class GovernanceApprovalRegistry {
     for (JsonNode node : JsonUtils.valueToTree(definition.getNodes())) {
       if (RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.path("subType").asText(null))) {
         hasHook = true;
+        break;
       }
     }
     return hasHook;
@@ -162,7 +163,10 @@ public final class GovernanceApprovalRegistry {
   private static boolean targetsEntityType(JsonNode config, String entityType) {
     boolean targets = entityType.equals(config.path("entityType").asText(null));
     for (JsonNode node : config.path("entityTypes")) {
-      targets = targets || entityType.equals(node.asText(null));
+      if (targets) {
+        break;
+      }
+      targets = entityType.equals(node.asText(null));
     }
     return targets;
   }

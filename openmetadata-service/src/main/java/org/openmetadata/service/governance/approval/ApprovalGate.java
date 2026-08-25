@@ -136,7 +136,7 @@ public final class ApprovalGate {
     }
   }
 
-  public static void submitPending(EntityInterface entity, String user) {
+  public static void submitPending(EntityInterface entity) {
     HeldTrigger trigger = PENDING_TRIGGER.get();
     try {
       if (trigger != null) {
