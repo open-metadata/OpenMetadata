@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -89,11 +90,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       return true;
     }
 
-    // Collect all changed fields
+    // Collect all changed fields. A held-only change (the pending hold) carries just fieldsUpdated,
+    // leaving fieldsAdded/fieldsDeleted null, so guard each list.
     List<FieldChange> allChanges = new ArrayList<>();
-    allChanges.addAll(changeDescription.getFieldsAdded());
-    allChanges.addAll(changeDescription.getFieldsUpdated());
-    allChanges.addAll(changeDescription.getFieldsDeleted());
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsAdded()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
 
     // Check fields based on condition (AND/OR)
     boolean result;

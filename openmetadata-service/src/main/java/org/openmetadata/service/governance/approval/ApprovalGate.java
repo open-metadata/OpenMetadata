@@ -45,6 +45,7 @@ import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.G
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 /**
  * Holds approval-gated field edits out of the entity. When a workflow that opts in (has a
@@ -95,6 +96,11 @@ public final class ApprovalGate {
   public static void stageAndHold(EntityInterface original, EntityInterface updated, String user) {
     PENDING_TRIGGER.remove();
     if (isGateApplicable(user, original, updated)) {
+      // The gate reverts gated tags before the entity updater validates mutual exclusivity, so a
+      // conflicting pair would be held and only surface when the review workflow commits it. Reject
+      // it here - at the edit - instead. Runs before the fail-open below so the conflict propagates
+      // as a bad request rather than being swallowed and written.
+      rejectMutuallyExclusiveGatedTags(updated);
       try {
         holdIfGated(original, updated, user);
       } catch (Exception e) {
@@ -102,6 +108,32 @@ public final class ApprovalGate {
         LOG.error("[ApprovalGate] Failed to hold gated change; writing normally", e);
         PENDING_TRIGGER.remove();
       }
+    }
+  }
+
+  // When a pending-change rule gates this entity's tags, validate the proposed tags for mutual
+  // exclusivity up front - the entity updater's own check runs against the reverted (empty) tags and
+  // would miss a held conflict. Resolution errors fall through (the updater still validates a
+  // non-held edit); only a genuine conflict throws, rejecting the edit.
+  private static void rejectMutuallyExclusiveGatedTags(EntityInterface updated) {
+    boolean tagsGated = false;
+    try {
+      String entityType = Entity.getEntityTypeFromObject(updated);
+      for (GatingRule rule : GovernanceApprovalRegistry.gatingRules(entityType)) {
+        if (!WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+            && WorkflowTriggerFilters.fieldTriggers(
+                WorkflowTriggerFields.TAGS.value(),
+                rule.includedFields(),
+                rule.excludedFields())) {
+          tagsGated = true;
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("[ApprovalGate] Could not resolve tag gating for the mutual-exclusivity check", e);
+      tagsGated = false;
+    }
+    if (tagsGated) {
+      TagLabelUtil.checkMutuallyExclusive(updated.getTags());
     }
   }
 

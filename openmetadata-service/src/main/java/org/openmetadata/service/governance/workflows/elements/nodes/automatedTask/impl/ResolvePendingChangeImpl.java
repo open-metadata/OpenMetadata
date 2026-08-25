@@ -22,8 +22,10 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -36,6 +38,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ApprovalGate;
@@ -44,6 +48,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 /**
  * Workflow hook node that resolves the approval-gated change held for the related entity. {@code
@@ -124,7 +129,11 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
       String entityType, EntityInterface original, ChangeDescription held, String author) {
     ObjectNode node = (ObjectNode) JsonUtils.valueToTree(original);
     for (FieldChange fieldChange : CommonUtil.listOrEmpty(held.getFieldsUpdated())) {
-      node.set(fieldChange.getName(), JsonUtils.valueToTree(fieldChange.getNewValue()));
+      if (WorkflowTriggerFields.TAGS.value().equals(fieldChange.getName())) {
+        node.set(WorkflowTriggerFields.TAGS.value(), JsonUtils.valueToTree(resolveTags(original, fieldChange)));
+      } else {
+        node.set(fieldChange.getName(), JsonUtils.valueToTree(fieldChange.getNewValue()));
+      }
     }
     EntityInterface proposed = JsonUtils.readValue(JsonUtils.pojoToJson(node), original.getClass());
     JsonPatch patch = JsonUtils.getJsonPatch(original, proposed);
@@ -134,6 +143,17 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     // the actor via impersonatedBy. Exempt from the gate so this commit is never re-held.
     ApprovalGate.applyExemptFromGate(
         () -> repository.patch(null, original.getId(), author, patch, null, GOVERNANCE_BOT));
+  }
+
+  // Merge the held tags into the entity's current tags with the held change taking precedence, so a
+  // tag another approved change has added since the hold (mutually exclusive with a held tag) is
+  // dropped rather than throwing at persist and failing this workflow node. Non-conflicting current
+  // tags are preserved. The held tags are already internally consistent - the gate rejects a
+  // mutually-exclusive pair at edit time before holding.
+  private List<TagLabel> resolveTags(EntityInterface original, FieldChange heldTagsChange) {
+    List<TagLabel> heldTags =
+        JsonUtils.convertValue(heldTagsChange.getNewValue(), new TypeReference<List<TagLabel>>() {});
+    return TagLabelUtil.mergeTagsWithIncomingPrecedence(original.getTags(), heldTags);
   }
 
   // Flowable stores process variables as untyped Object; the pending-change trigger sets updatedBy
