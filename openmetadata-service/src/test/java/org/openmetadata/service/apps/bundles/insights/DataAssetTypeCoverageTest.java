@@ -78,6 +78,26 @@ class DataAssetTypeCoverageTest {
   }
 
   @Test
+  void everyDataAssetTypeHasAnIndexMapping() {
+    // DataInsightsApp reads a type's IndexMapping to decide whether a live index aliases it in, and
+    // again to build the datastream's mapping. getIndexMapping is a plain map lookup, so a type
+    // with
+    // no entry here is read as "not aliased", joins the ingested set, and then NPEs inside
+    // buildMapping on a null IndexMapping. That escapes the surrounding catch, which only handles
+    // IOException, so the app install dies without naming the type. Failing here says which one.
+    Set<String> mapped = indexMappingKeys();
+
+    for (DataAssetType type : DataAssetType.values()) {
+      assertTrue(
+          mapped.contains(type.value()),
+          type.value()
+              + " is a Data Insights asset type with no entry in "
+              + INDEX_MAPPING_PATH
+              + ", so DataInsightsApp would try to ingest it and dereference a null IndexMapping");
+    }
+  }
+
+  @Test
   void theTwoCoverageMechanismsDoNotOverlap() {
     Set<String> overlap = new HashSet<>(ingestedTypes());
     overlap.retainAll(aliasedTypes());
@@ -85,6 +105,17 @@ class DataAssetTypeCoverageTest {
     // An aliased type points at a live index. Ingesting it as well would have the app create and
     // delete a datastream whose name that alias already occupies, i.e. aimed at live data.
     assertTrue(overlap.isEmpty(), "types both ingested and aliased in: " + overlap);
+  }
+
+  /** Every entity type the search layer knows how to index. */
+  private static Set<String> indexMappingKeys() {
+    JsonNode indexMapping = JsonUtils.readTree(readResource(INDEX_MAPPING_PATH));
+    Set<String> keys = new HashSet<>();
+    Iterator<String> names = indexMapping.fieldNames();
+    while (names.hasNext()) {
+      keys.add(names.next());
+    }
+    return keys;
   }
 
   /** The types the app ingests: the keys of config.json's mappingFields other than common. */
