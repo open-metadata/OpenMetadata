@@ -132,6 +132,50 @@ class MetricGroupRepositoryTest {
   }
 
   @Test
+  void unrestrictedMemberPagingUsesOneBoundedPageAndCountQuery() {
+    UUID groupId = UUID.randomUUID();
+    Metric first = metric("margin");
+    Metric second = metric("gross_margin");
+    when(groupDAO.listMemberJsons(groupId, Relationship.HAS.ordinal(), "%margin%", 25, 50))
+        .thenReturn(List.of(JsonUtils.pojoToJson(first), JsonUtils.pojoToJson(second)));
+    when(groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), "%margin%")).thenReturn(12_345);
+
+    MetricGroupRepository.MemberScan scan =
+        repository.scanUnrestrictedMemberIds(groupId, 25, 50, "margin", false);
+
+    assertEquals(List.of(first.getId(), second.getId()), scan.ids());
+    assertEquals(12_345, scan.total());
+    verify(groupDAO).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%margin%", 25, 50);
+    verify(groupDAO).countMembers(groupId, Relationship.HAS.ordinal(), "%margin%");
+    verify(groupDAO, never())
+        .listMemberJsons(groupId, Relationship.HAS.ordinal(), "%margin%", 500, 0);
+  }
+
+  @Test
+  void unrestrictedRootPagingUsesRootPageAndCountQueries() {
+    UUID groupId = UUID.randomUUID();
+    Metric root = metric("margin");
+    when(groupDAO.listRootMemberJsonsPage(
+            groupId, Relationship.HAS.ordinal(), Relationship.CONTAINS.ordinal(), "%", 10, 20))
+        .thenReturn(List.of(JsonUtils.pojoToJson(root)));
+    when(groupDAO.countRootMembersPage(
+            groupId, Relationship.HAS.ordinal(), Relationship.CONTAINS.ordinal(), "%"))
+        .thenReturn(321);
+
+    MetricGroupRepository.MemberScan scan =
+        repository.scanUnrestrictedMemberIds(groupId, 10, 20, null, true);
+
+    assertEquals(List.of(root.getId()), scan.ids());
+    assertEquals(321, scan.total());
+    verify(groupDAO)
+        .listRootMemberJsonsPage(
+            groupId, Relationship.HAS.ordinal(), Relationship.CONTAINS.ordinal(), "%", 10, 20);
+    verify(groupDAO)
+        .countRootMembersPage(
+            groupId, Relationship.HAS.ordinal(), Relationship.CONTAINS.ordinal(), "%");
+  }
+
+  @Test
   void transactionBoundSubtreeAssignmentPropagatesMidMutationFailures() {
     EntityReference originalGroup = group("original").getEntityReference();
     EntityReference targetGroup = group("target").getEntityReference();

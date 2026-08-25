@@ -960,7 +960,14 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   public ResultList<MetricHierarchyItem> listHierarchy(int limit, int offset, String query) {
-    return listHierarchy(limit, offset, query, ignored -> true, ignored -> true);
+    String nameLike = MetricGroupRepository.buildNameLike(query);
+    HierarchyScan scan = scanUnrestrictedHierarchyRows(limit, offset, nameLike);
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows = scan.rows();
+    Map<UUID, Metric> metrics = loadMetricsById(hierarchyIds(rows, METRIC));
+    metrics.replaceAll(
+        (id, metric) -> sanitizeHierarchyMetric(metric, ignored -> true, ignored -> true));
+    Map<UUID, MetricGroup> groups = loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP));
+    return buildHierarchyResult(scan, limit, offset, metrics, groups);
   }
 
   public ResultList<MetricHierarchyItem> listHierarchy(
@@ -980,8 +987,28 @@ public class MetricRepository extends EntityRepository<Metric> {
             sanitizeHierarchyMetricWithVisibleCount(metric, canViewMetric, canViewGroup));
     Map<UUID, MetricGroup> groups =
         loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP), canViewMetric);
+    return buildHierarchyResult(scan, limit, offset, metrics, groups);
+  }
+
+  HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {
+    CollectionDAO.MetricDAO metricDAO = daoCollection.metricDAO();
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows =
+        metricDAO.listHierarchy(
+            Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), nameLike, limit, offset);
+    int total =
+        metricDAO.countHierarchy(
+            Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), nameLike);
+    return new HierarchyScan(rows, total);
+  }
+
+  private ResultList<MetricHierarchyItem> buildHierarchyResult(
+      HierarchyScan scan,
+      int limit,
+      int offset,
+      Map<UUID, Metric> metrics,
+      Map<UUID, MetricGroup> groups) {
     List<MetricHierarchyItem> data = new ArrayList<>();
-    for (CollectionDAO.MetricDAO.HierarchyRow row : rows) {
+    for (CollectionDAO.MetricDAO.HierarchyRow row : scan.rows()) {
       data.add(toHierarchyItem(row, metrics, groups));
     }
     Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(scan.total());
@@ -1106,19 +1133,32 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   private Map<UUID, MetricGroup> loadGroupsById(
       List<UUID> ids, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, MetricGroup> groups = loadGroupsById(ids);
+    MetricGroupRepository repository = metricGroupRepository();
+    groups
+        .values()
+        .forEach(
+            group ->
+                group.setMetricCount(repository.visibleMetricCount(group.getId(), canViewMetric)));
+    return groups;
+  }
+
+  private Map<UUID, MetricGroup> loadGroupsById(List<UUID> ids) {
     List<MetricGroup> groups = daoCollection.metricGroupDAO().findEntitiesByIds(ids, NON_DELETED);
-    MetricGroupRepository repository =
-        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    MetricGroupRepository repository = metricGroupRepository();
     repository.setFieldsInBulk(repository.getFields("owners,domains,tags,metricCount"), groups);
     return groups.stream()
         .map(
             group -> {
               MetricGroup sanitized = JsonUtils.deepCopy(group, MetricGroup.class);
               sanitized.setMetrics(null);
-              sanitized.setMetricCount(repository.visibleMetricCount(group.getId(), canViewMetric));
               return sanitized;
             })
         .collect(Collectors.toMap(MetricGroup::getId, group -> group));
+  }
+
+  private MetricGroupRepository metricGroupRepository() {
+    return (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
   }
 
   public MetricHierarchyContext getHierarchyContext(
@@ -1307,7 +1347,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   private record MetricPage(List<Metric> data, Paging paging) {}
 
-  private record HierarchyScan(List<CollectionDAO.MetricDAO.HierarchyRow> rows, int total) {}
+  record HierarchyScan(List<CollectionDAO.MetricDAO.HierarchyRow> rows, int total) {}
 
   @FunctionalInterface
   private interface MetricIdPageLoader {

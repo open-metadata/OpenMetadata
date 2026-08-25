@@ -46,7 +46,10 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
@@ -133,21 +136,49 @@ class MetricGroupResourceTest {
     ResultList<Metric> expected =
         new ResultList<>(List.of(), new Paging().withLimit(15).withOffset(30).withTotal(0));
     try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
       when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(group);
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
       when(fixture
               .repository()
               .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(true), any()))
           .thenReturn(expected);
 
       ResultList<Metric> actual =
-          fixture
-              .resource()
-              .listMetrics(mock(SecurityContext.class), groupId, "margin", true, 15, 30);
+          fixture.resource().listMetrics(securityContext, groupId, "margin", true, 15, 30);
 
       assertEquals(expected, actual);
       verify(fixture.authorizer()).authorize(any(), any(), any());
       verify(fixture.repository())
           .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(true), any());
+    }
+  }
+
+  @Test
+  void memberListUsesDatabasePagingForUnconditionalMetricVisibility() {
+    UUID groupId = UUID.randomUUID();
+    MetricGroup group =
+        new MetricGroup()
+            .withId(groupId)
+            .withName("profitability")
+            .withFullyQualifiedName("profitability");
+    ResultList<Metric> expected =
+        new ResultList<>(List.of(), new Paging().withLimit(15).withOffset(30).withTotal(0));
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(group);
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(metricViewPermission(Permission.Access.ALLOW));
+      when(fixture.repository().listMetrics(groupId, 15, 30, "margin", false)).thenReturn(expected);
+
+      ResultList<Metric> actual =
+          fixture.resource().listMetrics(securityContext, groupId, "margin", false, 15, 30);
+
+      assertEquals(expected, actual);
+      verify(fixture.repository()).listMetrics(groupId, 15, 30, "margin", false);
+      verify(fixture.repository(), never())
+          .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(false), any());
     }
   }
 
@@ -305,6 +336,14 @@ class MetricGroupResourceTest {
         .withName(name)
         .withFullyQualifiedName(name)
         .withMetrics(List.of(member));
+  }
+
+  private ResourcePermission metricViewPermission(Permission.Access access) {
+    return new ResourcePermission()
+        .withResource(Entity.METRIC)
+        .withPermissions(
+            List.of(
+                new Permission().withOperation(MetadataOperation.VIEW_BASIC).withAccess(access)));
   }
 
   private ResourceFixture resourceFixture() {

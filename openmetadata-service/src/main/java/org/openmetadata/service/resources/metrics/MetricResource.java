@@ -70,6 +70,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -144,12 +146,35 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    return repository.listHierarchy(
-        limit,
-        offset,
-        query,
-        metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
-        group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
+    ResultList<MetricHierarchyItem> result;
+    if (canListHierarchyWithoutFiltering(securityContext)) {
+      result = repository.listHierarchy(limit, offset, query);
+    } else {
+      result =
+          repository.listHierarchy(
+              limit,
+              offset,
+              query,
+              metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
+              group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
+    }
+    return result;
+  }
+
+  private boolean canListHierarchyWithoutFiltering(SecurityContext securityContext) {
+    String user = securityContext.getUserPrincipal().getName();
+    return hasUnconditionalView(authorizer.getPermission(securityContext, user, Entity.METRIC))
+        && hasUnconditionalView(
+            authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
+  }
+
+  static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
+    return resourcePermission != null
+        && listOrEmpty(resourcePermission.getPermissions()).stream()
+            .anyMatch(
+                permission ->
+                    MetadataOperation.VIEW_BASIC.equals(permission.getOperation())
+                        && Permission.Access.ALLOW.equals(permission.getAccess()));
   }
 
   @GET

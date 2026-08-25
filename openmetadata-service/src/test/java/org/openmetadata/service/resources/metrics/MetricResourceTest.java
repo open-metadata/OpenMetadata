@@ -34,6 +34,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.lang.reflect.Method;
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -52,6 +53,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -253,17 +256,42 @@ class MetricResourceTest {
     ResultList<MetricHierarchyItem> expected =
         new ResultList<>(List.of(), new Paging().withLimit(25).withOffset(50).withTotal(0));
     try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
       when(fixture.repository().listHierarchy(eq(25), eq(50), eq("margin"), any(), any()))
           .thenReturn(expected);
 
       ResultList<MetricHierarchyItem> actual =
-          fixture
-              .resource()
-              .listHierarchy(mock(jakarta.ws.rs.core.SecurityContext.class), "margin", 25, 50);
+          fixture.resource().listHierarchy(securityContext, "margin", 25, 50);
 
       assertEquals(expected, actual);
       verify(fixture.repository()).listHierarchy(eq(25), eq(50), eq("margin"), any(), any());
       verify(fixture.authorizer()).authorize(any(), any(), any());
+    }
+  }
+
+  @Test
+  void hierarchyListUsesDatabasePagingWhenMetricsAndGroupsAreUnconditionallyVisible() {
+    ResultList<MetricHierarchyItem> expected =
+        new ResultList<>(List.of(), new Paging().withLimit(25).withOffset(50).withTotal(0));
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      when(fixture.repository().listHierarchy(25, 50, "margin")).thenReturn(expected);
+
+      ResultList<MetricHierarchyItem> actual =
+          fixture.resource().listHierarchy(securityContext, "margin", 25, 50);
+
+      assertEquals(expected, actual);
+      verify(fixture.repository()).listHierarchy(25, 50, "margin");
+      verify(fixture.repository(), never())
+          .listHierarchy(eq(25), eq(50), eq("margin"), any(), any());
     }
   }
 
@@ -387,6 +415,22 @@ class MetricResourceTest {
       assertNotNull(fixture.resource());
       assertFalse(fixture.resource().getRepository().getAllowedFields().isEmpty());
     }
+  }
+
+  private SecurityContext securityContext(String name) {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn(name);
+    SecurityContext context = mock(SecurityContext.class);
+    when(context.getUserPrincipal()).thenReturn(principal);
+    return context;
+  }
+
+  private ResourcePermission viewPermission(String resource, Permission.Access access) {
+    return new ResourcePermission()
+        .withResource(resource)
+        .withPermissions(
+            List.of(
+                new Permission().withOperation(MetadataOperation.VIEW_BASIC).withAccess(access)));
   }
 
   private ResourceFixture resourceFixture() {

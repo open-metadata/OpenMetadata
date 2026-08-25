@@ -348,7 +348,8 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   public ResultList<Metric> listMetrics(
       UUID groupId, int limit, int offset, String query, boolean rootOnly) {
-    return listMetrics(groupId, limit, offset, query, rootOnly, ignored -> true);
+    MemberScan scan = scanUnrestrictedMemberIds(groupId, limit, offset, query, rootOnly);
+    return buildMetricPage(scan, limit, offset, ignored -> true);
   }
 
   public ResultList<Metric> listMetrics(
@@ -362,6 +363,11 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     String nameLike = buildNameLike(query);
     MemberScan scan =
         scanMemberIds(groupDAO, groupId, limit, offset, query, nameLike, rootOnly, isVisible);
+    return buildMetricPage(scan, limit, offset, isVisible);
+  }
+
+  private ResultList<Metric> buildMetricPage(
+      MemberScan scan, int limit, int offset, Predicate<EntityReference> isVisible) {
     List<UUID> ids = scan.ids();
     List<Metric> metrics = daoCollection.metricDAO().findEntitiesByIds(ids, NON_DELETED);
     MetricRepository metricRepository =
@@ -384,6 +390,31 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     metrics.sort((left, right) -> positions.get(left.getId()) - positions.get(right.getId()));
     Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(scan.total());
     return new ResultList<>(metrics, paging);
+  }
+
+  MemberScan scanUnrestrictedMemberIds(
+      UUID groupId, int limit, int offset, String query, boolean rootOnly) {
+    CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
+    String nameLike = buildNameLike(query);
+    MemberScan result;
+    if (rootOnly && hasSearchQuery(query)) {
+      result =
+          scanMemberIds(groupDAO, groupId, limit, offset, query, nameLike, true, ignored -> true);
+    } else {
+      List<EntityReference> references =
+          memberReferences(groupDAO, groupId, limit, offset, nameLike, rootOnly);
+      int total = countUnrestrictedMembers(groupDAO, groupId, nameLike, rootOnly);
+      result = new MemberScan(references.stream().map(EntityReference::getId).toList(), total);
+    }
+    return result;
+  }
+
+  private int countUnrestrictedMembers(
+      CollectionDAO.MetricGroupDAO groupDAO, UUID groupId, String nameLike, boolean rootOnly) {
+    return rootOnly
+        ? groupDAO.countRootMembersPage(
+            groupId, Relationship.HAS.ordinal(), Relationship.CONTAINS.ordinal(), nameLike)
+        : groupDAO.countMembers(groupId, Relationship.HAS.ordinal(), nameLike);
   }
 
   int visibleMetricCount(UUID groupId, Predicate<EntityReference> isVisible) {
@@ -449,7 +480,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   private boolean subtreeMatchesQuery(
       UUID rootId, String query, Predicate<EntityReference> isVisible) {
-    if (nullOrEmpty(query) || query.trim().isEmpty()) {
+    if (!hasSearchQuery(query)) {
       return true;
     }
     return expandSubtree(rootId).stream()
@@ -457,7 +488,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   }
 
   static boolean referenceMatchesQuery(EntityReference reference, String query) {
-    if (nullOrEmpty(query) || query.trim().isEmpty()) {
+    if (!hasSearchQuery(query)) {
       return true;
     }
     String normalized = query.trim().toLowerCase(Locale.ROOT);
@@ -467,6 +498,10 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   private static boolean stringContains(String value, String normalizedQuery) {
     return value != null && value.toLowerCase(Locale.ROOT).contains(normalizedQuery);
+  }
+
+  private static boolean hasSearchQuery(String query) {
+    return !nullOrEmpty(query) && !query.trim().isEmpty();
   }
 
   private List<EntityReference> memberReferences(
@@ -759,7 +794,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   record MembershipChange(List<EntityReference> metrics, Set<EntityReference> groups) {}
 
-  private record MemberScan(List<UUID> ids, int total) {}
+  record MemberScan(List<UUID> ids, int total) {}
 
   static String buildNameLike(String query) {
     String result = "%";

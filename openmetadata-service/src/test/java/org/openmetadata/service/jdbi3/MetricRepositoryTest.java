@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationTargetException;
@@ -183,6 +184,36 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void unrestrictedHierarchyPagingUsesOneBoundedPageAndCountQuery() {
+    UUID metricId = UUID.randomUUID();
+    List<CollectionDAO.MetricDAO.HierarchyRow> rows =
+        List.of(new CollectionDAO.MetricDAO.HierarchyRow(metricId, Entity.METRIC));
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      when(fixture
+              .metricDAO()
+              .listHierarchy(
+                  Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), "%margin%", 25, 50))
+          .thenReturn(rows);
+      when(fixture
+              .metricDAO()
+              .countHierarchy(
+                  Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), "%margin%"))
+          .thenReturn(12_345);
+
+      MetricRepository.HierarchyScan scan =
+          fixture.repository().scanUnrestrictedHierarchyRows(25, 50, "%margin%");
+
+      assertEquals(rows, scan.rows());
+      assertEquals(12_345, scan.total());
+      verify(fixture.metricDAO())
+          .listHierarchy(
+              Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), "%margin%", 25, 50);
+      verify(fixture.metricDAO())
+          .countHierarchy(Relationship.CONTAINS.ordinal(), Relationship.HAS.ordinal(), "%margin%");
+    }
+  }
+
+  @Test
   void assetDirectionUsesGenericLineageSetsWithUpstreamPrecedence() {
     UUID assetId = UUID.randomUUID();
 
@@ -315,7 +346,7 @@ class MetricRepositoryTest {
     when(collectionDAO.metricDAO()).thenReturn(metricDAO);
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     Entity.setCollectionDAO(collectionDAO);
-    return new RepositoryFixture(new MetricRepository(), relationshipDAO);
+    return new RepositoryFixture(new MetricRepository(), metricDAO, relationshipDAO);
   }
 
   private Metric metric(UUID metricId, UUID parentId) {
@@ -348,7 +379,9 @@ class MetricRepositoryTest {
   }
 
   private record RepositoryFixture(
-      MetricRepository repository, CollectionDAO.EntityRelationshipDAO relationshipDAO)
+      MetricRepository repository,
+      CollectionDAO.MetricDAO metricDAO,
+      CollectionDAO.EntityRelationshipDAO relationshipDAO)
       implements AutoCloseable {
     @Override
     public void close() {
