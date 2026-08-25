@@ -200,3 +200,44 @@ describe('TableV2 — sticky header opt-in', () => {
     expect(stuck()).toBe(true);
   });
 });
+
+/**
+ * TableV2-only: AntD has no cell wrapper at all, so there is nothing to compare
+ * against. The wrapper exists to place the tree expander beside the value; when
+ * there is no expander it must not lay anything out, or content a cell renders
+ * inline (a dropdown, a popover) is sized by it. A Glossary Terms dropdown came
+ * out a few pixels wide.
+ */
+describe('TableV2 — cell content is not boxed without an expander', () => {
+  const firstCellWrapper = () =>
+    screen.getAllByRole('row')[1].querySelector('td, th')
+      ?.firstElementChild as HTMLElement;
+
+  it('does not create a flex box when there is no expander', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ name: 'alpha' }]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(firstCellWrapper().className).toContain('tw:contents');
+    expect(firstCellWrapper().className).not.toContain('tw:flex');
+  });
+
+  it('lays out a row with an expander so the icon sits beside the value', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: 'Name' }]}
+        dataSource={[{ children: [{ name: 'child' }], name: 'parent' }]}
+        expandable={{}}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    expect(firstCellWrapper().className).toContain('tw:flex');
+  });
+});

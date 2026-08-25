@@ -1296,9 +1296,17 @@ const TableV2 = <T extends object>(
                               ...cellHandlerProps.style,
                             }}>
                             <div
-                              className={classNames(
-                                'tw:flex tw:gap-1 tw:max-w-full'
-                              )}>
+                              // Only a laid-out box when it has an expander to
+                              // place beside the value. AntD puts cell content
+                              // straight into the <td>, and a flex parent with
+                              // `max-w-full` collapsed anything a cell rendered
+                              // inline — a Glossary Terms dropdown came out a
+                              // few pixels wide.
+                              className={classNames({
+                                'tw:flex tw:gap-1 tw:max-w-full':
+                                  showExpandInCell,
+                                'tw:contents': !showExpandInCell,
+                              })}>
                               {showExpandInCell && (
                                 <div className="tw:flex tw:items-center tw:shrink-0">
                                   {hasChildren ? (
