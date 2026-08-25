@@ -958,9 +958,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * resolve the task".
    *
    * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
-   * fallback is permitted: a non-filer user with {@code EditTests}/{@code EditAll} on the related
-   * entity can resolve the task even if the task policy alone would deny — preserving the
-   * historical behaviour that test owners can act on incidents. The filer check is intentional:
+   * fallback is permitted: a non-filer user with {@code EditStatus}, {@code EditTests} or
+   * {@code EditAll} on the related entity can resolve the task even if the task policy alone would
+   * deny — preserving the historical behaviour that test owners can act on incidents, and letting
+   * {@code EditStatus} alone grant incident management without test case edit rights. The filer
+   * check is intentional:
    * mixing the task policy and the incident fallback in a single {@code AuthorizationLogic.ANY}
    * call would let a filer who also owns the related entity bypass the {@code isTaskFiler()} deny
    * rule and approve their own task. The two checks are therefore evaluated sequentially with the
@@ -1081,6 +1083,12 @@ public class TaskRepository extends EntityRepository<Task> {
                 new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
                 entityResourceContext));
       }
+      // EditStatus is the Incident Manager grant: it lets a user drive incident transitions
+      // without holding edit rights on the test case itself.
+      requests.add(
+          new AuthRequest(
+              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+              testCaseResourceContext));
       requests.add(
           new AuthRequest(
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
