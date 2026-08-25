@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { renderIcon } from '../../../utils/IconUtils';
+import { Icon } from '../Icon/Icon';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
@@ -32,24 +32,18 @@ const CertificationTag = ({
   const imageItem = useMemo(() => {
     const iconURL = certification.tagLabel.style?.iconURL;
     const name = getEntityName(certification.tagLabel);
-
-    if (iconURL) {
-      const iconSize = showName ? 16 : 28;
-      const renderedIcon = renderIcon(iconURL, {
-        size: iconSize,
-        className: 'certification-img',
-        alt: `certification: ${name}`,
-      });
-
-      if (renderedIcon) {
-        return renderedIcon;
-      }
-    }
-
     const defaultIconSize = showName ? 14 : 20;
 
     return (
-      <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
+      <Icon
+        alt={`certification: ${name}`}
+        className="certification-img"
+        fallback={
+          <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
+        }
+        iconValue={iconURL}
+        size={showName ? 16 : 28}
+      />
     );
   }, [certification.tagLabel, showName]);
 
