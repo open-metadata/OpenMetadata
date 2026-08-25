@@ -41,7 +41,7 @@ type ParityColumn = {
   dataIndex?: string;
   key?: string;
   render?: (value: never, record: never, index: number) => unknown;
-  sorter?: unknown;
+  sorter?: boolean | ((a: ParityRow, b: ParityRow) => number);
   sortOrder?: 'ascend' | 'descend';
   sortDirections?: ('ascend' | 'descend')[];
   fixed?: 'left' | 'right';
@@ -315,6 +315,74 @@ export const runTableParitySuite = (
       renderTable({ dataSource: many, pagination: { pageSize: 5 } });
 
       expect(adapter.queryPager()).not.toBeNull();
+    });
+  });
+
+  /**
+   * A parent that fetches one page at a time hands over only that page and
+   * reports the real size through `total`. The rows in hand must be rendered
+   * as-is, and the page change has to reach `onChange` — that callback *is*
+   * the refetch.
+   */
+  describe(`${suiteName} — server-driven pagination`, () => {
+    const pageOne = Array.from({ length: 5 }, (_, i) => ({
+      count: i,
+      name: `row-${String(i).padStart(2, '0')}`,
+    }));
+
+    const serverPagination = {
+      current: 1,
+      pageSize: 5,
+      total: 40,
+    };
+
+    it('renders the fetched page without re-slicing it', () => {
+      renderTable({
+        dataSource: pageOne,
+        pagination: serverPagination,
+      });
+
+      expect(renderedNames()).toHaveLength(5);
+      expect(renderedNames()[0]).toBe('row-00');
+    });
+
+    it('shows a pager sized from total, not from the rows in hand', () => {
+      renderTable({
+        dataSource: pageOne,
+        pagination: serverPagination,
+      });
+
+      expect(adapter.queryPager()).not.toBeNull();
+    });
+
+    it('reports the next page through onChange so the parent can refetch', () => {
+      const onChange = jest.fn();
+      renderTable({
+        dataSource: pageOne,
+        onChange,
+        pagination: serverPagination,
+      });
+
+      act(() => adapter.clickNextPage());
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ current: 2 })
+      );
+    });
+
+    it('keeps showing the fetched rows after the page advances', () => {
+      renderTable({
+        dataSource: pageOne,
+        onChange: jest.fn(),
+        pagination: serverPagination,
+      });
+
+      act(() => adapter.clickNextPage());
+
+      // The parent has not refetched in this test, so the same rows stay —
+      // what must not happen is an empty page from a second client-side slice.
+      expect(renderedNames()).toHaveLength(5);
     });
   });
 

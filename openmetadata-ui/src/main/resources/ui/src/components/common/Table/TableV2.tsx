@@ -163,7 +163,8 @@ const toCoreSize = (size: TableComponentProps<never>['size']) =>
 const resolveClientPagination = <T,>(
   pagination: TableComponentProps<T>['pagination'],
   pageSizeOverride: number | null,
-  hasParentPagination: boolean
+  hasParentPagination: boolean,
+  rowCount: number
 ) => {
   if (pagination === false || hasParentPagination) {
     return null;
@@ -176,6 +177,15 @@ const resolveClientPagination = <T,>(
     showSizeChanger: cfg.showSizeChanger ?? false,
     pageSizeOptions: (cfg.pageSizeOptions ?? []).map(Number),
     onShowSizeChange: cfg.onShowSizeChange,
+    // A `total` larger than the rows in hand means the parent fetched one page
+    // and is driving the rest itself. AntD renders those rows as-is and reports
+    // page changes through `onChange`; slicing them again would leave every
+    // page after the first empty.
+    serverTotal:
+      typeof cfg.total === 'number' && cfg.total > rowCount
+        ? cfg.total
+        : undefined,
+    controlledCurrent: typeof cfg.current === 'number' ? cfg.current : undefined,
   };
 };
 
@@ -435,10 +445,17 @@ const TableV2 = <T extends object>(
       resolveClientPagination(
         rest.pagination,
         pageSizeOverride,
-        hasParentPagination
+        hasParentPagination,
+        (rest.dataSource ?? []).length
       ),
-    [rest.pagination, pageSizeOverride, hasParentPagination]
+    [
+      rest.pagination,
+      pageSizeOverride,
+      hasParentPagination,
+      rest.dataSource,
+    ]
   );
+
 
   /**
    * Changing the page size invalidates the current page — AntD resets to the
@@ -564,14 +581,44 @@ const TableV2 = <T extends object>(
     );
   }, [sortedDataSource, filterState, propsColumns, columnIds]);
 
+  const currentPage =
+    clientPagination?.controlledCurrent ?? internalCurrentPage;
+
+  /**
+   * AntD reports page navigation through `onChange`, which is how a
+   * server-paged table refetches. Without this the pager only moved internal
+   * state and a parent driving its own fetch never heard about it.
+   */
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      setInternalCurrentPage(nextPage);
+      rest.onChange?.(
+        {
+          current: nextPage,
+          pageSize: clientPagination?.pageSize ?? DEFAULT_PAGE_SIZE,
+          total: clientPagination?.serverTotal ?? filteredDataSource.length,
+        } as TablePaginationConfig,
+        {} as Record<string, FilterValue | null>,
+        {} as SorterResult<T>,
+        {
+          currentDataSource: filteredDataSource,
+          action: 'paginate',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    [rest.onChange, clientPagination, filteredDataSource]
+  );
+
   const pagedDataSource = useMemo((): T[] => {
-    if (!clientPagination) {
+    // The parent already fetched exactly this page when it reports a larger
+    // `total` than it handed over.
+    if (!clientPagination || clientPagination.serverTotal) {
       return filteredDataSource;
     }
-    const start = (internalCurrentPage - 1) * clientPagination.pageSize;
+    const start = (currentPage - 1) * clientPagination.pageSize;
 
     return filteredDataSource.slice(start, start + clientPagination.pageSize);
-  }, [filteredDataSource, clientPagination, internalCurrentPage]);
+  }, [filteredDataSource, clientPagination, currentPage]);
 
   const expandedKeys = useMemo<Set<string>>(() => {
     if (!rest.expandable) {
@@ -915,6 +962,9 @@ const TableV2 = <T extends object>(
 
   const dataSourceLength = filteredDataSource.length;
   useEffect(() => {
+    if (clientPagination?.serverTotal) {
+      return;
+    }
     const maxPage = clientPagination
       ? Math.ceil(dataSourceLength / clientPagination.pageSize) || 1
       : 1;
@@ -1059,7 +1109,20 @@ const TableV2 = <T extends object>(
               }
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
-              dragAndDropHooks={dragAndDropHooks}
+              dragAndDropHooks={
+                /*
+                 * `ui-core-components` bundles react-aria-components 1.16 while
+                 * the app resolves 1.17, so the two `DragAndDropHooks`
+                 * declarations are structurally identical but nominally
+                 * distinct. Call sites build these with the app's
+                 * `useDragAndDrop`, which is the copy that has to stay
+                 * assignable; the cast is confined to this one hand-off and
+                 * disappears once the versions converge.
+                 */
+                dragAndDropHooks as React.ComponentProps<
+                  typeof UntitledTable
+                >['dragAndDropHooks']
+              }
               selectedKeys={
                 rest.rowSelection?.selectedRowKeys
                   ? new Set(rest.rowSelection.selectedRowKeys.map(String))
@@ -1081,7 +1144,7 @@ const TableV2 = <T extends object>(
                 rest.onRowAction
                   ? (key) =>
                       rest.onRowAction?.(
-                        rowKeyById.get(String(key)) ?? String(key)
+                        rowEntryById.get(String(key))?.key ?? String(key)
                       )
                   : undefined
               }
@@ -1411,11 +1474,13 @@ const TableV2 = <T extends object>(
         <div>
           <NextPrevious
             isNumberBased
-            currentPage={internalCurrentPage}
+            currentPage={currentPage}
             pageSize={clientPagination.pageSize}
-            paging={{ total: filteredDataSource.length }}
-            pagingHandler={({ currentPage }) =>
-              setInternalCurrentPage(currentPage)
+            paging={{
+              total: clientPagination.serverTotal ?? filteredDataSource.length,
+            }}
+            pagingHandler={({ currentPage: nextPage }) =>
+              handlePageChange(nextPage)
             }
             {...sizeChangerProps}
           />
