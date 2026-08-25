@@ -210,12 +210,22 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge Reports and Generate Slack Notification
+      - name: Merge Reports
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
+
+      # Posting to Slack is a reporting side-effect, not a test signal, so it
+      # runs as its own step and never fails the run -- matching the standalone
+      # slack-notify job on main. On 2026-08-22 playwright-slack-report@1.1.113
+      # picked up undici@8.10.0 (engines: node >=22.19.0) and every nightly went
+      # red on EBADENGINE while all 8 shards were green.
+      - name: Generate Slack Notification
+        continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           RUN_TITLE: "MySQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
-          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
           npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json
