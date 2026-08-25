@@ -113,7 +113,9 @@ const CustomizablePageContent = () => {
       } else {
         newDoc.data = {
           ...newDoc.data,
-          pages: [...(newDoc.data.pages ?? []), newPage],
+          pages: newPage
+            ? [...(newDoc.data.pages ?? []), newPage]
+            : [...(newDoc.data.pages ?? [])],
         };
       }
 

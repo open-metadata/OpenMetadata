@@ -12,7 +12,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { useParams } from 'react-router-dom';
 import { Page, PageType } from '../../generated/system/ui/page';
@@ -23,9 +23,10 @@ import {
   mockShowErrorToast,
   mockShowSuccessToast,
 } from '../../mocks/CustomizablePage.mock';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { createDocument, getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { CustomizablePage } from './CustomizablePage';
+import { useCustomizeStore } from './CustomizeStore';
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
@@ -36,25 +37,6 @@ jest.mock(
   () => {
     return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
   }
-);
-
-jest.mock(
-  '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(
-        ({ initialPageData, handleSaveCurrentPageLayout }) => (
-          <div data-testid="customize-my-data">
-            {initialPageData.data.page.layout.map((widget: WidgetConfig) => (
-              <div key={widget.i}>{widget.i}</div>
-            ))}
-            <div role="presentation" onClick={handleSaveCurrentPageLayout}>
-              handleSaveCurrentPageLayout
-            </div>
-          </div>
-        )
-      )
 );
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -107,7 +89,14 @@ jest.mock('./CustomizeStore', () => ({
 jest.mock(
   '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
   () => {
-    return jest.fn().mockImplementation(() => <div>CustomizeMyData</div>);
+    return jest.fn().mockImplementation(({ onSaveLayout }) => (
+      <div>
+        CustomizeMyData
+        <button data-testid="reset-layout" onClick={() => onSaveLayout()}>
+          reset
+        </button>
+      </div>
+    ));
   }
 );
 
@@ -230,5 +219,40 @@ describe('CustomizablePage component', () => {
     expect(
       screen.getByTestId('settings-navigation-persona-name')
     ).toHaveTextContent(mockPersonaName);
+  });
+
+  it('CustomizablePage should not append null to pages when reset is triggered and no saved page exists', async () => {
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: mockPersonaName,
+      pageFqn: PageType.LandingPage,
+    }));
+    (useCustomizeStore as unknown as jest.Mock).mockImplementation(() => ({
+      document: {
+        name: `${mockPersonaName}-LandingPage`,
+        fullyQualifiedName: `persona.${mockPersonaName}`,
+        entityType: 'Page',
+        data: { pages: [], navigation: null },
+      },
+      setDocument: jest.fn(),
+      getNavigation: jest.fn(),
+      currentPage: {} as Page,
+      getPage: jest.fn().mockReturnValue(undefined),
+      setCurrentPageType: jest.fn(),
+    }));
+
+    await act(async () => {
+      renderCustomizablePage();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('reset-layout'));
+    });
+
+    expect(createDocument as jest.Mock).toHaveBeenCalledTimes(1);
+
+    const createdDoc = (createDocument as jest.Mock).mock.calls[0][0];
+
+    expect(createdDoc.data.pages).toStrictEqual([]);
+    expect(createdDoc.data.pages).toHaveLength(0);
   });
 });
