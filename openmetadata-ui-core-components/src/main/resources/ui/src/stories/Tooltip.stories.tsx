@@ -27,7 +27,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Pass the trigger element directly as a child — no TooltipTrigger wrapper needed.
 export const Default: Story = {
   render: () => (
     <Tooltip title="This is a tooltip">
@@ -54,7 +53,6 @@ export const WithArrow: StoryObj = {
   ),
 };
 
-// Tooltip on a non-focusable span — auto-wrapped internally.
 export const OnSpan: StoryObj = {
   render: () => (
     <Tooltip title="Tooltip on a plain span">
@@ -63,7 +61,6 @@ export const OnSpan: StoryObj = {
   ),
 };
 
-// Tooltip on an icon component — use triggerClassName to style the wrapper.
 export const OnIcon: StoryObj = {
   render: () => (
     <Tooltip
@@ -74,7 +71,6 @@ export const OnIcon: StoryObj = {
   ),
 };
 
-// Button with built-in tooltip prop (no wrapper needed at the call site).
 export const ButtonWithTooltip: StoryObj = {
   render: () => (
     <Button color="secondary" tooltip="Built-in tooltip via the tooltip prop">

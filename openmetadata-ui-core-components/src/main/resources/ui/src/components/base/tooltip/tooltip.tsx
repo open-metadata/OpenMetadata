@@ -29,6 +29,10 @@ const PLACEMENT_MAP: Record<string, string> = {
 };
 
 // HTML elements that are natively focusable and don't need an AriaButton wrapper.
+// IMPORTANT: do NOT pass a container element whose children are interactive (e.g.
+// a <div> containing a <button>). Tooltip only inspects the top-level element type;
+// wrapping such a container would produce a button-in-button (invalid HTML / a11y).
+// The caller is responsible for ensuring the direct child has no interactive descendants.
 const NATIVELY_FOCUSABLE_HTML = new Set([
   'a',
   'button',
