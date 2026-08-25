@@ -502,5 +502,86 @@ describe('SwTokenStorageUtils', () => {
       expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
       expect(await getOidcToken()).toBe('');
     });
+
+    it('should delete persisted state directly from IndexedDB when the service worker removal fails', async () => {
+      // #32063 review finding: when the SW cannot be reached at logout, the
+      // page must fall back to deleting app_state from IndexedDB itself, so
+      // stale tokens cannot be restored once the SW recovers after a reload.
+      const mockIdbDelete = jest.fn();
+      const store = { delete: mockIdbDelete };
+      const tx: { objectStore: () => typeof store; oncomplete?: () => void } = {
+        objectStore: () => store,
+      };
+      const db = {
+        objectStoreNames: { contains: () => true },
+        transaction: () => {
+          // native promise microtask: the suite runs with fake timers, which
+          // intercept setTimeout and queueMicrotask but not promise jobs
+          Promise.resolve().then(() => tx.oncomplete?.());
+
+          return tx;
+        },
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await clearOidcToken();
+
+      expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
+      expect(mockIdbDelete).toHaveBeenCalledWith('app_state');
+    });
+
+    it('should resolve quietly when the IndexedDB store does not exist yet', async () => {
+      const db = {
+        objectStoreNames: { contains: () => false },
+        transaction: jest.fn(),
+        close: jest.fn(),
+      };
+      const openRequest: { result?: typeof db; onsuccess?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.result = db;
+            openRequest.onsuccess?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
+
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(db.close).toHaveBeenCalled();
+    });
+
+    it('should not throw when opening IndexedDB fails during the logout fallback', async () => {
+      const openRequest: { error?: Error; onerror?: () => void } = {};
+      (global.window as unknown as MockWindow).indexedDB = {
+        open: jest.fn(() => {
+          Promise.resolve().then(() => {
+            openRequest.error = new Error('IDB blocked');
+            openRequest.onerror?.();
+          });
+
+          return openRequest;
+        }),
+      };
+      mockRemoveItem.mockRejectedValue(new Error('SW timeout'));
+
+      await expect(clearOidcToken()).resolves.toBeUndefined();
+    });
   });
 });

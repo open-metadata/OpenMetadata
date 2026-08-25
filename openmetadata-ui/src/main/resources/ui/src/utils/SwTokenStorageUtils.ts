@@ -46,6 +46,37 @@ export const resetSwTokenStorageState = (): void => {
   inMemoryState = {};
 };
 
+// Mirrors DB_NAME / STORE_NAME in public/app-worker.js — the service worker's
+// persistence layer. Used only as a logout fallback when the worker itself
+// cannot be reached, so stale tokens cannot outlive the session in IndexedDB.
+const SW_DB_NAME = 'AppDataStore';
+const SW_STORE_NAME = 'keyValueStore';
+
+const deleteFromIndexedDb = (key: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(SW_DB_NAME);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SW_STORE_NAME)) {
+        db.close();
+        resolve();
+
+        return;
+      }
+      const transaction = db.transaction([SW_STORE_NAME], 'readwrite');
+      transaction.objectStore(SW_STORE_NAME).delete(key);
+      transaction.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      transaction.onerror = () => {
+        db.close();
+        reject(transaction.error);
+      };
+    };
+  });
+
 const markSwStorageBroken = (error: unknown): void => {
   if (!swStorageBroken) {
     swStorageBroken = true;
@@ -123,6 +154,9 @@ const clearAppState = async (): Promise<void> => {
         await swTokenStorage.removeItem(APP_STATE_KEY);
       } catch (error) {
         markSwStorageBroken(error);
+        // The worker is unreachable — delete its persisted state directly
+        // from IndexedDB so the tokens cannot be read back after a reload.
+        await deleteFromIndexedDb(APP_STATE_KEY);
       }
     } else {
       // Fallback for browsers that don't support SW/IndexedDB
