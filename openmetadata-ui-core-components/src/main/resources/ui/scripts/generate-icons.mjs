@@ -14,22 +14,24 @@
 /**
  * generate-icons.mjs
  *
- * Converts SVG files from icons/ into TypeScript React components in src/icons/.
+ * Converts SVG files into TypeScript React components in src/icons/.
  *
  * Usage:
  *   yarn icons:generate
  *
- * Workflow:
- *   1. Read *.svg from icons/  (kebab-case source files, committed to repo)
- *   2. Optimize each SVG with SVGO (two paths: regular vs colored)
- *   3. Transform to TSX with SVGR
- *   4. Write {PascalCase}.tsx files to src/icons/
- *   5. Generate src/icons/index.ts barrel (inline, not via templates/index.cjs)
+ * Two source folders, same output, same import path:
  *
- * Adding a new colored/gradient icon:
- *   1. Drop the SVG in icons/
- *   2. Add the kebab-case filename (without .svg) to COLORED_ICONS below
- *   3. Run yarn icons:generate
+ *   icons/         → regular icons: width/height removed, hex colors → currentColor
+ *   icons-custom/  → custom icons:  width/height removed, hex colors PRESERVED
+ *
+ * Both output to src/icons/*.tsx and are exported from the same index.ts.
+ * Import path is identical: import { Gold, AddAlert } from '@openmetadata/ui-core-components/icons'
+ *
+ * Adding a regular icon:
+ *   1. Drop SVG in icons/  →  yarn icons:generate
+ *
+ * Adding a custom/gradient icon (preserves brand colors):
+ *   1. Drop SVG in icons-custom/  →  yarn icons:generate
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
@@ -43,20 +45,11 @@ const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
-const RAW_DIR = join(ROOT, 'icons');
+const ICONS_DIR = join(ROOT, 'icons');
+const CUSTOM_DIR = join(ROOT, 'icons-custom');
 const OUT_DIR = join(ROOT, 'src', 'icons');
-const STATIC_DIR = join(ROOT, 'src', 'icons-static');
 
 const componentTemplate = require('../templates/component.cjs');
-const coloredComponentTemplate = require('../templates/colored-component.cjs');
-
-/**
- * Icons with gradients/fills that must preserve their original colors.
- * Add the kebab-case SVG filename (without .svg) here when adding a new
- * colored/gradient icon. The script will use a separate pipeline that
- * skips color normalization and preserves all fills and strokes.
- */
-const COLORED_ICONS = new Set(['gold', 'silver', 'bronze', 'none']);
 
 /** Convert any filename to a valid PascalCase component name. */
 function toComponentName(filename) {
@@ -67,28 +60,32 @@ function toComponentName(filename) {
     .join('');
 }
 
-/** SVGO config for regular stroke-only icons. */
-const svgoConfig = {
+/** SVGO plugins shared by both pipelines. */
+const sharedPlugins = [
+  {
+    name: 'preset-default',
+    params: { overrides: { removeViewBox: false } },
+  },
+  { name: 'cleanupIds', params: { minify: true, remove: true } },
+  // Remove layout/meta attributes that SVGR re-injects dynamically.
+  // 'id' excluded — cleanupIds already prunes unreferenced ids safely.
+  // 'stroke-width' excluded — preserves each icon's designed stroke weight.
+  {
+    name: 'removeAttrs',
+    params: {
+      attrs: ['xmlns', 'width', 'height',
+              'stroke-linecap', 'stroke-linejoin', 'data-name', 'style'],
+    },
+  },
+];
+
+/** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
+const svgoRegularConfig = {
   multipass: true,
   plugins: [
-    {
-      name: 'preset-default',
-      params: { overrides: { removeViewBox: false } },
-    },
-    { name: 'cleanupIds', params: { minify: true, remove: true } },
-    // Remove layout/meta attributes that SVGR injects at the SVG root level.
-    // Note: 'id' is intentionally excluded — cleanupIds prunes unreferenced ids
-    // while preserving clipPath/mask/gradient refs. 'stroke-width' is also excluded
-    // so each icon's designed stroke weight is preserved rather than overridden.
-    {
-      name: 'removeAttrs',
-      params: {
-        attrs: ['xmlns', 'width', 'height',
-                'stroke-linecap', 'stroke-linejoin', 'data-name', 'style'],
-      },
-    },
-    // Replace hardcoded hex colors with currentColor so icons are fully themeable.
-    // fill="none", fill="white", and fill="url(...)" are preserved.
+    ...sharedPlugins,
+    // Replace hardcoded hex colors so icons are fully themeable via the color prop.
+    // fill="none", fill="white", and fill="url(...)" are preserved as-is.
     {
       name: 'replaceHardcodedColors',
       fn: () => ({
@@ -115,31 +112,21 @@ const svgoConfig = {
   ],
 };
 
-/** SVGO config for colored/gradient icons — preserves all colors, prefixes IDs. */
-const svgoColoredConfig = (iconBaseName) => ({
+/** SVGO config for custom icons — same as regular but skips color replacement.
+ *  IDs are also prefixed with the icon name to prevent gradient/mask conflicts
+ *  when multiple custom icons render on the same page. */
+const svgoCustomConfig = (iconBaseName) => ({
   multipass: true,
   plugins: [
-    {
-      name: 'preset-default',
-      params: { overrides: { removeViewBox: false } },
-    },
-    // Prefix all IDs with the icon name to prevent gradient/mask ID conflicts
-    // when multiple colored icons render on the same page.
+    ...sharedPlugins,
     {
       name: 'prefixIds',
       params: { prefix: iconBaseName, delim: '_' },
     },
-    // Only remove non-color layout/meta attributes.
-    {
-      name: 'removeAttrs',
-      params: {
-        attrs: ['xmlns', 'width', 'height', 'data-name', 'style'],
-      },
-    },
   ],
 });
 
-/** SVGR config for regular icons — injects stroke/fill/size at SVG root. */
+/** Single SVGR config used for all icons. */
 const svgrConfig = {
   plugins: ['@svgr/plugin-jsx'],
   typescript: true,
@@ -158,36 +145,38 @@ const svgrConfig = {
   },
 };
 
-/** SVGR config for colored icons — no color/stroke injection, size prop only. */
-const svgrColoredConfig = {
-  plugins: ['@svgr/plugin-jsx'],
-  typescript: true,
-  expandProps: 'end',
-  svgo: false,
-  prettier: false,
-  template: coloredComponentTemplate,
-  svgProps: {
-    width: '{size}',
-    height: '{size}',
-    'aria-hidden': 'true',
-  },
-};
+async function processFolder(dir, isCustom, generatedNames) {
+  if (!existsSync(dir)) return;
+
+  const svgFiles = readdirSync(dir).filter((f) => f.endsWith('.svg'));
+  if (svgFiles.length === 0) return;
+
+  for (const svgFile of svgFiles) {
+    const baseName = basename(svgFile, '.svg');
+    const componentName = toComponentName(baseName);
+    const inputPath = join(dir, svgFile);
+    const outputPath = join(OUT_DIR, `${componentName}.tsx`);
+
+    const rawSvg = readFileSync(inputPath, 'utf8');
+
+    const { data: optimizedSvg } = optimize(rawSvg, {
+      ...(isCustom ? svgoCustomConfig(baseName) : svgoRegularConfig),
+      path: inputPath,
+    });
+
+    const tsx = await transform(optimizedSvg, svgrConfig, { componentName });
+
+    writeFileSync(outputPath, tsx, 'utf8');
+    generatedNames.push(componentName);
+    console.log(`  ✓ ${componentName}`);
+  }
+}
 
 async function main() {
-  if (!existsSync(RAW_DIR)) {
-    console.log(`icons/ directory not found — nothing to generate.`);
-    console.log('Add kebab-case SVG files to icons/ and re-run yarn icons:generate.');
+  if (!existsSync(ICONS_DIR) && !existsSync(CUSTOM_DIR)) {
+    console.log('No icons/ or icons-custom/ directory found — nothing to generate.');
     return;
   }
-
-  const svgFiles = readdirSync(RAW_DIR).filter((f) => f.endsWith('.svg'));
-
-  if (svgFiles.length === 0) {
-    console.log('No SVG files in icons/ — nothing to generate.');
-    return;
-  }
-
-  console.log(`Processing ${svgFiles.length} SVG file(s)...`);
 
   if (!existsSync(OUT_DIR)) {
     mkdirSync(OUT_DIR, { recursive: true });
@@ -195,34 +184,19 @@ async function main() {
 
   const generatedNames = [];
 
-  for (const svgFile of svgFiles) {
-    const baseName = basename(svgFile, '.svg');
-    const componentName = toComponentName(baseName);
-    const inputPath = join(RAW_DIR, svgFile);
-    const outputPath = join(OUT_DIR, `${componentName}.tsx`);
-    const isColored = COLORED_ICONS.has(baseName);
+  const regularCount = existsSync(ICONS_DIR)
+    ? readdirSync(ICONS_DIR).filter((f) => f.endsWith('.svg')).length
+    : 0;
+  const customCount = existsSync(CUSTOM_DIR)
+    ? readdirSync(CUSTOM_DIR).filter((f) => f.endsWith('.svg')).length
+    : 0;
 
-    const rawSvg = readFileSync(inputPath, 'utf8');
+  console.log(`Processing ${regularCount} regular + ${customCount} custom icon(s)...`);
 
-    // Step 1: Optimize with SVGO (different config for colored icons)
-    const { data: optimizedSvg } = optimize(rawSvg, {
-      ...(isColored ? svgoColoredConfig(baseName) : svgoConfig),
-      path: inputPath,
-    });
+  await processFolder(ICONS_DIR, false, generatedNames);
+  await processFolder(CUSTOM_DIR, true, generatedNames);
 
-    // Step 2: Transform to TSX with SVGR
-    const tsx = await transform(
-      optimizedSvg,
-      isColored ? svgrColoredConfig : svgrConfig,
-      { componentName }
-    );
-
-    writeFileSync(outputPath, tsx, 'utf8');
-    generatedNames.push(componentName);
-    console.log(`  ${isColored ? '🎨' : '✓'} ${componentName}`);
-  }
-
-  // Step 3: Generate index.ts
+  // Generate index.ts
   const allExports = generatedNames
     .map((name) => `export { ${name} } from './${name}'`)
     .join('\n');
@@ -241,7 +215,7 @@ async function main() {
  */
 
 // This file is auto-generated by scripts/generate-icons.mjs — do not edit manually.
-// Run \`yarn icons:generate\` to regenerate after adding SVGs to icons/.
+// Run \`yarn icons:generate\` to regenerate after adding SVGs to icons/ or icons-custom/.
 
 export type { IconProps } from '../icons-static/types';
 ${allExports}
@@ -249,10 +223,8 @@ ${allExports}
 
   writeFileSync(join(OUT_DIR, 'index.ts'), indexContent, 'utf8');
 
-  const coloredCount = generatedNames.filter((n) => COLORED_ICONS.has(n.toLowerCase())).length;
-  console.log(`\nGenerated ${generatedNames.length - coloredCount} regular + ${coloredCount} colored icons → src/icons/`);
+  console.log(`\nGenerated ${generatedNames.length} icons → src/icons/`);
   console.log('Updated src/icons/index.ts');
-  console.log('\nRemember to update src/icons-static/categories.ts with any new icon names.');
 }
 
 main().catch((err) => {
