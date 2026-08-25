@@ -23,8 +23,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
- * Migration utility for 2.1.0: archival of legacy thread storage after task cutover, and alignment
- * of stored hybrid search weights with the shipped defaults.
+ * Migration utility for 2.1.0: alignment of stored hybrid search weights with the shipped defaults.
+ * The legacy thread-storage archival helper below is not wired to a migration step.
  */
 @Slf4j
 public class MigrationUtil {
