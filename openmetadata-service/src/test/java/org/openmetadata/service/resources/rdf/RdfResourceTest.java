@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.Settings;
@@ -122,6 +124,24 @@ class RdfResourceTest {
   void sparqlQueryTemplatesRequireAnAuthenticatedUser() {
     assertThrows(
         NotAuthorizedException.class, () -> rdfResource.listSparqlQueryTemplates(securityContext));
+  }
+
+  @Test
+  void sparqlUpdateMapsDisallowedFederationToForbidden() {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    rdfResource = new RdfResource(authorizer, () -> repository);
+    SparqlQuery query =
+        new SparqlQuery()
+            .withQuery(
+                "INSERT { ?subject ?predicate ?object } WHERE { SERVICE <https://blocked.example/sparql> { ?subject ?predicate ?object } }");
+
+    ForbiddenException exception =
+        assertThrows(
+            ForbiddenException.class, () -> rdfResource.updateSparql(securityContext, query));
+
+    assertTrue(exception.getMessage().contains("https://blocked.example/sparql"));
+    verify(repository, never()).executeSparqlUpdate(any());
   }
 
   @Test

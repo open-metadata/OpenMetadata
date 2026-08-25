@@ -30,11 +30,20 @@ import org.apache.jena.shacl.ValidationReport;
 /** Fetches an RDF scope, validates it with SHACL, and serializes the report. */
 public final class RdfValidationService {
 
-  private static final String FULL_GRAPH_QUERY = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
+  static final long DEFAULT_MAX_FULL_GRAPH_TRIPLES = 100_000;
   private final RdfRepository repository;
+  private final long maxFullGraphTriples;
 
   public RdfValidationService(RdfRepository repository) {
+    this(repository, DEFAULT_MAX_FULL_GRAPH_TRIPLES);
+  }
+
+  RdfValidationService(RdfRepository repository, long maxFullGraphTriples) {
     this.repository = Objects.requireNonNull(repository);
+    if (maxFullGraphTriples < 1) {
+      throw new IllegalArgumentException("maxFullGraphTriples must be positive");
+    }
+    this.maxFullGraphTriples = maxFullGraphTriples;
   }
 
   public ValidationResult validate(String requestedEntityUri, String requestedFormat) {
@@ -59,13 +68,54 @@ public final class RdfValidationService {
   }
 
   private Model fetchData(String entityUri) {
-    String query = entityUri == null ? FULL_GRAPH_QUERY : "DESCRIBE <" + entityUri + ">";
+    ensureFullGraphWithinLimitBeforeFetch(entityUri);
+    String query =
+        entityUri == null ? fullGraphQuery(maxFullGraphTriples) : describeQuery(entityUri);
     try {
-      String turtle = repository.executeSparqlQueryDirect(query, "turtle");
-      return parseTurtle(turtle, repository.getBaseUri());
+      String turtle =
+          SparqlQueryLimits.requireBoundedOutput(
+              repository.executeSparqlQueryDirect(query, "turtle"));
+      return parseBoundedData(turtle, entityUri);
     } catch (RiotException exception) {
       throw new IllegalStateException("Unable to load RDF data for SHACL validation", exception);
     }
+  }
+
+  private void ensureFullGraphWithinLimitBeforeFetch(String entityUri) {
+    if (entityUri == null) {
+      ensureFullGraphWithinLimit(entityUri, repository.getTripleCount());
+    }
+  }
+
+  private void ensureFullGraphWithinLimit(String entityUri, long tripleCount) {
+    if (entityUri == null && tripleCount > maxFullGraphTriples) {
+      throw fullGraphTooLarge(tripleCount);
+    }
+  }
+
+  private Model parseBoundedData(String turtle, String entityUri) {
+    Model data = parseTurtle(turtle, repository.getBaseUri());
+    try {
+      ensureFullGraphWithinLimit(entityUri, data.size());
+      return data;
+    } catch (IllegalArgumentException exception) {
+      data.close();
+      throw exception;
+    }
+  }
+
+  private IllegalArgumentException fullGraphTooLarge(long tripleCount) {
+    return new IllegalArgumentException(
+        "Full-graph SHACL validation requires %,d triples, exceeding the in-memory limit of %,d; provide entityUri to validate a bounded subgraph"
+            .formatted(tripleCount, maxFullGraphTriples));
+  }
+
+  static String fullGraphQuery(long maxFullGraphTriples) {
+    return "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT " + (maxFullGraphTriples + 1);
+  }
+
+  private static String describeQuery(String entityUri) {
+    return "DESCRIBE <" + entityUri + ">";
   }
 
   static Model parseTurtle(String turtle, String baseUri) {

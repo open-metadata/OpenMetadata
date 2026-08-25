@@ -25,6 +25,12 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -109,20 +115,41 @@ class EntityNeighborhoodToolTest {
   }
 
   @Test
-  void constructQueryIncludesIncomingEdgesAndRespectsDepth() {
-    String depthOne = EntityNeighborhoodTool.buildConstructQuery("urn:entity", 1, 100);
-    String depthThree = EntityNeighborhoodTool.buildConstructQuery("urn:entity", 3, 100);
+  void constructReturnsEveryTraversedTripleInBothDirections() {
+    Model source = ModelFactory.createDefaultModel();
+    Resource start = source.createResource("urn:start");
+    Resource outgoingOne = source.createResource("urn:outgoing-one");
+    Resource outgoingTwo = source.createResource("urn:outgoing-two");
+    Resource outgoingThree = source.createResource("urn:outgoing-three");
+    Resource incomingOne = source.createResource("urn:incoming-one");
+    Resource incomingTwo = source.createResource("urn:incoming-two");
+    Resource incomingThree = source.createResource("urn:incoming-three");
+    Property predicate = source.createProperty("urn:connected-to");
+    source.add(start, predicate, outgoingOne);
+    source.add(outgoingOne, predicate, outgoingTwo);
+    source.add(outgoingTwo, predicate, outgoingThree);
+    source.add(incomingOne, predicate, start);
+    source.add(incomingTwo, predicate, incomingOne);
+    source.add(incomingThree, predicate, incomingTwo);
 
-    assertTrue(depthOne.contains("?s ?p <urn:entity>"));
-    assertFalse(depthOne.contains("?n3"));
-    assertTrue(depthThree.contains("?n3"));
-  }
-
-  @Test
-  void constructQueryPreservesTheIntermediateSubject() {
-    String query = EntityNeighborhoodTool.buildConstructQuery("urn:entity", 2, 100);
-
-    assertTrue(query.contains("<urn:entity> ?p1 ?s . ?s ?p ?o"));
+    Model depthOne = executeConstruct(source, 1);
+    Model depthTwo = executeConstruct(source, 2);
+    Model depthThree = executeConstruct(source, 3);
+    try {
+      assertTrue(depthOne.contains(start, predicate, outgoingOne));
+      assertTrue(depthOne.contains(incomingOne, predicate, start));
+      assertFalse(depthOne.contains(outgoingOne, predicate, outgoingTwo));
+      assertFalse(depthOne.contains(incomingTwo, predicate, incomingOne));
+      assertTrue(depthTwo.contains(outgoingOne, predicate, outgoingTwo));
+      assertTrue(depthTwo.contains(incomingTwo, predicate, incomingOne));
+      assertTrue(depthThree.contains(outgoingTwo, predicate, outgoingThree));
+      assertTrue(depthThree.contains(incomingThree, predicate, incomingTwo));
+    } finally {
+      depthOne.close();
+      depthTwo.close();
+      depthThree.close();
+      source.close();
+    }
   }
 
   @Test
@@ -160,6 +187,13 @@ class EntityNeighborhoodToolTest {
 
   private static EntityNeighborhoodTool tool(RdfRepository repository) {
     return new EntityNeighborhoodTool(() -> repository);
+  }
+
+  private static Model executeConstruct(Model source, int depth) {
+    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", depth, 100);
+    try (QueryExecution execution = QueryExecutionFactory.create(query, source)) {
+      return execution.execConstruct();
+    }
   }
 
   private static RdfRepository enabledRepository() {

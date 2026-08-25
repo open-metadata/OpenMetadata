@@ -549,7 +549,9 @@ export function useOntologyExplorer({
             return next;
           });
         }
-        assetFetchControllers.current.delete(termNode.id);
+        if (assetFetchControllers.current.get(termNode.id) === controller) {
+          assetFetchControllers.current.delete(termNode.id);
+        }
       }
     },
     [t]

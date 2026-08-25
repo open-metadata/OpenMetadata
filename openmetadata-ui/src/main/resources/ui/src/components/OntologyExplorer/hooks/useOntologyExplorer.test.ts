@@ -122,6 +122,16 @@ function createDeferredTerms() {
   return { resolveTerms, terms };
 }
 
+function createDeferredAssets() {
+  type AssetsResponse = Awaited<ReturnType<typeof getOntologyStudioAssets>>;
+  let resolveAssets: (value: AssetsResponse) => void = () => undefined;
+  const assets = new Promise<AssetsResponse>((resolve) => {
+    resolveAssets = resolve;
+  });
+
+  return { assets, resolveAssets };
+}
+
 describe('useOntologyExplorer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -299,5 +309,99 @@ describe('useOntologyExplorer', () => {
         expect.anything()
       )
     );
+  });
+
+  it('keeps the latest asset request cancellable after a stale request settles', async () => {
+    const termId = '00000000-0000-0000-0000-000000000005';
+    const pendingRequests = [
+      createDeferredAssets(),
+      createDeferredAssets(),
+      createDeferredAssets(),
+    ];
+    const signals: AbortSignal[] = [];
+    mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
+    mockGetOntologyStudioDataGraph.mockResolvedValue({
+      clusters: [
+        {
+          assetCount: 10,
+          assets: [],
+          term: {
+            fullyQualifiedName: 'LoadedGlossary.CancellableTerm',
+            id: termId,
+            name: 'CancellableTerm',
+          },
+        },
+      ],
+      edges: [],
+      paging: { limit: 12, offset: 0, total: 1 },
+    });
+    mockGetOntologyStudioAssets.mockImplementation(
+      (_termId, _limit, _offset, signal) => {
+        if (!signal) {
+          throw new Error('Asset request did not provide an abort signal');
+        }
+        signals.push(signal);
+
+        return pendingRequests[signals.length - 1].assets;
+      }
+    );
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.handleModeChange('data'));
+    await waitFor(() =>
+      expect(result.current.filteredGraphData?.nodes).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: termId })])
+      )
+    );
+    const termNode = result.current.filteredGraphData?.nodes.find(
+      (node) => node.id === termId
+    );
+    if (!termNode) {
+      throw new Error('Cancellable term was not loaded into the data graph');
+    }
+
+    act(() => {
+      result.current.handleGraphNodeClick(termNode, undefined, {
+        dataModeLoadMoreBadgeClick: true,
+      });
+      result.current.handleGraphNodeClick(termNode, undefined, {
+        dataModeLoadMoreBadgeClick: true,
+      });
+    });
+    await waitFor(() => expect(signals).toHaveLength(2));
+
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+
+    await act(async () => {
+      pendingRequests[0].resolveAssets({
+        data: [],
+        paging: { limit: 6, offset: 0, total: 10 },
+      });
+      await pendingRequests[0].assets;
+    });
+    act(() =>
+      result.current.handleGraphNodeClick(termNode, undefined, {
+        dataModeLoadMoreBadgeClick: true,
+      })
+    );
+    await waitFor(() => expect(signals).toHaveLength(3));
+
+    expect(signals[1].aborted).toBe(true);
+
+    await act(async () => {
+      pendingRequests[1].resolveAssets({
+        data: [],
+        paging: { limit: 6, offset: 0, total: 10 },
+      });
+      pendingRequests[2].resolveAssets({
+        data: [],
+        paging: { limit: 6, offset: 0, total: 10 },
+      });
+      await Promise.all([pendingRequests[1].assets, pendingRequests[2].assets]);
+    });
   });
 });

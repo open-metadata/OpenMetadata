@@ -3548,6 +3548,13 @@ public class RdfRepository {
     return materializationStorageService.getTripleCount(graphUri);
   }
 
+  public long getTripleCount() {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF not enabled");
+    }
+    return storageService.getTripleCount();
+  }
+
   /**
    * Load a Turtle file directly into a named graph
    */

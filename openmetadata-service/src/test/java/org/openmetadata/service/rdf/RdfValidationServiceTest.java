@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,17 +47,46 @@ class RdfValidationServiceTest {
   @Test
   void validatesTheFullGraphUsingConstruct() {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQueryDirect(
-            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }", TURTLE_FORMAT))
-        .thenReturn("");
+    String fullGraphQuery =
+        RdfValidationService.fullGraphQuery(RdfValidationService.DEFAULT_MAX_FULL_GRAPH_TRIPLES);
+    when(repository.executeSparqlQueryDirect(fullGraphQuery, TURTLE_FORMAT)).thenReturn("");
 
     RdfValidationService.ValidationResult result =
         new RdfValidationService(repository).validate(null, "turtle");
 
     assertEquals("full-graph", result.scope());
-    verify(repository)
-        .executeSparqlQueryDirect(
-            eq("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }"), eq(TURTLE_FORMAT));
+    verify(repository).executeSparqlQueryDirect(eq(fullGraphQuery), eq(TURTLE_FORMAT));
+  }
+
+  @Test
+  void rejectsOversizedFullGraphBeforeFetchingIt() {
+    RdfRepository repository = enabledRepository();
+    when(repository.getTripleCount()).thenReturn(2L);
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new RdfValidationService(repository, 1).validate(null, "turtle"));
+
+    assertTrue(exception.getMessage().contains("provide entityUri"));
+    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+  }
+
+  @Test
+  void rejectsFullGraphThatGrowsPastTheLimitDuringFetch() {
+    RdfRepository repository = enabledRepository();
+    when(repository.getTripleCount()).thenReturn(1L);
+    when(repository.executeSparqlQueryDirect(RdfValidationService.fullGraphQuery(1), TURTLE_FORMAT))
+        .thenReturn(
+            "<https://example.com/a> <https://example.com/p> <https://example.com/b> .\n"
+                + "<https://example.com/b> <https://example.com/p> <https://example.com/c> .");
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new RdfValidationService(repository, 1).validate(null, "turtle"));
+
+    assertTrue(exception.getMessage().contains("exceeding the in-memory limit"));
   }
 
   @Test
@@ -89,6 +119,7 @@ class RdfValidationServiceTest {
     RdfRepository repository = mock(RdfRepository.class);
     when(repository.isEnabled()).thenReturn(true);
     when(repository.getBaseUri()).thenReturn("https://open-metadata.org/");
+    when(repository.getTripleCount()).thenReturn(0L);
     return repository;
   }
 }

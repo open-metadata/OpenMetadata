@@ -99,29 +99,67 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
   }
 
   /**
-   * Emits each traversed triple with its actual subject. Separate UNION arms avoid collapsing
-   * second- and third-hop edges onto the starting entity.
+   * Emits every edge traversed by every outgoing/incoming path through the requested depth.
    */
   static String buildConstructQuery(String entityUri, int depth, int limit) {
     String entity = "<" + entityUri + ">";
-    List<String> patterns =
-        new ArrayList<>(
-            List.of(
-                "    { BIND(%1$s AS ?s) %1$s ?p ?o }".formatted(entity),
-                "    UNION { BIND(%1$s AS ?o) ?s ?p %1$s }".formatted(entity)));
+    int boundedDepth = clamp(depth, MIN_DEPTH, MAX_DEPTH);
+    String construct = constructTemplate(boundedDepth);
+    String paths = String.join(" }\n    UNION { ", traversalPatterns(entity, boundedDepth));
+    return "CONSTRUCT {\n" + construct + "\n} WHERE {\n    { " + paths + " }\n} LIMIT " + limit;
+  }
 
-    if (depth >= 2) {
-      patterns.add("    UNION { BIND(%1$s AS ?s) %1$s ?p ?o . ?o ?p2 ?n2 }".formatted(entity));
-      patterns.add("    UNION { %s ?p1 ?s . ?s ?p ?o }".formatted(entity));
+  private static String constructTemplate(int depth) {
+    List<String> triples = new ArrayList<>();
+    for (int step = 1; step <= depth; step++) {
+      triples.add("  ?s%1$d ?p%1$d ?o%1$d .".formatted(step));
     }
-    if (depth >= 3) {
-      patterns.add(
-          "    UNION { BIND(%1$s AS ?s) %1$s ?p ?o . ?o ?p2 ?n2 . ?n2 ?p3 ?n3 }".formatted(entity));
-      patterns.add("    UNION { %s ?p1 ?s . ?s ?p ?o . ?o ?p3 ?n3 }".formatted(entity));
-      patterns.add("    UNION { %s ?p1 ?n1 . ?n1 ?p2 ?s . ?s ?p ?o }".formatted(entity));
-    }
+    return String.join("\n", triples);
+  }
 
-    return "CONSTRUCT { ?s ?p ?o } WHERE {\n" + String.join("\n", patterns) + "\n} LIMIT " + limit;
+  private static List<String> traversalPatterns(String entity, int depth) {
+    List<String> patterns = new ArrayList<>();
+    for (int pathLength = 1; pathLength <= depth; pathLength++) {
+      int directionCombinations = 1 << pathLength;
+      for (int directions = 0; directions < directionCombinations; directions++) {
+        patterns.add(pathPattern(entity, pathLength, directions));
+      }
+    }
+    return patterns;
+  }
+
+  private static String pathPattern(String entity, int pathLength, int directions) {
+    StringBuilder pattern = new StringBuilder();
+    String currentNode = entity;
+    for (int step = 1; step <= pathLength; step++) {
+      boolean incoming = (directions & (1 << (step - 1))) != 0;
+      currentNode = appendTraversalStep(pattern, currentNode, step, incoming);
+    }
+    return pattern.toString();
+  }
+
+  private static String appendTraversalStep(
+      StringBuilder pattern, String currentNode, int step, boolean incoming) {
+    String subject = "?s" + step;
+    String predicate = "?p" + step;
+    String object = "?o" + step;
+    String boundEndpoint = incoming ? object : subject;
+    if (!pattern.isEmpty()) {
+      pattern.append(' ');
+    }
+    pattern
+        .append("BIND(")
+        .append(currentNode)
+        .append(" AS ")
+        .append(boundEndpoint)
+        .append(") . ")
+        .append(subject)
+        .append(' ')
+        .append(predicate)
+        .append(' ')
+        .append(object)
+        .append(" .");
+    return incoming ? subject : object;
   }
 
   static String buildSelectQuery(String entityUri, int limit) {

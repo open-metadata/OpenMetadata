@@ -1242,8 +1242,16 @@ public class RdfResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "SPARQL UPDATE query", required = true) SparqlQuery sparqlQuery) {
     authorizer.authorizeAdmin(securityContext);
-    sparqlService().update(sparqlQuery.getQuery());
+    executeSparqlUpdate(sparqlQuery.getQuery());
     return Response.ok(new SparqlUpdateResult("success")).build();
+  }
+
+  private void executeSparqlUpdate(String query) {
+    try {
+      sparqlService().update(query);
+    } catch (SparqlFederationGuard.FederationDisallowedException exception) {
+      throw new ForbiddenException(exception.getMessage(), exception);
+    }
   }
 
   private Response executeSparqlQuery(
