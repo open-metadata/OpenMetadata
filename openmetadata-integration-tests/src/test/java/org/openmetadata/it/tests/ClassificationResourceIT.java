@@ -959,7 +959,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
 
     String tagName = ns.prefix("importedTag");
     String csv =
-        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
             + ",%s,Imported Tag,An imported tag,,,,,,,\n".formatted(tagName);
 
     String importResult =
@@ -987,7 +987,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   void test_importClassificationCsv_renamedRowCreatesNewTag(TestNamespace ns) throws Exception {
     Classification classification = createEntity(createMinimalRequest(ns));
     String header =
-        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
     String importPath =
         "/v1/classifications/name/"
             + classification.getFullyQualifiedName()
@@ -1030,7 +1030,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
       throws Exception {
     Classification classification = createEntity(createMinimalRequest(ns));
     String header =
-        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n";
     String importPath =
         "/v1/classifications/name/"
             + classification.getFullyQualifiedName()
@@ -1066,7 +1066,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   @Test
   void test_importClassificationCsv_systemClassificationRejected() {
     String csv =
-        "parent,name,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
+        "parent,name*,displayName,description,reviewers,owner,tagStatus,color,iconURL,domains,mutuallyExclusive\n"
             + ",SystemImportedTag,System,Should be rejected,,,,,,,\n";
 
     Exception exception =

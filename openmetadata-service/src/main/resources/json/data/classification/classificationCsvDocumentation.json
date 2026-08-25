@@ -37,18 +37,20 @@
     {
       "name": "reviewers",
       "required": false,
-      "description": "User names separated by ';'.",
+      "description": "Reviewers as 'user:name' pairs, separated by ';'.",
       "examples": [
-        "`john;adam`"
+        "`user:john`",
+        "`user:john;user:adam`"
       ]
     },
     {
       "name": "owner",
       "required": false,
-      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
+      "description": "Owners as 'type:name' pairs, separated by ';'. Use the prefix 'team' for a team owner and 'user' for a user owner.",
       "examples": [
-        "`team;marketing`",
-        "`user;john`"
+        "`team:marketing`",
+        "`user:john`",
+        "`team:marketing;user:john`"
       ]
     },
     {

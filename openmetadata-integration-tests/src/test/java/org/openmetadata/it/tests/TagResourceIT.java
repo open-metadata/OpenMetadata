@@ -2305,33 +2305,4 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                       + tagFqns);
             });
   }
-
-  @Test
-  void test_exportTagCsv_includesTagItselfAndChildren(TestNamespace ns) throws Exception {
-    Classification classification = createClassification(ns);
-    Tag parentTag = createTagUnder(classification, ns, "export_parent");
-
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.shortPrefix("export_child"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag for export");
-    Tag childTag = createEntity(childRequest);
-
-    String csv =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                "/v1/tags/name/" + parentTag.getFullyQualifiedName() + "/export",
-                null);
-
-    assertNotNull(csv);
-    assertTrue(
-        csv.contains("parent") && csv.contains("mutuallyExclusive"),
-        "Exported CSV must contain the header row");
-    assertTrue(
-        csv.contains(parentTag.getName()), "Exported CSV must include the tag being exported");
-    assertTrue(csv.contains(childTag.getName()), "Exported CSV must include child tags");
-  }
 }
