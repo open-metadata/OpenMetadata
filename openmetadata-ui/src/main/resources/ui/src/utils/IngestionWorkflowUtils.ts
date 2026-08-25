@@ -212,11 +212,11 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
       value &&
       typeof value === 'object' &&
       'excludes' in value &&
-      'includes' in value
+      'includes' in value &&
+      isEmpty(value.excludes) &&
+      isEmpty(value.includes)
     ) {
-      if (isEmpty(value.excludes) && isEmpty(value.includes)) {
-        delete cleanedWorkFlowData[key as keyof Pipeline];
-      }
+      delete cleanedWorkFlowData[key as keyof Pipeline];
     }
   });
 

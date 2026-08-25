@@ -203,6 +203,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
+  DatabaseServiceType.Iomete,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

@@ -73,6 +73,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
@@ -112,7 +113,6 @@ import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { DomainTabs } from '../../Domain/DomainPage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -703,6 +703,14 @@ const DataProductsDetailsPage = ({
     outputPortsCount,
   ]);
 
+  // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
+  // URL tab is absent/not rendered so we never land on a non-existent pane.
+  const currentTab = getRenderedActiveTab(
+    tabs,
+    activeTab as EntityTabs | undefined,
+    EntityTabs.DOCUMENTATION
+  );
+
   const iconData = useMemo(() => {
     return (
       <Avatar
@@ -815,6 +823,7 @@ const DataProductsDetailsPage = ({
         />
         <GenericProvider<DataProduct>
           newTagsUI
+          activeTab={currentTab}
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}
@@ -824,7 +833,7 @@ const DataProductsDetailsPage = ({
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
-            <div className="tw:max-w-full tw:lg:max-w-[60%]">
+            <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 breadcrumb={[]}
                 entityData={{ ...dataProduct, displayName, name }}
@@ -942,7 +951,7 @@ const DataProductsDetailsPage = ({
             <div className="tw:p-5">
               <Tabs
                 destroyInactiveTabPane
-                activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+                activeKey={currentTab}
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}

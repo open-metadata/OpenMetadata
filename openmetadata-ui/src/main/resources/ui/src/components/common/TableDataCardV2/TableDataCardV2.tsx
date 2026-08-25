@@ -24,6 +24,7 @@ import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -159,9 +160,16 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        role="button"
+        tabIndex={0}
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
-        }}>
+        }}
+        onKeyDown={handleKeyboardActivation(
+          () =>
+            handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
+          true
+        )}>
         <Row className="data-asset-info-row" wrap={false}>
           {showCheckboxes && (
             <Col className="flex-center" flex="20px">

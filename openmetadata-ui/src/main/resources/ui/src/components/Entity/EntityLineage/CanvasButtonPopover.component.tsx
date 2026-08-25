@@ -54,6 +54,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
 
   return (
     <button
+      aria-label={pipelineData?.fullyQualifiedName}
       key={`popover-${hoveredButton.edgeId}`}
       style={{
         ...position,

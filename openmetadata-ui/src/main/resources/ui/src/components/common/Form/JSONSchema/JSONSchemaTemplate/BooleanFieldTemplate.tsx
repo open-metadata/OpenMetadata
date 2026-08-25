@@ -30,6 +30,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
         }}
       />
       <div className="tw:min-w-0 tw:flex-1">
+        {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-linked to Toggle (sibling container) */}
         <label
           className="tw:block tw:cursor-pointer tw:font-medium tw:leading-5 tw:text-primary"
           htmlFor={props.idSchema.$id}>

@@ -97,9 +97,47 @@ jobs:
           distribution: "temurin"
 
       - name: Install Ubuntu dependencies
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          # The hosted-runner Azure apt mirror intermittently blackholes connections;
+          # apt then falls back to archive.ubuntu.com and can hang forever with no
+          # output, burning the whole job timeout. Bound every fetch and retry.
+          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          Acquire::http::No-Cache "true";
+          APTCONF
+          # Keep the whole retry budget strictly inside this step's timeout-minutes.
+          # Otherwise the outer deadline truncates a retry and kills the step before
+          # the helper can say why it gave up, which is the failure we're fixing.
+          APT_BUDGET=600
+          APT_DEADLINE=$((SECONDS + APT_BUDGET))
+          apt_retry() {
+            local limit=$1; shift
+            local i remaining
+            for i in 1 2 3; do
+              remaining=$((APT_DEADLINE - SECONDS))
+              if [ "$remaining" -le 30 ]; then
+                echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
+                return 1
+              fi
+              if [ "$limit" -gt "$remaining" ]; then
+                limit=$remaining
+              fi
+              if sudo timeout "$limit" apt-get "$@"; then
+                return 0
+              fi
+              if [ "$i" -lt 3 ]; then
+                echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
+                sleep 10
+              fi
+            done
+            echo "::error::apt-get $1 failed after 3 attempts"
+            return 1
+          }
+          apt_retry 240 update
+          apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
