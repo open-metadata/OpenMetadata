@@ -855,51 +855,22 @@ test.describe(
         await crossTable.visitEntityPage(page);
 
         // Asset belongs to assetDomain only.
-        await assignDomainWidget(page, assetDomain.responseData);
+        await assignDomain(page, assetDomain.responseData);
 
-        const dataProductWidget = page
-          .getByTestId('KnowledgePanel.DataProducts')
-          .getByTestId('data-products-container');
-
-        await dataProductWidget.getByTestId('add-data-product').click();
-
-        const dpFqn = crossDomainDataProduct.responseData.fullyQualifiedName;
-        const dpTag = page.getByTestId(`tag-${dpFqn}`);
-
-        // The Data Product from productDomain is offered even though the asset
-        // is in assetDomain, because the domain validation rule is disabled.
-        await expect(async () => {
-          const searchResponse = page.waitForResponse((response) =>
-            response.url().includes('/api/v1/search/query')
-          );
-          await page
-            .locator('[data-testid="data-product-selector"] input')
-            .clear();
-          await page
-            .locator('[data-testid="data-product-selector"] input')
-            .fill(crossDomainDataProduct.data.displayName);
-          await searchResponse;
-          await expect(dpTag).toBeVisible({ timeout: 2_000 });
-        }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
-
-        await dpTag.click();
-
-        const patchReq = page.waitForResponse(
-          (req) =>
-            req.request().method() === 'PATCH' &&
-            req.url().includes(`/api/v1/${crossTable.endpoint}/`)
-        );
-        await page
-          .getByTestId('data-product-dropdown-actions')
-          .getByTestId('saveAssociatedTag')
-          .click();
-        await patchReq;
+        // The Data Product from productDomain can be assigned even though the
+        // asset is in assetDomain, because the domain validation rule is
+        // disabled and the dropdown lists Data Products across all domains.
+        await assignDataProduct(page, assetDomain.responseData, [
+          crossDomainDataProduct.responseData,
+        ]);
 
         await expect(
           page
             .getByTestId('KnowledgePanel.DataProducts')
             .getByTestId('data-products-list')
-            .getByTestId(`data-product-${dpFqn}`)
+            .getByTestId(
+              `data-product-${crossDomainDataProduct.responseData.fullyQualifiedName}`
+            )
         ).toBeVisible();
       } finally {
         await crossTable.delete(apiContext);
