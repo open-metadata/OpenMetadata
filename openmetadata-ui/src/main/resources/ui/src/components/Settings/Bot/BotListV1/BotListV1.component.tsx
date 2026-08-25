@@ -440,6 +440,7 @@ const BotListV1 = ({
             size="small"
             onClick={handleShowDeletedBots}
           />
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
           <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
         </Space>
       </Col>
@@ -481,6 +482,7 @@ const BotListV1 = ({
               id="switch-deleted"
               onClick={handleShowDeletedBots}
             />
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 

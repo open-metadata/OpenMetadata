@@ -493,28 +493,29 @@ test.describe('Activity Feed - Entity Page', () => {
     await openResponse;
     await waitForPageLoaded(page);
 
-    await taskFilterButton.click();
-    await expect(
-      page.locator('.task-filter-container').getByText(/mention/i)
-    ).toBeVisible();
+    await expect(page.getByTestId('mentions-toggle')).toBeVisible();
 
+    // Mentions renders the task list, so it has to query tasks-where-mentioned
+    // about this entity — not the conversation feed, whose results the mentions
+    // list never reads.
     const mentionsResponse = page.waitForResponse((response) => {
       if (
         response.request().method() !== 'GET' ||
-        !response.url().includes('/api/v1/feed')
+        !response.url().includes('/api/v1/tasks')
       ) {
         return false;
       }
 
       const requestUrl = new URL(response.url());
 
-      return requestUrl.searchParams.get('filterType') === 'MENTIONS';
+      return (
+        Boolean(requestUrl.searchParams.get('mentionedUser')) &&
+        requestUrl.searchParams.get('aboutEntity') ===
+          table.entityResponseData?.fullyQualifiedName
+      );
     });
 
-    await page
-      .locator('.task-filter-container')
-      .getByText(/mention/i)
-      .click();
+    await page.getByTestId('mentions-toggle').click();
     await mentionsResponse;
     await waitForPageLoaded(page);
   });

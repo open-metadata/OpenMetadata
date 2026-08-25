@@ -345,7 +345,7 @@ jest.mock('./ClassificationFormDrawer', () =>
   jest.fn().mockImplementation(({ open }) =>
     open ? (
       <div data-testid="classification-form-drawer">
-        <input data-testid="name" />
+        <input aria-label="name" data-testid="name" />
       </div>
     ) : null
   )
@@ -355,7 +355,7 @@ jest.mock('./TagFormDrawer', () =>
   jest.fn().mockImplementation(({ open }) =>
     open ? (
       <div data-testid="tag-form-drawer">
-        <input data-testid="name" />
+        <input aria-label="name" data-testid="name" />
       </div>
     ) : null
   )

@@ -202,10 +202,12 @@ jest.mock('../../common/ListView/ListView.component', () => ({
       }) => (
         <div data-testid="mocked-list-view">
           <button
+            aria-label="trigger search"
             data-testid="trigger-search"
             onClick={() => searchProps.onSearch('no-such-service')}
           />
           <button
+            aria-label="trigger deleted switch"
             data-testid="trigger-deleted-switch"
             onClick={handleDeletedSwitchChange}
           />

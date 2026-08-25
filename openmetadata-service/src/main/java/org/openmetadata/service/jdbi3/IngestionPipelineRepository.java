@@ -85,6 +85,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -512,6 +513,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(service.getEntityReference());
   }
 
+  @Override
+  protected IngestionPipeline restorePatchSecrets(
+      IngestionPipeline original, IngestionPipeline updated) {
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
+    return updated;
+  }
+
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
     if (hasScheduleChanged(original, updated)) {
       LOG.debug("Pipeline '{}' requires redeployment: schedule changed", updated.getName());
@@ -726,17 +734,48 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
+  /**
+   * Removing the DAG from the orchestrator is irreversible, so it must only happen when the entity
+   * itself is going away for good. A soft delete is reversible and {@code restoreEntity} has no way
+   * to redeploy, so tearing the runner down there left a restored pipeline with no backing DAG —
+   * and, with {@code allowUnavailableRunner=false}, failed the whole soft delete outright whenever
+   * the runner happened to be down. The accepted trade-off is that nothing pauses the DAG either,
+   * so a soft-deleted pipeline keeps running on schedule and recording statuses until it is
+   * restored or hard-deleted; pausing it would need a restore-time redeploy hook that does not
+   * exist yet.
+   *
+   * <p>The teardown stays here rather than moving to {@link #entitySpecificCleanup} (where the
+   * pipeline's time series went) because it is a blocking remote call that must not run inside the
+   * real transaction {@code cleanup()} opens, and because {@code forceDelete} threads
+   * {@code allowUnavailableRunner} through the overload below and reads back the skip flag.
+   */
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
     postDelete(entity, hardDelete, false);
   }
 
+  /**
+   * Variant of {@link #postDelete(IngestionPipeline, boolean)} for {@code forceDelete}: tolerates an
+   * unreachable ingestion runner when {@code allowUnavailableRunner} is set and reports back whether
+   * the runner cleanup was skipped, so the caller can warn about the DAG left behind.
+   */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
-    deletePipelineStatuses(entity);
+    boolean wasRunnerCleanupSkipped = false;
+    if (hardDelete) {
+      wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Pipeline run history is destroyed only on hard delete: {@code entitySpecificCleanup} is reached
+   * exclusively from {@code cleanup()}, which the delete path runs on the hard-delete branch only.
+   */
+  @Override
+  protected void entitySpecificCleanup(IngestionPipeline entity) {
+    deletePipelineStatuses(entity);
   }
 
   protected boolean deleteDeployedPipeline(

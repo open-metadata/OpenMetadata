@@ -56,6 +56,7 @@ export const renderLegend = (
           <li
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${index}`}
+            role="presentation"
             onClick={(e) =>
               legendData.onClick && legendData.onClick(entry, index, e)
             }
