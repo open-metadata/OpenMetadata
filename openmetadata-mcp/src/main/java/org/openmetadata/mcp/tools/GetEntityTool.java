@@ -294,13 +294,49 @@ public class GetEntityTool implements McpTool {
   private static Map<String, Object> neighbours(String entityType, String fqn) {
     EntityLineage lineage =
         Entity.getLineageRepository().getByName(entityType, fqn, NEIGHBOUR_DEPTH, NEIGHBOUR_DEPTH);
+    List<String> upstream = endpointsOf(lineage, true);
+    List<String> downstream = endpointsOf(lineage, false);
     Map<String, Object> summary = new LinkedHashMap<>();
-    summary.put("upstream", endpointsOf(lineage, true));
-    summary.put("downstream", endpointsOf(lineage, false));
-    summary.put(
-        "note",
-        "Immediate neighbours only. Use get_entity_lineage for depth or transformation SQL.");
+    summary.put("upstream", upstream);
+    summary.put("downstream", downstream);
+    boolean moreUpstream = extendsBeyond(entityType, upstream, true);
+    boolean moreDownstream = extendsBeyond(entityType, downstream, false);
+    summary.put("hasMoreUpstream", moreUpstream);
+    summary.put("hasMoreDownstream", moreDownstream);
+    summary.put("note", reachNote(moreUpstream || moreDownstream));
     return summary;
+  }
+
+  /**
+   * Says whether the graph continues past the immediate neighbours.
+   *
+   * <p>"Immediate neighbours only" describes the scope but not the shape: a lone upstream is
+   * ambiguous between "that is the whole story" and "that is hop one of a chain". A caller named
+   * this its strongest note, having spent a whole call on a confirming lineage read whose only new
+   * fact was that the chain terminated.
+   */
+  private static String reachNote(boolean continues) {
+    return continues
+        ? "Immediate neighbours only, and the graph continues beyond them. Use get_entity_lineage"
+            + " for the full depth."
+        : "Immediate neighbours only - and this is the complete graph; nothing lies beyond these."
+            + " A further get_entity_lineage call would add only edge detail.";
+  }
+
+  /** True when any neighbour has a neighbour of its own in the same direction. */
+  private static boolean extendsBeyond(
+      String entityType, List<String> neighbours, boolean upstream) {
+    boolean continues = false;
+    for (String neighbour : neighbours) {
+      EntityLineage hop =
+          Entity.getLineageRepository()
+              .getByName(entityType, neighbour, upstream ? 1 : 0, upstream ? 0 : 1);
+      if (!endpointsOf(hop, upstream).isEmpty()) {
+        continues = true;
+        break;
+      }
+    }
+    return continues;
   }
 
   private static List<String> endpointsOf(EntityLineage lineage, boolean upstream) {
