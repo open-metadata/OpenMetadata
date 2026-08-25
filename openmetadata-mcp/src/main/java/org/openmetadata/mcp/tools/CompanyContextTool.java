@@ -267,10 +267,9 @@ public class CompanyContextTool implements McpTool {
     return pill;
   }
 
+  /** Same rule as the by-name projection: a field the pill does not have is left out, not nulled. */
   private static void copy(Map<String, Object> from, Map<String, Object> to, String key) {
-    if (from.containsKey(key)) {
-      to.put(key, from.get(key));
-    }
+    putIfPresent(to, key, from.get(key));
   }
 
   private static Map<String, Object> errorResponse(String message) {

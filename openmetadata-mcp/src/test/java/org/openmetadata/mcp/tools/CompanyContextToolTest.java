@@ -129,6 +129,46 @@ class CompanyContextToolTest {
   }
 
   @Test
+  void aFieldThePillDoesNotHaveIsOmittedByBothLookups() throws Exception {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+    Map<String, Object> hit = new HashMap<>();
+    hit.put("name", "refunds");
+    hit.put("fullyQualifiedName", "refunds");
+    hit.put("answer", "Within 30 days.");
+    hit.put("summary", null);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      authorizerMock
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(mock(SubjectContext.class));
+      when(vectorService.search(
+              anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any()))
+          .thenReturn(new VectorSearchResponse(1L, List.of(hit)));
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "refund policy");
+      Map<String, Object> result = tool.execute(mock(Authorizer.class), securityContext, params);
+
+      @SuppressWarnings("unchecked")
+      List<Map<String, Object>> pills = (List<Map<String, Object>>) result.get("results");
+      // The by-name half already skipped absent fields; the search half emitted them as explicit
+      // nulls, so one pill looked different depending on how it was fetched. One tool, one rule.
+      assertTrue(
+          !pills.get(0).containsKey("summary"),
+          "a null field must be left out, not returned as null: " + pills.get(0));
+      assertEquals("Within 30 days.", pills.get(0).get("answer"));
+    }
+  }
+
+  @Test
   void searchIsScopedToPillsAndCarriesTheCallersIdentity() throws Exception {
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);

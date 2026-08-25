@@ -24,12 +24,15 @@
           "size": {
             "type": "integer",
             "description": "Number of pills to return for a 'query'. Default 10, maximum 50.",
-            "default": 10
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
           },
           "from": {
             "type": "integer",
             "description": "Offset of the first result. Prefer 'cursor' for paging.",
-            "default": 0
+            "default": 0,
+            "minimum": 0
           },
           "cursor": {
             "type": "string",
@@ -305,7 +308,7 @@
                 "content"
               ]
             },
-            "description": "Extra sections to fold into this response instead of making another call. 'lineage' adds the immediate upstream and downstream FQNs plus 'hasMoreUpstream'/'hasMoreDownstream', so you can tell a complete graph from the first hop of a chain. 'quality' adds the test suite's pass/fail summary including a 'neverRun' count, so a suite whose tests never executed is not mistaken for a clean one. 'context' adds the asset's Context Profile - attached glossary terms and articles plus the structural context (for a table: primary and foreign keys, frequent joins, partitions) - which is what to use before generating SQL against an asset. 'content' adds the body of a knowledge item such as an article; with 'query' it returns only the passages that answer that question rather than the whole document. Each section degrades on its own: if one cannot be read you get a note in its slot, not a failed call. Use get_entity_lineage instead when you need lineage depth or transformation SQL."
+            "description": "Extra sections to fold into this response instead of making another call. 'lineage' adds the immediate upstream and downstream FQNs plus 'hasMoreUpstream'/'hasMoreDownstream', so you can tell a complete graph from the first hop of a chain. 'quality' adds the test suite's pass/fail summary including a 'neverRun' count, so a suite whose tests never executed is not mistaken for a clean one. 'context' adds the asset's Context Profile - attached glossary terms and articles plus the structural context (for a table: primary and foreign keys, frequent joins, partitions) - which is what to use before generating SQL against an asset. 'content' adds the body of a knowledge item such as an article; with 'query' it returns only the passages that answer that question rather than the whole document. 'context' already contains a lineage summary, so requesting it together with 'lineage' returns the same neighbours twice. Each section degrades on its own: if one cannot be read you get a note in its slot, not a failed call. Use get_entity_lineage instead when you need lineage depth or transformation SQL."
           },
           "entities": {
             "type": "array",
@@ -534,7 +537,7 @@
           },
           "attributes": {
             "type": "object",
-            "description": "Fields specific to this entityType, e.g. {'glossary': 'Finance'} for a glossaryTerm, {'classification': 'PII'} for a tag, or {'domainType': 'Aggregate'} for a domain. Get the exact schema from describe_entity_type."
+            "description": "Fields specific to this entityType, e.g. {'glossary': 'Finance'} for a glossaryTerm, {'classification': 'PII'} for a tag, or {'domainType': 'Aggregate'} for a domain. Names match the entity's own schema: a glossary term's parent is 'parent' (not 'parentTerm'), and a metric's expression is the object 'metricExpression': {'language': ..., 'code': ...}. Get the exact schema from describe_entity_type."
           }
         },
         "required": [
