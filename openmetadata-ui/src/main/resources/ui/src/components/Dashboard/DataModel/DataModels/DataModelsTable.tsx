@@ -12,7 +12,6 @@
  */
 
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -59,6 +58,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({

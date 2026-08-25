@@ -47,14 +47,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
-import type { ColumnsType } from 'antd/es/table/interface';
-import type {
-  ColumnType,
-  FilterValue,
-  SorterResult,
-  TableCurrentDataSource,
-  TablePaginationConfig,
-} from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import React, {
@@ -88,6 +80,14 @@ import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
+import type {
+  ColumnsType,
+  ColumnType,
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TablePaginationConfig,
+} from './Table.interface';
 import {
   TableColumnDropdownList,
   TableComponentProps,

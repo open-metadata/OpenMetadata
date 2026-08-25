@@ -145,7 +145,13 @@ jest.mock('../../../common/DataQualitySection', () => {
             data-testid={`test-${test.type}`}
             key={index}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            tabIndex={0}
+            onClick={() => onFilterChange?.(test.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onFilterChange?.(test.type);
+              }
+            }}>
             {test.count}
           </div>
         ))}
@@ -180,6 +186,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label={placeholder}
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -653,8 +660,8 @@ describe('DataQualityTab', () => {
       const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
-      );
-      fireEvent.click(failedButtonWithZeroCount!);
+      ) as HTMLElement;
+      fireEvent.click(failedButtonWithZeroCount);
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {

@@ -130,14 +130,18 @@ export function buildHierarchyGraphs({
     if (!termById.has(parent) || !termById.has(child)) {
       return;
     }
-    if (!parentToChildren.has(parent)) {
-      parentToChildren.set(parent, new Set());
+    let childrenSet = parentToChildren.get(parent);
+    if (!childrenSet) {
+      childrenSet = new Set();
+      parentToChildren.set(parent, childrenSet);
     }
-    parentToChildren.get(parent)!.add(child);
-    if (!childToParents.has(child)) {
-      childToParents.set(child, new Set());
+    childrenSet.add(child);
+    let parentsSet = childToParents.get(child);
+    if (!parentsSet) {
+      parentsSet = new Set();
+      childToParents.set(child, parentsSet);
     }
-    childToParents.get(child)!.add(parent);
+    parentsSet.add(parent);
   });
 
   const glossariesWithTerms = new Map<string, Set<string>>();
