@@ -499,10 +499,18 @@ describe('AddTestSuitePipeline', () => {
       const props = lastCall[0] as {
         hideTableFilter?: boolean;
         columnFilters?: string;
+        testCaseParams?: Record<string, unknown>;
       };
 
       expect(props.hideTableFilter).toBe(true);
       expect(props.columnFilters).toBe(`fullyQualifiedName:"${tableFqn}"`);
+      // Issue #31077: the picker's `q` is free text, so the suite scope must travel as first-class
+      // filter params. Without these the basic-suite picker lists every test case in the instance.
+      expect(props.testCaseParams).toEqual({
+        testSuiteId: undefined,
+        entityLink: `<#E::table::${tableFqn}>`,
+        includeAllTests: true,
+      });
     });
 
     it('does not pass hideTableFilter or columnFilters when testSuite is logical (not basic)', () => {
@@ -525,10 +533,13 @@ describe('AddTestSuitePipeline', () => {
       const props = lastCall[0] as {
         hideTableFilter?: boolean;
         columnFilters?: string;
+        testCaseParams?: Record<string, unknown>;
       };
 
       expect(props.hideTableFilter).toBe(false);
       expect(props.columnFilters).toBeUndefined();
+      // A logical suite scopes by id; no entityLink, since it is not bound to one table.
+      expect(props.testCaseParams).toEqual({ testSuiteId: 'logical-suite-id' });
     });
   });
 
