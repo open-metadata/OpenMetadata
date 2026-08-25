@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
@@ -251,7 +252,10 @@ public class GetEntityTool implements McpTool {
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
     resolveCertification(cleaned);
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
-    addIncludes(windowed, entityType, fqn, McpParams.getStringList(params, INCLUDE_PARAM));
+    addIncludes(
+        windowed,
+        new IncludeContext(authorizer, securityContext, entityType, fqn),
+        McpParams.getStringList(params, INCLUDE_PARAM));
     return windowed;
   }
 
@@ -266,16 +270,29 @@ public class GetEntityTool implements McpTool {
    * <p>Each section degrades on its own: a failure or a permission denial on lineage leaves a note
    * in place of that section rather than failing an otherwise good entity read.
    */
+  /**
+   * What an include section needs to fetch <em>and authorize</em> its own data.
+   *
+   * <p>Bundled rather than passed as four arguments because each section reaches a different entity
+   * than the one that was authorized in {@link #readOne} - lineage reaches the neighbours, quality
+   * reaches the test suite - so each has to carry the caller's identity with it.
+   */
+  private record IncludeContext(
+      Authorizer authorizer,
+      CatalogSecurityContext securityContext,
+      String entityType,
+      String fqn) {}
+
   private static void addIncludes(
-      Map<String, Object> result, String entityType, String fqn, List<String> include) {
+      Map<String, Object> result, IncludeContext ctx, List<String> include) {
     if (nullOrEmpty(include)) {
       return;
     }
     if (include.contains(INCLUDE_LINEAGE)) {
-      result.put(INCLUDE_LINEAGE, section(() -> neighbours(entityType, fqn), INCLUDE_LINEAGE, fqn));
+      result.put(INCLUDE_LINEAGE, section(() -> neighbours(ctx), INCLUDE_LINEAGE, ctx.fqn()));
     }
     if (include.contains(INCLUDE_QUALITY)) {
-      result.put(INCLUDE_QUALITY, section(() -> quality(result), INCLUDE_QUALITY, fqn));
+      result.put(INCLUDE_QUALITY, section(() -> quality(result, ctx), INCLUDE_QUALITY, ctx.fqn()));
     }
   }
 
@@ -303,10 +320,19 @@ public class GetEntityTool implements McpTool {
    * correct neighbour lists sat in hand. It also cost one repository call per neighbour; this costs
    * one for the entity.
    */
-  private static Map<String, Object> neighbours(String entityType, String fqn) {
+  private static Map<String, Object> neighbours(IncludeContext ctx) {
+    // The caller's subject context is what applies domain restrictions to the graph
+    // (LineageRepository.pruneLineageByDomain). Without it, a domain-restricted caller who can see
+    // this entity would also see the FQNs of neighbours they are not allowed to know exist.
     EntityLineage lineage =
-        Entity.getLineageRepository().getByName(entityType, fqn, REACH_DEPTH, REACH_DEPTH);
-    UUID root = rootId(lineage, fqn);
+        Entity.getLineageRepository()
+            .getByName(
+                ctx.entityType(),
+                ctx.fqn(),
+                REACH_DEPTH,
+                REACH_DEPTH,
+                getSubjectContext(ctx.securityContext()));
+    UUID root = rootId(lineage, ctx.fqn());
     Map<UUID, EntityReference> index = indexNodes(lineage);
     Map<String, Object> summary = new LinkedHashMap<>();
     addDirection(summary, root, index, lineage.getUpstreamEdges(), true);
@@ -397,19 +423,24 @@ public class GetEntityTool implements McpTool {
    * pass/fail counts live on the suite — which is why answering "are the tests passing?" previously
    * cost a search plus a second get_entity_details.
    */
-  private static Object quality(Map<String, Object> entity) {
+  private static Object quality(Map<String, Object> entity, IncludeContext ctx) {
     Object suiteRef = entity.get(TEST_SUITE_KEY);
     Object result = Map.of("note", "No test suite is attached to this entity.");
     if (suiteRef instanceof Map<?, ?> ref && ref.get("fullyQualifiedName") != null) {
+      String suiteFqn = ref.get("fullyQualifiedName").toString();
+      // A test suite is its own entity with its own policies, so viewing the table it is attached
+      // to does not imply the right to read it. Authorizing here keeps this fold-in exactly as
+      // permissive as the test-suite resource it saves a call to, rather than more.
+      ctx.authorizer()
+          .authorize(
+              ctx.securityContext(),
+              new OperationContext(Entity.TEST_SUITE, VIEW_ALL),
+              new ResourceContext<>(Entity.TEST_SUITE, null, suiteFqn));
       Map<String, Object> suite =
           JsonUtils.getMap(
-              Entity.getEntityByName(
-                  Entity.TEST_SUITE,
-                  ref.get("fullyQualifiedName").toString(),
-                  "*",
-                  Include.NON_DELETED));
+              Entity.getEntityByName(Entity.TEST_SUITE, suiteFqn, "*", Include.NON_DELETED));
       Map<String, Object> health = new LinkedHashMap<>();
-      health.put("testSuite", ref.get("fullyQualifiedName"));
+      health.put("testSuite", suiteFqn);
       health.put("summary", withNeverRun(suite.get("summary")));
       // columnTestSummary gives counts keyed by an entityLink - enough to know a column has an
       // aborted test, not enough to name it, which cost a caller a call. The suite already carries
@@ -450,16 +481,21 @@ public class GetEntityTool implements McpTool {
    * search_metadata flags the same state per hit as {@code neverRun: true}; this closes the gap so
    * the folded summary cannot say less than the tool it is meant to replace.
    */
-  private static Object withNeverRun(Object rawSummary) {
+  @VisibleForTesting
+  static Object withNeverRun(Object rawSummary) {
     Object result = rawSummary;
     if (rawSummary instanceof Map<?, ?> summary) {
       Map<String, Object> annotated = new LinkedHashMap<>();
       summary.forEach((key, value) -> annotated.put(String.valueOf(key), value));
+      // Queued deliberately does not count as executed. A queued test has produced no verdict, so
+      // counting it would let a suite waiting to run report neverRun: 0 - the "zero failures reads
+      // as healthy" trap this method exists to close. It also keeps this identical to
+      // AIContextMarkdown.appendCoverageVerdict, whose DataQuality carries no queued count at all,
+      // so the same suite cannot get opposite verdicts from two tools.
       int executed =
           intOf(annotated.get("success"))
               + intOf(annotated.get("failed"))
-              + intOf(annotated.get("aborted"))
-              + intOf(annotated.get("queued"));
+              + intOf(annotated.get("aborted"));
       int neverRun = Math.max(0, intOf(annotated.get("total")) - executed);
       annotated.put("neverRun", neverRun);
       if (neverRun > 0 && executed == 0) {

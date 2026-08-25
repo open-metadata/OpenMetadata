@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.annotations.VisibleForTesting;
@@ -110,8 +111,16 @@ public class GetLineageTool implements McpTool {
         upstreamDepth,
         downstreamDepth,
         options.includeColumnLineage());
+    // Passing the subject context is what applies the caller's domain restrictions to the graph
+    // (LineageRepository.pruneLineageByDomain); the overload without it prunes nothing.
     EntityLineage lineage =
-        Entity.getLineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth);
+        Entity.getLineageRepository()
+            .getByName(
+                entityType,
+                fqn,
+                upstreamDepth,
+                downstreamDepth,
+                getSubjectContext(securityContext));
     return enforceSizeBudget(toSlim(lineage, options));
   }
 
