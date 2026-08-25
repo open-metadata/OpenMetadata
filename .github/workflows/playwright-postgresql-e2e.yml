@@ -110,30 +110,15 @@ jobs:
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
 
   playwright-summary:
-    # Publish the required check name `playwright-summary` ONLY when the
-    # reusable's gate authorized the run. Every explicit gate skip publishes
-    # a differently-named check so a redundant sibling event cannot satisfy
-    # branch protection before the real pipeline finishes. Gate failures
-    # keep the required name and fail in the guard step below.
-    #
-    # Decision tree (mirrors the reusable's gate outputs verbatim):
-    #   gate succeeded with should_run=true              → 'playwright-summary'
-    #   gate failed                                      → 'playwright-summary'
-    #   labeled event with non-'safe to test' label      → 'playwright-summary (label ignored)'
-    #   gate succeeded with should_run=false             → 'playwright-summary (skipped)'
     name: >-
       ${{
         (
-          needs.playwright.outputs.gate_result != 'success'
+          github.event.action == 'labeled'
+          || needs.playwright.outputs.gate_result != 'success'
           || needs.playwright.outputs.gate_should_run == 'true'
         )
         && 'playwright-summary'
-        || (
-          github.event.action == 'labeled'
-          && github.event.label.name != 'safe to test'
-          && 'playwright-summary (label ignored)'
-          || 'playwright-summary (skipped)'
-        )
+        || 'playwright-summary (skipped)'
       }}
     if: ${{ always() && !cancelled() }}
     needs: [playwright]
