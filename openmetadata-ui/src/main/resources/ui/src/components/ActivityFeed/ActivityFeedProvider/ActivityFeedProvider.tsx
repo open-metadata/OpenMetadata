@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
+import { PagingResponse } from 'Models';
 import {
   createContext,
   lazy,
@@ -94,6 +95,109 @@ export const ActivityFeedContext = createContext(
   {} as ActivityFeedProviderContextType
 );
 
+const TASK_LIST_FIELDS = 'assignees,createdBy,about,comments,payload';
+
+type TaskListUser = { fullyQualifiedName?: string; name?: string } | undefined;
+
+interface TaskListScope {
+  feedFilterType: FeedFilter;
+  entityType?: EntityType;
+  fqn?: string;
+  currentUser: TaskListUser;
+  taskStatusGroup?: TaskStatusGroup;
+}
+
+/** The "my tasks" endpoints differ only by which side of the task the filter names. */
+const myTasksEndpointFor = (feedFilterType: FeedFilter) => {
+  if (feedFilterType === FeedFilter.ASSIGNED_BY) {
+    return listMyCreatedTasks;
+  }
+
+  return feedFilterType === FeedFilter.ASSIGNED_TO
+    ? listMyAssignedTasks
+    : listMyVisibleTasks;
+};
+
+/** True when the profile being viewed is the logged-in user's own. */
+const isOwnProfile = ({ entityType, fqn, currentUser }: TaskListScope) =>
+  entityType === EntityType.USER &&
+  Boolean(fqn) &&
+  [currentUser?.fullyQualifiedName, currentUser?.name].includes(fqn);
+
+const mentionedTaskParams = ({
+  entityType,
+  fqn,
+  currentUser,
+}: TaskListScope) => ({
+  mentionedUser: currentUser?.fullyQualifiedName ?? currentUser?.name,
+  // Scope to the entity only on an entity page; a user page wants every mention.
+  aboutEntity: entityType !== EntityType.USER && fqn ? fqn : undefined,
+});
+
+const otherUserTaskParams = ({
+  feedFilterType,
+  fqn,
+  currentUser,
+  taskStatusGroup,
+}: TaskListScope) => {
+  const assigneeFqn =
+    fqn || currentUser?.fullyQualifiedName || currentUser?.name;
+  const isCreatedByFilter = feedFilterType === FeedFilter.ASSIGNED_BY;
+
+  return {
+    statusGroup: taskStatusGroup,
+    assignee: isCreatedByFilter ? undefined : assigneeFqn,
+    createdBy: isCreatedByFilter ? assigneeFqn : undefined,
+  };
+};
+
+/**
+ * Picks the task endpoint the current scope calls for. Extracted from getTaskData
+ * so the fetcher keeps only its loading/sequence orchestration.
+ */
+const fetchTaskList = (
+  scope: TaskListScope,
+  page: { after?: string; limit?: number; domain?: string }
+): Promise<PagingResponse<Task[]>> => {
+  const common = { ...page, fields: TASK_LIST_FIELDS };
+  const { feedFilterType, entityType, fqn, taskStatusGroup } = scope;
+  const scoped = { statusGroup: taskStatusGroup, ...common };
+
+  if (feedFilterType === FeedFilter.MENTIONS) {
+    return listTasks({ ...mentionedTaskParams(scope), ...common });
+  }
+
+  if (isOwnProfile(scope)) {
+    return myTasksEndpointFor(feedFilterType)(scoped);
+  }
+
+  if (entityType === EntityType.USER) {
+    return listTasks({ ...otherUserTaskParams(scope), ...common });
+  }
+
+  if (entityType && fqn) {
+    return listTasks({ aboutEntity: fqn, ...scoped });
+  }
+
+  return myTasksEndpointFor(feedFilterType)(scoped);
+};
+
+/** Replaces one post inside a thread's post list, leaving the rest untouched. */
+const applyPostUpdate = (
+  posts: Post[],
+  postId: string,
+  updated: Pick<Post, 'reactions' | 'message'>
+) =>
+  posts.map((post) =>
+    isEqual(postId, post.id)
+      ? { ...post, reactions: updated.reactions, message: updated.message }
+      : post
+  );
+
+/** Swaps a refreshed task into the list by id. */
+const replaceTaskById = (tasks: Task[], fresh: Task) =>
+  tasks.map((task) => (task.id === fresh.id ? fresh : task));
+
 const ActivityFeedProvider = ({ children, user }: Props) => {
   const { t } = useTranslation();
   // For activity events (entity changes)
@@ -105,6 +209,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // overwrite newer results, so each request claims a sequence number and only the
   // latest one is allowed to commit.
   const activityRequestSeq = useRef(0);
+  // getTaskData and getFeedData write the same `loading` and `entityPaging`, so a
+  // single sequence guards both: an older request must not commit its rows, its
+  // paging cursor, or clear the loader after a newer one has started.
+  const listRequestSeq = useRef(0);
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -162,31 +270,37 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
-  const setActiveThread = useCallback((active?: Thread) => {
-    setSelectedThread(active);
-    active && fetchPostsFeed(active);
-  }, []);
+  const setActiveThread = useCallback(
+    (active?: Thread) => {
+      setSelectedThread(active);
+      active && fetchPostsFeed(active);
+    },
+    [fetchPostsFeed]
+  );
 
-  const setActiveTask = useCallback((active?: Task) => {
-    setSelectedTask(active);
+  const setActiveTask = useCallback(
+    (active?: Task) => {
+      setSelectedTask(active);
 
-    // Fetch TCRS records for this incident task to populate the timeline.
-    // In task-first mode the task UUID equals the TCRS stateId (see
-    // IncidentTcrsSyncHandler). The pre-task-first code read from
-    // payload.testCaseResolutionStatusId, but that field doesn't exist in the
-    // new task system, so we fall back to active.id.
-    if (active && active.type === TaskEntityType.TestCaseResolution) {
-      const stateId =
-        active.payload &&
-        typeof active.payload === 'object' &&
-        'testCaseResolutionStatusId' in active.payload
-          ? (active.payload.testCaseResolutionStatusId as string)
-          : active.id;
-      if (stateId) {
-        fetchTestCaseResolution(stateId);
+      // Fetch TCRS records for this incident task to populate the timeline.
+      // In task-first mode the task UUID equals the TCRS stateId (see
+      // IncidentTcrsSyncHandler). The pre-task-first code read from
+      // payload.testCaseResolutionStatusId, but that field doesn't exist in the
+      // new task system, so we fall back to active.id.
+      if (active && active.type === TaskEntityType.TestCaseResolution) {
+        const stateId =
+          active.payload &&
+          typeof active.payload === 'object' &&
+          'testCaseResolutionStatusId' in active.payload
+            ? (active.payload.testCaseResolutionStatusId as string)
+            : active.id;
+        if (stateId) {
+          fetchTestCaseResolution(stateId);
+        }
       }
-    }
-  }, []);
+    },
+    [fetchTestCaseResolution]
+  );
 
   const fetchUpdatedThread = useCallback(
     async (id: string, isTask?: boolean) => {
@@ -221,106 +335,32 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
+      const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
-        const feedFilterType = filterType ?? FeedFilter.ALL;
+        if (!after) {
+          // A first-page fetch replaces the result set. Dropping the rows and the
+          // paging cursor now is what stops the previous query's list staying on
+          // screen, and stops the infinite-scroll effect appending this query's
+          // next page onto it using the old cursor.
+          setTasks([]);
+          setEntityPaging({} as Paging);
+        }
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const taskFields = 'assignees,createdBy,about,comments,payload';
-        const isCurrentUserEntity =
-          entityType === EntityType.USER &&
-          Boolean(fqn) &&
-          [currentUser?.fullyQualifiedName, currentUser?.name].includes(fqn);
-        let taskResponse;
+        const taskResponse = await fetchTaskList(
+          {
+            feedFilterType: filterType ?? FeedFilter.ALL,
+            entityType,
+            fqn,
+            currentUser,
+            taskStatusGroup,
+          },
+          { after, limit, domain }
+        );
 
-        if (feedFilterType === FeedFilter.MENTIONS) {
-          const userFqn = currentUser?.fullyQualifiedName ?? currentUser?.name;
-          taskResponse = await listTasks({
-            mentionedUser: userFqn,
-            aboutEntity:
-              entityType !== EntityType.USER && fqn ? fqn : undefined,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (isCurrentUserEntity) {
-          if (feedFilterType === FeedFilter.ASSIGNED_BY) {
-            taskResponse = await listMyCreatedTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          } else if (feedFilterType === FeedFilter.ASSIGNED_TO) {
-            taskResponse = await listMyAssignedTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          } else {
-            taskResponse = await listMyVisibleTasks({
-              statusGroup: taskStatusGroup,
-              after,
-              limit,
-              domain,
-              fields: taskFields,
-            });
-          }
-        } else if (entityType === EntityType.USER) {
-          const assigneeFqn =
-            fqn || currentUser?.fullyQualifiedName || currentUser?.name;
-          taskResponse = await listTasks({
-            statusGroup: taskStatusGroup,
-            assignee:
-              feedFilterType === FeedFilter.ASSIGNED_BY
-                ? undefined
-                : assigneeFqn,
-            createdBy:
-              feedFilterType === FeedFilter.ASSIGNED_BY
-                ? assigneeFqn
-                : undefined,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (entityType && fqn) {
-          taskResponse = await listTasks({
-            statusGroup: taskStatusGroup,
-            aboutEntity: fqn,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (feedFilterType === FeedFilter.ASSIGNED_BY) {
-          taskResponse = await listMyCreatedTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else if (feedFilterType === FeedFilter.ASSIGNED_TO) {
-          taskResponse = await listMyAssignedTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
-        } else {
-          taskResponse = await listMyVisibleTasks({
-            statusGroup: taskStatusGroup,
-            after,
-            limit,
-            domain,
-            fields: taskFields,
-          });
+        if (listRequestSeq.current !== requestId) {
+          return;
         }
 
         const sortedTasks = orderBy(taskResponse.data, ['createdAt'], ['desc']);
@@ -328,6 +368,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setTasks((prev) => (after ? [...prev, ...sortedTasks] : sortedTasks));
         setEntityPaging(taskResponse.paging);
       } catch (err) {
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -335,10 +379,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       } finally {
-        setLoading(false);
+        if (listRequestSeq.current === requestId) {
+          setLoading(false);
+        }
       }
     },
-    [currentUser, activeDomain]
+    [currentUser, activeDomain, t]
   );
 
   const getFeedData = useCallback(
@@ -351,8 +397,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
+      const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        if (!after) {
+          setEntityThread([]);
+          setEntityPaging({} as Paging);
+        }
         const feedFilterType = filterType ?? FeedFilter.ALL;
         let userId = undefined;
 
@@ -373,9 +424,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId,
           limit
         );
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
       } catch (err) {
+        if (listRequestSeq.current !== requestId) {
+          return;
+        }
+
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -383,10 +442,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       } finally {
-        setLoading(false);
+        if (listRequestSeq.current === requestId) {
+          setLoading(false);
+        }
       }
     },
-    [currentUser, user, getTaskData]
+    [currentUser, user, t]
   );
 
   // Here value is the post message and id can be thread id or post id.
@@ -431,32 +492,26 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
       }
     },
-    [currentUser]
+    [currentUser, setActiveTask, setActiveThread, t]
   );
 
   const refreshActivityFeed = useCallback((threads: Thread[]) => {
     setEntityThread([...threads]);
   }, []);
 
-  const updateEntityThread = useCallback(
-    (thread: Thread) => {
-      setEntityThread((prev) =>
-        prev.map((threadItem) =>
-          threadItem.id === thread.id ? thread : threadItem
-        )
-      );
-    },
-    [setEntityThread]
-  );
+  const updateEntityThread = useCallback((thread: Thread) => {
+    setEntityThread((prev) =>
+      prev.map((threadItem) =>
+        threadItem.id === thread.id ? thread : threadItem
+      )
+    );
+  }, []);
 
-  const updateTask = useCallback(
-    (task: Task) => {
-      setTasks((prev) =>
-        prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
-      );
-    },
-    [setTasks]
-  );
+  const updateTask = useCallback((task: Task) => {
+    setTasks((prev) =>
+      prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
+    );
+  }, []);
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -486,7 +541,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    []
+    [setActiveThread]
   );
 
   const updateThreadHandler = useCallback(
@@ -518,27 +573,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     async (threadId: string, postId: string, data: Operation[]) => {
       try {
         const res = await updatePost(threadId, postId, data);
+        // Deliberately sequential: this reads back the thread the PATCH above just
+        // modified. Issuing them together would let the read observe pre-patch
+        // state and land it in setSelectedThread, so the right panel would
+        // disagree with the optimistic list update below.
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
         const activeThreadData = await getFeedById(threadId);
         setEntityThread((prevData) =>
-          prevData.map((thread) => {
-            if (isEqual(threadId, thread.id)) {
-              const updatedPosts = (thread.posts ?? []).map((post) => {
-                if (isEqual(postId, post.id)) {
-                  return {
-                    ...post,
-                    reactions: res.reactions,
-                    message: res.message,
-                  };
-                } else {
-                  return post;
+          prevData.map((thread) =>
+            isEqual(threadId, thread.id)
+              ? {
+                  ...thread,
+                  posts: applyPostUpdate(thread.posts ?? [], postId, res),
                 }
-              });
-
-              return { ...thread, posts: updatedPosts };
-            } else {
-              return thread;
-            }
-          })
+              : thread
+          )
         );
         setSelectedThread(activeThreadData.data);
       } catch (err) {
@@ -565,48 +614,51 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         });
       }
     },
-    []
+    [updateThreadHandler, updatePostHandler]
   );
 
-  const updateReactions = async (
-    post: Post,
-    feedId: string,
-    isThread: boolean,
-    reactionType: ReactionType,
-    reactionOperation: ReactionOperation
-  ) => {
-    let updatedReactions = post.reactions ?? [];
-    if (reactionOperation === ReactionOperation.ADD) {
-      const reactionObject = {
-        reactionType,
-        user: {
-          id: currentUser?.id as string,
-        },
-      };
+  const updateReactions = useCallback(
+    async (
+      post: Post,
+      feedId: string,
+      isThread: boolean,
+      reactionType: ReactionType,
+      reactionOperation: ReactionOperation
+    ) => {
+      let updatedReactions = post.reactions ?? [];
+      if (reactionOperation === ReactionOperation.ADD) {
+        const reactionObject = {
+          reactionType,
+          user: {
+            id: currentUser?.id as string,
+          },
+        };
 
-      updatedReactions = [...updatedReactions, reactionObject as Reaction];
-    } else {
-      updatedReactions = updatedReactions.filter(
-        (reaction) =>
-          !(
-            reaction.reactionType === reactionType &&
-            reaction.user.id === currentUser?.id
-          )
-      );
-    }
-
-    const patch = compare(
-      { ...post, reactions: [...(post.reactions ?? [])] },
-      {
-        ...post,
-        reactions: updatedReactions,
+        updatedReactions = [...updatedReactions, reactionObject as Reaction];
+      } else {
+        updatedReactions = updatedReactions.filter(
+          (reaction) =>
+            !(
+              reaction.reactionType === reactionType &&
+              reaction.user.id === currentUser?.id
+            )
+        );
       }
-    );
 
-    await updateFeed(feedId, post.id, isThread, patch).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
-  };
+      const patch = compare(
+        { ...post, reactions: [...(post.reactions ?? [])] },
+        {
+          ...post,
+          reactions: updatedReactions,
+        }
+      );
+
+      await updateFeed(feedId, post.id, isThread, patch).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+      });
+    },
+    [currentUser?.id, updateFeed]
+  );
 
   const updateActivityReaction = useCallback(
     async (
@@ -650,22 +702,28 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [activityEvents, currentUser?.id]
   );
 
-  const updateEditorFocus = (isFocused: boolean) => {
+  const updateEditorFocus = useCallback((isFocused: boolean) => {
     setFocusReplyEditor(isFocused);
-  };
-
-  const showDrawer = useCallback((thread: Thread) => {
-    setIsDrawerOpen(true);
-    setActiveThread(thread);
-    setSelectedTask(undefined);
   }, []);
 
-  const showTaskDrawer = useCallback((task: Task) => {
-    setIsDrawerOpen(true);
-    setActiveTask(task);
-    setSelectedThread(undefined);
-    setSelectedActivity(undefined);
-  }, []);
+  const showDrawer = useCallback(
+    (thread: Thread) => {
+      setIsDrawerOpen(true);
+      setActiveThread(thread);
+      setSelectedTask(undefined);
+    },
+    [setActiveThread]
+  );
+
+  const showTaskDrawer = useCallback(
+    (task: Task) => {
+      setIsDrawerOpen(true);
+      setActiveTask(task);
+      setSelectedThread(undefined);
+      setSelectedActivity(undefined);
+    },
+    [setActiveTask]
+  );
 
   // Change-event activities are read-only notifications with no discussion
   // thread of their own — selecting one just shows its change detail + reactions.
@@ -698,14 +756,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           .then((res) => {
             const fresh = res.data;
             setSelectedTask(fresh);
-            setTasks((prev) =>
-              prev.map((t) => (t.id === fresh.id ? fresh : t))
-            );
+            setTasks((prev) => replaceTaskById(prev, fresh));
           })
           .catch(() => {});
       }
     },
-    [setTestCaseResolutionStatus, selectedTask?.id]
+    [selectedTask?.id]
   );
 
   // Activity Events fetch methods.
