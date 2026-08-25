@@ -275,10 +275,22 @@ jobs:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
             playwright/test-data/**
+          # `files` is a literal block scalar — every line is a glob, so this
+          # note has to live outside it. The guardrail step also runs the
+          # generated-rule-table drift check and the rule unit tests, so
+          # anything those read must trigger it; otherwise the drift guard
+          # never runs for the files that cause drift. The handbook holds the
+          # generated table, eslint-rules/ and the plugin under playwright/
+          # supply the descriptions it is generated from, the generator decides
+          # its shape, and package.json defines the commands the step invokes.
           files: |
             playwright/**/*.{ts,tsx,js,jsx}
+            playwright/**/*.md
             eslint.config.mjs
             eslint-suppressions.json
+            eslint-rules/**
+            scripts/generate-playwright-rule-table.ts
+            package.json
 
       - name: ESLint + Prettier + Organise Imports (playwright)
         id: lint_playwright

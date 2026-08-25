@@ -84,14 +84,24 @@ const rule: Rule.RuleModule = {
   },
 
   create(context) {
-    const sourceCode = context.sourceCode;
     // Every CallExpression in the file, collected during the single
     // traversal below, so `Program:exit` can ask "which calls fall inside
     // this test's body?" by range instead of re-walking each body by hand.
     const allCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
     const testCalls: (CallExpression & Rule.NodeParentExtension)[] = [];
+    // Ranges of every real `expect` identifier in the file. An AST walk, not a
+    // source-text scan: `\bexpect\b` also matched the word inside comments and
+    // string literals, so `// we expect the click to work` or a URL containing
+    // "expect" silently exempted an assertion-free test.
+    const expectRanges: [number, number][] = [];
 
     return {
+      Identifier(node) {
+        if (node.name === 'expect' && node.range) {
+          expectRanges.push(node.range as [number, number]);
+        }
+      },
+
       CallExpression(node) {
         allCalls.push(node);
 
@@ -112,19 +122,20 @@ const rule: Rule.RuleModule = {
             continue;
           }
 
-          // A source-text scan, not an AST walk for `expect(...)` calls:
-          // this deliberately also matches `expect` passed as a bare
-          // identifier (e.g. `await verifyRow(page, expect)`), so
-          // assertions delegated to a helper by reference are still seen.
-          const hasExpectReference = sourceCode
-            .getText(body)
-            .match(/\bexpect\b/);
+          const [bodyStart, bodyEnd] = body.range as [number, number];
+
+          // Any `expect` *identifier* inside the body counts, not just a
+          // call: `await verifyRow(page, expect)` delegates the assertion by
+          // reference, and flagging that would be a false positive.
+          const hasExpectReference = expectRanges.some(
+            ([start, end]) => start >= bodyStart && end <= bodyEnd
+          );
 
           if (hasExpectReference) {
             continue;
           }
 
-          // Beyond the text scan, this rule can only flag a test when it is
+          // Beyond the expect check, this rule can only flag a test when it is
           // PROVABLY assertion-free: no `expect` reference anywhere, AND
           // every call in the body stays on a Playwright page/locator
           // fixture chain (`page.getByTestId(...).click()`). Any call to an
@@ -138,7 +149,6 @@ const rule: Rule.RuleModule = {
           // inattention, while a wrongly flagged delegating test costs a
           // developer's time proving a false alarm.
           const fixtureNames = getFixtureNames(body);
-          const [bodyStart, bodyEnd] = body.range as [number, number];
           const nestedCalls = allCalls.filter((call) => {
             const [callStart, callEnd] = call.range as [number, number];
 

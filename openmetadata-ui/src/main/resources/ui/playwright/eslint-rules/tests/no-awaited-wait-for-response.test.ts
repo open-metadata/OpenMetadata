@@ -13,7 +13,7 @@
 
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
-import rule from '../require-response-listener-before-action.ts';
+import rule from '../no-awaited-wait-for-response.ts';
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -23,7 +23,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run('require-response-listener-before-action', rule, {
+ruleTester.run('no-awaited-wait-for-response', rule, {
   valid: [
     // Assigned before the action — the correct pattern.
     `const res = page.waitForResponse('/api/v1/tables');
@@ -38,11 +38,11 @@ ruleTester.run('require-response-listener-before-action', rule, {
     {
       code: `await button.click();
              await page.waitForResponse('/api/v1/tables');`,
-      errors: [{ messageId: 'listenerAfterAction' }],
+      errors: [{ messageId: 'awaitedWaitForResponse' }],
     },
     {
       code: `await page.waitForResponse(/tables/);`,
-      errors: [{ messageId: 'listenerAfterAction' }],
+      errors: [{ messageId: 'awaitedWaitForResponse' }],
     },
   ],
 });

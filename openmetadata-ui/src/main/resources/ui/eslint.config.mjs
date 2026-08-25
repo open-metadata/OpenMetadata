@@ -529,7 +529,7 @@ export default [
       'playwright/no-wait-for-selector': 'error',
 
       // Local OpenMetadata Playwright rules.
-      'om-playwright/require-response-listener-before-action': 'error',
+      'om-playwright/no-awaited-wait-for-response': 'error',
       'om-playwright/no-blanket-test-slow': 'error',
       'om-playwright/no-positional-locator': 'error',
       'om-playwright/justified-rule-disable': 'error',

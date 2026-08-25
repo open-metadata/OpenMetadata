@@ -17,15 +17,22 @@ const rule: Rule.RuleModule = {
     type: 'problem',
     docs: {
       description:
-        'Require waitForResponse listeners to be registered before the action that triggers them',
+        'Disallow awaiting page.waitForResponse() directly — register the listener before the action instead',
     },
     schema: [],
     messages: {
-      listenerAfterAction:
+      awaitedWaitForResponse:
         'Register the response listener before the action: `const res = page.waitForResponse(url); await locator.click(); await res;` — or use clickAndWaitFor() from playwright/utils/waitHelpers. Awaiting waitForResponse directly races the response that already fired.',
     },
   },
 
+  // Scope, stated plainly: this bans the inline `await …waitForResponse(…)`
+  // shape. It performs no ordering analysis — it cannot see which statement
+  // triggered the response, so it does not verify that a hoisted listener was
+  // registered before its action. Banning the inline form is a sound proxy,
+  // because hoisting is the only way to register first, but the gap is real:
+  // an aliased call (`const wait = page.waitForResponse.bind(page)`) is not
+  // matched. Do not read the rule as proving ordering.
   create(context) {
     return {
       AwaitExpression(node) {
@@ -40,7 +47,7 @@ const rule: Rule.RuleModule = {
           return;
         }
 
-        context.report({ node: call, messageId: 'listenerAfterAction' });
+        context.report({ node: call, messageId: 'awaitedWaitForResponse' });
       },
     };
   },

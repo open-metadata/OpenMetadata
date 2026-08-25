@@ -819,10 +819,10 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | Rule | Severity | What it catches |
 |---|---|---|
 | `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
+| `om-playwright/no-awaited-wait-for-response` | error | Disallow awaiting page.waitForResponse() directly — register the listener before the action instead |
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
-| `om-playwright/require-response-listener-before-action` | error | Require waitForResponse listeners to be registered before the action that triggers them |
 | `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |
@@ -873,7 +873,7 @@ Before finalizing tests, verify:
 - [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
 
 ### ESLint
-- [ ] `yarn lint:playwright:suppressions` passes with zero errors
+- [ ] `yarn lint:playwright` passes with zero errors (this is what CI runs)
 - [ ] No new warnings introduced (fix existing ones when touching a file)
 
 ### Coverage & Roles
