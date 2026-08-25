@@ -7,18 +7,22 @@ First-party icon library for OpenMetadata, built from SVG sources and shipped as
 ## Overview
 
 ```
-icons/              ← source SVGs (kebab-case, committed to repo)
-  add-alert.svg
-  memories.svg
-  ...
+icons/              ← source SVGs for regular icons (kebab-case, committed)
+icons-custom/       ← source SVGs for custom/gradient icons (colors preserved)
 
-src/icons/          ← generated TypeScript React components (do not edit manually)
+src/icons/          ← generated TSX components (committed, do not edit manually)
   AddAlert.tsx
   Memories.tsx
+  Gold.tsx          ← generated from icons-custom/gold.svg
   index.ts
-  categories.ts     ← category metadata (maintained manually)
-  types.ts          ← shared IconProps interface
+src/icons-static/
+  types.ts          ← IconProps interface (hand-written)
 ```
+
+**Both `.svg` source files and `.tsx` generated files are committed to git.**
+The generator (`yarn icons:generate`) is a developer tool — run it explicitly
+when SVGs change, then commit the result. `yarn build` is pure `vite build` with
+no generation step.
 
 **Import syntax**
 
@@ -65,12 +69,16 @@ Examples of valid names:
 
 > Numbers and hyphens are fine. Spaces, `&`, and other special characters in the original Figma name will be stripped — so always use hyphens as word separators.
 
-### 3. Run the generator
+### 3. Run the generator and commit the output
 
 ```bash
 cd openmetadata-ui-core-components/src/main/resources/ui
 yarn icons:generate
 ```
+
+Then **commit both the SVG and the generated `.tsx` file** as part of the same PR.
+The generated files are tracked in git so `yarn build` stays fast (pure `vite build`,
+no generation step).
 
 This will:
 - Run SVGO to optimise the SVG

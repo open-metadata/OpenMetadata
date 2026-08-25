@@ -60,10 +60,10 @@
     "component-library"
   ],
   "scripts": {
-    "build": "node scripts/generate-icons.mjs && vite build",
-    "build:watch": "node scripts/generate-icons.mjs && vite build --watch",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
     "dev": "vite build --watch",
-    "type-check": "node scripts/generate-icons.mjs && tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "prepublishOnly": "yarn clean && yarn build",
     "storybook": "yarn icons:generate && storybook dev -p 6006",

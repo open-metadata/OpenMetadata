@@ -211,6 +211,3 @@ ingestion/.claude/agents
 test-results/
 
 docs/superpowers/*
-
-# Generated icon components — produced at build time by `yarn icons:generate`
-openmetadata-ui-core-components/src/main/resources/ui/src/icons/
