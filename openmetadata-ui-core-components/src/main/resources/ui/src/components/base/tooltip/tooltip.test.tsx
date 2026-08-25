@@ -20,6 +20,12 @@ import { Tooltip } from './tooltip';
 // Without a prior mousemove the modality is null and hover events are ignored.
 const setupPointerModality = () => fireEvent.mouseMove(document);
 
+// A minimal focusable React component used to test the triggerClassName
+// "force wrap" behaviour on component children (not just HTML elements).
+const IconStub = ({ className }: { className?: string }) => (
+  <svg className={className} data-testid="icon" viewBox="0 0 24 24" />
+);
+
 describe('Tooltip — child wrapping', () => {
   it('auto-wraps a non-focusable span in a button so the tooltip can anchor', () => {
     render(
@@ -28,10 +34,7 @@ describe('Tooltip — child wrapping', () => {
       </Tooltip>
     );
 
-    // The span should be inside an AriaButton wrapper.
-    const trigger = screen.getByText('trigger');
-
-    expect(trigger.closest('button')).not.toBeNull();
+    expect(screen.getByText('trigger').closest('button')).not.toBeNull();
   });
 
   it('auto-wraps a div', () => {
@@ -51,10 +54,9 @@ describe('Tooltip — child wrapping', () => {
       </Tooltip>
     );
 
-    // The button should be a direct child of the TooltipTrigger, not nested
-    // inside another button.
     const btn = screen.getByRole('button', { name: 'trigger' });
 
+    // Should not be nested inside another button.
     expect(btn.closest('button')).toBe(btn);
   });
 
@@ -65,17 +67,21 @@ describe('Tooltip — child wrapping', () => {
       </Tooltip>
     );
 
-    expect(screen.getByRole('link', { name: 'trigger' }).closest('button')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'trigger' }).closest('button')
+    ).toBeNull();
   });
 
-  it('wraps when triggerClassName is provided even for a React component child', () => {
+  it('wraps a React component child when triggerClassName is provided', () => {
     render(
       <Tooltip isOpen title="tip" triggerClassName="custom-cls">
-        <span>trigger</span>
+        <IconStub />
       </Tooltip>
     );
 
-    const wrapper = screen.getByText('trigger').closest('button');
+    // IconStub is a React component (not a non-focusable string element), so
+    // it would normally pass through. triggerClassName forces wrapping.
+    const wrapper = screen.getByTestId('icon').closest('button');
 
     expect(wrapper).not.toBeNull();
     expect(wrapper).toHaveClass('custom-cls');
@@ -95,10 +101,20 @@ describe('Tooltip — child wrapping', () => {
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('passes triggerIsDisabled to the wrapper button', () => {
+    render(
+      <Tooltip isOpen title="tip" triggerIsDisabled triggerClassName="">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('trigger').closest('button')).toBeDisabled();
+  });
 });
 
 describe('Tooltip — show/hide behaviour', () => {
-  it('shows the tooltip on hover over an auto-wrapped child', async () => {
+  it('shows the tooltip on hover over an auto-wrapped span child', async () => {
     const user = userEvent.setup();
     setupPointerModality();
 
@@ -117,7 +133,7 @@ describe('Tooltip — show/hide behaviour', () => {
     });
   });
 
-  it('shows the tooltip on keyboard focus', async () => {
+  it('shows the tooltip on keyboard focus of an auto-wrapped span child', async () => {
     const user = userEvent.setup();
 
     render(
@@ -162,22 +178,17 @@ describe('Tooltip — placement normalisation', () => {
     ['topRight', 'top right'],
     ['leftTop', 'left top'],
     ['rightTop', 'right top'],
-  ])(
-    'accepts antd alias "%s" without throwing',
-    (alias) => {
-      // The shim should translate silently; we just assert no error is thrown
-      // and the trigger renders correctly.
-      expect(() =>
-        render(
-          <Tooltip isOpen placement={alias} title="tip">
-            <button>trigger</button>
-          </Tooltip>
-        )
-      ).not.toThrow();
+  ])('accepts antd alias "%s" without throwing', (alias) => {
+    expect(() =>
+      render(
+        <Tooltip isOpen placement={alias} title="tip">
+          <button>trigger</button>
+        </Tooltip>
+      )
+    ).not.toThrow();
 
-      expect(screen.getByText('tip')).toBeInTheDocument();
-    }
-  );
+    expect(screen.getByText('tip')).toBeInTheDocument();
+  });
 
   it('passes through native react-aria placements unchanged', () => {
     expect(() =>
@@ -193,7 +204,7 @@ describe('Tooltip — placement normalisation', () => {
 });
 
 describe('Tooltip — mouseEnterDelay shim', () => {
-  it('accepts mouseEnterDelay (seconds) without a TypeScript/runtime error', () => {
+  it('accepts mouseEnterDelay (seconds) without a runtime error', () => {
     expect(() =>
       render(
         <Tooltip isOpen mouseEnterDelay={0.5} title="tip">
@@ -206,8 +217,6 @@ describe('Tooltip — mouseEnterDelay shim', () => {
   });
 
   it('prefers the explicit delay prop over mouseEnterDelay', () => {
-    // Both provided — delay (ms) should win. We can't easily assert the
-    // internal value, so we assert no crash and the tooltip still renders.
     expect(() =>
       render(
         <Tooltip isOpen delay={100} mouseEnterDelay={2} title="tip">

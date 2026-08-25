@@ -1,17 +1,19 @@
-import { cx } from '@/utils/cx';
-import { isValidElement, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
   PressEvent,
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps as AriaTooltipTriggerComponentProps,
 } from 'react-aria-components';
+import { isValidElement } from 'react';
 import {
   Button as AriaButton,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
+import { cx } from '@/utils/cx';
 
 // Maps antd camelCase placement strings to react-aria space-separated equivalents.
 // Allows legacy call sites to keep their placement values unchanged when migrating.
@@ -45,7 +47,7 @@ interface TooltipProps
    * values ("top", "bottom left", …) and antd legacy camelCase aliases
    * ("bottomRight", "topLeft", …) which are normalised internally.
    */
-  placement?: string;
+  placement?: Placement | keyof typeof PLACEMENT_MAP;
   /**
    * The title of the tooltip.
    */
@@ -85,6 +87,14 @@ interface TooltipProps
    */
   onTriggerPress?: (e: PressEvent) => void;
   /**
+   * Passed as `isDisabled` to the auto-generated focusable wrapper. Use
+   * `triggerIsDisabled={false}` to keep the help-icon wrapper interactive
+   * even when a surrounding form field is disabled.
+   *
+   * @default false
+   */
+  triggerIsDisabled?: boolean;
+  /**
    * Delay in **seconds** before the tooltip shows. Antd legacy alias for
    * `delay` (which uses milliseconds). When both are provided, `delay` wins.
    */
@@ -109,6 +119,7 @@ export const Tooltip = ({
   containerClassName,
   triggerClassName,
   onTriggerPress,
+  triggerIsDisabled = false,
   mouseEnterDelay,
   ...tooltipProps
 }: TooltipProps) => {
@@ -135,6 +146,7 @@ export const Tooltip = ({
 
   const trigger_ = shouldWrap ? (
     <AriaButton
+      isDisabled={triggerIsDisabled}
       className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
       onPress={onTriggerPress}>
       {children}
@@ -186,7 +198,7 @@ export const Tooltip = ({
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
         offset={offset}
-        placement={resolvedPlacement as never}>
+        placement={resolvedPlacement as Placement}>
         {({ isEntering, isExiting }) => (
           <>
             {arrow && (

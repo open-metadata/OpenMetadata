@@ -44,15 +44,14 @@ export const Label = ({
       </span>
 
       {tooltip && (
-        // isDisabled={false} on the wrapper overrides any disabled state
-        // inherited from the parent form field — the help icon tooltip should
-        // remain accessible even when the field itself is disabled.
         <Tooltip
           description={tooltipDescription}
-          isDisabled={false}
           placement="top"
           title={tooltip}
-          triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
+          // triggerIsDisabled={false} keeps the help-icon wrapper interactive
+          // even when the parent form field is disabled.
+          triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+          triggerIsDisabled={false}>
           <HelpCircle className="tw:size-4" />
         </Tooltip>
       )}
