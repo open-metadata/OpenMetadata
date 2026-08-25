@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -29,6 +30,7 @@ class RepositoryTransactionContextTest {
     RepositoryTransactionContext.runWith(
         outerDAO,
         () -> {
+          assertSame(outerDAO, RepositoryTransactionContext.currentDAO());
           assertSame(outerDAO, RepositoryTransactionContext.requireCurrentDAO());
           assertThrows(
               IllegalStateException.class,
@@ -36,12 +38,14 @@ class RepositoryTransactionContextTest {
                   RepositoryTransactionContext.runWith(
                       innerDAO,
                       () -> {
+                        assertSame(innerDAO, RepositoryTransactionContext.currentDAO());
                         assertSame(innerDAO, RepositoryTransactionContext.requireCurrentDAO());
                         throw new IllegalStateException("mutation failed");
                       }));
           assertSame(outerDAO, RepositoryTransactionContext.requireCurrentDAO());
         });
 
+    assertNull(RepositoryTransactionContext.currentDAO());
     assertThrows(IllegalStateException.class, RepositoryTransactionContext::requireCurrentDAO);
   }
 }

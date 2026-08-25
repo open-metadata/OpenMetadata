@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -357,6 +358,21 @@ class MetricRepositoryTest {
 
       assertEquals(2, parentWithChildren.getChildrenCount());
       assertEquals(0, leaf.getChildrenCount());
+    }
+  }
+
+  @Test
+  void metricWritesUseTheActiveTransactionDAOAndRestoreTheDefaultDAOAfterward() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      CollectionDAO transactionDAO = mock(CollectionDAO.class);
+      CollectionDAO.MetricDAO transactionMetricDAO = mock(CollectionDAO.MetricDAO.class);
+      when(transactionDAO.metricDAO()).thenReturn(transactionMetricDAO);
+
+      assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
+      RepositoryTransactionContext.runWith(
+          transactionDAO,
+          () -> assertSame(transactionMetricDAO, fixture.repository().entityDAOForWrite()));
+      assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
     }
   }
 

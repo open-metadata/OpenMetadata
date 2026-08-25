@@ -461,6 +461,12 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  protected EntityDAO<Metric> entityDAOForWrite() {
+    CollectionDAO transactionDAO = RepositoryTransactionContext.currentDAO();
+    return transactionDAO == null ? dao : transactionDAO.metricDAO();
+  }
+
+  @Override
   public void storeEntities(List<Metric> entities) {
     storeMany(entities);
   }

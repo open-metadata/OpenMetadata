@@ -20,8 +20,12 @@ final class RepositoryTransactionContext {
 
   private RepositoryTransactionContext() {}
 
+  static CollectionDAO currentDAO() {
+    return CURRENT_DAO.get();
+  }
+
   static CollectionDAO requireCurrentDAO() {
-    CollectionDAO currentDAO = CURRENT_DAO.get();
+    CollectionDAO currentDAO = currentDAO();
     if (currentDAO == null) {
       throw new IllegalStateException("No repository transaction is active");
     }

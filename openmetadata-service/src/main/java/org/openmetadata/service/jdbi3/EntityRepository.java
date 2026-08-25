@@ -5404,15 +5404,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     store(entity, update, null);
   }
 
+  protected EntityDAO<T> entityDAOForWrite() {
+    return dao;
+  }
+
   protected void store(T entity, boolean update, Double expectedVersion) {
     String json = serializeForStorage(entity);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
 
     if (update) {
       if (expectedVersion != null) {
         int rowsUpdated =
-            dao.updateWithVersion(
-                dao.getTableName(),
-                dao.getNameHashColumn(),
+            writeDAO.updateWithVersion(
+                writeDAO.getTableName(),
+                writeDAO.getNameHashColumn(),
                 entity.getFullyQualifiedName(),
                 entity.getId().toString(),
                 json,
@@ -5430,12 +5435,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
             expectedVersion,
             entity.getVersion());
       } else {
-        dao.update(entity.getId(), entity.getFullyQualifiedName(), json);
+        writeDAO.update(entity.getId(), entity.getFullyQualifiedName(), json);
         LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
       }
       invalidate(entity);
     } else {
-      dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
+      writeDAO.insert(
+          writeDAO.getTableName(),
+          writeDAO.getNameHashColumn(),
+          entity.getFullyQualifiedName(),
+          json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     StoredEntityJson pendingCapture = storedEntityJson.get();
@@ -5453,7 +5462,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.insertMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, jsons);
   }
 
   protected void updateMany(List<T> entities) {
@@ -5465,7 +5475,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ids.add(entity.getId());
       jsons.add(serializeForStorage(entity));
     }
-    dao.updateMany(dao.getTableName(), dao.getNameHashColumn(), fqns, ids, jsons);
+    EntityDAO<T> writeDAO = entityDAOForWrite();
+    writeDAO.updateMany(writeDAO.getTableName(), writeDAO.getNameHashColumn(), fqns, ids, jsons);
   }
 
   @Transaction
