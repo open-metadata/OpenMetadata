@@ -371,6 +371,16 @@ export const runTableParitySuite = (
       );
     });
 
+    it('keeps the pager under hideOnSinglePage when more pages exist remotely', () => {
+      // A full page of rows is not a single page — only `total` knows.
+      renderTable({
+        dataSource: pageOne,
+        pagination: { ...serverPagination, hideOnSinglePage: true },
+      });
+
+      expect(adapter.queryPager()).not.toBeNull();
+    });
+
     it('keeps showing the fetched rows after the page advances', () => {
       renderTable({
         dataSource: pageOne,
