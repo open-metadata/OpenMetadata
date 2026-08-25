@@ -458,6 +458,27 @@ def test_the_page_token_is_passed_back_to_the_registry():
     assert tokens == [None, "token-1"]
 
 
+def test_an_empty_page_carrying_a_token_is_followed(caplog):
+    """
+    The reporter's registry: page 1 came back as ``{"next_page_token": "..."}`` with no
+    ``registered_models`` at all, which the SDK hands over as an empty page that still has
+    a token. Stopping there reported a 100% successful run over zero models.
+    """
+    source = make_source(latest_versions=[make_version("1")])
+    source.client.search_registered_models.side_effect = [
+        PagedList([], "token-1"),
+        PagedList([], "token-2"),
+        PagedList([named_model("a"), named_model("b")], None),
+    ]
+
+    with caplog.at_level(logging.INFO):
+        results = list(source.get_mlmodels())
+
+    assert [model.name for model, _ in results] == ["a", "b"]
+    assert "Listed 2 registered model(s) from the MLflow registry over 3 page(s)" in caplog.text
+    assert "returned no registered models" not in caplog.text
+
+
 def test_pagination_stops_at_the_page_budget(caplog):
     """A backend that always returns a token must not spin forever."""
     source = make_source(latest_versions=[make_version("1")])
