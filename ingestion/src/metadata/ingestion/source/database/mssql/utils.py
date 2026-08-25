@@ -54,7 +54,9 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -68,7 +70,9 @@ def db_plus_owner_listing(fn):
     def wrap(dialect, connection, schema=None, **kw):
         schema = f"[{schema}]" if schema and "." in schema else schema
         dbname, owner = _owner_plus_db(dialect, schema)
-        return _switch_db(dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw)
+        return _switch_db(
+            dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw
+        )
 
     return update_wrapper(wrap, fn)
 
@@ -110,7 +114,9 @@ def get_identity_values(coltype, identity_start, identity_increment):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(
+    self, connection, tablename, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -168,7 +174,8 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             computed_cols,
             onclause=sql.and_(
                 computed_cols.c.object_id == func.object_id(full_name),
-                computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                computed_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -176,7 +183,8 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             identity_cols,
             onclause=sql.and_(
                 identity_cols.c.object_id == func.object_id(full_name),
-                identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                identity_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
             ),
             isouter=True,
         )
@@ -275,7 +283,9 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
                     scale = numericscale
 
             coltype = coltype(**kwargs)
-        raw_data_type = get_display_datatype(type_, char_len=charlen, precision=precision, scale=scale)
+        raw_data_type = get_display_datatype(
+            type_, char_len=charlen, precision=precision, scale=scale
+        )
         cdict = {
             "name": name,
             "type": coltype,
@@ -293,7 +303,9 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             }
 
         if is_identity is not None:
-            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
+            cdict["identity"] = get_identity_values(
+                coltype, identity_start, identity_increment
+            )
 
         cols.append(cdict)
     return cols
@@ -301,7 +313,9 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
 
 @reflection.cache
 @db_plus_owner
-def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_view_definition(
+    self, connection, viewname, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,
@@ -313,7 +327,9 @@ def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw)
 
 @reflection.cache
 @db_plus_owner
-def get_pk_constraint(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument
+def get_pk_constraint(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument
     """
     This function overrides to get pk constraint
     """
@@ -355,7 +371,9 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 @db_plus_owner
-def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=None, **kw):  # pylint: disable=unused-argument, too-many-locals
+def get_foreign_keys(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument, too-many-locals
     """
     This function overrides to get foreign key constraint
     """
@@ -442,7 +460,9 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
 
 @reflection.cache
 @db_plus_owner_listing
-def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_table_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -460,7 +480,9 @@ def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: d
 
 @reflection.cache
 @db_plus_owner_listing
-def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_view_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -513,9 +535,12 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
             if row is not None:
                 actual_state, readonly_reason = row[0], row[1]
-                is_ag_secondary = bool((readonly_reason or 0) & _QS_READONLY_REASON_AG_SECONDARY)
+                is_ag_secondary = bool(
+                    (readonly_reason or 0) & _QS_READONLY_REASON_AG_SECONDARY
+                )
                 enabled = (
-                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+                    actual_state
+                    in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
                     and not is_ag_secondary
                 )
                 if is_ag_secondary:
@@ -525,5 +550,9 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                         "Store contains the primary's workload. Falling back to plan-cache DMVs."
                     )
         except Exception as exc:
-            logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc, exc_info=True)
+            logger.debug(
+                "Query Store availability probe failed, using plan-cache DMVs: %s",
+                exc,
+                exc_info=True,
+            )
     return enabled
